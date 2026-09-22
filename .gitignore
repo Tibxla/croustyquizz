@@ -1,0 +1,17 @@
+# Java
+*.class
+*.war
+target/
+build/
+.gradle/
+
+# Frontend
+node_modules/
+dist/
+
+# Éditeurs et environnement
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
