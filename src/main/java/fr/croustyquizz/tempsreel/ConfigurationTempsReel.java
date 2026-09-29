@@ -20,12 +20,18 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registre) {
 		registre.addEndpoint(POINT_DE_CONNEXION);
+		// Les messages d'une même page sont traités dans l'ordre où elle les envoie :
+		// un abonnement est enregistré avant l'action qui le suit.
+		registre.setPreserveReceiveOrder(true);
 	}
 
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry registre) {
 		registre.enableSimpleBroker("/topic");
 		registre.setApplicationDestinationPrefixes(PREFIXE_ACTIONS);
+		// Chaque page reçoit les messages dans l'ordre où le serveur les publie
+		// (l'ordre des Buzz compte).
+		registre.setPreservePublishOrder(true);
 	}
 
 }
