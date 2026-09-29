@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Manette (test)</title>
+	<style>
+		:root { --fond: #14111f; --carte: #1f1a30; --texte: #f4f1fa; --doux: #a9a2bd; --accent: #ffb547; --ok: #5dd39e; --ko: #ff6b6b; }
+		* { box-sizing: border-box; }
+		body { margin: 0; min-height: 100vh; padding: 24px 16px; background: var(--fond); color: var(--texte); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+		#etat { font-size: 0.9rem; color: var(--ko); }
+		#etat.connecte { color: var(--ok); }
+		label { display: grid; gap: 6px; width: min(360px, 100%); color: var(--doux); }
+		input { font: inherit; padding: 12px; border-radius: 10px; border: 1px solid #3a3350; background: var(--carte); color: var(--texte); }
+		#buzz { width: min(70vw, 280px); aspect-ratio: 1; border-radius: 50%; border: none; background: var(--accent); color: #14111f; font: 800 2.2rem system-ui, sans-serif; letter-spacing: 0.05em; touch-action: manipulation; box-shadow: 0 10px 0 #b87a1f; transition: transform 60ms, box-shadow 60ms; }
+		#buzz:active:not(:disabled) { transform: translateY(8px); box-shadow: 0 2px 0 #b87a1f; }
+		#buzz:disabled { opacity: 0.4; }
+		#erreur { color: var(--ko); text-align: center; }
+	</style>
+</head>
+<body>
+	<span id="etat">Connexion…</span>
+	<label>Pseudo <input id="pseudo" maxlength="30" autocomplete="nickname" placeholder="Ton pseudo"></label>
+	<button id="buzz" disabled>BUZZ</button>
+	<p id="erreur" hidden></p>
+
+	<script src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
+	<script src="/js/tempsreel.js"></script>
+	<script>
+		const soireeId = new URLSearchParams(location.search).get('soiree');
+		const etat = document.getElementById('etat');
+		const bouton = document.getElementById('buzz');
+		const pseudo = document.getElementById('pseudo');
+		const erreur = document.getElementById('erreur');
+
+		try { pseudo.value = localStorage.getItem('pseudo') ?? ''; } catch { /* stockage indisponible */ }
+		pseudo.addEventListener('change', () => {
+			try { localStorage.setItem('pseudo', pseudo.value); } catch { /* stockage indisponible */ }
+		});
+
+		if (!soireeId) {
+			erreur.textContent = 'Lien incomplet : ouvre la Manette depuis l\'Écran de salle.';
+			erreur.hidden = false;
+		} else {
+			const connexion = TempsReel.connecter({
+				surConnexion() {
+					etat.textContent = 'Connecté';
+					etat.className = 'connecte';
+					bouton.disabled = false;
+				},
+				surDeconnexion() {
+					etat.textContent = 'Déconnecté, reconnexion…';
+					etat.className = '';
+					bouton.disabled = true;
+				},
+			});
+
+			bouton.addEventListener('click', () => {
+				if (!pseudo.value.trim()) {
+					pseudo.focus();
+					return;
+				}
+				connexion.envoyer(`/app/soirees/${soireeId}/buzz`, { pseudo: pseudo.value });
+				navigator.vibrate?.(60);
+			});
+		}
+	</script>
+</body>
+</html>

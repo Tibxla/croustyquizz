@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Écran de salle (test)</title>
+	<style>
+		:root { --fond: #14111f; --carte: #1f1a30; --texte: #f4f1fa; --doux: #a9a2bd; --accent: #ffb547; --ok: #5dd39e; --ko: #ff6b6b; }
+		* { box-sizing: border-box; }
+		body { margin: 0; min-height: 100vh; padding: 24px 16px; background: var(--fond); color: var(--texte); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+		main { width: min(900px, 100%); margin: 0 auto; }
+		header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+		h1 { margin: 0; font-size: 1.4rem; }
+		#etat { font-size: 0.9rem; color: var(--ko); }
+		#etat.connecte { color: var(--ok); }
+		#lien { display: block; margin: 12px 0 32px; color: var(--doux); word-break: break-all; }
+		#dernier { min-height: 40vh; display: grid; place-items: center; text-align: center; background: var(--carte); border-radius: 16px; padding: 24px; }
+		#dernier strong { display: block; font-size: clamp(3rem, 12vw, 7rem); color: var(--accent); }
+		#dernier small { color: var(--doux); }
+		ol { color: var(--doux); padding-left: 20px; }
+	</style>
+</head>
+<body>
+	<main>
+		<header>
+			<h1>Écran de salle (test)</h1>
+			<span id="etat">Connexion…</span>
+		</header>
+		<a id="lien" target="_blank">Ouvrir une Manette</a>
+		<section id="dernier"><div><strong>—</strong><small>En attente d'un Buzz</small></div></section>
+		<h2>Historique</h2>
+		<ol id="historique" reversed></ol>
+	</main>
+
+	<script src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
+	<script src="/js/tempsreel.js"></script>
+	<script>
+		const parametres = new URLSearchParams(location.search);
+		let soireeId = parametres.get('soiree');
+		if (!soireeId) {
+			soireeId = TempsReel.nouvelIdentifiant();
+			parametres.set('soiree', soireeId);
+			history.replaceState(null, '', `?${parametres}`);
+		}
+
+		const lienManette = `${location.origin}/test/manette.html?soiree=${soireeId}`;
+		const lien = document.getElementById('lien');
+		lien.href = lienManette;
+		lien.textContent = `Manette : ${lienManette}`;
+
+		const etat = document.getElementById('etat');
+		const dernier = document.getElementById('dernier');
+		const historique = document.getElementById('historique');
+		const heure = (instant) => new Date(instant).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+
+		TempsReel.connecter({
+			surConnexion(connexion) {
+				etat.textContent = 'Connecté';
+				etat.className = 'connecte';
+				connexion.ecouter(TempsReel.canaux.salle(soireeId), {
+					'buzz-recu'({ pseudo, recuLe }) {
+						dernier.querySelector('strong').textContent = pseudo;
+						dernier.querySelector('small').textContent = `a buzzé à ${heure(recuLe)}`;
+						const ligne = document.createElement('li');
+						ligne.textContent = `${heure(recuLe)} : ${pseudo}`;
+						historique.prepend(ligne);
+					},
+				});
+			},
+			surDeconnexion() {
+				etat.textContent = 'Déconnecté, reconnexion…';
+				etat.className = '';
+			},
+		});
+	</script>
+</body>
+</html>
