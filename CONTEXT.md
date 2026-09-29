@@ -115,3 +115,11 @@ _Éviter_ : écran principal, TV, affichage
 **Console d'animation** :
 Page web ouverte par l'Animateur sur un ordinateur ou une tablette, depuis laquelle il crée une Soirée, lance les Manches et intervient en cours de jeu.
 _Éviter_ : back-office, dashboard, admin
+
+**Assistant** :
+IA conversationnelle de l'Animateur (Claude, ChatGPT ou autre) connectée à CroustyQuizz, qui prépare des Soirées et rédige des Questions à sa demande. Elle agit de l'extérieur : CroustyQuizz n'embarque aucune IA.
+_Éviter_ : bot, agent, chatbot, IA
+
+**Clé d'Assistant** :
+Secret propre à un Lieu, généré par un Animateur, qui autorise un Assistant à agir pour ce Lieu.
+_Éviter_ : token, clé API, jeton
