@@ -250,24 +250,47 @@ classDiagram
 
 ## Services du socle et des modes
 
-Le contrat `DeroulementDeManche`, que chaque Mode de jeu implémente, et les ports vers l'extérieur.
+Le contrat de Manche (package `manche`) : chaque Mode de jeu fournit une `FabriqueDeDeroulement`, qui crée un `DeroulementDeManche` par Manche. Les ports vers l'extérieur sont en bas.
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
-    class DeroulementDeManche {
+    class FabriqueDeDeroulement {
         <<interface>>
         +ModeDeJeu mode()
-        +demarrer(Manche, Horloge)
+        +DeroulementDeManche creer(ContexteDeManche)
+    }
+    class DeroulementDeManche {
+        <<interface>>
+        +demarrer()
         +recevoir(ActionJoueur)
-        +avancer()
         +mettreEnPause()
         +reprendre()
         +passerEtape()
         +terminer()
         +boolean estTerminee()
-        +List~Points~ points()
+        +List~AttributionDePoints~ points()
+    }
+    class ContexteDeManche {
+        <<record>>
+        +UUID soireeId
+        +UUID mancheId
+        +ReglagesDeManche reglages
+        +Horloge horloge
+        +DiffuseurTempsReel diffuseur
+        +Runnable signalerFin
+    }
+    class ReglagesDeManche {
+        <<record>>
+        +int nombreEtapes
+        +Duration tempsParEtape
+    }
+    class AttributionDePoints {
+        <<record>>
+        +UUID concurrentId
+        +int valeur
+        +String motif
     }
     class ActionJoueur {
         <<interface>>
@@ -283,6 +306,7 @@ classDiagram
         <<interface>>
         +annuler()
     }
+    class HorlogeSysteme
     class DiffuseurTempsReel {
         <<interface>>
         +diffuserSalle(UUID soireeId, Evenement)
@@ -296,7 +320,7 @@ classDiagram
 
     class ServiceSoiree {
         +Soiree creer(Animateur, Format, Pilotage)
-        +ajouterManche(UUID soireeId, ModeDeJeu, reglages)
+        +ajouterManche(UUID soireeId, ModeDeJeu, ReglagesDeManche)
         +ouvrir(UUID soireeId)
         +Joueur rejoindre(String codeAcces, String pseudo)
         +Joueur reconnecter(String jeton)
@@ -318,7 +342,7 @@ classDiagram
         +surFinDeManche(UUID mancheId)
     }
     class RegistreDesModes {
-        +DeroulementDeManche pour(ModeDeJeu)
+        +FabriqueDeDeroulement pour(ModeDeJeu)
     }
     class ServiceClassement {
         +List~LigneClassement~ classementGeneral(UUID soireeId)
@@ -356,19 +380,25 @@ classDiagram
         +Passage appelerSuivant()
     }
 
+    FabriqueDeDeroulement ..> DeroulementDeManche : crée
+    FabriqueDeDeroulement ..> ContexteDeManche
+    ContexteDeManche --> ReglagesDeManche
+    ContexteDeManche --> Horloge
+    ContexteDeManche --> DiffuseurTempsReel
+    DeroulementDeManche ..> ActionJoueur : reçoit
+    DeroulementDeManche ..> AttributionDePoints : produit
+    Horloge ..> Minuteur
+    Horloge <|.. HorlogeSysteme
+    DiffuseurTempsReel ..> Evenement
+
     DeroulementDeManche <|.. DeroulementQuiz
     DeroulementDeManche <|.. DeroulementBlindTest
     DeroulementDeManche <|.. DeroulementKaraoke
-    DeroulementDeManche ..> ActionJoueur : reçoit
-    DeroulementDeManche ..> Horloge : utilise
-    DeroulementDeManche ..> DiffuseurTempsReel : publie
-    DiffuseurTempsReel ..> Evenement
-    Horloge ..> Minuteur
 
     OrchestrateurDeSoiree --> RegistreDesModes
     OrchestrateurDeSoiree --> DiffuseurTempsReel
     PilotageAutomatique --> OrchestrateurDeSoiree
-    RegistreDesModes o-- DeroulementDeManche
+    RegistreDesModes o-- FabriqueDeDeroulement
     ServiceSoiree --> FiltreDePseudos
     ServiceClassement ..> ServiceEquipe
 

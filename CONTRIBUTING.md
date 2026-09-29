@@ -24,6 +24,12 @@ docs: décrire la procédure d'installation
 
 Types : `feat`, `fix`, `test`, `refactor`, `docs`, `chore`, `ci`, `build`.
 
+Le hook `.githooks/commit-msg` refuse un message hors format avant même le commit, et la CI refait la vérification sur chaque PR. Pour activer le hook, une fois par clone :
+
+```bash
+git config core.hooksPath .githooks
+```
+
 Un commit = un changement qui se comprend seul. Pousser sa branche au moins à chaque séance de travail, même inachevée.
 
 ## Pull requests
@@ -67,4 +73,6 @@ V202610011430__karaoke_file_attente.sql
 
 Ne jamais modifier une migration déjà fusionnée dans `develop` : en écrire une nouvelle.
 
-Le profil de développement active `spring.flyway.out-of-order=true`. Sans ça, après la fusion d'une migration plus ancienne que la dernière appliquée sur ta base locale, Flyway refuse de démarrer (`Detected resolved migration not applied to database`).
+Le profil `dev`, actif par défaut sur vos machines, active `spring.flyway.out-of-order=true`. Sans ça, après la fusion d'une migration plus ancienne que la dernière appliquée sur ta base locale, Flyway refuse de démarrer (`Detected resolved migration not applied to database`).
+
+Si Flyway refuse quand même de démarrer (migration modifiée après coup, base locale abîmée), repartir d'une base vide : `docker compose down -v`, puis relancer l'application.
