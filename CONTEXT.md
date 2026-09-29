@@ -44,6 +44,18 @@ _Éviter_ : mode auto, mode animé
 Ce qui marque des points dans une Soirée : le Joueur en Format Solo, l'Équipe en Format Équipe.
 _Éviter_ : participant, compétiteur
 
+**Signalement** :
+Alerte envoyée par un Joueur à l'Animateur à propos du pseudo ou du comportement d'un autre Joueur.
+_Éviter_ : report, plainte, dénonciation
+
+**Avertissement** :
+Demande de l'Animateur à un Joueur de changer de pseudo. Le Joueur ne peut plus jouer tant qu'il ne l'a pas fait.
+_Éviter_ : warning, sanction
+
+**Exclusion** :
+Retrait définitif d'un Joueur d'une Soirée, décidé par l'Animateur. Elle vaut pour la Soirée et pour la Manette du Joueur.
+_Éviter_ : ban, kick, bannissement
+
 **Classement général** :
 Cumul des points des Joueurs, ou des Équipes en Format Équipe, sur les Manches de Quiz et de Blind test d'une Soirée. Le Karaoké n'y compte pas.
 _Éviter_ : score, leaderboard
@@ -123,3 +135,17 @@ _Éviter_ : bot, agent, chatbot, IA
 **Clé d'Assistant** :
 Secret propre à un Lieu, généré par un Animateur, qui autorise un Assistant à agir pour ce Lieu.
 _Éviter_ : token, clé API, jeton
+
+## Relation avec la clientèle
+
+**Contact du Lieu** :
+Personne qui a donné son nom, son prénom et son numéro de téléphone à un Lieu, et accepté de recevoir ses offres par SMS. Devenir Contact n'est jamais obligatoire pour jouer.
+_Éviter_ : client, prospect, abonné, lead
+
+**Consentement** :
+Accord explicite, horodaté et révocable d'un Contact du Lieu pour recevoir des Campagnes SMS. Le texte exact accepté est conservé.
+_Éviter_ : opt-in, acceptation
+
+**Campagne SMS** :
+Message promotionnel envoyé par un Lieu à ses Contacts qui ont donné leur Consentement.
+_Éviter_ : newsletter, pub, relance, notification
