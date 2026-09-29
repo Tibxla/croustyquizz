@@ -40,6 +40,10 @@ _Éviter_ : table, groupe, mode équipe
 Manière dont une Soirée avance, choisie pour toute la Soirée : Manuel, où l'Animateur fait avancer, ou Automatique, où la Soirée s'enchaîne seule. Dans les deux cas, l'Animateur peut intervenir.
 _Éviter_ : mode auto, mode animé
 
+**Concurrent** :
+Ce qui marque des points dans une Soirée : le Joueur en Format Solo, l'Équipe en Format Équipe.
+_Éviter_ : participant, compétiteur
+
 **Classement général** :
 Cumul des points des Joueurs, ou des Équipes en Format Équipe, sur les Manches de Quiz et de Blind test d'une Soirée. Le Karaoké n'y compte pas.
 _Éviter_ : score, leaderboard
@@ -66,12 +70,36 @@ _Éviter_ : quiz musical, devinette musicale
 Mode de jeu où des volontaires chantent seuls à tour de rôle sur des paroles synchronisées, puis le public vote pour eux. Le chant n'est pas analysé. Il reste individuel même en Format Équipe.
 _Éviter_ : chant, scène ouverte
 
+**Question** :
+Énoncé de Quiz accompagné de quatre propositions, dont une seule est juste.
+_Éviter_ : item, carte
+
+**Réponse** :
+Proposition choisie par un Joueur sur sa Manette pour une Question, horodatée pour calculer les points selon la vitesse.
+_Éviter_ : choix, vote
+
+**Morceau** :
+Titre musical dont un extrait est diffusé pendant un Blind test, à reconnaître.
+_Éviter_ : chanson, piste, track
+
+**Buzz** :
+Signal envoyé depuis une Manette pour réclamer la parole pendant un Blind test. Le premier Buzz donne le droit de proposer un titre.
+_Éviter_ : clic, main levée
+
+**Chanson** :
+Titre musical choisi par un Joueur pour le chanter au Karaoké, avec ses paroles synchronisées.
+_Éviter_ : morceau, piste
+
+**Passage** :
+Tour d'un Joueur au Karaoké : une Chanson chantée, puis notée par le Vote du public.
+_Éviter_ : prestation, performance, tour de chant
+
 **File d'attente** :
-Liste ordonnée des volontaires inscrits pour chanter au Karaoké.
+Liste ordonnée des Passages à venir d'une Manche de Karaoké.
 _Éviter_ : playlist, queue
 
 **Vote du public** :
-Note donnée par les autres joueurs à un passage de Karaoké.
+Note donnée par un Joueur à un Passage qui n'est pas le sien.
 _Éviter_ : score de chant, évaluation
 
 ## Interfaces
