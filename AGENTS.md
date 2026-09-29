@@ -10,14 +10,28 @@ Plateforme de soirées Quiz, Blind test et Karaoké pour les lieux qui accueille
 
 ## Stack
 
-- Back : Java 21, Spring Boot 3, Maven. Une seule application, découpée en packages.
+- Back : Spring Boot 4, Maven (wrapper `./mvnw`, rien à installer), code compilé pour Java 21. Une seule application, découpée en packages sous `fr.croustyquizz`.
 - Temps réel : WebSocket + STOMP (Spring).
 - Base : PostgreSQL via Docker Compose, schéma versionné par Flyway.
 - Front : HTML + JavaScript servis par Spring Boot, sans npm ni bundler (ADR 0001).
 
 ## Commandes
 
-À compléter au jalon 0, quand le squelette Maven existera.
+Docker doit tourner pour lancer l'application et pour les tests.
+
+| Commande | Effet |
+|---|---|
+| `./mvnw spring-boot:run` | démarre PostgreSQL (Docker Compose) puis l'application sur http://localhost:8080 |
+| `./mvnw verify` | build et tous les tests, avec un PostgreSQL jetable (Testcontainers) |
+| `./mvnw test -Dtest=NomDuTest` | un seul test |
+| `docker compose down -v` | efface la base locale pour repartir de zéro |
+| `git config core.hooksPath .githooks` | une fois par clone : refuse les messages de commit hors format |
+
+Sous Windows, dans PowerShell : `.\mvnw.cmd` au lieu de `./mvnw`.
+
+## Coder un Mode de jeu
+
+Le contrat est dans le package `manche` : implémenter `DeroulementDeManche` et déclarer une `FabriqueDeDeroulement` en bean Spring. Pas de `Instant.now()` ni de thread : le temps passe par l'`Horloge` du `ContexteDeManche`, et les écrans ne se joignent que par le `DiffuseurTempsReel`. La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`).
 
 ## Propriétaires
 
@@ -25,7 +39,7 @@ Chaque package a un propriétaire, qui écrit et relit en premier ce qui s'y pas
 
 | Package | Propriétaire |
 |---|---|
-| `karaoke`, `tempsreel`, pilotage automatique | Tibxla |
+| `manche` (contrat commun), `tempsreel`, `karaoke`, pilotage automatique | Tibxla |
 | `quiz`, `animateur`, classement général | Piyakabib |
 | `blindtest`, `soiree`, format Équipe | nRayen |
 
