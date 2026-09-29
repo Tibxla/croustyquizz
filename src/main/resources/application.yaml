@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: croustyquizz
+  profiles:
+    # Sans profil explicite, on est en développement. La production
+    # s'active avec SPRING_PROFILES_ACTIVE=prod.
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Le schéma appartient à Flyway : Hibernate vérifie, il ne crée rien.
+      ddl-auto: validate

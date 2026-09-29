@@ -1,0 +1,12 @@
+# Base de développement, démarrée automatiquement par `./mvnw spring-boot:run`
+# (support Docker Compose de Spring Boot). Le port hôte est choisi par Docker
+# pour ne pas entrer en conflit avec un autre PostgreSQL de la machine.
+services:
+  postgres:
+    image: 'postgres:18'
+    environment:
+      - 'POSTGRES_DB=croustyquizz'
+      - 'POSTGRES_USER=croustyquizz'
+      - 'POSTGRES_PASSWORD=croustyquizz'
+    ports:
+      - '5432'
