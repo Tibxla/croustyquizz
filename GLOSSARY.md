@@ -136,6 +136,14 @@ _Éviter_ : bot, agent, chatbot, IA
 Secret propre à un Lieu, généré par un Animateur, qui autorise un Assistant à agir pour ce Lieu.
 _Éviter_ : token, clé API, jeton
 
+**Vue synchronisée** :
+Ce qu'une Console d'animation, une Manette ou l'Écran de salle affiche à un instant donné, tenu à jour par le serveur : une capture complète, puis chaque événement qui la remplace dans l'ordre des Révisions.
+_Éviter_ : état, snapshot, cache
+
+**Révision** :
+Numéro d'ordre d'une Vue synchronisée sur une destination (la salle, la Console ou une Manette), contigu et croissant. Deux destinations ont des Révisions indépendantes.
+_Éviter_ : version, séquence
+
 ## Relation avec la clientèle
 
 **Contact du Lieu** :
