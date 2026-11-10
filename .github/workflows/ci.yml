@@ -6,6 +6,9 @@ on:
   push:
     branches: [develop, main]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build et tests
@@ -19,6 +22,62 @@ jobs:
           cache: maven
       - name: Construire et lancer les tests (PostgreSQL via Testcontainers)
         run: ./mvnw -B verify
+      - name: Calculer les mesures et les badges
+        run: python3 tools/mesures-qualite.py
+      - name: Conserver les rapports de tests, couverture et qualité
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-qualite-${{ github.sha }}
+          path: |
+            target/surefire-reports/
+            target/site/
+            target/pmd.xml
+            target/qualite/
+          if-no-files-found: error
+      - name: Préparer les badges à publier
+        uses: actions/upload-artifact@v4
+        with:
+          name: mesures-qualite
+          path: target/qualite/
+          if-no-files-found: error
+
+  publier-mesures:
+    name: Publier les badges mesurés
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publication-mesures-qualite
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: mesures-qualite
+          path: ${{ runner.temp }}/mesures-qualite
+      - name: Actualiser la branche des indicateurs
+        shell: bash
+        run: |
+          destination="$RUNNER_TEMP/publication-mesures"
+          if git ls-remote --exit-code --heads origin refs/heads/mesures-qualite; then
+            git fetch origin refs/heads/mesures-qualite:refs/remotes/origin/mesures-qualite
+            git worktree add --detach "$destination" origin/mesures-qualite
+          else
+            git worktree add --detach --no-checkout "$destination" HEAD
+            git -C "$destination" switch --orphan mesures-qualite
+          fi
+          mkdir -p "$destination/$GITHUB_REF_NAME"
+          cp -a "$RUNNER_TEMP/mesures-qualite/." "$destination/$GITHUB_REF_NAME/"
+          git -C "$destination" config user.name 'github-actions[bot]'
+          git -C "$destination" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$destination" add --intent-to-add -- "$GITHUB_REF_NAME"
+          if ! git -C "$destination" diff --quiet -- "$GITHUB_REF_NAME"; then
+            git -C "$destination" commit -m "ci: publier les mesures de $GITHUB_REF_NAME" -- "$GITHUB_REF_NAME"
+            git -C "$destination" push origin HEAD:refs/heads/mesures-qualite
+          fi
 
   commits:
     name: Format des commits
