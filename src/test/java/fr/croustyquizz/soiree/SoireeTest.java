@@ -51,6 +51,16 @@ class SoireeTest {
 		ReflectionTestUtils.setField(soiree, "etat", EtatSoiree.EN_COURS);
 
 		assertThatThrownBy(() -> soiree.ouvrir("ABCDEF", OUVERTURE)).isInstanceOf(SoireeDejaLancee.class);
+		assertThat(soiree.getCodeAcces()).isEqualTo("K7PQ2M");
+	}
+
+	@Test
+	void accueilleLesJoueursOuverteOuEnCoursMaisPasApres() {
+		soiree.ouvrir("K7PQ2M", OUVERTURE);
+		ReflectionTestUtils.setField(soiree, "etat", EtatSoiree.EN_COURS);
+		assertThat(soiree.accepteLesArrivees()).isTrue();
+
+		ReflectionTestUtils.setField(soiree, "etat", EtatSoiree.TERMINEE);
 		assertThat(soiree.accepteLesArrivees()).isFalse();
 	}
 
@@ -62,10 +72,12 @@ class SoireeTest {
 
 	@Test
 	void refuseUnTitreVideOuTropLong() {
+		assertThatThrownBy(() -> new Soiree(null, Format.SOLO, Pilotage.MANUEL, CREATION))
+				.isInstanceOf(TitreInvalide.class);
 		assertThatThrownBy(() -> new Soiree("   ", Format.SOLO, Pilotage.MANUEL, CREATION))
-				.isInstanceOf(IllegalArgumentException.class);
+				.isInstanceOf(TitreInvalide.class);
 		assertThatThrownBy(() -> new Soiree("x".repeat(151), Format.SOLO, Pilotage.MANUEL, CREATION))
-				.isInstanceOf(IllegalArgumentException.class);
+				.isInstanceOf(TitreInvalide.class);
 	}
 
 }
