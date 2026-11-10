@@ -18,8 +18,7 @@ Dépôt à contexte unique :
 ├── GLOSSARY.md
 ├── docs/adr/
 │   ├── 0001-front-sans-chaine-de-build.md
-│   ├── 0002-assistant-externe-par-mcp.md
-│   └── 0003-contrats-api-http-et-evenements-stomp.md
+│   └── …
 └── src/
 ```
 
