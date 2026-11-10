@@ -11,7 +11,7 @@ import java.time.Duration;
 public record ReglagesDeManche(int nombreEtapes, Duration tempsParEtape) {
 
 	public ReglagesDeManche {
-		if (nombreEtapes < 1) {
+		if (nombreEtapes <= 0) {
 			throw new IllegalArgumentException("Une Manche compte au moins une étape");
 		}
 		if (tempsParEtape.isNegative() || tempsParEtape.isZero()) {
