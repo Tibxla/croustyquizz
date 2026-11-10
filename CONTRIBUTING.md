@@ -38,7 +38,7 @@ Un commit = un changement qui se comprend seul. Pousser sa branche au moins à c
 ## Pull requests
 
 1. Chaque PR répond à une issue et la ferme : écrire `Closes #12` dans la description. Une PR complémentaire d'une issue déjà fermée écrit `Refs #12`.
-   Seule exception : les PR de Dependabot (`build(deps): …`, `ci(deps): …`), une par écosystème et par mois au plus. N'importe quel membre les relit ; si une mise à jour casse le build, ouvrir une issue plutôt que de forcer la fusion.
+   Seule exception : les PR de Dependabot (`build(deps): …`, `ci(deps): …`) : mises à jour de versions regroupées une fois par mois et par écosystème, correctifs de sécurité dès qu'une faille est connue. N'importe quel membre les relit ; si une mise à jour casse le build, ouvrir une issue plutôt que de forcer la fusion.
 2. La description suit le gabarit `.github/pull_request_template.md`.
 3. Avant d'ouvrir la PR, remettre sa branche à jour sur `develop` par un rebase (recette ci-dessous) et nettoyer ses propres commits. Pendant la relecture, mettre à jour avec « Update with rebase » dans GitHub, ou la même recette en local, pour garder l'historique sans commits de fusion de `develop`.
 4. Une approbation d'un autre membre et une CI verte sont obligatoires.
