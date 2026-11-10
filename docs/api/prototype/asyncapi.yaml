@@ -1,16 +1,16 @@
 asyncapi: 3.1.0
 info:
   title: Diffusion technique de démonstration CroustyQuizz
-  version: 0.1.0
+  version: 0.2.0
   description: >-
-    Prototype sans authentification ni capture révisée. Les événements métier de
+    Prototype sans authentification, avec capture révisée de la salle. Les événements métier de
     ../asyncapi.yaml seront ajoutés avec les accès et les projections du Quiz.
 servers:
   local:
     host: localhost:8080
     pathname: /ws
     protocol: ws
-    description: STOMP 1.2. CONNECT, SUBSCRIBE et UNSUBSCRIBE autorisés, SEND refusé.
+    description: STOMP 1.2. UUID neuf dans le header id de SUBSCRIBE, SEND refusé. Heartbeats à dix secondes.
 channels:
   salle:
     address: /topic/soirees/{soireeId}/salle
@@ -31,15 +31,4 @@ components:
   messages:
     Buzz:
       payload:
-        type: object
-        required: [type, donnees]
-        additionalProperties: false
-        properties:
-          type: {type: string, const: buzz-recu}
-          donnees:
-            type: object
-            required: [pseudo, recuLe]
-            additionalProperties: false
-            properties:
-              pseudo: {type: string, minLength: 1, maxLength: 30}
-              recuLe: {type: string, format: date-time}
+        $ref: './schemas.yaml#/$defs/EvenementSalle'

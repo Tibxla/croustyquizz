@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Socle technique de démonstration CroustyQuizz
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     Routes de test sans authentification, actives en profil dev seulement (sauf heure).
     Aucun Joueur, aucune Soirée et aucune Manche ne sont créés.
@@ -41,6 +41,48 @@ paths:
                   console: {type: string}
                   buzz: {type: string}
         '400': {description: UUID invalide.}
+  /api/test/soirees/{soireeId}/etat/salle:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    get:
+      operationId: retrouverSalleDuPrototype
+      description: >-
+        Capture cohérente de la dernière Vue synchronisée et de sa Révision.
+        Sans abonnementId, lecture ponctuelle sans garantie de raccordement.
+        Avec abonnementId, attend un abonnement installé sur cette destination.
+        UUID neuf par abonnement, rattaché à une seule connexion STOMP vivante.
+        Le prototype est anonyme : cet UUID n'est pas une preuve d'identité HTTP.
+      parameters:
+        - name: abonnementId
+          in: query
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Dernière vue publiée, ou vue vide de repli à la Révision zéro.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/EtatSalle'
+        '409':
+          description: Abonnement absent, ambigu, désabonné, déconnecté ou sur une autre destination.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../schemas.yaml#/$defs/Probleme'
+              example:
+                type: about:blank
+                title: Abonnement inactif
+                status: 409
+                code: ABONNEMENT_INACTIF
+                detail: L'abonnement n'est pas installé sur cette destination.
+                instance: /api/test/soirees/00000001-0000-4000-8000-000000000000/etat/salle
+        '400': {description: UUID invalide.}
   /api/test/soirees/{soireeId}/buzz:
     parameters:
       - $ref: '#/components/parameters/SoireeId'
@@ -77,9 +119,4 @@ components:
       schema: {type: string, format: uuid}
   schemas:
     BuzzRecu:
-      type: object
-      required: [pseudo, recuLe]
-      additionalProperties: false
-      properties:
-        pseudo: {type: string, minLength: 1, maxLength: 30}
-        recuLe: {type: string, format: date-time}
+      $ref: './schemas.yaml#/$defs/BuzzRecu'
