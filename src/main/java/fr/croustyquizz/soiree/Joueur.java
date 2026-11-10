@@ -14,7 +14,7 @@ import jakarta.persistence.Id;
 @Entity
 public class Joueur {
 
-	static final int LONGUEUR_MAX_PSEUDO = 20;
+	static final int LONGUEUR_MAX_PSEUDO = 30;
 
 	@Id
 	private UUID id;
