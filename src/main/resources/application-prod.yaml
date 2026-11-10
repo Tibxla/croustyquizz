@@ -1,0 +1,13 @@
+# Profil de la démo et de tout hébergement : la configuration vient de l'environnement,
+# pour que la même image tourne sur le serveur de Tibxla ou chez un hébergeur de conteneurs.
+server:
+  # Les hébergeurs de conteneurs (Render, Cloud Run…) imposent souvent leur port par PORT.
+  port: ${PORT:8080}
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  docker:
+    compose:
+      enabled: false
