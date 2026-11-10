@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Fournit les destinations aux pages de démonstration depuis les constantes Java. */
 @RestController
-@Profile("dev")
+@Profile({"dev", "recette"})
 class CanauxDeTestControleur {
 
 	record CanauxDeTest(String connexion, String salle, String console, String buzz) {

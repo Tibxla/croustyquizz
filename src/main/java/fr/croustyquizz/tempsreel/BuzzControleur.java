@@ -17,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
  * L'heure de réception est celle du serveur, seule à faire foi.
  */
 @RestController
-@Profile("dev")
+@Profile({"dev", "recette"})
 public class BuzzControleur {
 
 	static final int LONGUEUR_MAX_PSEUDO = 30;
