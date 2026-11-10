@@ -33,9 +33,18 @@ recuperer https://github.com/mattpocock/skills.git "$MATTPOCOCK_REF" "$travail/m
 recuperer https://github.com/pbakaus/impeccable.git "$IMPECCABLE_REF" "$travail/impeccable"
 
 # Retirer seulement les copies précédentes : un skill propre au projet reste en place.
+# Le manifeste entier est validé avant toute suppression : un nom simple par ligne,
+# jamais un chemin, pour que rm ne sorte jamais de .agents/skills/.
 if [ -f "$manifeste" ]; then
 	while IFS= read -r nom; do
-		[ -n "$nom" ] && rm -rf "${cible:?}/$nom"
+		case "$nom" in
+			'' | . | .. | */* | *[!A-Za-z0-9._-]*)
+				echo "Entrée refusée dans $manifeste : « $nom ». Corriger le manifeste à la main." >&2
+				exit 1 ;;
+		esac
+	done < "$manifeste"
+	while IFS= read -r nom; do
+		rm -rf "${cible:?}/${nom:?}"
 	done < "$manifeste"
 fi
 : > "$manifeste"
@@ -55,6 +64,8 @@ echo impeccable >> "$manifeste"
 cp "$travail/mattpocock/LICENSE" "$licences/mattpocock-skills-MIT.txt"
 cp "$travail/impeccable/LICENSE" "$licences/impeccable-Apache-2.0.txt"
 cp "$travail/impeccable/NOTICE.md" "$licences/impeccable-NOTICE.md"
+# licences/modern-screenshot-MIT.txt est versionné à la main : Impeccable embarque
+# scripts/modern-screenshot.umd.js (MIT, qq15725/modern-screenshot) sans sa licence.
 
 cat > "$racine/.agents/PROVENANCE.md" <<EOF
 # Provenance des skills de .agents/skills/
@@ -65,6 +76,7 @@ Copies générées par \`tools/mettre-a-jour-skills.sh\`. Ne pas les modifier à
 |---|---|---|
 | [mattpocock/skills](https://github.com/mattpocock/skills) | \`$MATTPOCOCK_REF\` | MIT, \`licences/mattpocock-skills-MIT.txt\` |
 | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | \`$IMPECCABLE_REF\` | Apache 2.0, \`licences/impeccable-Apache-2.0.txt\` et \`licences/impeccable-NOTICE.md\` |
+| [qq15725/modern-screenshot](https://github.com/qq15725/modern-screenshot), embarqué par Impeccable | (dans la copie d'Impeccable) | MIT, \`licences/modern-screenshot-MIT.txt\` |
 
 Skills copiés : la liste de \`skills/.copies\`.
 EOF
