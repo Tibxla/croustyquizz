@@ -245,7 +245,8 @@ Francfort), la base chez Neon (PostgreSQL 18, Francfort). Les deux comptes appar
   Render ; Render peut redémarrer le service à tout moment, et la dernière vue publiée
   repart alors de la capture de repli (ADR 0004). Neon : 1 Go et 100 heures de calcul par mois.
 - **Configuration** : variables du service Render, jamais dans le dépôt :
-  `SPRING_PROFILES_ACTIVE=prod`, `SPRING_DATASOURCE_URL`
+  `SPRING_PROFILES_ACTIVE=prod,recette` (la production prend `prod` seul : le profil
+  `recette` ouvre les pages de test `/test/manette.html` et `/test/ecran.html`), `SPRING_DATASOURCE_URL`
   (`jdbc:postgresql://<hôte Neon>/croustyquizz?sslmode=require`, connexion directe et non
   le « pooler », pour Flyway), `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`,
   `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75 -XX:+UseSerialGC`. Render fournit `PORT`.
