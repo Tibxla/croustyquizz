@@ -6,6 +6,19 @@ et les arrête, rien ne redémarre seul avec la machine. Pendant une démo, Tail
 Funnel donne une adresse HTTPS publique aux Manettes, à la Console d'animation et à
 l'Écran de salle. PostgreSQL ne publie aucun port.
 
+## Les environnements
+
+| Environnement | Où | Version | Base |
+|---|---|---|---|
+| Développement | la machine de chacun, `./mvnw spring-boot:run` | la branche de travail | PostgreSQL de `compose.yaml` |
+| Recette | Render, https://croustyquizz-recette.onrender.com | `develop`, redéployée après chaque fusion | Neon, projet `croustyquizz-recette` |
+| Production | Render, https://croustyquizz-prod.onrender.com (créée au jalon `v0.1.0`) | chaque livraison `vX.Y.Z` de `main` | Neon, projet `croustyquizz-prod` |
+| Démo de secours | serveur de Tibxla, `tools/demo.sh`, à la demande | `main` ou `vX.Y.Z` | PostgreSQL de `compose.prod.yaml` |
+
+Aucun ne partage de base avec un autre. La démo de secours ne sert que si la production
+Render ne tient pas une Soirée (test de charge à faire avant la démo notée). La suite de ce
+document la décrit ; la recette et la production ont leur section, plus bas.
+
 ## Prérequis
 
 - Un serveur Linux x86_64 allumé pendant la Soirée, avec une connexion Internet.
@@ -207,6 +220,47 @@ utilisés pour accéder aux Manettes. Refaire le test avec un autre téléphone 
 Sans sauvegarde, la base du portable est vierge. Ce secours ne conserve pas les
 connexions ni la Soirée en cours : l'Animateur doit préparer une nouvelle Soirée.
 Essayer ce parcours avant le jour de la démonstration.
+
+## Recette et production sur Render et Neon
+
+La recette fait tourner `develop`, et la production chaque livraison de `main`, hors du
+serveur de Tibxla : l'équipe et les Joueurs y accèdent depuis leur téléphone sans rien
+installer : l'application chez Render (offre gratuite,
+Francfort), la base chez Neon (PostgreSQL 18, Francfort). Les deux comptes appartiennent
+à l'organisation « Croustyquizz » ; y inviter les camarades pour qu'ils voient les journaux.
+
+- **Adresse** : https://croustyquizz-recette.onrender.com, publique. N'y mettre que des
+  données fictives.
+- **Déploiement** : après chaque fusion dans `develop`, une fois le build et les contrats
+  verts, le job « Déployer la recette » de la CI appelle le *deploy hook* de Render (secret
+  GitHub `RENDER_DEPLOY_HOOK_RECETTE`) pour ce commit précis ; Render construit l'image
+  depuis le `Dockerfile`. Rien à lancer à la main. Render n'a aucun accès au compte GitHub :
+  le déploiement automatique de Render est coupé, seule la CI déclenche.
+- **Veille** : le service s'endort après 15 minutes sans requête HTTP ni message WebSocket ;
+  la visite suivante le réveille en une à deux minutes (démarrage de Spring Boot mesuré à
+  86 s sur l'instance gratuite). Pendant une séance, les battements
+  STOMP des Manettes le gardent éveillé. La base Neon s'endort après 5 minutes sans connexion
+  et se réveille en moins d'une seconde.
+- **Limites gratuites** : 512 Mo de mémoire et un CPU partagé, 750 heures par mois chez
+  Render ; Render peut redémarrer le service à tout moment, et la dernière vue publiée
+  repart alors de la capture de repli (ADR 0004). Neon : 1 Go et 100 heures de calcul par mois.
+- **Configuration** : variables du service Render, jamais dans le dépôt :
+  `SPRING_PROFILES_ACTIVE=prod,recette` (la production prend `prod` seul : le profil
+  `recette` ouvre les pages de test `/test/manette.html` et `/test/ecran.html`), `SPRING_DATASOURCE_URL`
+  (`jdbc:postgresql://<hôte Neon>/croustyquizz?sslmode=require`, connexion directe et non
+  le « pooler », pour Flyway), `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`,
+  `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=75 -XX:+UseSerialGC`. Render fournit `PORT`.
+- **Repartir d'une base vide** : dans Neon, réinitialiser la branche `main` du projet
+  `croustyquizz-recette`, puis redéployer ; Flyway recrée le schéma au démarrage.
+
+La **production** suit le même modèle, avec ses propres service et base : le service
+Render `croustyquizz-prod` construit la branche `main`, avec le projet Neon
+`croustyquizz-prod` et ses propres identifiants. Le job « Déployer la production » de
+`livraison.yml` appelle son *deploy hook* (secret `RENDER_DEPLOY_HOOK_PRODUCTION`) pour le
+commit tagué, après la publication de la release. Tant que le secret n'existe pas, le job
+le signale sans échouer. Le service et la base sont créés au jalon `v0.1.0`, quand `main`
+reçoit sa première version. Ne jamais réinitialiser la base de production : la sauvegarder
+avant chaque livraison (Neon garde aussi un historique de restauration).
 
 ## Changer d'hébergeur
 

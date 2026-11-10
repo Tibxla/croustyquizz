@@ -1,5 +1,8 @@
 # Démo de CroustyQuizz : application et PostgreSQL, démarrés à la demande par
 # tools/demo.sh (jamais en continu). Procédure complète : docs/deploiement.md.
+# Nom de projet distinct de compose.yaml (développement, projet « croustyquizz ») :
+# la démo ne réutilise jamais la base de développement.
+name: croustyquizz-demo
 
 services:
   app:

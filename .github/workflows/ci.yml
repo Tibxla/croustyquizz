@@ -94,6 +94,29 @@ jobs:
             git -C "$destination" push origin HEAD:refs/heads/mesures-qualite
           fi
 
+  deployer-recette:
+    name: Déployer la recette
+    # Après une fusion dans develop, une fois le build et les contrats verts : Render
+    # construit ce commit précis (docs/deploiement.md, « Recette sur Render et Neon »).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    needs: [contrats-api, build]
+    runs-on: ubuntu-latest
+    permissions: {}
+    concurrency:
+      group: deploiement-recette
+      cancel-in-progress: true
+    steps:
+      - name: Demander à Render de construire ce commit
+        env:
+          CROCHET: ${{ secrets.RENDER_DEPLOY_HOOK_RECETTE }}
+        run: |
+          if [ -z "$CROCHET" ]; then
+            echo "::warning::Secret RENDER_DEPLOY_HOOK_RECETTE absent : recette non déployée."
+            exit 0
+          fi
+          curl -fsS -X POST "$CROCHET&ref=$GITHUB_SHA" -o /dev/null
+          echo "Déploiement de $GITHUB_SHA demandé : https://croustyquizz-recette.onrender.com"
+
   commits:
     name: Format des commits
     if: github.event_name == 'pull_request'
