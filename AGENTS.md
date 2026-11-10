@@ -11,6 +11,7 @@ Plateforme de soirées Quiz, Blind test et Karaoké pour les lieux qui accueille
 ## Stack
 
 - Back : Spring Boot 4, Maven (wrapper `./mvnw`, rien à installer), code compilé pour Java 21. Une seule application, découpée en packages sous `fr.croustyquizz`.
+- API-first : définir les contrats HTTP et les événements STOMP avant leur implémentation (ADR 0003).
 - Temps réel : WebSocket + STOMP (Spring).
 - Base : PostgreSQL via Docker Compose, schéma versionné par Flyway.
 - Front : HTML + JavaScript servis par Spring Boot, sans npm ni bundler (ADR 0001).
