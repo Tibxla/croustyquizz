@@ -1,2 +1,6 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+/tools/*.sh text eol=lf
+/.agents/skills/impeccable/scripts/impeccable text eol=lf
+# Copies de skills tiers (tools/mettre-a-jour-skills.sh) : hors statistiques de langages.
+/.agents/** linguist-vendored
