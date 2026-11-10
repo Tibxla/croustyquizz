@@ -9,7 +9,9 @@ Le cours évalue le process autant que le code : des push réguliers, une branch
 - Branches de travail, toujours créées depuis `develop` à jour :
   - `feature/<n° d'issue>-<slug>`, par exemple `feature/12-file-attente-karaoke`
   - `fix/<n° d'issue>-<slug>`
-  - `docs/<slug>` pour la documentation seule
+  - `docs/<n° d'issue>-<slug>` pour la documentation seule
+
+Une branche fusionnée est supprimée et ne sert plus. Une correction découverte après la fusion part d'une nouvelle branche `fix/<n° d'issue>-<slug>` depuis `develop`.
 
 ## Commits
 
@@ -34,10 +36,11 @@ Un commit = un changement qui se comprend seul. Pousser sa branche au moins à c
 
 ## Pull requests
 
-1. Chaque PR répond à une issue et la ferme : écrire `Closes #12` dans la description.
-2. Avant d'ouvrir la PR, remettre sa branche à jour sur `develop` par un rebase (recette ci-dessous) et nettoyer ses propres commits.
-3. Une approbation d'un autre membre et une CI verte sont obligatoires.
-4. Fusion par **merge commit** (pas de squash, pas de rebase dans GitHub), puis suppression de la branche.
+1. Chaque PR répond à une issue et la ferme : écrire `Closes #12` dans la description. Une PR complémentaire d'une issue déjà fermée écrit `Refs #12`.
+2. La description suit le gabarit `.github/pull_request_template.md`, y compris la section « Usage de l'IA » : c'est le protocole présenté dans le dossier de lancement, et les correcteurs peuvent le vérifier PR par PR.
+3. Avant d'ouvrir la PR, remettre sa branche à jour sur `develop` par un rebase (recette ci-dessous) et nettoyer ses propres commits. Pendant la relecture, mettre à jour avec « Update with rebase » dans GitHub, ou la même recette en local, pour garder l'historique sans commits de fusion de `develop`.
+4. Une approbation d'un autre membre et une CI verte sont obligatoires.
+5. Fusion par **merge commit** (pas de squash, pas de rebase dans GitHub), puis suppression de la branche.
 
 ### Relecture en tourniquet
 
@@ -76,3 +79,13 @@ Ne jamais modifier une migration déjà fusionnée dans `develop` : en écrire u
 Le profil `dev`, actif par défaut sur vos machines, active `spring.flyway.out-of-order=true`. Sans ça, après la fusion d'une migration plus ancienne que la dernière appliquée sur ta base locale, Flyway refuse de démarrer (`Detected resolved migration not applied to database`).
 
 Si Flyway refuse quand même de démarrer (migration modifiée après coup, base locale abîmée), repartir d'une base vide : `docker compose down -v`, puis relancer l'application.
+
+## Skills d'agent
+
+Toute l'équipe utilise les mêmes skills : [mattpocock/skills](https://github.com/mattpocock/skills) (`tdd`, `diagnosing-bugs`, `grill-with-docs`, `code-review`…) et [Impeccable](https://impeccable.style) pour les interfaces. `AGENTS.md` dit lequel utiliser à quel moment.
+
+- **Claude Code** : rien à faire. À l'ouverture du dépôt, Claude Code demande d'approuver les deux marketplaces déclarées dans `.claude/settings.json`, puis installe les plugins. Si on les a déjà installés en global depuis les mêmes marketplaces (`mattpocock`, `impeccable`), ce sont les mêmes plugins : ils ne sont pas chargés deux fois.
+- **Codex** : `codex plugin marketplace add mattpocock/skills`, puis `codex plugin add mattpocock-skills@mattpocock`. Pour Impeccable, `npx impeccable install` en choisissant l'installation globale.
+- **Antigravity et les autres agents** : `npx skills@latest add mattpocock/skills`, en choisissant son agent et, si l'installeur le propose, l'installation globale ; puis `npx impeccable install` en installation globale.
+
+Installer les skills en global (dans son dossier personnel) plutôt que dans le dépôt. Une copie dans `.claude/skills/` ou `.agents/skills/` s'ajouterait aux plugins de ceux qui les ont déjà, et chaque skill apparaîtrait deux fois ; elle ne se mettrait pas non plus à jour toute seule. La configuration propre au dépôt (`docs/agents/`, `GLOSSARY.md`) est déjà versionnée : inutile de relancer `setup-matt-pocock-skills`.
