@@ -62,7 +62,7 @@ Chaque package a un propriétaire, qui écrit et relit en premier ce qui s'y pas
 
 ## Skills d'agent
 
-Les skills de [mattpocock/skills](https://github.com/mattpocock/skills) et d'[Impeccable](https://impeccable.style) sont partagés : Claude Code les propose à l'ouverture du dépôt (`.claude/settings.json`), les autres agents les installent comme décrit dans `CONTRIBUTING.md`. Repères :
+Les skills de [mattpocock/skills](https://github.com/mattpocock/skills) et d'[Impeccable](https://impeccable.style) sont partagés : Claude Code les reçoit en plugins par `.claude/settings.json`, Codex et Antigravity les lisent dans `.agents/skills/` (détails dans `CONTRIBUTING.md`). Repères :
 
 - `tdd` pour implémenter une issue, `diagnosing-bugs` pour un bug qui résiste.
 - `grill-with-docs` pour trancher un terme ou une décision ; il met à jour `GLOSSARY.md` et `docs/adr/`.

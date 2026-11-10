@@ -86,8 +86,9 @@ Si Flyway refuse quand même de démarrer (migration modifiée après coup, base
 
 Toute l'équipe utilise les mêmes skills : [mattpocock/skills](https://github.com/mattpocock/skills) (`tdd`, `diagnosing-bugs`, `grill-with-docs`, `code-review`…) et [Impeccable](https://impeccable.style) pour les interfaces. `AGENTS.md` dit lequel utiliser à quel moment.
 
-- **Claude Code** : rien à faire. À l'ouverture du dépôt, Claude Code demande d'approuver les deux marketplaces déclarées dans `.claude/settings.json`, puis installe les plugins. Si on les a déjà installés en global depuis les mêmes marketplaces (`mattpocock`, `impeccable`), ce sont les mêmes plugins : ils ne sont pas chargés deux fois.
-- **Codex** : `codex plugin marketplace add mattpocock/skills`, puis `codex plugin add mattpocock-skills@mattpocock`. Pour Impeccable, `npx impeccable install` en choisissant l'installation globale.
-- **Antigravity et les autres agents** : `npx skills@latest add mattpocock/skills`, en choisissant son agent et, si l'installeur le propose, l'installation globale ; puis `npx impeccable install` en installation globale.
+- **Claude Code** : à l'ouverture du dépôt, Claude Code demande d'approuver les deux marketplaces déclarées dans `.claude/settings.json`, puis installe les plugins. Ceux qui les ont déjà en global depuis les mêmes marketplaces (`mattpocock`, `impeccable`) gardent les mêmes plugins, chargés une seule fois.
+- **Codex et Antigravity CLI** : rien à installer. Les skills sont versionnés dans `.agents/skills/`, le dossier que ces deux outils lisent dans un dépôt. Codex demande d'approuver le dossier au premier lancement ; `.codex/config.toml` désactive alors, dans ce dépôt seulement, les plugins mattpocock et Impeccable de ceux qui les ont en global.
 
-Installer les skills en global (dans son dossier personnel) plutôt que dans le dépôt. Une copie dans `.claude/skills/` ou `.agents/skills/` s'ajouterait aux plugins de ceux qui les ont déjà, et chaque skill apparaîtrait deux fois ; elle ne se mettrait pas non plus à jour toute seule. La configuration propre au dépôt (`docs/agents/`, `GLOSSARY.md`) est déjà versionnée : inutile de relancer `setup-matt-pocock-skills`.
+Les copies de `.agents/skills/` ne se modifient pas à la main. Pour les mettre à jour, lancer `tools/mettre-a-jour-skills.sh` (Git Bash sous Windows), relire le diff et le proposer dans une PR ; `.agents/PROVENANCE.md` indique les commits copiés et les licences. Un skill propre au projet peut s'ajouter dans `.agents/skills/` : le script ne touche qu'aux dossiers listés dans `.agents/skills/.copies`.
+
+La configuration propre au dépôt (`docs/agents/`, `GLOSSARY.md`) est déjà versionnée : inutile de relancer `setup-matt-pocock-skills`.
