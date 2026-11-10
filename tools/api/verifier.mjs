@@ -98,6 +98,14 @@ assert.ok(Object.values(asynchrone.operations).every((operation) => operation.ac
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
 const exemples = await lire('exemples/parcours-quiz.yaml');
+const projections = [];
+function retenirProjection(canal, vue, revision, instant, contexte) {
+  const destination = canal === 'joueur'
+    ? `/topic/joueurs/${vue.joueurId}`
+    : `/topic/soirees/${vue.soiree.id}/${canal}`;
+  projections.push({ destination, vue, revision, instant: Date.parse(instant), contexte });
+}
+
 let nombreHttp = 0;
 const reutilisations = new Map();
 const couvertes = new Set();
@@ -123,6 +131,13 @@ for (const etape of exemples.http) {
   const contenu = reponse.content && Object.values(reponse.content)[0];
   if (contenu) valider(nomSchema(contenu.schema.$ref), etape.reponse, etape.nom);
   else assert.equal(etape.reponse, undefined, `${etape.nom} : réponse sans corps attendue`);
+  const canal = { EtatSalle: 'salle', EtatConsole: 'console', EtatManette: 'joueur' }[
+    contenu && nomSchema(contenu.schema.$ref)
+  ];
+  if (canal) {
+    const { vue, revision, heureServeur } = etape.reponse;
+    retenirProjection(canal, vue, revision, heureServeur, etape.nom);
+  }
   if (etape.statut >= 400) assert.equal(etape.reponse.status, etape.statut, `${etape.nom} : statut d'erreur incohérent`);
   if (etape.reponse?.envoiId && parametres['Idempotency-Key']) {
     assert.equal(etape.reponse.envoiId, parametres['Idempotency-Key'], `${etape.nom} : clé de commande incohérente`);
@@ -143,6 +158,8 @@ for (const exemple of exemples.evenements) {
   assert.ok(canal, `Canal inconnu : ${exemple.canal}`);
   const nomMessage = canal.messages.etat.$ref.split('/').at(-1);
   valider(nomSchema(asynchrone.components.messages[nomMessage].payload.$ref), exemple.message, exemple.nom);
+  const { donnees, revision, emisLe } = exemple.message;
+  retenirProjection(exemple.canal, donnees, revision, emisLe, exemple.nom);
 }
 for (const cas of exemples.cases) {
   const validation = validations.get(cas.schema);
@@ -154,12 +171,16 @@ for (const cas of exemples.cases) {
 // un doublon et les événements tamponnés après sa révision.
 const synchro = exemples.resynchronisation;
 valider('EtatManette', synchro.etat, 'Snapshot de reconnexion');
+retenirProjection('joueur', synchro.etat.vue, synchro.etat.revision, synchro.etat.heureServeur,
+  'Snapshot de reconnexion');
 assert.ok(synchro.etat.abonnementId);
 let derniereRevision = synchro.etat.revision;
 let vue = synchro.etat.vue;
 let ignores = 0;
 for (const evenement of synchro.tampon) {
   valider('EvenementJoueur', evenement, 'Événement de reconnexion');
+  retenirProjection('joueur', evenement.donnees, evenement.revision, evenement.emisLe,
+    'Événement de reconnexion');
   assert.equal(evenement.soireeId, vue.soiree.id);
   if (evenement.revision <= derniereRevision) { ignores++; continue; }
   assert.equal(evenement.revision, derniereRevision + 1, 'Trou de révision : reprendre une synchronisation');
@@ -169,7 +190,31 @@ for (const evenement of synchro.tampon) {
 assert.ok(ignores >= 1, 'Le scénario doit exercer les doublons et événements déjà inclus.');
 assert.equal(derniereRevision, synchro.revisionFinale);
 assert.deepEqual(vue, synchro.vueFinale);
+
+// Les captures HTTP et événements d'une même destination décrivent une seule
+// chronologie. Les compteurs d'autres destinations restent indépendants.
+const parDestination = Map.groupBy(projections, (projection) => projection.destination);
+for (const [destination, captures] of parDestination) {
+  const parRevision = new Map();
+  for (const capture of captures) {
+    const precedente = parRevision.get(capture.revision);
+    if (precedente) {
+      assert.deepEqual(capture.vue, precedente.vue,
+        `${destination}, révision ${capture.revision} : vues différentes entre ` +
+        `« ${precedente.contexte} » et « ${capture.contexte} »`);
+    } else parRevision.set(capture.revision, capture);
+  }
+  captures.sort((a, b) => a.instant - b.instant || a.revision - b.revision);
+  for (let i = 1; i < captures.length; i++) {
+    const precedente = captures[i - 1];
+    const capture = captures[i];
+    assert.ok(capture.revision >= precedente.revision,
+      `${destination} : chronologie incohérente entre « ${precedente.contexte} » ` +
+      `(révision ${precedente.revision}) et « ${capture.contexte} » (révision ${capture.revision})`);
+  }
+}
 console.log(`${validations.size} schémas, ${operations.size} opérations, ${nombreHttp} échanges HTTP, ` +
   `${exemples.evenements.length} événements et ${exemples.cases.length} cas de schéma vérifiés.`);
 console.log('Scénario de resynchronisation : tampon, doublons et ordre des révisions vérifiés.');
+console.log('Captures HTTP et événements : vues par révision et chronologie par destination vérifiées.');
 console.log('Ces contrôles valident les contrats et leurs exemples ; ils ne testent pas un serveur implémenté.');
