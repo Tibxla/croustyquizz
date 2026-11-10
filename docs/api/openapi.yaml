@@ -1,0 +1,1364 @@
+openapi: 3.1.0
+info:
+  title: CroustyQuizz — premier parcours de Quiz
+  version: 0.1.0
+  description: Contrat cible à relire (#34), pas une déclaration d’endpoints déjà déployés. Format Solo, Pilotage
+    Manuel et Quiz ; socle de Buzz inclus. Les règles temporelles, droits et invariants transverses décrits dans
+    README.md font partie du contrat.
+servers:
+- url: http://localhost:8080
+  description: Développement local
+- url: https://{hote}
+  description: Hébergement HTTPS à configurer
+  variables:
+    hote:
+      default: croustyquizz.example
+tags:
+- name: Accès
+- name: Soirée
+- name: Quiz
+- name: Socle
+paths:
+  /api/csrf:
+    get:
+      operationId: obtenirCsrf
+      summary: Obtenir le jeton CSRF de la session navigateur
+      description: Accessible avant connexion. Peut créer une session anonyme et son cookie JSESSIONID. Le jeton
+        reste dans le navigateur ; ne jamais le publier dans un événement.
+      tags:
+      - Accès
+      security: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Csrf
+  /api/animateurs:
+    post:
+      operationId: inscrireAnimateur
+      summary: Créer un Lieu et son premier Animateur
+      description: 'Inscription initiale atomique ; ne rattache jamais à un Lieu existant fourni par le visiteur.
+        Le mot de passe est haché côté serveur et absent des réponses. L’invitation d’autres Animateurs relève d’une
+        extension de #5.'
+      tags:
+      - Accès
+      security: []
+      responses:
+        '201':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: URI de la ressource créée, sans secret.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/CompteCree
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/InscriptionAnimateur
+  /api/animateurs/session:
+    post:
+      operationId: connecterAnimateur
+      summary: Connecter un Animateur
+      description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
+        Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
+        sans distinguer e-mail et mot de passe.'
+      tags:
+      - Accès
+      security: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+            Set-Cookie:
+              description: JSESSIONID renouvelé ; HttpOnly ; SameSite=Lax ; Secure en HTTPS.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Animateur
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ConnexionAnimateur
+    get:
+      operationId: consulterAnimateur
+      summary: Consulter son identité Animateur
+      description: Consulter son identité Animateur
+      tags:
+      - Accès
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Animateur
+        '401':
+          $ref: '#/components/responses/Erreur401'
+    delete:
+      operationId: deconnecterAnimateur
+      summary: Fermer la session Animateur
+      description: Invalide la session et ferme ses connexions STOMP ; récupérer un nouveau CSRF avant une nouvelle
+        connexion.
+      tags:
+      - Accès
+      security:
+      - sessionAnimateur: []
+      responses:
+        '204':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+  /api/heure:
+    get:
+      operationId: consulterHeure
+      summary: Consulter l’heure du serveur
+      description: Consulter l’heure du serveur
+      tags:
+      - Socle
+      security: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Heure
+  /api/soirees:
+    get:
+      operationId: listerSoirees
+      summary: Lister les Soirées de son Lieu
+      description: Comprend les Soirées préparées, en cours et terminées de ce Lieu exclusivement.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ListeSoirees
+        '401':
+          $ref: '#/components/responses/Erreur401'
+    post:
+      operationId: creerSoiree
+      summary: Créer une Soirée Solo en Pilotage Manuel
+      description: Le serveur affecte id, Lieu et état PREPARATION ; codeAcces est null jusqu’à ouverture. Les autres
+        Formats et Pilotages seront ajoutés ultérieurement.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '201':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: URI de la ressource créée, sans secret.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Soiree
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/CreationSoiree
+  /api/soirees/{soireeId}:
+    get:
+      operationId: consulterSoiree
+      summary: Consulter une Soirée de son Lieu
+      description: Consulter une Soirée de son Lieu
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Soiree
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: modifierSoiree
+      summary: Modifier le titre avant lancement
+      description: Autorisé en PREPARATION et OUVERTE ; programme et réglages ne sont plus modifiables en EN_COURS
+        ou TERMINEE.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Soiree
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ModificationSoiree
+  /api/soirees/rejoindre:
+    post:
+      operationId: rejoindreSoiree
+      summary: Rejoindre une Soirée avec un code et un pseudo
+      description: Autorisé en OUVERTE ou EN_COURS. Pseudo nettoyé, filtré et unique dans la Soirée ; le serveur
+        attribue l’identité et un jeton opaque. Un retardataire attend la prochaine Manche (#10). Stocker le jeton
+        pour la reconnexion. Sans identité ni heure fournies par la Manette.
+      tags:
+      - Soirée
+      security: []
+      responses:
+        '201':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: URI de la ressource créée, sans secret.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccesJoueur
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/Rejoindre
+  /api/soirees/{soireeId}/acces-ecran:
+    post:
+      operationId: creerAccesEcran
+      summary: Créer un accès de lecture pour l’Écran de salle
+      description: L’Animateur ouvre l’Écran de salle avec cette capacité limitée à sa Soirée. La clé expire à expireLe
+        ; ne donne accès ni à la Console ni aux vues privées. Préférer un transfert par fragment URL, retirer ce
+        fragment après lecture et ne jamais inscrire la clé dans une chaîne de requête.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccesEcran
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+  /api/soirees/{soireeId}/manches:
+    post:
+      operationId: ajouterManche
+      summary: Ajouter une Manche de Quiz
+      description: PREPARATION ou OUVERTE uniquement ; le serveur affecte l’ordre final. Les autres Modes de jeu
+        feront l’objet d’une extension.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '201':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: URI de la ressource créée, sans secret.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Manche
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/CreationManche
+  /api/soirees/{soireeId}/manches/{mancheId}:
+    delete:
+      operationId: retirerManche
+      summary: Retirer une Manche avant lancement
+      description: PREPARATION ou OUVERTE ; la Manche doit appartenir à la Soirée de ce Lieu. Le serveur réindexe
+        les positions.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '204':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+  /api/soirees/{soireeId}/ordre-des-manches:
+    put:
+      operationId: ordonnerManches
+      summary: Réordonner le programme
+      description: PREPARATION ou OUVERTE. La liste doit être une permutation exacte des Manches existantes ; refus
+        atomique en cas de doublon, omission ou identifiant étranger.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/EtatConsole
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/OrdreManches
+  /api/soirees/{soireeId}/manches/{mancheId}/questions:
+    put:
+      operationId: preparerQuestions
+      summary: Remplacer les Questions de la Manche
+      description: PREPARATION ou OUVERTE. Remplacement atomique et ordonné. Le serveur crée les identifiants et
+        conserve une seule proposition juste. Source ANIMATEUR ; pas de même Question répétée dans la Soirée. Le
+        nombre doit correspondre aux réglages pour permettre le lancement.
+      tags:
+      - Quiz
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/QuestionsPreparees
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/QuestionsSaisies
+    get:
+      operationId: consulterQuestionsPreparees
+      summary: Relire les Questions et leurs solutions
+      description: Vue privée réservée à un Animateur du Lieu. Aucune de ces structures ne doit être diffusée à
+        la salle ou aux Joueurs avant correction.
+      tags:
+      - Quiz
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/QuestionsPreparees
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/soirees/{soireeId}/ouverture:
+    post:
+      operationId: ouvrirSoiree
+      summary: Ouvrir la Soirée aux Joueurs
+      description: PREPARATION vers OUVERTE ; le serveur génère un code de 6 caractères unique parmi les Soirées
+        accessibles (OUVERTE et EN_COURS). Le programme peut être complété pendant l’accueil. La clé d’envoi garantit
+        qu’une répétition ne régénère pas le code.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Soiree
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: 'UUID de cet envoi de commande. Même auteur, même route et même clé : résultat initial ; clé
+          réutilisée avec un autre contenu : 409 ENVOI_REUTILISE.'
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+  /api/soirees/{soireeId}/commandes:
+    post:
+      operationId: piloterSoiree
+      summary: Lancer, enchaîner ou terminer la Soirée
+      description: 'LANCER : OUVERTE vers EN_COURS et démarrage de la première Manche ; programme non vide et toutes
+        Questions prêtes sinon 409 PROGRAMME_INCOMPLET. MANCHE_SUIVANTE : EN_COURS avec Manche précédente terminée
+        ; démarre la suivante ou termine la Soirée si le programme est épuisé. TERMINER : EN_COURS vers TERMINEE
+        et clôture de la Manche active. En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
+        d’une Question attend PASSER_ETAPE avant la prochaine Question ; le serveur déclenche la correction à l’échéance
+        ou sur PASSER_ETAPE. Idempotence selon Idempotency-Key.'
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: 'UUID de cet envoi de commande. Même auteur, même route et même clé : résultat initial ; clé
+          réutilisée avec un autre contenu : 409 ENVOI_REUTILISE.'
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/CommandeSoiree
+  /api/soirees/{soireeId}/manches/{mancheId}/commandes:
+    post:
+      operationId: piloterManche
+      summary: Intervenir sur la Manche active
+      description: 'Uniquement la Manche active en Soirée EN_COURS. METTRE_EN_PAUSE gèle une Question ouverte ;
+        REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la Question ouverte et révèle la correction, ou
+        passe de CORRECTION à la Question suivante ; après la dernière correction, termine la Manche. TERMINER arrête
+        la Manche sans révéler une Question abandonnée ni lui attribuer de points. Idempotence selon Idempotency-Key
+        ; etapeId périmé : 409 ETAPE_INACTIVE.'
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: 'UUID de cet envoi de commande. Même auteur, même route et même clé : résultat initial ; clé
+          réutilisée avec un autre contenu : 409 ENVOI_REUTILISE.'
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/CommandeManche
+  /api/soirees/{soireeId}/manches/{mancheId}/questions/{etapeId}/reponses:
+    post:
+      operationId: envoyerReponse
+      summary: Enregistrer une Réponse définitive
+      description: 'Seul le Joueur identifié par le jeton peut répondre pour lui-même. Première réception : Question
+        active, ouverte et non en pause, proposition appartenant à cette Question ; recueLe < echeanceLe, sinon
+        409 HORS_DELAI. Une seule Réponse acceptée par Joueur/etapeId. Dédupliquer avant le contrôle de délai :
+        même auteur, route et envoiId, même contenu = accusé original, même après clôture. Même envoiId avec autre
+        contenu = 409 ENVOI_REUTILISE ; nouvel envoiId pour modifier la Réponse = 409 REPONSE_DEJA_ENREGISTREE.
+        Déduplication conservée jusqu’à expiration de l’accès Joueur, au minimum jusqu’à la fin de la Soirée. L’accusé
+        ne révèle pas la justesse. Une Question manquée ne peut être rejouée. Un Joueur arrivé pendant cette Manche
+        n’est pas éligible avant la Manche suivante : 409 ETAT_INCOMPATIBLE.'
+      tags:
+      - Quiz
+      security:
+      - jetonJoueur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseReponse
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: etapeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ReponseSaisie
+  /api/soirees/{soireeId}/buzz:
+    post:
+      operationId: envoyerBuzz
+      summary: Buzzer dans le scénario du socle
+      description: 'Scénario #7/#8, Soirée OUVERTE avant Manche : identité, rang et réception attribués par le serveur,
+        puis événement buzz-recu. Répéter le même envoiId retrouve le résultat sans nouvelle diffusion. Refus pendant
+        le Quiz : 409 BUZZ_NON_AUTORISE. L’arbitrage du Blind test étendra ce contrat dans #17.'
+      tags:
+      - Socle
+      security:
+      - jetonJoueur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Buzz
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/BuzzSaisi
+  /api/soirees/{soireeId}/etat/salle:
+    get:
+      operationId: retrouverEtatSalle
+      summary: Récupérer la vue salle
+      description: Écran de salle, Joueur de la Soirée ou Animateur du Lieu. La révision porte sur la destination
+        STOMP correspondante. Voir README.md pour la barrière d’abonnement, le tampon et la resynchronisation. Les
+        points visibles concernent uniquement les Questions corrigées.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      - jetonJoueur: []
+      - cleEcran: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/EtatSalle
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: abonnementId
+        in: query
+        required: false
+        description: 'UUID neuf utilisé comme id de SUBSCRIBE. Si présent, le serveur vérifie que cet abonnement
+          est actif, autorisé et attaché au même acteur avant de capturer la vue. Sinon 409 ABONNEMENT_INACTIF :
+          réessayer après établissement de l’abonnement. Sans paramètre, lecture ponctuelle sans garantie de raccordement
+          à un flux.'
+        schema:
+          type: string
+          format: uuid
+  /api/soirees/{soireeId}/etat/console:
+    get:
+      operationId: retrouverEtatConsole
+      summary: Récupérer la vue console
+      description: Animateur du Lieu uniquement. La révision porte sur la destination STOMP correspondante. Voir
+        README.md pour la barrière d’abonnement, le tampon et la resynchronisation. Les points visibles concernent
+        uniquement les Questions corrigées.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/EtatConsole
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: abonnementId
+        in: query
+        required: false
+        description: 'UUID neuf utilisé comme id de SUBSCRIBE. Si présent, le serveur vérifie que cet abonnement
+          est actif, autorisé et attaché au même acteur avant de capturer la vue. Sinon 409 ABONNEMENT_INACTIF :
+          réessayer après établissement de l’abonnement. Sans paramètre, lecture ponctuelle sans garantie de raccordement
+          à un flux.'
+        schema:
+          type: string
+          format: uuid
+  /api/soirees/{soireeId}/etat/manette:
+    get:
+      operationId: retrouverEtatManette
+      summary: Récupérer la vue manette
+      description: Joueur du jeton uniquement ; aucun identifiant Joueur fourni par le navigateur. La révision porte
+        sur la destination STOMP correspondante. Voir README.md pour la barrière d’abonnement, le tampon et la resynchronisation.
+        Les points visibles concernent uniquement les Questions corrigées.
+      tags:
+      - Soirée
+      security:
+      - jetonJoueur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/EtatManette
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: abonnementId
+        in: query
+        required: false
+        description: 'UUID neuf utilisé comme id de SUBSCRIBE. Si présent, le serveur vérifie que cet abonnement
+          est actif, autorisé et attaché au même acteur avant de capturer la vue. Sinon 409 ABONNEMENT_INACTIF :
+          réessayer après établissement de l’abonnement. Sans paramètre, lecture ponctuelle sans garantie de raccordement
+          à un flux.'
+        schema:
+          type: string
+          format: uuid
+  /api/soirees/{soireeId}/classement:
+    get:
+      operationId: consulterClassement
+      summary: Consulter le Classement général
+      description: Disponible aux acteurs autorisés de cette Soirée, notamment après sa fin. Ne comprend que les
+        Questions déjà corrigées ; les résultats ne révèlent pas une correction en avance.
+      tags:
+      - Soirée
+      security:
+      - sessionAnimateur: []
+      - jetonJoueur: []
+      - cleEcran: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Classement
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+components:
+  securitySchemes:
+    sessionAnimateur:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+      description: Session d’un Animateur ; opérations mutantes protégées par X-CSRF-TOKEN. Le Lieu est déterminé
+        par la session.
+    jetonJoueur:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Jeton de reconnexion opaque remis au Joueur ; le serveur en déduit son identité et sa Soirée.
+    cleEcran:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Capacité de lecture seule limitée à une Soirée, créée par un Animateur ; aucune commande ni vue
+        privée.
+  responses:
+    Erreur400:
+      description: JSON, paramètre ou identifiant mal formé.
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur401:
+      description: Identité absente, invalide ou expirée.
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur403:
+      description: CSRF invalide ou action non autorisée.
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur404:
+      description: Ressource inconnue ou hors du Lieu/de la Soirée autorisés.
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur409:
+      description: Conflit avec l’état courant, l’unicité ou l’idempotence.
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur422:
+      description: Données ne respectant pas le contrat.
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme

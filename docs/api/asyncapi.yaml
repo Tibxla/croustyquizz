@@ -1,0 +1,101 @@
+asyncapi: 3.1.0
+info:
+  title: CroustyQuizz — événements du premier parcours
+  version: 0.1.0
+  description: 'Application décrite : serveur CroustyQuizz. Contrat cible à relire (#34). STOMP 1.2 sur WebSocket
+    ; authentification et barrière d’abonnement décrites dans README.md.'
+defaultContentType: application/json
+servers:
+  local:
+    host: localhost:8080
+    pathname: /ws
+    protocol: ws
+    description: Développement ; sous-protocole v12.stomp.
+  https:
+    host: croustyquizz.example
+    pathname: /ws
+    protocol: wss
+    description: Hôte fictif de déploiement ; sous-protocole v12.stomp.
+channels:
+  salle:
+    address: /topic/soirees/{soireeId}/salle
+    description: Écran avec capacité pour cette Soirée, Joueur de la Soirée ou Animateur du Lieu. Messages serveur
+      → écran exclusivement ; aucun SEND de commande métier. Une révision est propre à cette destination et à cette
+      Soirée.
+    parameters:
+      soireeId:
+        description: UUID attribué par le serveur et contrôlé par l’autorisation.
+    messages:
+      etat:
+        $ref: '#/components/messages/EvenementSalle'
+  console:
+    address: /topic/soirees/{soireeId}/console
+    description: Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND de commande métier.
+      Une révision est propre à cette destination et à cette Soirée.
+    parameters:
+      soireeId:
+        description: UUID attribué par le serveur et contrôlé par l’autorisation.
+    messages:
+      etat:
+        $ref: '#/components/messages/EvenementConsole'
+  joueur:
+    address: /topic/joueurs/{joueurId}
+    description: Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit. Messages serveur
+      → écran exclusivement ; aucun SEND de commande métier. Une révision est propre à cette destination et à cette
+      Soirée.
+    parameters:
+      joueurId:
+        description: UUID attribué par le serveur et contrôlé par l’autorisation.
+    messages:
+      etat:
+        $ref: '#/components/messages/EvenementJoueur'
+operations:
+  diffuserSalle:
+    action: send
+    channel:
+      $ref: '#/channels/salle'
+    summary: Diffuser la projection salle après une mutation autorisée.
+  diffuserConsole:
+    action: send
+    channel:
+      $ref: '#/channels/console'
+    summary: Diffuser la projection console après une mutation autorisée.
+  diffuserJoueur:
+    action: send
+    channel:
+      $ref: '#/channels/joueur'
+    summary: Diffuser la projection joueur après une mutation autorisée.
+components:
+  messages:
+    EvenementSalle:
+      name: EvenementSalle
+      title: EvenementSalle
+      contentType: application/json
+      summary: Projection complète et révision par destination.
+      payload:
+        $ref: ./schemas.yaml#/$defs/EvenementSalle
+    EvenementConsole:
+      name: EvenementConsole
+      title: EvenementConsole
+      contentType: application/json
+      summary: Projection complète et révision par destination.
+      payload:
+        $ref: ./schemas.yaml#/$defs/EvenementConsole
+    EvenementJoueur:
+      name: EvenementJoueur
+      title: EvenementJoueur
+      contentType: application/json
+      summary: Projection complète et révision par destination.
+      payload:
+        $ref: ./schemas.yaml#/$defs/EvenementJoueur
+x-stomp:
+  version: '1.2'
+  sousProtocole: v12.stomp
+  connect:
+    Authorization: Bearer <jetonJoueur ou cleEcran> ; sinon session Animateur par cookie du handshake
+    X-CSRF-TOKEN: Jeton obtenu par HTTP dans ce navigateur, requis pour CONNECT
+  subscribe:
+    id: UUID neuf ; utilisé comme abonnementId pour la capture HTTP cohérente
+    destination: Adresse autorisée du canal
+  sendMetier: interdit
+  heartbeatMs: 10000

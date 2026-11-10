@@ -1,0 +1,2916 @@
+description: Toutes les identités, clés et données sont fictives. Ces échanges illustrent le contrat cible ; aucune
+  exécution du serveur n’est affirmée. Les valeurs de points illustrent les vues, sans imposer une formule de calcul
+  au propriétaire du Quiz.
+parametresCommuns:
+  soireeId: 00000001-0000-4000-8000-000000000000
+  mancheId: 00000002-0000-4000-8000-000000000000
+  etapeId: 0000012c-0000-4000-8000-000000000000
+  X-CSRF-TOKEN: csrf_session_fictif_000000000000
+http:
+- nom: Obtenir un CSRF avant inscription
+  operationId: obtenirCsrf
+  acteur: animateur
+  statut: 200
+  reponse:
+    headerName: X-CSRF-TOKEN
+    token: csrf_anonyme_fictif_000000000000
+- nom: Créer le Lieu et son premier Animateur
+  operationId: inscrireAnimateur
+  acteur: animateur
+  statut: 201
+  requete:
+    lieu:
+      nom: Lieu de démonstration
+      ville: Ville de démonstration
+    nom: Animateur de démonstration
+    email: animateur@example.test
+    motDePasse: Exemple-fictif-uniquement-42
+  reponse:
+    animateur:
+      id: 0000000a-0000-4000-8000-000000000000
+      nom: Animateur de démonstration
+      lieuId: 0000000b-0000-4000-8000-000000000000
+    lieu:
+      id: 0000000b-0000-4000-8000-000000000000
+      nom: Lieu de démonstration
+      ville: Ville de démonstration
+  parametres:
+    X-CSRF-TOKEN: csrf_anonyme_fictif_000000000000
+- nom: Se connecter
+  operationId: connecterAnimateur
+  acteur: animateur
+  statut: 200
+  requete:
+    email: animateur@example.test
+    motDePasse: Exemple-fictif-uniquement-42
+  reponse:
+    id: 0000000a-0000-4000-8000-000000000000
+    nom: Animateur de démonstration
+    lieuId: 0000000b-0000-4000-8000-000000000000
+  parametres:
+    X-CSRF-TOKEN: csrf_anonyme_fictif_000000000000
+- nom: Renouveler le CSRF après connexion
+  operationId: obtenirCsrf
+  acteur: animateur
+  statut: 200
+  reponse:
+    headerName: X-CSRF-TOKEN
+    token: csrf_session_fictif_000000000000
+- nom: Vérifier son identité
+  operationId: consulterAnimateur
+  acteur: animateur
+  statut: 200
+  reponse:
+    id: 0000000a-0000-4000-8000-000000000000
+    nom: Animateur de démonstration
+    lieuId: 0000000b-0000-4000-8000-000000000000
+- nom: Lire l’heure du serveur
+  operationId: consulterHeure
+  acteur: public
+  statut: 200
+  reponse:
+    maintenant: '2026-11-10T20:00:00Z'
+- nom: Créer la Soirée
+  operationId: creerSoiree
+  acteur: animateur
+  statut: 201
+  requete:
+    titre: Soirée de démonstration
+    format: SOLO
+    pilotage: MANUEL
+  reponse:
+    id: 00000001-0000-4000-8000-000000000000
+    titre: Soirée de démonstration
+    format: SOLO
+    pilotage: MANUEL
+    etat: PREPARATION
+    codeAcces: null
+- nom: Retrouver ses Soirées
+  operationId: listerSoirees
+  acteur: animateur
+  statut: 200
+  reponse:
+    soirees:
+    - id: 00000001-0000-4000-8000-000000000000
+      titre: Soirée de démonstration
+      format: SOLO
+      pilotage: MANUEL
+      etat: PREPARATION
+      codeAcces: null
+- nom: Consulter la Soirée
+  operationId: consulterSoiree
+  acteur: animateur
+  statut: 200
+  reponse:
+    id: 00000001-0000-4000-8000-000000000000
+    titre: Soirée de démonstration
+    format: SOLO
+    pilotage: MANUEL
+    etat: PREPARATION
+    codeAcces: null
+- nom: Modifier son titre avant lancement
+  operationId: modifierSoiree
+  acteur: animateur
+  statut: 200
+  requete:
+    titre: Soirée de démonstration
+  reponse:
+    id: 00000001-0000-4000-8000-000000000000
+    titre: Soirée de démonstration
+    format: SOLO
+    pilotage: MANUEL
+    etat: PREPARATION
+    codeAcces: null
+- nom: Ajouter une Manche de trois Questions
+  operationId: ajouterManche
+  acteur: animateur
+  statut: 201
+  requete:
+    mode: QUIZ
+    reglages:
+      nombreEtapes: 3
+      tempsParEtapeSecondes: 20
+  reponse:
+    id: 00000002-0000-4000-8000-000000000000
+    ordre: 0
+    mode: QUIZ
+    etat: EN_ATTENTE
+    reglages:
+      nombreEtapes: 3
+      tempsParEtapeSecondes: 20
+- nom: Ajouter une Manche puis corriger le programme
+  operationId: ajouterManche
+  acteur: animateur
+  statut: 201
+  requete:
+    mode: QUIZ
+    reglages:
+      nombreEtapes: 3
+      tempsParEtapeSecondes: 20
+  reponse:
+    id: 0000000c-0000-4000-8000-000000000000
+    ordre: 1
+    mode: QUIZ
+    etat: EN_ATTENTE
+    reglages:
+      nombreEtapes: 3
+      tempsParEtapeSecondes: 20
+- nom: Retirer cette Manche avant lancement
+  operationId: retirerManche
+  acteur: animateur
+  statut: 204
+  parametres:
+    mancheId: 0000000c-0000-4000-8000-000000000000
+- nom: Rédiger les Questions
+  operationId: preparerQuestions
+  acteur: animateur
+  statut: 200
+  requete:
+    questions:
+    - enonce: Combien font 2 + 2 ?
+      categorie: Calcul
+      difficulte: FACILE
+      propositions:
+      - '3'
+      - '4'
+      - '5'
+      - '6'
+      indexPropositionJuste: 1
+    - enonce: Quelle est la capitale de la France ?
+      categorie: Géographie
+      difficulte: FACILE
+      propositions:
+      - Paris
+      - Lyon
+      - Lille
+      - Nice
+      indexPropositionJuste: 0
+    - enonce: Quelle est la plus grande planète du Système solaire ?
+      categorie: Astronomie
+      difficulte: FACILE
+      propositions:
+      - Mars
+      - Vénus
+      - Neptune
+      - Jupiter
+      indexPropositionJuste: 3
+  reponse:
+    questions:
+    - id: 00000064-0000-4000-8000-000000000000
+      enonce: Combien font 2 + 2 ?
+      categorie: Calcul
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000c8-0000-4000-8000-000000000000
+        texte: '3'
+        position: 0
+      - id: 000000c9-0000-4000-8000-000000000000
+        texte: '4'
+        position: 1
+      - id: 000000ca-0000-4000-8000-000000000000
+        texte: '5'
+        position: 2
+      - id: 000000cb-0000-4000-8000-000000000000
+        texte: '6'
+        position: 3
+      propositionJusteId: 000000c9-0000-4000-8000-000000000000
+    - id: 00000065-0000-4000-8000-000000000000
+      enonce: Quelle est la capitale de la France ?
+      categorie: Géographie
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000d2-0000-4000-8000-000000000000
+        texte: Paris
+        position: 0
+      - id: 000000d3-0000-4000-8000-000000000000
+        texte: Lyon
+        position: 1
+      - id: 000000d4-0000-4000-8000-000000000000
+        texte: Lille
+        position: 2
+      - id: 000000d5-0000-4000-8000-000000000000
+        texte: Nice
+        position: 3
+      propositionJusteId: 000000d2-0000-4000-8000-000000000000
+    - id: 00000066-0000-4000-8000-000000000000
+      enonce: Quelle est la plus grande planète du Système solaire ?
+      categorie: Astronomie
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000dc-0000-4000-8000-000000000000
+        texte: Mars
+        position: 0
+      - id: 000000dd-0000-4000-8000-000000000000
+        texte: Vénus
+        position: 1
+      - id: 000000de-0000-4000-8000-000000000000
+        texte: Neptune
+        position: 2
+      - id: 000000df-0000-4000-8000-000000000000
+        texte: Jupiter
+        position: 3
+      propositionJusteId: 000000df-0000-4000-8000-000000000000
+- nom: Relire les solutions dans la Console
+  operationId: consulterQuestionsPreparees
+  acteur: animateur
+  statut: 200
+  reponse:
+    questions:
+    - id: 00000064-0000-4000-8000-000000000000
+      enonce: Combien font 2 + 2 ?
+      categorie: Calcul
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000c8-0000-4000-8000-000000000000
+        texte: '3'
+        position: 0
+      - id: 000000c9-0000-4000-8000-000000000000
+        texte: '4'
+        position: 1
+      - id: 000000ca-0000-4000-8000-000000000000
+        texte: '5'
+        position: 2
+      - id: 000000cb-0000-4000-8000-000000000000
+        texte: '6'
+        position: 3
+      propositionJusteId: 000000c9-0000-4000-8000-000000000000
+    - id: 00000065-0000-4000-8000-000000000000
+      enonce: Quelle est la capitale de la France ?
+      categorie: Géographie
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000d2-0000-4000-8000-000000000000
+        texte: Paris
+        position: 0
+      - id: 000000d3-0000-4000-8000-000000000000
+        texte: Lyon
+        position: 1
+      - id: 000000d4-0000-4000-8000-000000000000
+        texte: Lille
+        position: 2
+      - id: 000000d5-0000-4000-8000-000000000000
+        texte: Nice
+        position: 3
+      propositionJusteId: 000000d2-0000-4000-8000-000000000000
+    - id: 00000066-0000-4000-8000-000000000000
+      enonce: Quelle est la plus grande planète du Système solaire ?
+      categorie: Astronomie
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000dc-0000-4000-8000-000000000000
+        texte: Mars
+        position: 0
+      - id: 000000dd-0000-4000-8000-000000000000
+        texte: Vénus
+        position: 1
+      - id: 000000de-0000-4000-8000-000000000000
+        texte: Neptune
+        position: 2
+      - id: 000000df-0000-4000-8000-000000000000
+        texte: Jupiter
+        position: 3
+      propositionJusteId: 000000df-0000-4000-8000-000000000000
+- nom: Confirmer le programme
+  operationId: ordonnerManches
+  acteur: animateur
+  statut: 200
+  requete:
+    mancheIds:
+    - 00000002-0000-4000-8000-000000000000
+  reponse:
+    revision: 1
+    heureServeur: '2026-11-10T20:00:12Z'
+    abonnementId: null
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: PREPARATION
+        codeAcces: null
+      mancheActive: null
+      quiz:
+        phase: ATTENTE
+      joueurs: []
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      programme:
+      - id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_ATTENTE
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+- nom: Ouvrir la Soirée
+  operationId: ouvrirSoiree
+  acteur: animateur
+  statut: 200
+  reponse:
+    id: 00000001-0000-4000-8000-000000000000
+    titre: Soirée de démonstration
+    format: SOLO
+    pilotage: MANUEL
+    etat: OUVERTE
+    codeAcces: QUIZ42
+  parametres:
+    Idempotency-Key: 00000334-0000-4000-8000-000000000000
+- nom: Obtenir un accès de lecture pour l’Écran de salle
+  operationId: creerAccesEcran
+  acteur: animateur
+  statut: 200
+  reponse:
+    soireeId: 00000001-0000-4000-8000-000000000000
+    cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+    expireLe: '2026-11-11T02:00:00Z'
+- nom: Rejoindre avec le pseudo Alpha
+  operationId: rejoindreSoiree
+  acteur: public
+  statut: 201
+  requete:
+    codeAcces: QUIZ42
+    pseudo: Alpha
+  reponse:
+    soireeId: 00000001-0000-4000-8000-000000000000
+    joueur:
+      id: 00000003-0000-4000-8000-000000000000
+      pseudo: Alpha
+      connecte: false
+    jetonReconnexion: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+- nom: Rejoindre avec le pseudo Bravo
+  operationId: rejoindreSoiree
+  acteur: public
+  statut: 201
+  requete:
+    codeAcces: QUIZ42
+    pseudo: Bravo
+  reponse:
+    soireeId: 00000001-0000-4000-8000-000000000000
+    joueur:
+      id: 00000004-0000-4000-8000-000000000000
+      pseudo: Bravo
+      connecte: false
+    jetonReconnexion: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+- nom: Afficher la salle après abonnement STOMP
+  operationId: retrouverEtatSalle
+  acteur: ecran
+  statut: 200
+  reponse:
+    revision: 3
+    heureServeur: '2026-11-10T20:00:12Z'
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: OUVERTE
+        codeAcces: QUIZ42
+      mancheActive: null
+      quiz:
+        phase: ATTENTE
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+  parametres:
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+- nom: Vérifier le socle de Buzz avant la Manche
+  operationId: envoyerBuzz
+  acteur: alpha
+  statut: 200
+  requete:
+    envoiId: 00000258-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000258-0000-4000-8000-000000000000
+    joueurId: 00000003-0000-4000-8000-000000000000
+    pseudo: Alpha
+    recuLe: '2026-11-10T20:00:05Z'
+    rang: 1
+- nom: Lancer la Soirée et sa première Manche
+  operationId: piloterSoiree
+  acteur: animateur
+  statut: 200
+  requete:
+    action: LANCER
+  reponse:
+    envoiId: 00000336-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:10Z'
+    soireeId: 00000001-0000-4000-8000-000000000000
+  parametres:
+    Idempotency-Key: 00000336-0000-4000-8000-000000000000
+- nom: Attendre l’installation effective de l’abonnement
+  operationId: retrouverEtatManette
+  acteur: alpha
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ABONNEMENT_INACTIF
+    detail: L’abonnement n’est pas encore actif.
+    instance: /api/soirees/00000001-0000-4000-8000-000000000000
+  parametres:
+    abonnementId: 000002bd-0000-4000-8000-000000000000
+- nom: Récupérer la Question courante après abonnement
+  operationId: retrouverEtatManette
+  acteur: alpha
+  statut: 200
+  reponse:
+    revision: 5
+    heureServeur: '2026-11-10T20:00:12Z'
+    abonnementId: 000002bd-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:30Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+  parametres:
+    abonnementId: 000002bd-0000-4000-8000-000000000000
+- nom: Mettre la Question en pause
+  operationId: piloterManche
+  acteur: animateur
+  statut: 200
+  requete:
+    action: METTRE_EN_PAUSE
+    etapeId: 0000012c-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000339-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:15Z'
+    soireeId: 00000001-0000-4000-8000-000000000000
+  parametres:
+    Idempotency-Key: 00000339-0000-4000-8000-000000000000
+- nom: Reprendre avec le temps restant
+  operationId: piloterManche
+  acteur: animateur
+  statut: 200
+  requete:
+    action: REPRENDRE
+    etapeId: 0000012c-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 0000033a-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:20Z'
+    soireeId: 00000001-0000-4000-8000-000000000000
+  parametres:
+    Idempotency-Key: 0000033a-0000-4000-8000-000000000000
+- nom: Réponse acceptée, confirmation HTTP perdue par le téléphone
+  operationId: envoyerReponse
+  acteur: alpha
+  statut: 200
+  requete:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    reponseId: 0000026c-0000-4000-8000-000000000000
+    etapeId: 0000012c-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:22Z'
+- nom: Première réception de Bravo hors délai
+  operationId: envoyerReponse
+  acteur: bravo
+  statut: 409
+  requete:
+    envoiId: 00000263-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: HORS_DELAI
+    detail: Le délai de réception est dépassé.
+    instance: /api/soirees/00000001-0000-4000-8000-000000000000
+- nom: Même identifiant d’envoi avec un autre contenu
+  operationId: envoyerReponse
+  acteur: alpha
+  statut: 409
+  requete:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    propositionId: 000000c8-0000-4000-8000-000000000000
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ENVOI_REUTILISE
+    detail: Cet identifiant a déjà été utilisé pour un autre contenu.
+    instance: /api/soirees/00000001-0000-4000-8000-000000000000
+- nom: Nouvel envoi tentant de modifier la Réponse
+  operationId: envoyerReponse
+  acteur: alpha
+  statut: 409
+  requete:
+    envoiId: 00000264-0000-4000-8000-000000000000
+    propositionId: 000000c8-0000-4000-8000-000000000000
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: REPONSE_DEJA_ENREGISTREE
+    detail: Une Réponse définitive est déjà enregistrée.
+    instance: /api/soirees/00000001-0000-4000-8000-000000000000
+- nom: Retrouver après coupure la correction et la Réponse déjà acceptée
+  operationId: retrouverEtatManette
+  acteur: alpha
+  statut: 200
+  reponse:
+    revision: 9
+    heureServeur: '2026-11-10T20:00:35Z'
+    abonnementId: 000002be-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        correction:
+          propositionJusteId: 000000c9-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000c8-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000c9-0000-4000-8000-000000000000
+            nombreReponses: 1
+          - propositionId: 000000ca-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000cb-0000-4000-8000-000000000000
+            nombreReponses: 0
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse:
+        envoiId: 00000262-0000-4000-8000-000000000000
+        reponseId: 0000026c-0000-4000-8000-000000000000
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        propositionId: 000000c9-0000-4000-8000-000000000000
+        recueLe: '2026-11-10T20:00:22Z'
+      resultatPersonnel:
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        juste: true
+        pointsGagnes: 650
+  parametres:
+    abonnementId: 000002be-0000-4000-8000-000000000000
+- nom: 'Répéter le même envoi après correction : accusé initial inchangé'
+  operationId: envoyerReponse
+  acteur: alpha
+  statut: 200
+  requete:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    reponseId: 0000026c-0000-4000-8000-000000000000
+    etapeId: 0000012c-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:22Z'
+- nom: Afficher la correction et la répartition
+  operationId: retrouverEtatSalle
+  acteur: ecran
+  statut: 200
+  reponse:
+    revision: 8
+    heureServeur: '2026-11-10T20:00:35Z'
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        correction:
+          propositionJusteId: 000000c9-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000c8-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000c9-0000-4000-8000-000000000000
+            nombreReponses: 1
+          - propositionId: 000000ca-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000cb-0000-4000-8000-000000000000
+            nombreReponses: 0
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+  parametres:
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+- nom: Passer à la Question 2
+  operationId: piloterManche
+  acteur: animateur
+  statut: 200
+  requete:
+    action: PASSER_ETAPE
+    etapeId: 0000012c-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000342-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:40Z'
+    soireeId: 00000001-0000-4000-8000-000000000000
+  parametres:
+    Idempotency-Key: 00000342-0000-4000-8000-000000000000
+    etapeId: 0000012c-0000-4000-8000-000000000000
+- nom: Répondre à la Question 2
+  operationId: envoyerReponse
+  acteur: alpha
+  statut: 200
+  requete:
+    envoiId: 0000026c-0000-4000-8000-000000000000
+    propositionId: 000000d2-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 0000026c-0000-4000-8000-000000000000
+    reponseId: 00000276-0000-4000-8000-000000000000
+    etapeId: 0000012d-0000-4000-8000-000000000000
+    propositionId: 000000d2-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:44Z'
+  parametres:
+    etapeId: 0000012d-0000-4000-8000-000000000000
+- nom: Lire la correction 2
+  operationId: retrouverEtatSalle
+  acteur: ecran
+  statut: 200
+  reponse:
+    revision: 11
+    heureServeur: '2026-11-10T20:01:00Z'
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Quelle est la capitale de la France ?
+          propositions:
+          - id: 000000d2-0000-4000-8000-000000000000
+            texte: Paris
+            position: 0
+          - id: 000000d3-0000-4000-8000-000000000000
+            texte: Lyon
+            position: 1
+          - id: 000000d4-0000-4000-8000-000000000000
+            texte: Lille
+            position: 2
+          - id: 000000d5-0000-4000-8000-000000000000
+            texte: Nice
+            position: 3
+          etapeId: 0000012d-0000-4000-8000-000000000000
+          questionId: 00000065-0000-4000-8000-000000000000
+          numero: 2
+          total: 3
+        correction:
+          propositionJusteId: 000000d2-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000d2-0000-4000-8000-000000000000
+            nombreReponses: 1
+          - propositionId: 000000d3-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000d4-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000d5-0000-4000-8000-000000000000
+            nombreReponses: 0
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 1450
+        bonnesReponses: 2
+        tempsCumuleMs: 11000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+  parametres:
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+- nom: Passer à la Question 3
+  operationId: piloterManche
+  acteur: animateur
+  statut: 200
+  requete:
+    action: PASSER_ETAPE
+    etapeId: 0000012d-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000345-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:01:10Z'
+    soireeId: 00000001-0000-4000-8000-000000000000
+  parametres:
+    Idempotency-Key: 00000345-0000-4000-8000-000000000000
+    etapeId: 0000012d-0000-4000-8000-000000000000
+- nom: Répondre à la Question 3
+  operationId: envoyerReponse
+  acteur: alpha
+  statut: 200
+  requete:
+    envoiId: 00000276-0000-4000-8000-000000000000
+    propositionId: 000000df-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000276-0000-4000-8000-000000000000
+    reponseId: 00000280-0000-4000-8000-000000000000
+    etapeId: 0000012e-0000-4000-8000-000000000000
+    propositionId: 000000df-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:01:14Z'
+  parametres:
+    etapeId: 0000012e-0000-4000-8000-000000000000
+- nom: Lire la correction 3
+  operationId: retrouverEtatSalle
+  acteur: ecran
+  statut: 200
+  reponse:
+    revision: 12
+    heureServeur: '2026-11-10T20:01:30Z'
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Quelle est la plus grande planète du Système solaire ?
+          propositions:
+          - id: 000000dc-0000-4000-8000-000000000000
+            texte: Mars
+            position: 0
+          - id: 000000dd-0000-4000-8000-000000000000
+            texte: Vénus
+            position: 1
+          - id: 000000de-0000-4000-8000-000000000000
+            texte: Neptune
+            position: 2
+          - id: 000000df-0000-4000-8000-000000000000
+            texte: Jupiter
+            position: 3
+          etapeId: 0000012e-0000-4000-8000-000000000000
+          questionId: 00000066-0000-4000-8000-000000000000
+          numero: 3
+          total: 3
+        correction:
+          propositionJusteId: 000000df-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000dc-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000dd-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000de-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000df-0000-4000-8000-000000000000
+            nombreReponses: 1
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 2250
+        bonnesReponses: 3
+        tempsCumuleMs: 15000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+  parametres:
+    abonnementId: 000002bc-0000-4000-8000-000000000000
+- nom: Terminer la Manche après la dernière correction
+  operationId: piloterManche
+  acteur: animateur
+  statut: 200
+  requete:
+    action: PASSER_ETAPE
+    etapeId: 0000012e-0000-4000-8000-000000000000
+  reponse:
+    envoiId: 00000348-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:01:35Z'
+    soireeId: 00000001-0000-4000-8000-000000000000
+  parametres:
+    Idempotency-Key: 00000348-0000-4000-8000-000000000000
+    etapeId: 0000012e-0000-4000-8000-000000000000
+- nom: Terminer le programme sans Manche suivante
+  operationId: piloterSoiree
+  acteur: animateur
+  statut: 200
+  requete:
+    action: MANCHE_SUIVANTE
+  reponse:
+    envoiId: 00000349-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:01:36Z'
+    soireeId: 00000001-0000-4000-8000-000000000000
+  parametres:
+    Idempotency-Key: 00000349-0000-4000-8000-000000000000
+- nom: Consulter le Classement général final
+  operationId: consulterClassement
+  acteur: alpha
+  statut: 200
+  reponse:
+    soireeId: 00000001-0000-4000-8000-000000000000
+    classement:
+    - concurrentId: 00000003-0000-4000-8000-000000000000
+      nom: Alpha
+      rang: 1
+      points: 2250
+      bonnesReponses: 3
+      tempsCumuleMs: 15000
+    - concurrentId: 00000004-0000-4000-8000-000000000000
+      nom: Bravo
+      rang: 2
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+- nom: Retrouver la vue finale dans la Console
+  operationId: retrouverEtatConsole
+  acteur: animateur
+  statut: 200
+  reponse:
+    revision: 20
+    heureServeur: '2026-11-10T20:01:36Z'
+    abonnementId: 000002bf-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: TERMINEE
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: TERMINEE
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: TERMINEE
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 2250
+        bonnesReponses: 3
+        tempsCumuleMs: 15000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      programme:
+      - id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: TERMINEE
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+  parametres:
+    abonnementId: 000002bf-0000-4000-8000-000000000000
+- nom: Se déconnecter
+  operationId: deconnecterAnimateur
+  acteur: animateur
+  statut: 204
+evenements:
+- nom: Arrivée des Joueurs
+  canal: salle
+  message:
+    type: joueurs-modifies
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 3
+    emisLe: '2026-11-10T20:00:03Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: OUVERTE
+        codeAcces: QUIZ42
+      mancheActive: null
+      quiz:
+        phase: ATTENTE
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+- nom: Buzz du socle diffusé à la salle
+  canal: salle
+  message:
+    type: buzz-recu
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 4
+    emisLe: '2026-11-10T20:00:05Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: OUVERTE
+        codeAcces: QUIZ42
+      mancheActive: null
+      quiz:
+        phase: ATTENTE
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz:
+        envoiId: 00000258-0000-4000-8000-000000000000
+        joueurId: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        recuLe: '2026-11-10T20:00:05Z'
+        rang: 1
+- nom: Ouverture de la Question
+  canal: salle
+  message:
+    type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 5
+    emisLe: '2026-11-10T20:00:10Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:30Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+- nom: Projection privée de la Console
+  canal: console
+  message:
+    type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 5
+    emisLe: '2026-11-10T20:00:10Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:30Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      programme:
+      - id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+- nom: Question sur la Manette
+  canal: joueur
+  message:
+    type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 5
+    emisLe: '2026-11-10T20:00:10Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:30Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+- nom: Pause du minuteur
+  canal: joueur
+  message:
+    type: manche-en-pause
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 6
+    emisLe: '2026-11-10T20:00:15Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_PAUSE
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: EN_PAUSE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        tempsRestantMs: 15000
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+- nom: Reprise avec nouvelle échéance
+  canal: joueur
+  message:
+    type: manche-reprise
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 7
+    emisLe: '2026-11-10T20:00:20Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:35Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+- nom: Réponse enregistrée sans révéler la justesse
+  canal: joueur
+  message:
+    type: reponse-enregistree
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 8
+    emisLe: '2026-11-10T20:00:22Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:35Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse:
+        envoiId: 00000262-0000-4000-8000-000000000000
+        reponseId: 0000026c-0000-4000-8000-000000000000
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        propositionId: 000000c9-0000-4000-8000-000000000000
+        recueLe: '2026-11-10T20:00:22Z'
+      resultatPersonnel: null
+- nom: Correction de la Question
+  canal: salle
+  message:
+    type: question-corrigee
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 8
+    emisLe: '2026-11-10T20:00:35Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        correction:
+          propositionJusteId: 000000c9-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000c8-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000c9-0000-4000-8000-000000000000
+            nombreReponses: 1
+          - propositionId: 000000ca-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000cb-0000-4000-8000-000000000000
+            nombreReponses: 0
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+- nom: Résultat personnel après révélation
+  canal: joueur
+  message:
+    type: resultat-personnel
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 9
+    emisLe: '2026-11-10T20:00:35Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        correction:
+          propositionJusteId: 000000c9-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000c8-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000c9-0000-4000-8000-000000000000
+            nombreReponses: 1
+          - propositionId: 000000ca-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000cb-0000-4000-8000-000000000000
+            nombreReponses: 0
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse:
+        envoiId: 00000262-0000-4000-8000-000000000000
+        reponseId: 0000026c-0000-4000-8000-000000000000
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        propositionId: 000000c9-0000-4000-8000-000000000000
+        recueLe: '2026-11-10T20:00:22Z'
+      resultatPersonnel:
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        juste: true
+        pointsGagnes: 650
+- nom: Question suivante 2
+  canal: salle
+  message:
+    type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 10
+    emisLe: '2026-11-10T20:00:40Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Quelle est la capitale de la France ?
+          propositions:
+          - id: 000000d2-0000-4000-8000-000000000000
+            texte: Paris
+            position: 0
+          - id: 000000d3-0000-4000-8000-000000000000
+            texte: Lyon
+            position: 1
+          - id: 000000d4-0000-4000-8000-000000000000
+            texte: Lille
+            position: 2
+          - id: 000000d5-0000-4000-8000-000000000000
+            texte: Nice
+            position: 3
+          etapeId: 0000012d-0000-4000-8000-000000000000
+          questionId: 00000065-0000-4000-8000-000000000000
+          numero: 2
+          total: 3
+        ouverteLe: '2026-11-10T20:00:40Z'
+        echeanceLe: '2026-11-10T20:01:00Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+- nom: Question suivante 3
+  canal: salle
+  message:
+    type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 12
+    emisLe: '2026-11-10T20:01:10Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Quelle est la plus grande planète du Système solaire ?
+          propositions:
+          - id: 000000dc-0000-4000-8000-000000000000
+            texte: Mars
+            position: 0
+          - id: 000000dd-0000-4000-8000-000000000000
+            texte: Vénus
+            position: 1
+          - id: 000000de-0000-4000-8000-000000000000
+            texte: Neptune
+            position: 2
+          - id: 000000df-0000-4000-8000-000000000000
+            texte: Jupiter
+            position: 3
+          etapeId: 0000012e-0000-4000-8000-000000000000
+          questionId: 00000066-0000-4000-8000-000000000000
+          numero: 3
+          total: 3
+        ouverteLe: '2026-11-10T20:01:10Z'
+        echeanceLe: '2026-11-10T20:01:30Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 1450
+        bonnesReponses: 2
+        tempsCumuleMs: 11000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+- nom: Fin de Soirée et Classement général
+  canal: salle
+  message:
+    type: soiree-terminee
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 16
+    emisLe: '2026-11-10T20:01:36Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: TERMINEE
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: TERMINEE
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: TERMINEE
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 2250
+        bonnesReponses: 3
+        tempsCumuleMs: 15000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+cases:
+- nom: Un Joueur arrivé en retard peut attendre la Manche suivante
+  schema: VueManette
+  valide: true
+  valeur:
+    soiree:
+      id: 00000001-0000-4000-8000-000000000000
+      titre: Soirée de démonstration
+      format: SOLO
+      pilotage: MANUEL
+      etat: EN_COURS
+      codeAcces: QUIZ42
+    mancheActive:
+      id: 00000002-0000-4000-8000-000000000000
+      ordre: 0
+      mode: QUIZ
+      etat: EN_COURS
+      reglages:
+        nombreEtapes: 3
+        tempsParEtapeSecondes: 20
+    quiz:
+      phase: QUESTION_OUVERTE
+      question:
+        enonce: Combien font 2 + 2 ?
+        propositions:
+        - id: 000000c8-0000-4000-8000-000000000000
+          texte: '3'
+          position: 0
+        - id: 000000c9-0000-4000-8000-000000000000
+          texte: '4'
+          position: 1
+        - id: 000000ca-0000-4000-8000-000000000000
+          texte: '5'
+          position: 2
+        - id: 000000cb-0000-4000-8000-000000000000
+          texte: '6'
+          position: 3
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        questionId: 00000064-0000-4000-8000-000000000000
+        numero: 1
+        total: 3
+      ouverteLe: '2026-11-10T20:00:10Z'
+      echeanceLe: '2026-11-10T20:00:30Z'
+    joueurs:
+    - id: 00000003-0000-4000-8000-000000000000
+      pseudo: Alpha
+      connecte: true
+    - id: 00000004-0000-4000-8000-000000000000
+      pseudo: Bravo
+      connecte: true
+    classement:
+    - concurrentId: 00000003-0000-4000-8000-000000000000
+      nom: Alpha
+      rang: 1
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+    - concurrentId: 00000004-0000-4000-8000-000000000000
+      nom: Bravo
+      rang: 1
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+    dernierBuzz: null
+    joueurId: 00000003-0000-4000-8000-000000000000
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+- nom: L’accusé initial ne révèle pas la justesse
+  schema: AccuseReponse
+  valide: true
+  valeur:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    reponseId: 0000026c-0000-4000-8000-000000000000
+    etapeId: 0000012c-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:22Z'
+- nom: Une identité fournie par le téléphone est refusée
+  schema: ReponseSaisie
+  valide: false
+  valeur:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+    joueurId: 00000004-0000-4000-8000-000000000000
+- nom: Une heure fournie par le téléphone est refusée
+  schema: ReponseSaisie
+  valide: false
+  valeur:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:01Z'
+- nom: Des points fournis par le téléphone sont refusés
+  schema: ReponseSaisie
+  valide: false
+  valeur:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+    points: 999999
+- nom: Une Question avec trois propositions est refusée
+  schema: QuestionSaisie
+  valide: false
+  valeur:
+    enonce: Combien font 2 + 2 ?
+    categorie: Calcul
+    difficulte: FACILE
+    propositions:
+    - A
+    - B
+    - C
+    indexPropositionJuste: 1
+- nom: Un index de solution hors des quatre propositions est refusé
+  schema: QuestionSaisie
+  valide: false
+  valeur:
+    enonce: Combien font 2 + 2 ?
+    categorie: Calcul
+    difficulte: FACILE
+    propositions:
+    - '3'
+    - '4'
+    - '5'
+    - '6'
+    indexPropositionJuste: 4
+- nom: Une solution ne peut figurer dans la Question publique
+  schema: QuestionPublique
+  valide: false
+  valeur:
+    enonce: Combien font 2 + 2 ?
+    propositions:
+    - id: 000000c8-0000-4000-8000-000000000000
+      texte: '3'
+      position: 0
+    - id: 000000c9-0000-4000-8000-000000000000
+      texte: '4'
+      position: 1
+    - id: 000000ca-0000-4000-8000-000000000000
+      texte: '5'
+      position: 2
+    - id: 000000cb-0000-4000-8000-000000000000
+      texte: '6'
+      position: 3
+    etapeId: 0000012c-0000-4000-8000-000000000000
+    questionId: 00000064-0000-4000-8000-000000000000
+    numero: 1
+    total: 3
+    propositionJusteId: 000000c9-0000-4000-8000-000000000000
+- nom: La correction ne peut être ajoutée pendant une Question ouverte
+  schema: EtatQuiz
+  valide: false
+  valeur:
+    phase: QUESTION_OUVERTE
+    question:
+      enonce: Combien font 2 + 2 ?
+      propositions:
+      - id: 000000c8-0000-4000-8000-000000000000
+        texte: '3'
+        position: 0
+      - id: 000000c9-0000-4000-8000-000000000000
+        texte: '4'
+        position: 1
+      - id: 000000ca-0000-4000-8000-000000000000
+        texte: '5'
+        position: 2
+      - id: 000000cb-0000-4000-8000-000000000000
+        texte: '6'
+        position: 3
+      etapeId: 0000012c-0000-4000-8000-000000000000
+      questionId: 00000064-0000-4000-8000-000000000000
+      numero: 1
+      total: 3
+    ouverteLe: '2026-11-10T20:00:10Z'
+    echeanceLe: '2026-11-10T20:00:30Z'
+    correction:
+      propositionJusteId: 000000c9-0000-4000-8000-000000000000
+      repartition:
+      - propositionId: 000000c8-0000-4000-8000-000000000000
+        nombreReponses: 0
+      - propositionId: 000000c9-0000-4000-8000-000000000000
+        nombreReponses: 1
+      - propositionId: 000000ca-0000-4000-8000-000000000000
+        nombreReponses: 0
+      - propositionId: 000000cb-0000-4000-8000-000000000000
+        nombreReponses: 0
+- nom: Un résultat personnel anticipé est refusé
+  schema: VueManette
+  valide: false
+  valeur:
+    soiree:
+      id: 00000001-0000-4000-8000-000000000000
+      titre: Soirée de démonstration
+      format: SOLO
+      pilotage: MANUEL
+      etat: EN_COURS
+      codeAcces: QUIZ42
+    mancheActive:
+      id: 00000002-0000-4000-8000-000000000000
+      ordre: 0
+      mode: QUIZ
+      etat: EN_COURS
+      reglages:
+        nombreEtapes: 3
+        tempsParEtapeSecondes: 20
+    quiz:
+      phase: QUESTION_OUVERTE
+      question:
+        enonce: Combien font 2 + 2 ?
+        propositions:
+        - id: 000000c8-0000-4000-8000-000000000000
+          texte: '3'
+          position: 0
+        - id: 000000c9-0000-4000-8000-000000000000
+          texte: '4'
+          position: 1
+        - id: 000000ca-0000-4000-8000-000000000000
+          texte: '5'
+          position: 2
+        - id: 000000cb-0000-4000-8000-000000000000
+          texte: '6'
+          position: 3
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        questionId: 00000064-0000-4000-8000-000000000000
+        numero: 1
+        total: 3
+      ouverteLe: '2026-11-10T20:00:10Z'
+      echeanceLe: '2026-11-10T20:00:30Z'
+    joueurs:
+    - id: 00000003-0000-4000-8000-000000000000
+      pseudo: Alpha
+      connecte: true
+    - id: 00000004-0000-4000-8000-000000000000
+      pseudo: Bravo
+      connecte: true
+    classement:
+    - concurrentId: 00000003-0000-4000-8000-000000000000
+      nom: Alpha
+      rang: 1
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+    - concurrentId: 00000004-0000-4000-8000-000000000000
+      nom: Bravo
+      rang: 1
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+    dernierBuzz: null
+    joueurId: 00000003-0000-4000-8000-000000000000
+    eligiblePourMancheActive: true
+    derniereReponse:
+      envoiId: 00000262-0000-4000-8000-000000000000
+      reponseId: 0000026c-0000-4000-8000-000000000000
+      etapeId: 0000012c-0000-4000-8000-000000000000
+      propositionId: 000000c9-0000-4000-8000-000000000000
+      recueLe: '2026-11-10T20:00:22Z'
+    resultatPersonnel:
+      etapeId: 0000012c-0000-4000-8000-000000000000
+      juste: true
+      pointsGagnes: 650
+- nom: Une justesse dans l’accusé de réception est refusée
+  schema: AccuseReponse
+  valide: false
+  valeur:
+    envoiId: 00000262-0000-4000-8000-000000000000
+    reponseId: 0000026c-0000-4000-8000-000000000000
+    etapeId: 0000012c-0000-4000-8000-000000000000
+    propositionId: 000000c9-0000-4000-8000-000000000000
+    recueLe: '2026-11-10T20:00:22Z'
+    juste: true
+- nom: Le programme privé n’a pas sa place dans une projection publique
+  schema: VueSalle
+  valide: false
+  valeur:
+    soiree:
+      id: 00000001-0000-4000-8000-000000000000
+      titre: Soirée de démonstration
+      format: SOLO
+      pilotage: MANUEL
+      etat: EN_COURS
+      codeAcces: QUIZ42
+    mancheActive:
+      id: 00000002-0000-4000-8000-000000000000
+      ordre: 0
+      mode: QUIZ
+      etat: EN_COURS
+      reglages:
+        nombreEtapes: 3
+        tempsParEtapeSecondes: 20
+    quiz:
+      phase: QUESTION_OUVERTE
+      question:
+        enonce: Combien font 2 + 2 ?
+        propositions:
+        - id: 000000c8-0000-4000-8000-000000000000
+          texte: '3'
+          position: 0
+        - id: 000000c9-0000-4000-8000-000000000000
+          texte: '4'
+          position: 1
+        - id: 000000ca-0000-4000-8000-000000000000
+          texte: '5'
+          position: 2
+        - id: 000000cb-0000-4000-8000-000000000000
+          texte: '6'
+          position: 3
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        questionId: 00000064-0000-4000-8000-000000000000
+        numero: 1
+        total: 3
+      ouverteLe: '2026-11-10T20:00:10Z'
+      echeanceLe: '2026-11-10T20:00:30Z'
+    joueurs:
+    - id: 00000003-0000-4000-8000-000000000000
+      pseudo: Alpha
+      connecte: true
+    - id: 00000004-0000-4000-8000-000000000000
+      pseudo: Bravo
+      connecte: true
+    classement:
+    - concurrentId: 00000003-0000-4000-8000-000000000000
+      nom: Alpha
+      rang: 1
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+    - concurrentId: 00000004-0000-4000-8000-000000000000
+      nom: Bravo
+      rang: 1
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+    dernierBuzz: null
+    programmePrive:
+    - id: 00000064-0000-4000-8000-000000000000
+      enonce: Combien font 2 + 2 ?
+      categorie: Calcul
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000c8-0000-4000-8000-000000000000
+        texte: '3'
+        position: 0
+      - id: 000000c9-0000-4000-8000-000000000000
+        texte: '4'
+        position: 1
+      - id: 000000ca-0000-4000-8000-000000000000
+        texte: '5'
+        position: 2
+      - id: 000000cb-0000-4000-8000-000000000000
+        texte: '6'
+        position: 3
+      propositionJusteId: 000000c9-0000-4000-8000-000000000000
+    - id: 00000065-0000-4000-8000-000000000000
+      enonce: Quelle est la capitale de la France ?
+      categorie: Géographie
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000d2-0000-4000-8000-000000000000
+        texte: Paris
+        position: 0
+      - id: 000000d3-0000-4000-8000-000000000000
+        texte: Lyon
+        position: 1
+      - id: 000000d4-0000-4000-8000-000000000000
+        texte: Lille
+        position: 2
+      - id: 000000d5-0000-4000-8000-000000000000
+        texte: Nice
+        position: 3
+      propositionJusteId: 000000d2-0000-4000-8000-000000000000
+    - id: 00000066-0000-4000-8000-000000000000
+      enonce: Quelle est la plus grande planète du Système solaire ?
+      categorie: Astronomie
+      difficulte: FACILE
+      source: ANIMATEUR
+      propositions:
+      - id: 000000dc-0000-4000-8000-000000000000
+        texte: Mars
+        position: 0
+      - id: 000000dd-0000-4000-8000-000000000000
+        texte: Vénus
+        position: 1
+      - id: 000000de-0000-4000-8000-000000000000
+        texte: Neptune
+        position: 2
+      - id: 000000df-0000-4000-8000-000000000000
+        texte: Jupiter
+        position: 3
+      propositionJusteId: 000000df-0000-4000-8000-000000000000
+- nom: Une clé d’accès ne doit pas figurer dans un événement public
+  schema: EvenementSalle
+  valide: false
+  valeur:
+    type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 5
+    emisLe: '2026-11-10T20:00:12Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:30Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+    cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+resynchronisation:
+  description: Abonnement 702 actif avant capture ; snapshot révision 9 retardé par le réseau. L’événement 10 arrive
+    dans le tampon avant la réponse HTTP. Les événements 8 et 9 déjà couverts et le doublon 10 sont ignorés. La
+    vue finale reste la Question 2, jamais un retour à la Question 1.
+  etat:
+    revision: 9
+    heureServeur: '2026-11-10T20:00:35Z'
+    abonnementId: 000002be-0000-4000-8000-000000000000
+    vue:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        correction:
+          propositionJusteId: 000000c9-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000c8-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000c9-0000-4000-8000-000000000000
+            nombreReponses: 1
+          - propositionId: 000000ca-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000cb-0000-4000-8000-000000000000
+            nombreReponses: 0
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse:
+        envoiId: 00000262-0000-4000-8000-000000000000
+        reponseId: 0000026c-0000-4000-8000-000000000000
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        propositionId: 000000c9-0000-4000-8000-000000000000
+        recueLe: '2026-11-10T20:00:22Z'
+      resultatPersonnel:
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        juste: true
+        pointsGagnes: 650
+  tampon:
+  - type: reponse-enregistree
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 8
+    emisLe: '2026-11-10T20:00:22Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        ouverteLe: '2026-11-10T20:00:10Z'
+        echeanceLe: '2026-11-10T20:00:35Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 1
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse:
+        envoiId: 00000262-0000-4000-8000-000000000000
+        reponseId: 0000026c-0000-4000-8000-000000000000
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        propositionId: 000000c9-0000-4000-8000-000000000000
+        recueLe: '2026-11-10T20:00:22Z'
+      resultatPersonnel: null
+  - type: resultat-personnel
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 9
+    emisLe: '2026-11-10T20:00:35Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: CORRECTION
+        question:
+          enonce: Combien font 2 + 2 ?
+          propositions:
+          - id: 000000c8-0000-4000-8000-000000000000
+            texte: '3'
+            position: 0
+          - id: 000000c9-0000-4000-8000-000000000000
+            texte: '4'
+            position: 1
+          - id: 000000ca-0000-4000-8000-000000000000
+            texte: '5'
+            position: 2
+          - id: 000000cb-0000-4000-8000-000000000000
+            texte: '6'
+            position: 3
+          etapeId: 0000012c-0000-4000-8000-000000000000
+          questionId: 00000064-0000-4000-8000-000000000000
+          numero: 1
+          total: 3
+        correction:
+          propositionJusteId: 000000c9-0000-4000-8000-000000000000
+          repartition:
+          - propositionId: 000000c8-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000c9-0000-4000-8000-000000000000
+            nombreReponses: 1
+          - propositionId: 000000ca-0000-4000-8000-000000000000
+            nombreReponses: 0
+          - propositionId: 000000cb-0000-4000-8000-000000000000
+            nombreReponses: 0
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse:
+        envoiId: 00000262-0000-4000-8000-000000000000
+        reponseId: 0000026c-0000-4000-8000-000000000000
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        propositionId: 000000c9-0000-4000-8000-000000000000
+        recueLe: '2026-11-10T20:00:22Z'
+      resultatPersonnel:
+        etapeId: 0000012c-0000-4000-8000-000000000000
+        juste: true
+        pointsGagnes: 650
+  - type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 10
+    emisLe: '2026-11-10T20:00:40Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Quelle est la capitale de la France ?
+          propositions:
+          - id: 000000d2-0000-4000-8000-000000000000
+            texte: Paris
+            position: 0
+          - id: 000000d3-0000-4000-8000-000000000000
+            texte: Lyon
+            position: 1
+          - id: 000000d4-0000-4000-8000-000000000000
+            texte: Lille
+            position: 2
+          - id: 000000d5-0000-4000-8000-000000000000
+            texte: Nice
+            position: 3
+          etapeId: 0000012d-0000-4000-8000-000000000000
+          questionId: 00000065-0000-4000-8000-000000000000
+          numero: 2
+          total: 3
+        ouverteLe: '2026-11-10T20:00:40Z'
+        echeanceLe: '2026-11-10T20:01:00Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+  - type: question-ouverte
+    soireeId: 00000001-0000-4000-8000-000000000000
+    revision: 10
+    emisLe: '2026-11-10T20:00:40Z'
+    donnees:
+      soiree:
+        id: 00000001-0000-4000-8000-000000000000
+        titre: Soirée de démonstration
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: QUIZ42
+      mancheActive:
+        id: 00000002-0000-4000-8000-000000000000
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages:
+          nombreEtapes: 3
+          tempsParEtapeSecondes: 20
+      quiz:
+        phase: QUESTION_OUVERTE
+        question:
+          enonce: Quelle est la capitale de la France ?
+          propositions:
+          - id: 000000d2-0000-4000-8000-000000000000
+            texte: Paris
+            position: 0
+          - id: 000000d3-0000-4000-8000-000000000000
+            texte: Lyon
+            position: 1
+          - id: 000000d4-0000-4000-8000-000000000000
+            texte: Lille
+            position: 2
+          - id: 000000d5-0000-4000-8000-000000000000
+            texte: Nice
+            position: 3
+          etapeId: 0000012d-0000-4000-8000-000000000000
+          questionId: 00000065-0000-4000-8000-000000000000
+          numero: 2
+          total: 3
+        ouverteLe: '2026-11-10T20:00:40Z'
+        echeanceLe: '2026-11-10T20:01:00Z'
+      joueurs:
+      - id: 00000003-0000-4000-8000-000000000000
+        pseudo: Alpha
+        connecte: true
+      - id: 00000004-0000-4000-8000-000000000000
+        pseudo: Bravo
+        connecte: true
+      classement:
+      - concurrentId: 00000003-0000-4000-8000-000000000000
+        nom: Alpha
+        rang: 1
+        points: 650
+        bonnesReponses: 1
+        tempsCumuleMs: 7000
+      - concurrentId: 00000004-0000-4000-8000-000000000000
+        nom: Bravo
+        rang: 2
+        points: 0
+        bonnesReponses: 0
+        tempsCumuleMs: 0
+      dernierBuzz: null
+      joueurId: 00000003-0000-4000-8000-000000000000
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+  revisionFinale: 10
+  vueFinale:
+    soiree:
+      id: 00000001-0000-4000-8000-000000000000
+      titre: Soirée de démonstration
+      format: SOLO
+      pilotage: MANUEL
+      etat: EN_COURS
+      codeAcces: QUIZ42
+    mancheActive:
+      id: 00000002-0000-4000-8000-000000000000
+      ordre: 0
+      mode: QUIZ
+      etat: EN_COURS
+      reglages:
+        nombreEtapes: 3
+        tempsParEtapeSecondes: 20
+    quiz:
+      phase: QUESTION_OUVERTE
+      question:
+        enonce: Quelle est la capitale de la France ?
+        propositions:
+        - id: 000000d2-0000-4000-8000-000000000000
+          texte: Paris
+          position: 0
+        - id: 000000d3-0000-4000-8000-000000000000
+          texte: Lyon
+          position: 1
+        - id: 000000d4-0000-4000-8000-000000000000
+          texte: Lille
+          position: 2
+        - id: 000000d5-0000-4000-8000-000000000000
+          texte: Nice
+          position: 3
+        etapeId: 0000012d-0000-4000-8000-000000000000
+        questionId: 00000065-0000-4000-8000-000000000000
+        numero: 2
+        total: 3
+      ouverteLe: '2026-11-10T20:00:40Z'
+      echeanceLe: '2026-11-10T20:01:00Z'
+    joueurs:
+    - id: 00000003-0000-4000-8000-000000000000
+      pseudo: Alpha
+      connecte: true
+    - id: 00000004-0000-4000-8000-000000000000
+      pseudo: Bravo
+      connecte: true
+    classement:
+    - concurrentId: 00000003-0000-4000-8000-000000000000
+      nom: Alpha
+      rang: 1
+      points: 650
+      bonnesReponses: 1
+      tempsCumuleMs: 7000
+    - concurrentId: 00000004-0000-4000-8000-000000000000
+      nom: Bravo
+      rang: 2
+      points: 0
+      bonnesReponses: 0
+      tempsCumuleMs: 0
+    dernierBuzz: null
+    joueurId: 00000003-0000-4000-8000-000000000000
+    eligiblePourMancheActive: true
+    derniereReponse: null
+    resultatPersonnel: null
