@@ -51,9 +51,12 @@ public class Soiree {
 
 	/** Une Soirée naît en Préparation, sans code d'accès. */
 	public Soiree(String titre, Format format, Pilotage pilotage, Instant creeeLe) {
-		String titreNettoye = Objects.requireNonNull(titre, "titre").strip();
+		if (titre == null) {
+			throw new TitreInvalide();
+		}
+		String titreNettoye = titre.strip();
 		if (titreNettoye.isEmpty() || titreNettoye.codePointCount(0, titreNettoye.length()) > LONGUEUR_MAX_TITRE) {
-			throw new IllegalArgumentException("Le titre doit faire de 1 à " + LONGUEUR_MAX_TITRE + " caractères");
+			throw new TitreInvalide();
 		}
 		this.id = UUID.randomUUID();
 		this.titre = titreNettoye;
@@ -89,9 +92,13 @@ public class Soiree {
 		throw new IllegalStateException("État inconnu : " + etat);
 	}
 
-	/** Un Joueur peut arriver seulement dans une Soirée ouverte (arrivée en retard : #10). */
+	/**
+	 * Un Joueur peut arriver dans une Soirée ouverte ou déjà commencée (contrat
+	 * {@code rejoindreSoiree}). S'il arrive en cours de Manche, il attend la
+	 * suivante : c'est le travail de #10.
+	 */
 	public boolean accepteLesArrivees() {
-		return etat == EtatSoiree.OUVERTE;
+		return EtatSoiree.AVEC_CODE_ACTIF.contains(etat);
 	}
 
 	public UUID getId() {
