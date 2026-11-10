@@ -1,3 +1,4 @@
+import { rejouerReconnexion } from '../tempsreel/parcours.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -167,29 +168,19 @@ for (const cas of exemples.cases) {
   assert.equal(validation(cas.valeur), cas.valide, `${cas.nom} : ${JSON.stringify(validation.errors)}`);
 }
 
-// Un exemple de reconnexion doit couvrir un événement antérieur au snapshot,
-// un doublon et les événements tamponnés après sa révision.
+// Valider les échanges puis les livrer au vrai module ES de Vue synchronisée.
 const synchro = exemples.resynchronisation;
-valider('EtatManette', synchro.etat, 'Snapshot de reconnexion');
+valider('EtatManette', synchro.etat, 'Capture de reconnexion');
 retenirProjection('joueur', synchro.etat.vue, synchro.etat.revision, synchro.etat.heureServeur,
-  'Snapshot de reconnexion');
+  'Capture de reconnexion');
 assert.ok(synchro.etat.abonnementId);
-let derniereRevision = synchro.etat.revision;
-let vue = synchro.etat.vue;
-let ignores = 0;
 for (const evenement of synchro.tampon) {
   valider('EvenementJoueur', evenement, 'Événement de reconnexion');
   retenirProjection('joueur', evenement.donnees, evenement.revision, evenement.emisLe,
     'Événement de reconnexion');
-  assert.equal(evenement.soireeId, vue.soiree.id);
-  if (evenement.revision <= derniereRevision) { ignores++; continue; }
-  assert.equal(evenement.revision, derniereRevision + 1, 'Trou de révision : reprendre une synchronisation');
-  derniereRevision = evenement.revision;
-  vue = evenement.donnees;
+  assert.equal(evenement.soireeId, synchro.etat.vue.soiree.id);
 }
-assert.ok(ignores >= 1, 'Le scénario doit exercer les doublons et événements déjà inclus.');
-assert.equal(derniereRevision, synchro.revisionFinale);
-assert.deepEqual(vue, synchro.vueFinale);
+await rejouerReconnexion(synchro);
 
 // Les captures HTTP et événements d'une même destination décrivent une seule
 // chronologie. Les compteurs d'autres destinations restent indépendants.

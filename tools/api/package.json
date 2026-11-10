@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=24" },
-  "scripts": { "test": "node verifier.mjs" },
+  "scripts": { "test": "node verifier.mjs && node --test ../tempsreel/*.test.mjs" },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",
     "@asyncapi/parser": "3.6.6",
