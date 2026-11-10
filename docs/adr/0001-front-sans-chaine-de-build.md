@@ -1,6 +1,6 @@
 # Front sans chaîne de build
 
-Les trois interfaces (Manette, Écran de salle, Console d'animation) sont des pages HTML et JavaScript servies directement par Spring Boot, sans npm ni bundler. Une bibliothèque front reste permise si elle se charge par une simple balise `<script>` (WebJar Maven ou fichier copié dans `static/`). Deux membres de l'équipe débutent : un second écosystème à apprendre en plus de Spring leur aurait coûté plusieurs semaines, pour une partie que l'évaluation du cours considère comme secondaire. Un seul `mvn spring-boot:run` lance donc tout le projet.
+Les trois interfaces (Manette, Écran de salle, Console d'animation) sont des pages HTML et JavaScript servies directement par Spring Boot, sans npm ni bundler. Une bibliothèque front reste permise si elle se charge par une simple balise `<script>` (WebJar Maven ou fichier copié dans `static/`). Un membre de l'équipe débute : un second écosystème à apprendre en plus de Spring lui aurait coûté plusieurs semaines, et aux deux autres un outillage de plus à maintenir, pour une partie que l'évaluation du cours considère comme secondaire. Un seul `./mvnw spring-boot:run` lance donc tout le projet.
 
 ## Options écartées
 

@@ -21,6 +21,14 @@ classDiagram
         +String motDePasseHache
         +String nom
     }
+    class CleAssistant {
+        +UUID id
+        +String libelle
+        +String empreinte
+        +Instant creeeLe
+        +Instant revoqueeLe
+        +revoquer()
+    }
     class Soiree {
         +UUID id
         +String codeAcces
@@ -141,6 +149,7 @@ classDiagram
         BANQUE
         ANIMATEUR
         IMPORT
+        ASSISTANT
     }
 
     class MancheBlindTest {
@@ -212,6 +221,7 @@ classDiagram
 
     Lieu "1" --> "1..*" Animateur : emploie
     Lieu "1" --> "*" Soiree : organise
+    Lieu "1" --> "*" CleAssistant : autorise
     Animateur "1" --> "*" Soiree : crée
     Soiree "1" *-- "*" Manche : enchaîne
     Soiree "1" *-- "*" Joueur : accueille
@@ -353,6 +363,15 @@ classDiagram
         +boolean estAcceptable(String pseudo)
     }
 
+    class OutilsAssistant {
+        +List~Soiree~ listerSoirees()
+        +Soiree creerSoiree(titre, Format, Pilotage)
+        +ajouterManche(UUID soireeId, ModeDeJeu, ReglagesDeManche)
+        +ajouterQuestions(UUID mancheId, List~Question~)
+        +List~Morceau~ chercherMorceaux(String requete)
+        +ajouterMorceaux(UUID mancheId, List~Long~ idsDeezer)
+        +List~LigneClassement~ consulterClassement(UUID soireeId)
+    }
     class DeroulementQuiz
     class DeroulementBlindTest
     class DeroulementKaraoke
@@ -402,6 +421,9 @@ classDiagram
     ServiceSoiree --> FiltreDePseudos
     ServiceClassement ..> ServiceEquipe
 
+    OutilsAssistant --> ServiceSoiree
+    OutilsAssistant --> CatalogueMusical
+    OutilsAssistant --> ServiceClassement
     DeroulementQuiz --> SourceDeQuestions
     DeroulementBlindTest --> CatalogueMusical
     DeroulementBlindTest --> CorrecteurTolerant
