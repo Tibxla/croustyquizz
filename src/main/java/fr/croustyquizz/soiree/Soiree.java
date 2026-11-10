@@ -18,7 +18,7 @@ import jakarta.persistence.Id;
 @Entity
 public class Soiree {
 
-	static final int LONGUEUR_MAX_TITRE = 80;
+	static final int LONGUEUR_MAX_TITRE = 150;
 
 	@Id
 	private UUID id;

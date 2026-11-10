@@ -64,7 +64,7 @@ class SoireeTest {
 	void refuseUnTitreVideOuTropLong() {
 		assertThatThrownBy(() -> new Soiree("   ", Format.SOLO, Pilotage.MANUEL, CREATION))
 				.isInstanceOf(IllegalArgumentException.class);
-		assertThatThrownBy(() -> new Soiree("x".repeat(81), Format.SOLO, Pilotage.MANUEL, CREATION))
+		assertThatThrownBy(() -> new Soiree("x".repeat(151), Format.SOLO, Pilotage.MANUEL, CREATION))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
 

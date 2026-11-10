@@ -3,7 +3,7 @@
 
 create table soiree (
 	id          uuid        primary key,
-	titre       varchar(80) not null,
+	titre       varchar(150) not null,
 	format      varchar(16) not null check (format in ('SOLO', 'EQUIPE')),
 	pilotage    varchar(16) not null check (pilotage in ('MANUEL', 'AUTOMATIQUE')),
 	etat        varchar(16) not null check (etat in ('PREPARATION', 'OUVERTE', 'EN_COURS', 'TERMINEE')),
@@ -25,8 +25,8 @@ create unique index soiree_code_acces_actif
 create table joueur (
 	id              uuid        primary key,
 	soiree_id       uuid        not null references soiree (id),
-	-- La longueur (1 à 20 caractères) est vérifiée par l'application.
-	pseudo          varchar(20) not null,
+	-- La longueur (1 à 30 caractères) est vérifiée par l'application.
+	pseudo          varchar(30) not null,
 	-- Empreinte SHA-256 du jeton de reconnexion : le jeton lui-même n'est jamais stocké.
 	empreinte_jeton bytea       not null unique check (length(empreinte_jeton) = 32),
 	arrive_le       timestamptz not null,

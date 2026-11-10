@@ -34,10 +34,10 @@ class JoueurTest {
 
 	@Test
 	void compteLesCaracteresEtPasLesUnitesUtf16() {
-		String vingtEmojis = "🎤".repeat(20);
+		String trenteEmojis = "🎤".repeat(30);
 
-		assertThat(new Joueur(SOIREE, vingtEmojis, jeton, ARRIVEE).getPseudo()).isEqualTo(vingtEmojis);
-		assertThatThrownBy(() -> new Joueur(SOIREE, "a".repeat(21), jeton, ARRIVEE))
+		assertThat(new Joueur(SOIREE, trenteEmojis, jeton, ARRIVEE).getPseudo()).isEqualTo(trenteEmojis);
+		assertThatThrownBy(() -> new Joueur(SOIREE, "a".repeat(31), jeton, ARRIVEE))
 				.isInstanceOf(PseudoInvalide.class);
 	}
 
