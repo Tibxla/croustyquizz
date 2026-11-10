@@ -104,6 +104,7 @@ class CanalTempsReelTest {
 		BlockingQueue<Map<String, Object>> ecran = abonner(connecter(), Canaux.salle(SOIREE));
 
 		BlockingQueue<Map<String, Object>> autreEcran = abonner(connecter(), Canaux.salle(SOIREE));
+		long debut = System.nanoTime();
 		HttpResponse<String> reponse = buzzer(SOIREE, "  Léa  ");
 		assertThat(reponse.statusCode()).isEqualTo(200);
 
@@ -111,6 +112,7 @@ class CanalTempsReelTest {
 		assertThat(message).isNotNull().containsEntry("type", "buzz-recu");
 		assertThat(donnees(message)).containsEntry("pseudo", "Léa").containsKey("recuLe");
 		assertThat(autreEcran.poll(1, TimeUnit.SECONDS)).isEqualTo(message);
+		assertThat(Duration.ofNanos(System.nanoTime() - debut)).isLessThan(Duration.ofSeconds(1));
 		assertThat(json.readValue(reponse.body(), Map.class)).isEqualTo(donnees(message));
 	}
 
