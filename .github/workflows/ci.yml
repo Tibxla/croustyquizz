@@ -14,8 +14,8 @@ jobs:
     name: Contrats HTTP et événements STOMP
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
@@ -29,8 +29,8 @@ jobs:
     name: Build et tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -41,7 +41,7 @@ jobs:
         run: python3 tools/mesures-qualite.py
       - name: Conserver les rapports de tests, couverture et qualité
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rapports-qualite-${{ github.sha }}
           path: |
@@ -51,7 +51,7 @@ jobs:
             target/qualite/
           if-no-files-found: error
       - name: Préparer les badges à publier
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mesures-qualite
           path: target/qualite/
@@ -68,8 +68,8 @@ jobs:
       group: publication-mesures-qualite
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: mesures-qualite
           path: ${{ runner.temp }}/mesures-qualite
@@ -99,7 +99,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Vérifier chaque commit de la PR
