@@ -53,11 +53,12 @@
 		const historique = document.getElementById('historique');
 		const heure = (instant) => new Date(instant).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
 
-		TempsReel.connecter({
+		TempsReel.chargerCanaux(soireeId).then((canaux) => TempsReel.connecter({
+			canaux,
 			surConnexion(connexion) {
 				etat.textContent = 'Connecté';
 				etat.className = 'connecte';
-				connexion.ecouter(TempsReel.canaux.salle(soireeId), {
+				connexion.ecouter(canaux.salle, {
 					'buzz-recu'({ pseudo, recuLe }) {
 						dernier.querySelector('strong').textContent = pseudo;
 						dernier.querySelector('small').textContent = `a buzzé à ${heure(recuLe)}`;
@@ -71,6 +72,9 @@
 				etat.textContent = 'Déconnecté, reconnexion…';
 				etat.className = '';
 			},
+		})).catch((probleme) => {
+			etat.textContent = probleme.message;
+			etat.className = '';
 		});
 	</script>
 </body>

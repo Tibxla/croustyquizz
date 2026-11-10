@@ -42,26 +42,42 @@
 			erreur.textContent = 'Lien incomplet : ouvre la Manette depuis l\'Écran de salle.';
 			erreur.hidden = false;
 		} else {
-			const connexion = TempsReel.connecter({
-				surConnexion() {
-					etat.textContent = 'Connecté';
-					etat.className = 'connecte';
-					bouton.disabled = false;
-				},
-				surDeconnexion() {
-					etat.textContent = 'Déconnecté, reconnexion…';
-					etat.className = '';
-					bouton.disabled = true;
-				},
-			});
+			TempsReel.chargerCanaux(soireeId).then((canaux) => {
+				const connexion = TempsReel.connecter({
+					canaux,
+					surConnexion() {
+						etat.textContent = 'Connecté';
+						etat.className = 'connecte';
+						bouton.disabled = false;
+					},
+					surDeconnexion() {
+						etat.textContent = 'Déconnecté, reconnexion…';
+						etat.className = '';
+						bouton.disabled = true;
+					},
+				});
 
-			bouton.addEventListener('click', () => {
-				if (!pseudo.value.trim()) {
-					pseudo.focus();
-					return;
-				}
-				connexion.envoyer(`/app/soirees/${soireeId}/buzz`, { pseudo: pseudo.value });
-				navigator.vibrate?.(60);
+				bouton.addEventListener('click', async () => {
+					if (!pseudo.value.trim()) {
+						pseudo.focus();
+						return;
+					}
+					bouton.disabled = true;
+					erreur.hidden = true;
+					try {
+						await TempsReel.requete(canaux.buzz, { pseudo: pseudo.value });
+						navigator.vibrate?.(60);
+					} catch (probleme) {
+						erreur.textContent = probleme.message;
+						erreur.hidden = false;
+					} finally {
+						bouton.disabled = !connexion.estConnectee();
+					}
+				});
+			}).catch((probleme) => {
+				etat.textContent = 'Lien indisponible';
+				erreur.textContent = probleme.message;
+				erreur.hidden = false;
 			});
 		}
 	</script>

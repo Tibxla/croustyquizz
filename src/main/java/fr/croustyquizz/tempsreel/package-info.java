@@ -14,6 +14,10 @@
  * <p>Limite connue : n'importe quel client peut encore s'abonner à n'importe quel
  * canal. Le contrôle des abonnements arrive avec le jeton du Joueur (#10) et la
  * connexion de l'Animateur (#5).
+ * Le Buzz de démonstration passe par HTTP sous {@code /api/test}, uniquement en
+ * profil {@code dev}. Son pseudo n'est pas une identité authentifiée. Ces routes
+ * sont distinctes du contrat métier de {@code docs/api/openapi.yaml} ; elles
+ * servent au scénario du socle et seront remplacées avec #5, #6 et #10.
  *
  * <p>Propriétaire : Tibxla.
  */

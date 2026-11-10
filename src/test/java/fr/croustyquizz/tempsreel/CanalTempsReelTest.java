@@ -3,6 +3,28 @@ package fr.croustyquizz.tempsreel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Type;
+import java.net.URI;
+import org.apache.tomcat.websocket.WsWebSocketContainer;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.messaging.simp.broker.AbstractBrokerMessageHandler;
+import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.support.MessageBuilder;
+import static org.awaitility.Awaitility.await;
+import tools.jackson.databind.json.JsonMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +53,8 @@ import fr.croustyquizz.TestcontainersConfiguration;
 /** De bout en bout : de vrais clients STOMP contre l'application démarrée. */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
+@ActiveProfiles("dev")
+@TestInstance(Lifecycle.PER_CLASS)
 class CanalTempsReelTest {
 
 	private static final UUID SOIREE = UUID.randomUUID();
@@ -49,22 +73,45 @@ class CanalTempsReelTest {
 	@Autowired
 	private DiffuseurTempsReel diffuseur;
 
+	@Autowired
+	@Qualifier("simpleBrokerMessageHandler")
+	private AbstractBrokerMessageHandler broker;
+
+	private final HttpClient http = HttpClient.newHttpClient();
+	private final JsonMapper json = JsonMapper.builder().build();
+	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
+	private final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("stomp-test-");
+	private final List<WebSocketStompClient> clients = new ArrayList<>();
 	private final List<StompSession> sessions = new CopyOnWriteArrayList<>();
 
 	@AfterEach
 	void fermerLesSessions() {
-		sessions.forEach(StompSession::disconnect);
+		sessions.stream().filter(StompSession::isConnected).forEach(StompSession::disconnect);
+		sessions.clear();
+		clients.forEach(WebSocketStompClient::stop);
+		clients.clear();
+	}
+
+	@AfterAll
+	void fermerHttp() {
+		http.close();
+		executeur.close();
+		conteneur.destroy();
 	}
 
 	@Test
 	void unBuzzDeLaManetteArriveSurLEcranDeSalleEnMoinsDUneSeconde() throws Exception {
 		BlockingQueue<Map<String, Object>> ecran = abonner(connecter(), Canaux.salle(SOIREE));
 
-		connecter().send("/app/soirees/" + SOIREE + "/buzz", Map.of("pseudo", "  Léa  "));
+		BlockingQueue<Map<String, Object>> autreEcran = abonner(connecter(), Canaux.salle(SOIREE));
+		HttpResponse<String> reponse = buzzer(SOIREE, "  Léa  ");
+		assertThat(reponse.statusCode()).isEqualTo(200);
 
 		Map<String, Object> message = ecran.poll(1, TimeUnit.SECONDS);
 		assertThat(message).isNotNull().containsEntry("type", "buzz-recu");
 		assertThat(donnees(message)).containsEntry("pseudo", "Léa").containsKey("recuLe");
+		assertThat(autreEcran.poll(1, TimeUnit.SECONDS)).isEqualTo(message);
+		assertThat(json.readValue(reponse.body(), Map.class)).isEqualTo(donnees(message));
 	}
 
 	@Test
@@ -72,19 +119,22 @@ class CanalTempsReelTest {
 		BlockingQueue<Map<String, Object>> ecranDeLaSoiree = abonner(connecter(), Canaux.salle(SOIREE));
 		BlockingQueue<Map<String, Object>> ecranDUneAutreSoiree = abonner(connecter(), Canaux.salle(AUTRE_SOIREE));
 
-		connecter().send("/app/soirees/" + SOIREE + "/buzz", Map.of("pseudo", "Léa"));
+		assertThat(buzzer(SOIREE, "Léa").statusCode()).isEqualTo(200);
 
 		assertThat(ecranDeLaSoiree.poll(1, TimeUnit.SECONDS)).isNotNull();
-		assertThat(ecranDUneAutreSoiree.poll(300, TimeUnit.MILLISECONDS)).isNull();
+		buzzer(AUTRE_SOIREE, "Autre");
+		assertThat(donnees(ecranDUneAutreSoiree.poll(1, TimeUnit.SECONDS))).containsEntry("pseudo", "Autre");
+		assertThat(ecranDUneAutreSoiree).isEmpty();
 	}
 
 	@Test
-	void unBuzzSansPseudoEstIgnore() throws Exception {
+	void unBuzzSansPseudoEstRefuse() throws Exception {
 		BlockingQueue<Map<String, Object>> ecran = abonner(connecter(), Canaux.salle(SOIREE));
 
-		connecter().send("/app/soirees/" + SOIREE + "/buzz", Map.of("pseudo", "   "));
-
-		assertThat(ecran.poll(300, TimeUnit.MILLISECONDS)).isNull();
+		assertThat(buzzer(SOIREE, "   ").statusCode()).isEqualTo(400);
+		buzzer(SOIREE, "Valide");
+		assertThat(donnees(ecran.poll(1, TimeUnit.SECONDS))).containsEntry("pseudo", "Valide");
+		assertThat(ecran).isEmpty();
 	}
 
 	@Test
@@ -92,14 +142,16 @@ class CanalTempsReelTest {
 		UUID joueur = UUID.randomUUID();
 		StompSession session = connecter();
 		BlockingQueue<Map<String, Object>> manette = abonner(session, Canaux.joueur(joueur));
-		BlockingQueue<Map<String, Object>> autreManette = abonner(session, Canaux.joueur(UUID.randomUUID()));
+		BlockingQueue<Map<String, Object>> autreManette = abonner(session, Canaux.joueur(UUID.fromString("00000000-0000-0000-0000-000000000001")));
 
 		diffuseur.envoyerJoueur(joueur, new EvenementDeTest("à toi de chanter"));
 
 		Map<String, Object> message = manette.poll(1, TimeUnit.SECONDS);
 		assertThat(message).isNotNull().containsEntry("type", "test");
 		assertThat(donnees(message)).containsEntry("texte", "à toi de chanter");
-		assertThat(autreManette.poll(300, TimeUnit.MILLISECONDS)).isNull();
+		diffuseur.envoyerJoueur(UUID.fromString("00000000-0000-0000-0000-000000000001"), new EvenementDeTest("témoin"));
+		assertThat(donnees(autreManette.poll(1, TimeUnit.SECONDS))).containsEntry("texte", "témoin");
+		assertThat(autreManette).isEmpty();
 	}
 
 	@Test
@@ -111,11 +163,20 @@ class CanalTempsReelTest {
 		diffuseur.envoyerConsole(SOIREE, new EvenementDeTest("Joueur exclu"));
 
 		assertThat(console.poll(1, TimeUnit.SECONDS)).isNotNull().containsEntry("type", "test");
-		assertThat(salle.poll(300, TimeUnit.MILLISECONDS)).isNull();
+		diffuseur.diffuserSalle(SOIREE, new EvenementDeTest("témoin"));
+		assertThat(donnees(salle.poll(1, TimeUnit.SECONDS))).containsEntry("texte", "témoin");
+		assertThat(salle).isEmpty();
+	}
+
+	private StandardWebSocketClient clientWebSocket() {
+		StandardWebSocketClient client = new StandardWebSocketClient(conteneur);
+		client.setTaskExecutor(executeur);
+		return client;
 	}
 
 	private StompSession connecter() throws Exception {
-		WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
+		WebSocketStompClient client = new WebSocketStompClient(clientWebSocket());
+		clients.add(client);
 		client.setMessageConverter(new JacksonJsonMessageConverter());
 		StompSession session = client
 				.connectAsync("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION,
@@ -126,18 +187,67 @@ class CanalTempsReelTest {
 		return session;
 	}
 
-	/**
-	 * S'abonne, puis attend la réponse de {@code /app/heure} : les messages d'une page
-	 * étant traités dans l'ordre, l'abonnement est alors enregistré par le serveur.
-	 */
-	private BlockingQueue<Map<String, Object>> abonner(StompSession session, String destination) throws Exception {
-		BlockingQueue<Map<String, Object>> recus = new ArrayBlockingQueue<>(10);
-		session.subscribe(destination, collecteur(recus));
-		BlockingQueue<Map<String, Object>> heure = new ArrayBlockingQueue<>(1);
-		StompSession.Subscription sonde = session.subscribe("/app/heure", collecteur(heure));
-		assertThat(heure.poll(2, TimeUnit.SECONDS)).as("heure du serveur").containsKey("maintenant");
-		sonde.unsubscribe();
+	/** Attend que le broker ait enregistré cet identifiant d'abonnement. */
+	private BlockingQueue<Map<String, Object>> abonner(StompSession session, String destination) {
+		BlockingQueue<Map<String, Object>> recus = new ArrayBlockingQueue<>(64);
+		StompHeaders entetes = new StompHeaders();
+		entetes.setDestination(destination);
+		String identifiant = UUID.randomUUID().toString();
+		entetes.setId(identifiant);
+		session.subscribe(entetes, collecteur(recus));
+		SimpMessageHeaderAccessor sonde = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+		sonde.setDestination(destination);
+		var message = MessageBuilder.createMessage(new byte[0], sonde.getMessageHeaders());
+		await().atMost(Duration.ofSeconds(2)).until(() -> ((SimpleBrokerMessageHandler) broker)
+				.getSubscriptionRegistry().findSubscriptions(message).values().stream()
+				.anyMatch(ids -> ids.contains(identifiant)));
 		return recus;
+	}
+
+	private HttpRequest requete(UUID soireeId, String pseudo) {
+		return HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/test/soirees/" + soireeId + "/buzz"))
+				.timeout(Duration.ofSeconds(5)).header("Content-Type", "application/json")
+				.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of("pseudo", pseudo)))).build();
+	}
+
+	private HttpResponse<String> buzzer(UUID soireeId, String pseudo) throws Exception {
+		return http.send(requete(soireeId, pseudo), HttpResponse.BodyHandlers.ofString());
+	}
+
+	@Test
+	void lesBuzzConcurrentsSontDiffusesDansLOrdreDeLeurHorodatage() throws Exception {
+		BlockingQueue<Map<String, Object>> ecran = abonner(connecter(), Canaux.salle(SOIREE));
+		List<CompletableFuture<HttpResponse<String>>> envois = new ArrayList<>();
+		for (int i = 0; i < 20; i++) {
+			envois.add(http.sendAsync(requete(SOIREE, "Joueur " + i), HttpResponse.BodyHandlers.ofString()));
+		}
+		for (var envoi : envois) assertThat(envoi.get(5, TimeUnit.SECONDS).statusCode()).isEqualTo(200);
+		List<Instant> instants = new ArrayList<>();
+		for (int i = 0; i < 20; i++) {
+			Map<String, Object> message = ecran.poll(1, TimeUnit.SECONDS);
+			assertThat(message).isNotNull();
+			instants.add(Instant.parse((String) donnees(message).get("recuLe")));
+		}
+		assertThat(instants).isSorted();
+	}
+
+	@Test
+	void lePseudoTronqueConserveLEmojiEntier() throws Exception {
+		HttpResponse<String> reponse = buzzer(SOIREE, "a".repeat(29) + "😀z");
+		assertThat(reponse.statusCode()).isEqualTo(200);
+		assertThat(json.readValue(reponse.body(), Map.class)).containsEntry("pseudo", "a".repeat(29) + "😀");
+	}
+
+	@Test
+	void lHeureEtLesCanauxSeConsultentParHttp() throws Exception {
+		var heure = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/heure")).build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(heure.statusCode()).isEqualTo(200);
+		assertThat(json.readValue(heure.body(), Map.class)).containsKey("maintenant");
+		var canaux = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/test/soirees/" + SOIREE + "/canaux")).build(),
+				HttpResponse.BodyHandlers.ofString());
+		assertThat(canaux.statusCode()).isEqualTo(200);
+		assertThat(json.readValue(canaux.body(), Map.class)).containsEntry("salle", Canaux.salle(SOIREE));
 	}
 
 	private static StompFrameHandler collecteur(BlockingQueue<Map<String, Object>> recus) {

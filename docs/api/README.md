@@ -103,3 +103,10 @@ Ces contrôles **ne prouvent pas la conformité d’un serveur non implémenté*
 Une approbation collective du contrat reste attendue. Les noms de routes, formes de messages et limites de saisie sont des choix proposés à cette relecture ; le PRD reste la référence fonctionnelle. Le contrat borne une Manche à 100 Questions et une étape à 3 600 secondes pour cette première version.
 
 Références : [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0), [AsyncAPI 3.1](https://www.asyncapi.com/docs/reference/specification/v3.1.0), [validation AsyncAPI](https://www.asyncapi.com/docs/guides/validate), [Swagger Parser](https://github.com/APIDevTools/swagger-parser).
+
+## Socle technique distinct
+
+Le [prototype #7](prototype/README.md) possède ses propres contrats, limités à la
+démonstration en profil `dev`. Il utilise HTTP pour les commandes et STOMP pour
+les événements. Ses accès anonymes et son enveloppe minimale ne constituent pas
+une implémentation des garanties métier décrites ci-dessus.

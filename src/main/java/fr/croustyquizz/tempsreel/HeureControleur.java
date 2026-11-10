@@ -3,15 +3,15 @@ package fr.croustyquizz.tempsreel;
 import java.time.Clock;
 import java.time.Instant;
 
-import org.springframework.messaging.simp.annotation.SubscribeMapping;
-import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Une page qui s'abonne à {@code /app/heure} reçoit aussitôt l'heure du serveur.
+ * Une page consulte {@code GET /api/heure} pour recevoir l'heure du serveur.
  * Elle s'en sert pour caler son affichage sur le serveur (minuteurs, paroles du
- * Karaoké), et comme signal que ses abonnements précédents sont enregistrés.
+ * Karaoké). Cette consultation ne prouve pas l'installation d'un abonnement STOMP.
  */
-@Controller
+@RestController
 class HeureControleur {
 
 	record HeureServeur(Instant maintenant) {
@@ -23,7 +23,7 @@ class HeureControleur {
 		this.horloge = horloge;
 	}
 
-	@SubscribeMapping("/heure")
+	@GetMapping("/api/heure")
 	HeureServeur heure() {
 		return new HeureServeur(horloge.instant());
 	}

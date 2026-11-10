@@ -2,17 +2,27 @@
 // À charger après /webjars/stomp__stompjs/bundles/stomp.umd.min.js.
 // Chaque message reçu est une enveloppe {type, donnees} (voir le package tempsreel).
 const TempsReel = (() => {
-	const canaux = {
-		salle: (soireeId) => `/topic/soirees/${soireeId}/salle`,
-		console: (soireeId) => `/topic/soirees/${soireeId}/console`,
-		joueur: (joueurId) => `/topic/joueurs/${joueurId}`,
-	};
+	async function requete(url, corps) {
+		const reponse = await fetch(url, corps === undefined ? {} : {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(corps),
+		});
+		if (!reponse.ok) {
+			throw new Error(`Requête refusée par le serveur (HTTP ${reponse.status}).`);
+		}
+		return reponse.json();
+	}
+
+	function chargerCanaux(soireeId) {
+		return requete(`/api/test/soirees/${encodeURIComponent(soireeId)}/canaux`);
+	}
 
 	// surConnexion est rappelé à chaque (re)connexion : c'est là qu'on s'abonne.
-	function connecter({ surConnexion, surDeconnexion } = {}) {
+	function connecter({ canaux, surConnexion, surDeconnexion }) {
 		const protocole = location.protocol === 'https:' ? 'wss:' : 'ws:';
 		const client = new StompJs.Client({
-			brokerURL: `${protocole}//${location.host}/ws`,
+			brokerURL: `${protocole}//${location.host}${canaux.connexion}`,
 			reconnectDelay: 2000,
 		});
 
@@ -23,9 +33,6 @@ const TempsReel = (() => {
 					const enveloppe = JSON.parse(trame.body);
 					gestionnaires[enveloppe.type]?.(enveloppe.donnees);
 				});
-			},
-			envoyer(destination, corps) {
-				client.publish({ destination, body: JSON.stringify(corps) });
 			},
 			estConnectee: () => client.connected,
 		};
@@ -45,5 +52,5 @@ const TempsReel = (() => {
 			(c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
 	}
 
-	return { canaux, connecter, nouvelIdentifiant };
+	return { chargerCanaux, requete, connecter, nouvelIdentifiant };
 })();
