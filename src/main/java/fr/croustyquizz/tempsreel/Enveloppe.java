@@ -1,13 +1,8 @@
 package fr.croustyquizz.tempsreel;
 
-/**
- * Forme JSON de tout message poussé aux pages :
- * {@code {"type": "buzz-recu", "donnees": {...}}}. Le JavaScript aiguille sur {@code type}.
- */
-public record Enveloppe(String type, Evenement donnees) {
+import java.time.Instant;
+import java.util.UUID;
 
-	public static Enveloppe de(Evenement evenement) {
-		return new Enveloppe(evenement.type(), evenement);
-	}
-
+/** Vue complète publiée avec une Révision contiguë propre à sa destination. */
+public record Enveloppe(String type, UUID soireeId, long revision, Instant emisLe, Evenement donnees) {
 }

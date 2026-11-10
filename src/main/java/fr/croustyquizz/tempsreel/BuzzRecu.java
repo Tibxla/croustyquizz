@@ -2,12 +2,6 @@ package fr.croustyquizz.tempsreel;
 
 import java.time.Instant;
 
-/** Un Buzz reçu par le serveur, diffusé à toute la salle. */
-public record BuzzRecu(String pseudo, Instant recuLe) implements Evenement {
-
-	@Override
-	public String type() {
-		return "buzz-recu";
-	}
-
+/** Accusé HTTP d’un Buzz, inclus dans la vue complète de salle. */
+public record BuzzRecu(String pseudo, Instant recuLe) {
 }

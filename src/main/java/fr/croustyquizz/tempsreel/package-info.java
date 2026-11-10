@@ -9,7 +9,7 @@
  * <li>{@code /topic/joueurs/{joueurId}} : la Manette d'un Joueur.</li>
  * </ul>
  * Chaque message est une {@link fr.croustyquizz.tempsreel.Enveloppe} JSON
- * {@code {type, donnees}}. Côté page, {@code /js/tempsreel.js} gère la connexion.
+ * {@code {type, soireeId, revision, emisLe, donnees}}. Côté page, {@code /js/tempsreel.js} expose le module ES de Vue synchronisée.
  *
  * <p>Limite connue : n'importe quel client peut encore s'abonner à n'importe quel
  * canal. Le contrôle des abonnements arrive avec le jeton du Joueur (#10) et la
