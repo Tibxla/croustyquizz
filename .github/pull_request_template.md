@@ -14,12 +14,3 @@ Closes #
 - [ ] Package d'un autre propriétaire touché : non / oui, lequel :
 
 <!-- Ce qui a été testé à la main, captures pour une page. -->
-
-## Usage de l'IA
-
-<!-- Protocole du dossier de lancement (doc/rendu-1/). Écrire « Aucun » si la PR n'a pas été assistée. -->
-
-- **Outil et modèle** :
-- **Tâche confiée** :
-- **Retenu, modifié ou écarté** :
-- **Vérifié par l'auteur** :
