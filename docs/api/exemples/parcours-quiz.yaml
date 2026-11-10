@@ -325,7 +325,7 @@ http:
     - 00000002-0000-4000-8000-000000000000
   reponse:
     revision: 1
-    heureServeur: '2026-11-10T20:00:12Z'
+    heureServeur: '2026-11-10T20:00:01Z'
     abonnementId: null
     vue:
       soiree:
@@ -339,19 +339,7 @@ http:
       quiz:
         phase: ATTENTE
       joueurs: []
-      classement:
-      - concurrentId: 00000003-0000-4000-8000-000000000000
-        nom: Alpha
-        rang: 1
-        points: 0
-        bonnesReponses: 0
-        tempsCumuleMs: 0
-      - concurrentId: 00000004-0000-4000-8000-000000000000
-        nom: Bravo
-        rang: 1
-        points: 0
-        bonnesReponses: 0
-        tempsCumuleMs: 0
+      classement: []
       dernierBuzz: null
       programme:
       - id: 00000002-0000-4000-8000-000000000000
@@ -416,7 +404,7 @@ http:
   statut: 200
   reponse:
     revision: 3
-    heureServeur: '2026-11-10T20:00:12Z'
+    heureServeur: '2026-11-10T20:00:04Z'
     abonnementId: 000002bc-0000-4000-8000-000000000000
     vue:
       soiree:
@@ -969,7 +957,7 @@ http:
   acteur: ecran
   statut: 200
   reponse:
-    revision: 12
+    revision: 13
     heureServeur: '2026-11-10T20:01:30Z'
     abonnementId: 000002bc-0000-4000-8000-000000000000
     vue:
