@@ -1,3 +1,6 @@
+# Démo de CroustyQuizz : application et PostgreSQL, démarrés à la demande par
+# tools/demo.sh (jamais en continu). Procédure complète : docs/deploiement.md.
+
 services:
   app:
     image: ghcr.io/tibxla/croustyquizz:${CROUSTYQUIZZ_VERSION:-main}
@@ -6,12 +9,32 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?Définir POSTGRES_DB dans .env}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?Définir POSTGRES_USER dans .env}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}
+      # La JVM se cale sur la limite mémoire du conteneur.
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
     ports:
-      - '127.0.0.1:8080:8080'
+      # Seulement sur la machine : Tailscale Funnel ou un proxy relaie le HTTPS.
+      - '127.0.0.1:${CROUSTYQUIZZ_PORT_LOCAL:-8080}:8080'
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
+    networks: [public, base]
+    # Système de fichiers en lecture seule, aucun privilège : une faille de
+    # l'application ne peut ni modifier l'image ni gagner de droits sur l'hôte.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 1g
+    cpus: 2
+    pids_limit: 512
+    # Relancé après un plantage pendant la séance ; jamais au démarrage de la machine.
+    restart: on-failure:3
+    logging: &journaux
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
 
   postgres:
     image: postgres:18
@@ -22,13 +45,23 @@ services:
     volumes:
       # PostgreSQL 18 range ses données dans un sous-dossier versionné.
       - donnees-postgres:/var/lib/postgresql
+    networks: [base]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 512m
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 12
       start_period: 10s
-    restart: unless-stopped
+    restart: on-failure:3
+    logging: *journaux
+
+networks:
+  public:
+  # Réseau sans accès sortant : la base ne parle qu'à l'application.
+  base:
+    internal: true
 
 volumes:
   donnees-postgres:
