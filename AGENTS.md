@@ -18,7 +18,7 @@ Le même parcours pour tout le monde, humain ou agent :
 3. Un échange réseau nouveau ou modifié : mettre d'abord à jour `docs/api/`, puis l'implémenter (ADR 0003).
 4. Écrire les tests avec le code (skill `tdd`) ; les délais passent par une `Horloge` factice.
 5. Avant d'ouvrir la PR : `./mvnw verify` vert, et `npm test --prefix tools/api` vert si `docs/api/` a changé.
-6. Ouvrir la PR vers `develop` en remplissant `.github/pull_request_template.md`, section « Usage de l'IA » comprise, et demander la relecture prévue par le tourniquet de `CONTRIBUTING.md`.
+6. Ouvrir la PR vers `develop` en remplissant `.github/pull_request_template.md`, et demander la relecture prévue par le tourniquet de `CONTRIBUTING.md`.
 
 Chaque commit est fait depuis le compte de la personne qui a réalisé le travail : un agent committe pour la personne qui le pilote, jamais au nom d'un autre membre.
 
