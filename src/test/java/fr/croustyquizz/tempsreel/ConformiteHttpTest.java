@@ -25,7 +25,7 @@ import fr.croustyquizz.ContratApi;
 /** Routes et sérialisation Spring réelles, sans PostgreSQL ni Docker. */
 @WebMvcTest({ HeureControleur.class, CanauxDeTestControleur.class, BuzzControleur.class })
 @ActiveProfiles("dev")
-@Import(ConformiteHttpTest.Configuration.class)
+@Import({ ConformiteHttpTest.Configuration.class, VerrousSoiree.class })
 class ConformiteHttpTest {
 
 	private static final UUID SOIREE = UUID.fromString("00000000-0000-0000-0000-000000000001");
