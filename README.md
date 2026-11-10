@@ -62,6 +62,11 @@ Le premier lancement télécharge Maven, les dépendances et l'image PostgreSQL 
 
 Les tests de bout en bout démarrent leur propre PostgreSQL jetable : Docker doit tourner.
 
+## Déployer
+
+Un tag `vX.Y.Z` sur `main` déclenche les vérifications, la publication de l'image sur GHCR et la création d'une GitHub Release avec le JAR exécutable.
+La [procédure de déploiement de démo](docs/deploiement.md) décrit l'installation d'une version sur le serveur, l'accès HTTPS et le plan de secours.
+
 ## Indicateurs de qualité
 
 `./mvnw verify` exécute les tests, mesure leur couverture avec **JaCoCo** et analyse le code Java de production avec **PMD**. PMD applique les catégories **Error Prone** et **Best Practices** ; une alerte fait échouer le build. Aucun seuil de couverture n'est imposé à ce stade.
