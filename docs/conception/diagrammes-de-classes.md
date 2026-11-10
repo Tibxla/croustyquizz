@@ -1,6 +1,6 @@
 # Diagrammes de classes
 
-Source : PRD (issue #2). Les noms de classes sont ceux du code Java, sans accents ; les concepts sont définis dans `CONTEXT.md`. Les images PNG sont régénérées à partir des blocs Mermaid ci-dessous.
+Source : PRD (issue #2). Les noms de classes sont ceux du code Java, sans accents ; les concepts sont définis dans `GLOSSARY.md`. Les images PNG sont régénérées à partir des blocs Mermaid ci-dessous.
 
 ## Domaine
 
