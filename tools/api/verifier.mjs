@@ -1,3 +1,4 @@
+import { rejouerReconnexion } from '../tempsreel/parcours.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -167,29 +168,19 @@ for (const cas of exemples.cases) {
   assert.equal(validation(cas.valeur), cas.valide, `${cas.nom} : ${JSON.stringify(validation.errors)}`);
 }
 
-// Un exemple de reconnexion doit couvrir un événement antérieur au snapshot,
-// un doublon et les événements tamponnés après sa révision.
+// Valider les échanges puis les livrer au vrai module ES de Vue synchronisée.
 const synchro = exemples.resynchronisation;
-valider('EtatManette', synchro.etat, 'Snapshot de reconnexion');
+valider('EtatManette', synchro.etat, 'Capture de reconnexion');
 retenirProjection('joueur', synchro.etat.vue, synchro.etat.revision, synchro.etat.heureServeur,
-  'Snapshot de reconnexion');
+  'Capture de reconnexion');
 assert.ok(synchro.etat.abonnementId);
-let derniereRevision = synchro.etat.revision;
-let vue = synchro.etat.vue;
-let ignores = 0;
 for (const evenement of synchro.tampon) {
   valider('EvenementJoueur', evenement, 'Événement de reconnexion');
   retenirProjection('joueur', evenement.donnees, evenement.revision, evenement.emisLe,
     'Événement de reconnexion');
-  assert.equal(evenement.soireeId, vue.soiree.id);
-  if (evenement.revision <= derniereRevision) { ignores++; continue; }
-  assert.equal(evenement.revision, derniereRevision + 1, 'Trou de révision : reprendre une synchronisation');
-  derniereRevision = evenement.revision;
-  vue = evenement.donnees;
+  assert.equal(evenement.soireeId, synchro.etat.vue.soiree.id);
 }
-assert.ok(ignores >= 1, 'Le scénario doit exercer les doublons et événements déjà inclus.');
-assert.equal(derniereRevision, synchro.revisionFinale);
-assert.deepEqual(vue, synchro.vueFinale);
+await rejouerReconnexion(synchro);
 
 // Les captures HTTP et événements d'une même destination décrivent une seule
 // chronologie. Les compteurs d'autres destinations restent indépendants.
@@ -218,3 +209,16 @@ console.log(`${validations.size} schémas, ${operations.size} opérations, ${nom
 console.log('Scénario de resynchronisation : tampon, doublons et ordre des révisions vérifiés.');
 console.log('Captures HTTP et événements : vues par révision et chronologie par destination vérifiées.');
 console.log('Ces contrôles valident les contrats et leurs exemples ; ils ne testent pas un serveur implémenté.');
+
+// Le socle de test a un contrat séparé : ne pas le confondre avec les accès métier.
+await SwaggerParser.validate(fileURLToPath(new URL('prototype/openapi.yaml', dossier)), {
+  resolve: { http: false },
+});
+const prototype = await fromFile(new Parser(),
+  fileURLToPath(new URL('prototype/asyncapi.yaml', dossier))).parse();
+assert.ok(prototype.document);
+assert.equal(prototype.diagnostics.filter((d) => d.severity === 0).length, 0,
+  JSON.stringify(prototype.diagnostics));
+assert.ok(Object.values((await lire('prototype/asyncapi.yaml')).operations)
+  .every((operation) => operation.action === 'send'));
+console.log('Prototype : contrats HTTP et événements STOMP valides.');

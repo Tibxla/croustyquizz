@@ -17,8 +17,8 @@ Le même parcours pour tout le monde, humain ou agent :
 2. Créer la branche depuis `develop` à jour, nommée comme dans `CONTRIBUTING.md`.
 3. Un échange réseau nouveau ou modifié : mettre d'abord à jour `docs/api/`, puis l'implémenter (ADR 0003).
 4. Écrire les tests avec le code (skill `tdd`) ; les délais passent par une `Horloge` factice.
-5. Avant d'ouvrir la PR : `./mvnw verify` vert, et `npm test --prefix tools/api` vert si `docs/api/` a changé.
-6. Ouvrir la PR vers `develop` en remplissant `.github/pull_request_template.md`, section « Usage de l'IA » comprise, et demander la relecture prévue par le tourniquet de `CONTRIBUTING.md`.
+5. Avant d'ouvrir la PR : `./mvnw verify` vert, et `npm test --prefix tools/api` vert si `docs/api/` a changé ; chaque test de contrôleur valide sa réponse contre le contrat avec `ContratApi`.
+6. Ouvrir la PR vers `develop` en remplissant `.github/pull_request_template.md`, et demander la relecture prévue par le tourniquet de `CONTRIBUTING.md`.
 
 Chaque commit est fait depuis le compte de la personne qui a réalisé le travail : un agent committe pour la personne qui le pilote, jamais au nom d'un autre membre.
 
@@ -26,7 +26,7 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 - Back : Spring Boot 4, Maven (wrapper `./mvnw`, rien à installer), code compilé pour Java 21. Une seule application, découpée en packages sous `fr.croustyquizz`.
 - Temps réel : WebSocket + STOMP (Spring).
-- Base : PostgreSQL via Docker Compose, schéma versionné par Flyway.
+- Base : PostgreSQL via Docker Compose, schéma versionné par Flyway. Une migration se nomme `V<horodatage>__<sujet>.sql` et ne se modifie plus une fois fusionnée : en écrire une nouvelle (`CONTRIBUTING.md`, « Base de données »).
 - Front : HTML + JavaScript servis par Spring Boot, sans npm ni bundler (ADR 0001). Le `package.json` de `tools/api/` ne sert qu'à valider les contrats.
 
 ## Commandes
@@ -48,7 +48,7 @@ Sous Windows, dans PowerShell : `.\mvnw.cmd` au lieu de `./mvnw`.
 
 ## Coder un Mode de jeu
 
-Le contrat est dans le package `manche` : implémenter `DeroulementDeManche` et déclarer une `FabriqueDeDeroulement` en bean Spring. Le temps passe par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread), et les écrans ne se joignent que par le `DiffuseurTempsReel`. La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`).
+Le contrat est dans le package `manche` : implémenter `DeroulementDeManche` et déclarer une `FabriqueDeDeroulement` en bean Spring. Le temps passe par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread), et les écrans ne se joignent que par le `DiffuseurTempsReel`, auquel le mode publie à chaque changement la vue complète de chaque destination, jamais un changement partiel (ADR 0004). La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`).
 
 ## Propriétaires
 

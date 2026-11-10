@@ -1,0 +1,34 @@
+asyncapi: 3.1.0
+info:
+  title: Diffusion technique de démonstration CroustyQuizz
+  version: 0.2.0
+  description: >-
+    Prototype sans authentification, avec capture révisée de la salle. Les événements métier de
+    ../asyncapi.yaml seront ajoutés avec les accès et les projections du Quiz.
+servers:
+  local:
+    host: localhost:8080
+    pathname: /ws
+    protocol: ws
+    description: STOMP 1.2. UUID neuf dans le header id de SUBSCRIBE, SEND refusé. Heartbeats à dix secondes.
+channels:
+  salle:
+    address: /topic/soirees/{soireeId}/salle
+    parameters:
+      soireeId:
+        description: UUID arbitraire de la démonstration.
+    messages:
+      buzz:
+        $ref: '#/components/messages/Buzz'
+operations:
+  diffuserBuzz:
+    action: send
+    channel:
+      $ref: '#/channels/salle'
+    messages:
+      - $ref: '#/channels/salle/messages/buzz'
+components:
+  messages:
+    Buzz:
+      payload:
+        $ref: './schemas.yaml#/$defs/EvenementSalle'

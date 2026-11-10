@@ -1,0 +1,122 @@
+openapi: 3.1.0
+info:
+  title: Socle technique de démonstration CroustyQuizz
+  version: 0.2.0
+  description: >-
+    Routes de test sans authentification, actives en profil dev seulement (sauf heure).
+    Aucun Joueur, aucune Soirée et aucune Manche ne sont créés.
+    Le contrat métier authentifié reste dans ../openapi.yaml.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/heure:
+    get:
+      operationId: consulterHeure
+      responses:
+        '200':
+          description: Heure du serveur, sans garantie d'installation d'un abonnement.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [maintenant]
+                properties:
+                  maintenant: {type: string, format: date-time}
+  /api/test/soirees/{soireeId}/canaux:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    get:
+      operationId: consulterCanauxDeTest
+      responses:
+        '200':
+          description: Destinations dérivées des constantes du serveur.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connexion, salle, console, buzz]
+                properties:
+                  connexion: {type: string, const: /ws}
+                  salle: {type: string}
+                  console: {type: string}
+                  buzz: {type: string}
+        '400': {description: UUID invalide.}
+  /api/test/soirees/{soireeId}/etat/salle:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    get:
+      operationId: retrouverSalleDuPrototype
+      description: >-
+        Capture cohérente de la dernière Vue synchronisée et de sa Révision.
+        Sans abonnementId, lecture ponctuelle sans garantie de raccordement.
+        Avec abonnementId, attend un abonnement installé sur cette destination.
+        UUID neuf par abonnement, rattaché à une seule connexion STOMP vivante.
+        Le prototype est anonyme : cet UUID n'est pas une preuve d'identité HTTP.
+      parameters:
+        - name: abonnementId
+          in: query
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Dernière vue publiée, ou vue vide de repli à la Révision zéro.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/EtatSalle'
+        '409':
+          description: Abonnement absent, ambigu, désabonné, déconnecté ou sur une autre destination.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../schemas.yaml#/$defs/Probleme'
+              example:
+                type: about:blank
+                title: Abonnement inactif
+                status: 409
+                code: ABONNEMENT_INACTIF
+                detail: L'abonnement n'est pas installé sur cette destination.
+                instance: /api/test/soirees/00000001-0000-4000-8000-000000000000/etat/salle
+        '400': {description: UUID invalide.}
+  /api/test/soirees/{soireeId}/buzz:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    post:
+      operationId: buzzerDansLePrototype
+      description: >-
+        Pseudo fourni par la page, sans identité authentifiée. Espaces retirés aux
+        extrémités, puis limite à 30 points de code Unicode sans couper un caractère.
+        Horodatage et diffusion sérialisés par Soirée dans cette instance du serveur.
+        Pas de déduplication ni de classement métier.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pseudo]
+              properties:
+                pseudo: {type: string, minLength: 1}
+      responses:
+        '200':
+          description: Buzz diffusé ; un seul événement par appel accepté.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuzzRecu'
+        '400': {description: "JSON ou UUID invalide, pseudo absent ou blanc."}
+components:
+  parameters:
+    SoireeId:
+      name: soireeId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    BuzzRecu:
+      $ref: './schemas.yaml#/$defs/BuzzRecu'
