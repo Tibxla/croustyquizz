@@ -1,0 +1,16 @@
+.git
+.github
+.agents
+.codex
+.claude
+.idea
+.vscode
+target
+build
+node_modules
+**/node_modules
+.env
+.env.*
+*.log
+doc
+docs
