@@ -218,3 +218,16 @@ console.log(`${validations.size} schémas, ${operations.size} opérations, ${nom
 console.log('Scénario de resynchronisation : tampon, doublons et ordre des révisions vérifiés.');
 console.log('Captures HTTP et événements : vues par révision et chronologie par destination vérifiées.');
 console.log('Ces contrôles valident les contrats et leurs exemples ; ils ne testent pas un serveur implémenté.');
+
+// Le socle de test a un contrat séparé : ne pas le confondre avec les accès métier.
+await SwaggerParser.validate(fileURLToPath(new URL('prototype/openapi.yaml', dossier)), {
+  resolve: { http: false },
+});
+const prototype = await fromFile(new Parser(),
+  fileURLToPath(new URL('prototype/asyncapi.yaml', dossier))).parse();
+assert.ok(prototype.document);
+assert.equal(prototype.diagnostics.filter((d) => d.severity === 0).length, 0,
+  JSON.stringify(prototype.diagnostics));
+assert.ok(Object.values((await lire('prototype/asyncapi.yaml')).operations)
+  .every((operation) => operation.action === 'send'));
+console.log('Prototype : contrats HTTP et événements STOMP valides.');
