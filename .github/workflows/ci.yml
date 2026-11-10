@@ -22,7 +22,7 @@ jobs:
           cache-dependency-path: tools/api/package-lock.json
       - name: Installer les validateurs de contrats
         run: npm ci --prefix tools/api --ignore-scripts --no-fund --no-audit
-      - name: Valider les contrats, exemples et cas de confidentialité
+      - name: Valider les contrats et tester la Vue synchronisée
         run: npm test --prefix tools/api
 
   build:

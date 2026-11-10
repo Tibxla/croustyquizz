@@ -1,34 +1,42 @@
-# Prototype du canal temps réel (#7)
+# Prototype du canal temps réel (#7, #47)
 
-Ce socle permet de mesurer le trajet HTTP → serveur → deux clients STOMP avant
-l'intégration des accès et des Modes. Il ne prétend pas implémenter le parcours
-métier de `../openapi.yaml` et `../asyncapi.yaml`.
+Ce socle mesure HTTP → serveur → clients STOMP sans accès métier ni Mode de jeu.
+Les pages `/test/ecran.html` et `/test/manette.html` suivent la destination salle
+avec `suivreVue`. Il n'existe pas de troisième page Console dans cette branche.
 
-- [OpenAPI](openapi.yaml) : heure serveur, destinations de test et commande Buzz.
-- [AsyncAPI](asyncapi.yaml) : événement `buzz-recu` diffusé à la salle.
-- Pages `/test/ecran.html` puis lien Manette : profil `dev`, actif par défaut.
-- En profil `prod`, les deux routes `/api/test/...` sont absentes. La consultation
-  `/api/heure` reste disponible. Les fichiers statiques de démonstration restent
-  accessibles, mais ne peuvent envoyer de Buzz sans les routes de test.
+- [OpenAPI](openapi.yaml) : heure serveur, destinations, commande Buzz et capture de salle.
+- [AsyncAPI](asyncapi.yaml) et [schémas](schemas.yaml) : vues complètes révisées.
+- Les routes `/api/test/...` restent en profil `dev` seulement ; `/api/heure` reste publique.
+- La vue conserve les 64 derniers Buzz, du plus ancien au plus récent. Une commande
+  acceptée publie toute la vue, horodatée avec la Clock du serveur.
 
-Les UUID des pages sont arbitraires. Le pseudo vient du navigateur et n'est pas
-une identité. Il n'y a ni persistance, ni arbitrage Blind test, ni idempotence,
-ni récupération d'état après reconnexion. Un clic accepté produit un événement.
-L'horodatage et la publication sont sérialisés par Soirée sur cette instance.
-Les clients reçoivent les événements dans l'ordre de publication.
+La salle suit les six étapes de [reconnexion](../README.md#reconnexion-sans-fenêtre-de-perte).
+La capture et la publication partagent le verrou de la Soirée. La première capture
+utilise un adapter de repli vide, Révision zéro. Les vues et compteurs restent en
+mémoire jusqu'au redémarrage, sans persistance ni éviction pendant une connexion.
 
-Le diffuseur peut également viser la Console (`/topic/soirees/{id}/console`)
-ou une Manette (`/topic/joueurs/{id}`), avec l'enveloppe `{type, donnees}`.
-Aucun événement métier n'y est encore défini. Les abonnements ne sont pas encore
-protégés : les contrôles d'identité et de portée arrivent avec #5 et #10.
-Toutes les trames client STOMP `SEND`, y compris vers `/topic`, sont refusées.
+Le registre observe le traitement effectif du broker, sans accès à son registre
+interne ni hypothèse de RECEIPT. Il lie l'UUID d'abonnement à la connexion STOMP
+et à sa destination, et le retire à UNSUBSCRIBE ou déconnexion. Un UUID ambigu
+sur plusieurs connexions est inactif. Un UUID neuf est obligatoire à chaque reprise.
+Le prototype est anonyme : l'UUID permet le raccordement au flux, pas l'authentification
+de l'appelant HTTP. Le contrôle de l'acteur et des droits reste à intégrer avec #5/#10.
+Toutes les trames client STOMP SEND sont refusées.
 
-L'accès Joueur authentifié, les révisions et la synchronisation des projections
-seront raccordés au contrat métier pendant #6, #8 et #10. Le Buzz d'un Mode
-passera par son service métier ; cette route de démonstration ne doit pas devenir
-un second chemin de jeu. `GET /api/heure` ne sert pas de barrière d'abonnement.
-Les tests attendent explicitement l'enregistrement de chaque abonnement dans
-le registre du broker, sans supposer le support de `RECEIPT`.
+Les canaux Console et Joueur restent des sorties techniques sans route de capture
+ni projection métier. Le canal Joueur ne connaît pas encore sa Soirée ; son enveloppe
+porte `soireeId: null` jusqu'à l'intégration des accès. Leurs Révisions sont indépendantes.
+Le Buzz n'a ni idempotence ni arbitrage Blind test, son pseudo n'est pas une identité.
 
-Validation des deux contrats : `npm test --prefix tools/api`.
-Validation du trajet réel et de la concurrence : `./mvnw verify` (Docker requis).
+`suivreVue(options, adaptations)` reçoit facultativement un transport (connexion,
+abonnement, capture HTTP), des minuteries, une horloge monotone et un générateur
+UUID. Les limites sont réglables : cinq tentatives HTTP à 250 ms sur
+`409 ABONNEMENT_INACTIF`, tampon de 64 messages, reconnexion complète après échec.
+Une requête de capture sans réponse est abandonnée après dix secondes (réglable).
+Une capture appelle `surVue(vue, { type: 'capture' })` ; les événements transmettent
+leur type. `maintenantServeur()` retourne des millisecondes depuis l'époque, ou
+`null` avant la première capture, recalées à chaque capture sans dépendre des
+changements de l'heure locale. `arreter()` annule transport, requêtes et minuteries.
+
+Validation : `npm test --prefix tools/api` (contrats et vrai module ES via Node 24).
+Trajet STOMP réel et concurrence : `./mvnw verify` (Docker requis).

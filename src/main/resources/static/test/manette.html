@@ -22,11 +22,12 @@
 	<span id="etat">Connexion…</span>
 	<label>Pseudo <input id="pseudo" maxlength="30" autocomplete="nickname" placeholder="Ton pseudo"></label>
 	<button id="buzz" disabled>BUZZ</button>
+	<p id="dernier">En attente d’un Buzz</p>
 	<p id="erreur" hidden></p>
 
 	<script src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
-	<script src="/js/tempsreel.js"></script>
-	<script>
+	<script type="module">
+		import { suivreVue } from "/js/tempsreel.js";
 		const soireeId = new URLSearchParams(location.search).get('soiree');
 		const etat = document.getElementById('etat');
 		const bouton = document.getElementById('buzz');
@@ -42,42 +43,46 @@
 			erreur.textContent = 'Lien incomplet : ouvre la Manette depuis l\'Écran de salle.';
 			erreur.hidden = false;
 		} else {
-			TempsReel.chargerCanaux(soireeId).then((canaux) => {
-				const connexion = TempsReel.connecter({
-					canaux,
-					surConnexion() {
-						etat.textContent = 'Connecté';
-						etat.className = 'connecte';
-						bouton.disabled = false;
-					},
-					surDeconnexion() {
-						etat.textContent = 'Déconnecté, reconnexion…';
-						etat.className = '';
-						bouton.disabled = true;
-					},
-				});
+			let synchronisee = false;
+			let envoiEnCours = false;
+			const suivi = suivreVue({
+				destination: `/topic/soirees/${soireeId}/salle`,
+				routeEtat: `/api/test/soirees/${encodeURIComponent(soireeId)}/etat/salle`,
+				surVue({ buzz }) {
+					const recent = buzz.at(-1);
+					document.getElementById('dernier').textContent = recent ? `Dernier Buzz : ${recent.pseudo}` : 'En attente d’un Buzz';
+				},
+				surEtat(nouvelEtat) {
+					synchronisee = nouvelEtat === 'synchronisee';
+					etat.textContent = { synchronisation: 'Synchronisation…', synchronisee: 'Connecté', reconnexion: 'Reconnexion…' }[nouvelEtat];
+					etat.className = synchronisee ? 'connecte' : '';
+					bouton.disabled = !synchronisee || envoiEnCours;
+				},
+			});
+			addEventListener('pagehide', evenement => { if (!evenement.persisted) suivi.arreter(); });
 
-				bouton.addEventListener('click', async () => {
-					if (!pseudo.value.trim()) {
-						pseudo.focus();
-						return;
-					}
-					bouton.disabled = true;
-					erreur.hidden = true;
-					try {
-						await TempsReel.requete(canaux.buzz, { pseudo: pseudo.value });
-						navigator.vibrate?.(60);
-					} catch (probleme) {
-						erreur.textContent = probleme.message;
-						erreur.hidden = false;
-					} finally {
-						bouton.disabled = !connexion.estConnectee();
-					}
-				});
-			}).catch((probleme) => {
-				etat.textContent = 'Lien indisponible';
-				erreur.textContent = probleme.message;
-				erreur.hidden = false;
+			bouton.addEventListener('click', async () => {
+				if (!pseudo.value.trim()) {
+					pseudo.focus();
+					return;
+				}
+				envoiEnCours = true;
+				bouton.disabled = true;
+				erreur.hidden = true;
+				try {
+					const reponse = await fetch(`/api/test/soirees/${encodeURIComponent(soireeId)}/buzz`, {
+						method: 'POST', headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ pseudo: pseudo.value }),
+					});
+					if (!reponse.ok) throw new Error(`Buzz refusé (HTTP ${reponse.status}).`);
+					navigator.vibrate?.(60);
+				} catch (probleme) {
+					erreur.textContent = probleme.message;
+					erreur.hidden = false;
+				} finally {
+					envoiEnCours = false;
+					bouton.disabled = !synchronisee;
+				}
 			});
 		}
 	</script>

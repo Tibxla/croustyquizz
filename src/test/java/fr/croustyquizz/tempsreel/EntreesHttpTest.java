@@ -39,13 +39,13 @@ class EntreesHttpTest {
 		CountDownLatch publicationCommencee = new CountDownLatch(1);
 		CountDownLatch autoriserPublication = new CountDownLatch(1);
 		doAnswer(invocation -> {
-			if (((BuzzRecu) invocation.getArgument(1)).pseudo().equals("Premier")) {
+			if (((VueSallePrototype) invocation.getArgument(1)).buzz().getLast().pseudo().equals("Premier")) {
 				publicationCommencee.countDown();
 				assertThat(autoriserPublication.await(5, TimeUnit.SECONDS)).isTrue();
 			}
 			return null;
 		}).when(diffuseur).diffuserSalle(eq(soiree), any());
-		BuzzControleur controleur = new BuzzControleur(diffuseur, horloge);
+		BuzzControleur controleur = new BuzzControleur(diffuseur, horloge, new VerrousSoiree());
 		AtomicReference<Thread> secondThread = new AtomicReference<>();
 		try (var executeur = Executors.newFixedThreadPool(2)) {
 			try {
@@ -69,7 +69,7 @@ class EntreesHttpTest {
 	@Test
 	void lesClientsNePeuventEnvoyerNiCommandeNiEvenementSurStomp() {
 		CanalDeTest canal = new CanalDeTest();
-		new ConfigurationTempsReel().configureClientInboundChannel(canal);
+		new ConfigurationTempsReel(new RegistreAbonnements()).configureClientInboundChannel(canal);
 		ChannelInterceptor filtre = canal.filtre();
 		for (String destination : new String[] { "/app/soirees/test/buzz", "/topic/soirees/test/salle" }) {
 			var entetes = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);

@@ -1,52 +1,50 @@
 package fr.croustyquizz.tempsreel;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Type;
 import java.net.URI;
-import org.apache.tomcat.websocket.WsWebSocketContainer;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.messaging.simp.broker.AbstractBrokerMessageHandler;
-import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessageType;
-import org.springframework.messaging.support.MessageBuilder;
-import static org.awaitility.Awaitility.await;
-import tools.jackson.databind.json.JsonMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.tomcat.websocket.WsWebSocketContainer;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+
+import tools.jackson.databind.json.JsonMapper;
 
 import fr.croustyquizz.TestcontainersConfiguration;
 
@@ -74,8 +72,10 @@ class CanalTempsReelTest {
 	private DiffuseurTempsReel diffuseur;
 
 	@Autowired
-	@Qualifier("simpleBrokerMessageHandler")
-	private AbstractBrokerMessageHandler broker;
+	private RegistreAbonnements abonnements;
+
+	@MockitoBean
+	private CaptureVueRepli repli;
 
 	private final HttpClient http = HttpClient.newHttpClient();
 	private final JsonMapper json = JsonMapper.builder().build();
@@ -110,10 +110,10 @@ class CanalTempsReelTest {
 
 		Map<String, Object> message = ecran.poll(1, TimeUnit.SECONDS);
 		assertThat(message).isNotNull().containsEntry("type", "buzz-recu");
-		assertThat(donnees(message)).containsEntry("pseudo", "Léa").containsKey("recuLe");
+		assertThat(dernierBuzz(message)).containsEntry("pseudo", "Léa").containsKey("recuLe");
 		assertThat(autreEcran.poll(1, TimeUnit.SECONDS)).isEqualTo(message);
 		assertThat(Duration.ofNanos(System.nanoTime() - debut)).isLessThan(Duration.ofSeconds(1));
-		assertThat(json.readValue(reponse.body(), Map.class)).isEqualTo(donnees(message));
+		assertThat(json.readValue(reponse.body(), Map.class)).isEqualTo(dernierBuzz(message));
 	}
 
 	@Test
@@ -125,7 +125,7 @@ class CanalTempsReelTest {
 
 		assertThat(ecranDeLaSoiree.poll(1, TimeUnit.SECONDS)).isNotNull();
 		buzzer(AUTRE_SOIREE, "Autre");
-		assertThat(donnees(ecranDUneAutreSoiree.poll(1, TimeUnit.SECONDS))).containsEntry("pseudo", "Autre");
+		assertThat(dernierBuzz(ecranDUneAutreSoiree.poll(1, TimeUnit.SECONDS))).containsEntry("pseudo", "Autre");
 		assertThat(ecranDUneAutreSoiree).isEmpty();
 	}
 
@@ -135,7 +135,7 @@ class CanalTempsReelTest {
 
 		assertThat(buzzer(SOIREE, "   ").statusCode()).isEqualTo(400);
 		buzzer(SOIREE, "Valide");
-		assertThat(donnees(ecran.poll(1, TimeUnit.SECONDS))).containsEntry("pseudo", "Valide");
+		assertThat(dernierBuzz(ecran.poll(1, TimeUnit.SECONDS))).containsEntry("pseudo", "Valide");
 		assertThat(ecran).isEmpty();
 	}
 
@@ -191,18 +191,17 @@ class CanalTempsReelTest {
 
 	/** Attend que le broker ait enregistré cet identifiant d'abonnement. */
 	private BlockingQueue<Map<String, Object>> abonner(StompSession session, String destination) {
+		return abonner(session, destination, UUID.randomUUID());
+	}
+
+	private BlockingQueue<Map<String, Object>> abonner(StompSession session, String destination, UUID abonnement) {
 		BlockingQueue<Map<String, Object>> recus = new ArrayBlockingQueue<>(64);
 		StompHeaders entetes = new StompHeaders();
 		entetes.setDestination(destination);
-		String identifiant = UUID.randomUUID().toString();
+		String identifiant = abonnement.toString();
 		entetes.setId(identifiant);
 		session.subscribe(entetes, collecteur(recus));
-		SimpMessageHeaderAccessor sonde = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
-		sonde.setDestination(destination);
-		var message = MessageBuilder.createMessage(new byte[0], sonde.getMessageHeaders());
-		await().atMost(Duration.ofSeconds(2)).until(() -> ((SimpleBrokerMessageHandler) broker)
-				.getSubscriptionRegistry().findSubscriptions(message).values().stream()
-				.anyMatch(ids -> ids.contains(identifiant)));
+		await().atMost(Duration.ofSeconds(2)).until(() -> abonnements.estInstalle(abonnement, destination));
 		return recus;
 	}
 
@@ -228,7 +227,7 @@ class CanalTempsReelTest {
 		for (int i = 0; i < 20; i++) {
 			Map<String, Object> message = ecran.poll(1, TimeUnit.SECONDS);
 			assertThat(message).isNotNull();
-			instants.add(Instant.parse((String) donnees(message).get("recuLe")));
+			instants.add(Instant.parse((String) dernierBuzz(message).get("recuLe")));
 		}
 		assertThat(instants).isSorted();
 	}
@@ -250,6 +249,50 @@ class CanalTempsReelTest {
 				HttpResponse.BodyHandlers.ofString());
 		assertThat(canaux.statusCode()).isEqualTo(200);
 		assertThat(json.readValue(canaux.body(), Map.class)).containsEntry("salle", Canaux.salle(SOIREE));
+	}
+
+	@Test
+	void unBuzzLancePendantLaCaptureSeRaccordeSurLeFluxStompSansPerte() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		UUID abonnement = UUID.randomUUID();
+		var session = connecter();
+		var messages = abonner(session, Canaux.salle(soiree), abonnement);
+		CountDownLatch captureCommencee = new CountDownLatch(1);
+		CountDownLatch terminerCapture = new CountDownLatch(1);
+		when(repli.capturerSalle(soiree)).thenAnswer(invocation -> {
+			captureCommencee.countDown();
+			assertThat(terminerCapture.await(5, TimeUnit.SECONDS)).isTrue();
+			return new VueSallePrototype(List.of());
+		});
+		String route = "http://localhost:" + port + "/api/test/soirees/" + soiree
+				+ "/etat/salle?abonnementId=" + abonnement;
+		try {
+			var capture = http.sendAsync(HttpRequest.newBuilder(URI.create(route)).build(), HttpResponse.BodyHandlers.ofString());
+			assertThat(captureCommencee.await(2, TimeUnit.SECONDS)).isTrue();
+			var buzz = http.sendAsync(requete(soiree, "Pendant la capture"), HttpResponse.BodyHandlers.ofString());
+			terminerCapture.countDown();
+			var reponse = capture.get(5, TimeUnit.SECONDS);
+			assertThat(reponse.statusCode()).isEqualTo(200);
+			assertThat(json.readTree(reponse.body()).get("revision").asLong()).isZero();
+			assertThat(json.readTree(reponse.body()).get("abonnementId").asString()).isEqualTo(abonnement.toString());
+			assertThat(buzz.get(5, TimeUnit.SECONDS).statusCode()).isEqualTo(200);
+			var evenement = messages.poll(2, TimeUnit.SECONDS);
+			assertThat(evenement).containsEntry("revision", 1).containsEntry("soireeId", soiree.toString());
+			assertThat(dernierBuzz(evenement)).containsEntry("pseudo", "Pendant la capture");
+			var suivante = http.send(HttpRequest.newBuilder(URI.create(route)).build(), HttpResponse.BodyHandlers.ofString());
+			assertThat(json.readTree(suivante.body()).get("revision").asLong()).isEqualTo(1);
+			session.disconnect();
+			await().atMost(Duration.ofSeconds(2)).until(() -> !abonnements.estInstalle(abonnement, Canaux.salle(soiree)));
+			assertThat(http.send(HttpRequest.newBuilder(URI.create(route)).build(), HttpResponse.BodyHandlers.ofString()).statusCode())
+					.isEqualTo(409);
+		} finally {
+			terminerCapture.countDown();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> dernierBuzz(Map<String, Object> message) {
+		return ((List<Map<String, Object>>) donnees(message).get("buzz")).getLast();
 	}
 
 	private static StompFrameHandler collecteur(BlockingQueue<Map<String, Object>> recus) {

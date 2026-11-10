@@ -108,5 +108,6 @@ Références : [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0), [AsyncAPI 3.
 
 Le [prototype #7](prototype/README.md) possède ses propres contrats, limités à la
 démonstration en profil `dev`. Il utilise HTTP pour les commandes et STOMP pour
-les événements. Ses accès anonymes et son enveloppe minimale ne constituent pas
-une implémentation des garanties métier décrites ci-dessus.
+les événements. La tranche salle #47 y applique les Révisions et la capture synchronisée. Ses
+accès anonymes ne constituent pas une implémentation des autorisations métier
+décrites ci-dessus.
