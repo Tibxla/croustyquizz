@@ -65,7 +65,7 @@ Les tests de bout en bout démarrent leur propre PostgreSQL jetable : Docker doi
 ## Déployer
 
 Un tag `vX.Y.Z` sur `main` déclenche les vérifications, la publication de l'image sur GHCR et la création d'une GitHub Release avec le JAR exécutable.
-La [procédure de déploiement de démo](docs/deploiement.md) décrit l'installation d'une version sur le serveur, l'accès HTTPS et le plan de secours.
+Sur le serveur de démo, `tools/demo.sh demarrer` et `tools/demo.sh arreter` lancent l'application seulement le temps d'une séance. La [procédure de déploiement](docs/deploiement.md) décrit l'installation, la sécurité, l'accès HTTPS, le plan de secours et le passage chez un autre hébergeur.
 
 ## Indicateurs de qualité
 

@@ -40,7 +40,7 @@ Docker doit tourner pour lancer l'application et pour les tests.
 | `./mvnw test -Dtest=NomDuTest` | un seul test |
 | `npm ci --prefix tools/api` puis `npm test --prefix tools/api` | valide les contrats, les exemples et les cas de confidentialité de `docs/api/` (Node 24) |
 | `python3 tools/generer-dossier.py` | régénère le PDF du dossier de rendu depuis `doc/rendu-1/` (Pandoc et Chrome) ; vérifier qu'il fait toujours quatre pages |
-| `docker compose -f compose.prod.yaml …` | démo sur le serveur : jamais en développement, procédure dans `docs/deploiement.md` |
+| `tools/demo.sh demarrer` / `arreter` | démo sur le serveur, le temps d'une séance : jamais en développement, procédure dans `docs/deploiement.md` |
 | `docker compose down -v` | efface la base locale pour repartir de zéro |
 | `git config core.hooksPath .githooks` | une fois par clone : refuse les messages de commit hors format |
 

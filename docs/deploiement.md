@@ -1,8 +1,10 @@
 # Déployer la démo
 
-L'application et PostgreSQL tournent sur le serveur de Tibxla avec Docker Compose.
-Tailscale Funnel donne une adresse HTTPS publique aux Manettes, à la Console
-d'animation et à l'Écran de salle. PostgreSQL ne publie aucun port sur le serveur.
+L'application et PostgreSQL tournent sur le serveur de Tibxla avec Docker Compose,
+**seulement pendant une séance de test ou une démo** : `tools/demo.sh` les démarre
+et les arrête, rien ne redémarre seul avec la machine. Pendant une démo, Tailscale
+Funnel donne une adresse HTTPS publique aux Manettes, à la Console d'animation et à
+l'Écran de salle. PostgreSQL ne publie aucun port.
 
 ## Prérequis
 
@@ -56,7 +58,7 @@ Le fichier `.env` reste sur le serveur et n'est jamais ajouté à Git.
 Changer ces variables après l'initialisation ne change pas les identifiants de
 la base déjà stockée dans le volume.
 
-Lancer la commande de déploiement ci-dessous depuis ce dossier. L'application
+Démarrer ensuite avec `tools/demo.sh demarrer` (section suivante). L'application
 attend que PostgreSQL soit sain. Flyway applique les migrations au démarrage,
 puis Hibernate vérifie le schéma. Le volume nommé `donnees-postgres` conserve la
 base lors du remplacement des conteneurs. PostgreSQL 18 utilise le montage
@@ -70,55 +72,84 @@ Spring Boot exclut aussi cette dépendance du JAR exécutable
 ([documentation Spring Boot](https://docs.spring.io/spring-boot/maven-plugin/packaging.html)).
 Le profil `dev` n'est pas actif.
 
-## Installer une version
+## Démarrer et arrêter une séance
 
-Après avoir sauvegardé la base, remplacer `0.1.0` par la version livrée souhaitée
-dans cette commande unique :
-
-```bash
-CROUSTYQUIZZ_VERSION=0.1.0 docker compose -f compose.prod.yaml pull && CROUSTYQUIZZ_VERSION=0.1.0 docker compose -f compose.prod.yaml up -d
-```
-
-La variable est répétée pour que les deux commandes utilisent la même image.
-Après succès, reporter cette version dans `.env` pour les prochaines commandes.
-Sans version définie, Compose utilise `main`. Pour une démonstration, choisir une
-version numérotée afin de pouvoir la retrouver.
-
-Vérifier le démarrage, car `up -d` ne garantit pas encore une réponse HTTP :
+Depuis le dossier du dépôt sur le serveur, avec la version choisie dans `.env`
+(`CROUSTYQUIZZ_VERSION`, sans `v`) :
 
 ```bash
-docker compose -f compose.prod.yaml ps
-docker compose -f compose.prod.yaml logs --tail=100 app
-curl -fsS http://127.0.0.1:8080/
+tools/demo.sh demarrer   # télécharge l'image si besoin, démarre, attend la réponse HTTP
+tools/demo.sh etat       # conteneurs et exposition en cours
+tools/demo.sh arreter    # ferme l'adresse publique, arrête les conteneurs
 ```
 
-La page doit contenir `<title>CroustyQuizz</title>`. L'application écoute seulement
-sur `127.0.0.1:8080` côté serveur. Aucun port PostgreSQL n'est publié.
+`demarrer` affiche `CroustyQuizz répond sur http://127.0.0.1:8080/` quand la page
+d'accueil répond. Sans réseau, il démarre avec l'image déjà présente sur la machine.
+`arreter` garde la base dans son volume : la séance suivante la retrouve. Les
+conteneurs sont relancés après un plantage pendant la séance (trois fois au plus),
+jamais au démarrage de la machine.
+
+Pour les tests de l'équipe sans exposition à Internet, partager le port local sur le
+réseau Tailscale seulement (les camarades invités sur le réseau de Tibxla) :
+`tailscale serve --bg --https=8443 8080`, puis `tailscale serve --https=8443 off`.
+
+Pour changer de version : sauvegarder la base, modifier `CROUSTYQUIZZ_VERSION` dans
+`.env`, puis `tools/demo.sh arreter` et `tools/demo.sh demarrer`. Choisir une version
+numérotée pour une démonstration, afin de pouvoir la retrouver.
 
 En production, Flyway garde `out-of-order=false`. Si une migration ancienne manque
-sur une base déjà utilisée, le démarrage peut être refusé. Conserver les logs et
-faire corriger la séquence de migrations avant de poursuivre. Ne pas activer le
-profil `dev` pour contourner ce refus.
+sur une base déjà utilisée, le démarrage peut être refusé. Conserver les logs
+(`docker compose -f compose.prod.yaml logs app`) et faire corriger la séquence de
+migrations avant de poursuivre. Ne pas activer le profil `dev` pour contourner ce refus.
 
-## Exposer et vérifier HTTPS
+## Exposer en HTTPS le temps d'une démo
 
-Tibxla exécute sur le serveur, après la vérification locale :
+L'adresse publique s'ouvre seulement pendant une démo, et seulement quand ces
+conditions sont remplies (issue #4) :
+
+1. la Console d'animation est protégée par un compte (#5) ;
+2. les routes `/api/test/` du prototype temps réel sont coupées en profil `prod` ;
+3. le Buzz, les Réponses et l'accès à une Soirée ont une limite de requêtes.
+
+Tant qu'elles ne le sont pas, `tools/demo.sh demarrer --public` refuse d'ouvrir
+l'adresse. Une fois vérifiées, écrire `CROUSTYQUIZZ_PUBLIC=autorise` dans `.env`, puis :
 
 ```bash
-tailscale funnel --bg 8080
-tailscale funnel status
+tools/demo.sh demarrer --public   # tailscale funnel --bg --https=443 8080
+tools/demo.sh arreter             # à la fin de la démo, toujours
 ```
 
-Le mode `--bg` conserve l'exposition en arrière-plan. Funnel termine HTTPS et
-relaie les requêtes vers le port local 8080. Relever l'adresse publique affichée.
-Les Joueurs n'ont pas besoin d'installer Tailscale.
+Funnel termine le HTTPS et relaie les requêtes vers le port local 8080 ; l'adresse
+IP du serveur n'est pas publiée et aucun port n'est ouvert sur la box. `arreter`
+ferme uniquement l'entrée HTTPS de CroustyQuizz (`--https=443 off`) : les autres
+services de `tailscale serve` restent en place. Ne jamais utiliser
+`tailscale funnel reset`, qui les effacerait.
 
-Sur un téléphone, couper le Wi-Fi et ouvrir cette adresse en 4G, sans connexion
-Tailscale sur le téléphone. Vérifier le certificat HTTPS et la page d'accueil.
-Quand le parcours métier est disponible, créer une Soirée depuis la Console
-d'animation, ouvrir sa Manette via le QR code et vérifier une mise à jour sur
-l'Écran de salle. Cette vérification extérieure reste à faire sur le serveur ;
-un essai local seul ne valide pas l'acceptation de l'issue #4.
+Sur un téléphone, couper le Wi-Fi et ouvrir l'adresse en 4G, sans Tailscale sur le
+téléphone. Vérifier le certificat HTTPS et la page d'accueil. Quand le parcours
+métier est disponible, créer une Soirée depuis la Console d'animation, ouvrir sa
+Manette par le QR code et vérifier une mise à jour sur l'Écran de salle. Un essai
+local seul ne valide pas l'acceptation de l'issue #4.
+
+## Sécurité du serveur
+
+`compose.prod.yaml` limite ce qu'une faille de l'application pourrait faire sur la
+machine de Tibxla :
+
+- l'application tourne sous un utilisateur sans droits (UID 10001), sur un système de
+  fichiers en lecture seule, sans aucune capacité Linux ni gain de privilèges ;
+- elle n'a accès à aucun dossier de la machine ; seule la base a un volume, le sien ;
+- mémoire, processeur et nombre de processus sont plafonnés (1 Go et 2 processeurs
+  pour l'application, 512 Mo pour la base) : une séance ne peut pas étouffer les
+  autres services ;
+- la base est sur un réseau interne sans accès sortant, joignable par l'application seule ;
+- l'application n'écoute que sur `127.0.0.1` ; les journaux sont limités à 30 Mo par
+  conteneur.
+
+Vérifié le 10/11 sur une installation d'essai : écriture refusée dans `/app`, UID
+10001, base sans accès à Internet. Le secret de la base reste dans `.env`
+(`chmod 600`), jamais dans Git.
+
 
 ## Sauvegarder et restaurer la base
 
@@ -149,10 +180,9 @@ Ne jamais supprimer le volume pour une mise à jour. Un `down -v` effacerait la 
 
 ## Revenir à la version précédente
 
-Reprendre la commande d'installation avec le numéro précédent dans les deux
-affectations de `CROUSTYQUIZZ_VERSION`, puis reporter ce numéro dans `.env` et
-refaire les vérifications HTTP. Par exemple, pour revenir de `0.2.0` à `0.1.0`,
-utiliser la commande de la section « Installer une version ».
+Remettre le numéro précédent dans `CROUSTYQUIZZ_VERSION` (`.env`), puis
+`tools/demo.sh arreter` et `tools/demo.sh demarrer`, qui attend de nouveau la
+réponse HTTP. Par exemple, pour revenir de `0.2.0` à `0.1.0`, écrire `0.1.0`.
 
 Une ancienne image ne remet pas la base dans son ancien état. Si les migrations
 de la nouvelle version sont incompatibles avec l'ancienne, arrêter l'application,
@@ -169,7 +199,7 @@ de la sauvegarde si les données de démonstration doivent être reprises.
 Si le serveur ou son accès Internet tombe, connecter le portable au partage de
 connexion d'un téléphone. Lancer Compose sur le portable avec la version prévue,
 restaurer la sauvegarde si nécessaire, puis vérifier la réponse HTTP locale.
-Activer Funnel avec la même commande sur ce portable. Son adresse publique sera
+Ouvrir l'adresse publique avec `tools/demo.sh demarrer --public` sur ce portable. Son adresse publique sera
 différente : transmettre la nouvelle adresse aux Joueurs et régénérer les QR codes
 utilisés pour accéder aux Manettes. Refaire le test avec un autre téléphone en
 4G, Wi-Fi coupé, avant de reprendre la Soirée.
@@ -177,3 +207,22 @@ utilisés pour accéder aux Manettes. Refaire le test avec un autre téléphone 
 Sans sauvegarde, la base du portable est vierge. Ce secours ne conserve pas les
 connexions ni la Soirée en cours : l'Animateur doit préparer une nouvelle Soirée.
 Essayer ce parcours avant le jour de la démonstration.
+
+## Changer d'hébergeur
+
+Rien dans l'image ne dépend du serveur de Tibxla ni de Tailscale : `compose.prod.yaml`,
+`tools/demo.sh` et Funnel ne sont qu'une façon de la lancer. Un hébergeur de
+conteneurs (Render, Koyeb, Cloud Run…) peut prendre la même image s'il fournit :
+
+| Besoin | Valeur |
+|---|---|
+| Image | `ghcr.io/tibxla/croustyquizz:<version>`, publiée à chaque tag |
+| Port | `PORT` si l'hébergeur l'impose, 8080 sinon |
+| Configuration | `SPRING_PROFILES_ACTIVE=prod`, `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` |
+| Base | PostgreSQL 18 ; Flyway crée le schéma au premier démarrage |
+| Réseau | HTTPS et WebSocket (STOMP) pendant toute la Soirée |
+| Instances | une seule, qui reste éveillée pendant la Soirée : les Révisions et la dernière Vue synchronisée sont en mémoire (ADR 0004) |
+
+Vercel et Netlify ne conviennent pas : ils ne font tourner ni conteneur ni JVM, et
+ne gardent pas de connexion WebSocket ouverte. Pour migrer les données, utiliser la
+sauvegarde `pg_dump` ci-dessus et la restaurer sur la nouvelle base.
