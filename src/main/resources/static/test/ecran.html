@@ -33,12 +33,17 @@
 	</main>
 
 	<script src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
-	<script src="/js/tempsreel.js"></script>
-	<script>
+	<script type="module">
+		import { suivreVue } from "/js/tempsreel.js";
 		const parametres = new URLSearchParams(location.search);
 		let soireeId = parametres.get('soiree');
 		if (!soireeId) {
-			soireeId = TempsReel.nouvelIdentifiant();
+			// UUID de la Soirée de démonstration, utilisable aussi en HTTP local.
+			const octets = crypto.getRandomValues(new Uint8Array(16));
+			octets[6] = (octets[6] & 15) | 64;
+			octets[8] = (octets[8] & 63) | 128;
+			const hex = Array.from(octets, octet => octet.toString(16).padStart(2, '0')).join('');
+			soireeId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 			parametres.set('soiree', soireeId);
 			history.replaceState(null, '', `?${parametres}`);
 		}
@@ -53,29 +58,25 @@
 		const historique = document.getElementById('historique');
 		const heure = (instant) => new Date(instant).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
 
-		TempsReel.chargerCanaux(soireeId).then((canaux) => TempsReel.connecter({
-			canaux,
-			surConnexion(connexion) {
-				etat.textContent = 'Connecté';
-				etat.className = 'connecte';
-				connexion.ecouter(canaux.salle, {
-					'buzz-recu'({ pseudo, recuLe }) {
-						dernier.querySelector('strong').textContent = pseudo;
-						dernier.querySelector('small').textContent = `a buzzé à ${heure(recuLe)}`;
-						const ligne = document.createElement('li');
-						ligne.textContent = `${heure(recuLe)} : ${pseudo}`;
-						historique.prepend(ligne);
-					},
-				});
+		const suivi = suivreVue({
+			destination: `/topic/soirees/${soireeId}/salle`,
+			routeEtat: `/api/test/soirees/${encodeURIComponent(soireeId)}/etat/salle`,
+			surVue({ buzz }) {
+				const recent = buzz.at(-1);
+				dernier.querySelector('strong').textContent = recent?.pseudo ?? '—';
+				dernier.querySelector('small').textContent = recent ? `a buzzé à ${heure(recent.recuLe)}` : "En attente d'un Buzz";
+				historique.replaceChildren(...[...buzz].reverse().map(({ pseudo, recuLe }) => {
+					const ligne = document.createElement('li');
+					ligne.textContent = `${heure(recuLe)} : ${pseudo}`;
+					return ligne;
+				}));
 			},
-			surDeconnexion() {
-				etat.textContent = 'Déconnecté, reconnexion…';
-				etat.className = '';
+			surEtat(nouvelEtat) {
+				etat.textContent = { synchronisation: 'Synchronisation…', synchronisee: 'Connecté', reconnexion: 'Reconnexion…' }[nouvelEtat];
+				etat.className = nouvelEtat === 'synchronisee' ? 'connecte' : '';
 			},
-		})).catch((probleme) => {
-			etat.textContent = probleme.message;
-			etat.className = '';
 		});
+		addEventListener('pagehide', evenement => { if (!evenement.persisted) suivi.arreter(); });
 	</script>
 </body>
 </html>
