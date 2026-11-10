@@ -26,7 +26,7 @@ L’innovation d’usage proposée repose sur la continuité de la Soirée : **u
 **Dépôt unique, front, API et back :** <https://github.com/Tibxla/croustyquizz>\
 **Spécification de référence :** [PRD, issue nº 2](https://github.com/Tibxla/croustyquizz/issues/2).
 
-**Branche de ce rendu :** [feature/35-rendu-1-qualite](https://github.com/Tibxla/croustyquizz/tree/feature/35-rendu-1-qualite), destinée à être fusionnée dans `develop` par PR.
+**Version de ce rendu :** [doc/rendu-1 sur `develop`](https://github.com/Tibxla/croustyquizz/tree/develop/doc/rendu-1), fusionnée par la PR nº 36.
 
 Le dossier est maintenu dans **`doc/rendu-1/dossier-lancement.md`**, compilé en **`doc/rendu-1/dossier-lancement.pdf`** et destiné à être versionné avec les livraisons. Les issues, branches par fonctionnalité et PR relues retracent le travail ; les conventions figurent dans `CONTRIBUTING.md`.
 
@@ -79,7 +79,7 @@ L’architecture retenue est un **monolithe modulaire Spring Boot 4.1.1**, en **
 
 ## Front et contrats réseau
 
-Les trois interfaces sont des pages HTML et JavaScript servies directement par Spring Boot, **sans framework front imposé ni bundler** (ADR 0001). Une bibliothèque peut être chargée par script. Les contrats **OpenAPI pour HTTP** et **AsyncAPI pour STOMP** seront écrits et relus avant leur implémentation (travail suivi dans l’issue nº 34). Réponses, Buzz et Votes passent par HTTP ; STOMP diffuse les événements vers la Console, la salle ou une Manette selon leurs droits.
+Les trois interfaces sont des pages HTML et JavaScript servies directement par Spring Boot, **sans framework front imposé ni bundler** (ADR 0001). Une bibliothèque peut être chargée par script. Les contrats **OpenAPI pour HTTP** et **AsyncAPI pour STOMP** du premier parcours de Quiz sont écrits dans `docs/api/` (issue nº 34) et validés par la CI avant toute implémentation (ADR 0003). Réponses, Buzz et Votes passent par HTTP ; STOMP diffuse les événements vers la Console, la salle ou une Manette selon leurs droits.
 
 Le serveur décide de l’identité, des délais, de l’ordre des actions et des points. Répéter le même envoi de Réponse doit restituer son résultat initial sans nouvel effet ; modifier une Réponse acceptée est refusé. La reconnexion récupère une vue autorisée de l’état courant, sans dévoiler une bonne réponse avant la correction.
 
@@ -100,7 +100,7 @@ Le catalogue Deezer est envisagé pour les extraits du Blind test et LRCLIB pour
 Nous utilisons l’IA comme aide à la conception, au développement, aux tests et à la rédaction de la documentation. Nous lui fournissons le contexte du projet et une tâche précise, puis nous relisons ses propositions avant de les intégrer. Les choix techniques et la validation des livrables restent à la charge de l’équipe.
 
 1. **Tâches et outils.** Nous sollicitons notamment Claude Code, Codex et Antigravity CLI pour comprendre du code, comparer des pistes de conception, proposer des implémentations, rechercher des cas de test et améliorer la documentation. Les demandes s’appuient sur le glossaire, les décisions d’architecture et les conventions du dépôt.
-2. **Traçabilité.** Chaque PR assistée par IA indique l’outil, le modèle si disponible, la tâche confiée, les éléments retenus ou modifiés et les vérifications. Nous conservons les échanges utiles pour expliquer nos décisions. Le code et la documentation sont relus par l’équipe.
+2. **Traçabilité.** Chaque PR assistée par IA indique, dans la section « Usage de l’IA » du gabarit de PR, l’outil, le modèle si disponible, la tâche confiée, les éléments retenus ou modifiés et les vérifications. Nous conservons les échanges utiles pour expliquer nos décisions. Le code et la documentation sont relus par l’équipe.
 3. **Maîtrise et relecture.** L’auteur comprend et sait expliquer toute contribution intégrée. Il vérifie les propositions dans le code et les sources techniques, corrige les erreurs et obtient la relecture d’un autre membre.
 4. **Vérification.** Les tests pertinents et la CI sont exécutés avant fusion. Nous contrôlons les règles métier, les délais, les droits d’accès et les dépendances ; une affirmation de l’IA ne prouve pas la réussite d’un test.
 5. **Données transmises.** Nous utilisons des exemples fictifs et ne transmettons ni secrets d’accès ni données personnelles réelles. Les clés et mots de passe restent hors du dépôt et des échanges avec l’IA.
@@ -111,7 +111,7 @@ L’**Assistant de l’Animateur** est une fonctionnalité distincte de ce proto
 
 Les jalons prévus sont **`v0.1.0` pour le socle**, **`v0.2.0` pour les Modes de jeu**, puis **`v1.0.0` pour le proof-of-concept final**. Chaque livraison fera évoluer ce dossier et présentera les fonctionnalités, tests et limites. `develop` reçoit les PR relues avec CI verte ; les livraisons passent ensuite sur `main` avec un tag, selon `CONTRIBUTING.md`.
 
-Le socle comprend le démarrage Spring Boot, la page d’accueil, PostgreSQL/Flyway, le contrat de Manche et ses tests sur un mode factice. Les Modes de jeu, tables métier et authentification restent à développer ; les contrats réseau et le temps réel sont en cours. **La CI** lance `./mvnw verify`, mesure la couverture et analyse le code ; le déploiement automatisé reste à mettre en place.
+Le socle comprend le démarrage Spring Boot, la page d’accueil, PostgreSQL/Flyway, le contrat de Manche et ses tests sur un mode factice. Les Modes de jeu, tables métier et authentification restent à développer ; les contrats réseau du premier parcours sont écrits et le temps réel est en cours. **La CI** lance `./mvnw verify`, mesure la couverture et analyse le code ; le déploiement automatisé reste à mettre en place.
 
 Les tests prévus couvrent les règles des trois modes, les délais avec une Horloge factice, les migrations et les parcours HTTP/STOMP sur PostgreSQL avec **Testcontainers**. Les objectifs de validation incluent la reconnexion, les envois répétés et une salle de **60 Joueurs simultanés** ; ce sont des objectifs, pas des résultats déjà obtenus.
 
@@ -119,4 +119,4 @@ Les tests prévus couvrent les règles des trois modes, les délais avec une Hor
 
 Le README présente l’installation et les badges de **version**, **licence MIT**, **couverture JaCoCo** et **alertes PMD**. `./mvnw verify` produit les rapports ; PMD bloque le build en cas d’alerte. La CI conserve les rapports et publie les badges du dernier build réussi sur la branche `mesures-qualite`. Ces indicateurs portent sur le code existant. Le socle est en `0.0.1-SNAPSHOT` ; les tags ci-dessus sont prévus et la licence figure dans `LICENSE`.
 
-<p class="references">Références : consignes du Rendu 1 ; fiche officielle de l’EC Projet, consultée le 10/11/2026 ; PRD nº 2 ; CONTEXT.md ; CONTRIBUTING.md ; pom.xml ; workflow CI ; ADR 0001 et 0002 ; issue nº 34. Les décisions ouvertes seront révisées aux prochaines livraisons.</p>
+<p class="references">Références : consignes du Rendu 1 ; fiche officielle de l’EC Projet, consultée le 10/11/2026 ; PRD nº 2 ; GLOSSARY.md ; CONTRIBUTING.md ; pom.xml ; workflow CI ; ADR 0001 à 0003 ; issue nº 34 et `docs/api/`. Les décisions ouvertes seront révisées aux prochaines livraisons.</p>

@@ -1,0 +1,22 @@
+{
+  "extraKnownMarketplaces": {
+    "mattpocock": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/mattpocock/skills.git"
+      },
+      "autoUpdate": true
+    },
+    "impeccable": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/pbakaus/impeccable.git"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@mattpocock": true,
+    "impeccable@impeccable": true
+  }
+}

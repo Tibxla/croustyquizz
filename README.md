@@ -84,7 +84,7 @@ Le code du projet est distribué sous [licence MIT](LICENSE).
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) : branches, format des commits, pull requests. À lire avant le premier commit.
 - [`doc/rendu-1/dossier-lancement.md`](doc/rendu-1/dossier-lancement.md) : dossier de lancement, scénarios, architecture et protocole d'usage de l'IA.
-- [`CONTEXT.md`](CONTEXT.md) : le vocabulaire du projet (Soirée, Manche, Manette…).
+- [`GLOSSARY.md`](GLOSSARY.md) : le vocabulaire du projet (Soirée, Manche, Manette…).
 - [`AGENTS.md`](AGENTS.md) : commandes, propriétaires des packages, comment coder un Mode de jeu.
 - [`docs/conception/`](docs/conception/) : diagrammes de classes.
 - [`docs/adr/`](docs/adr/) : décisions d'architecture.

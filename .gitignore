@@ -27,3 +27,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Agents d'IA : réglages personnels et caches locaux
+.claude/settings.local.json
+.impeccable/hook.cache.json
