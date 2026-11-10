@@ -1,0 +1,39 @@
+# Mises à jour des dépendances, regroupées par écosystème : une PR par mois au plus.
+# Les préfixes de commit respectent le format vérifié par la CI (build(deps): …, ci(deps): …).
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      maven:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /tools/api
+    target-branch: develop
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      validateurs-api:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ["*"]
