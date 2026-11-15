@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette · Écran de salle, Karaoké · CroustyQuizz</title>
+<link rel="stylesheet" href="../css/croustyquizz.css">
+<link rel="stylesheet" href="../css/ecran-de-salle.css">
+</head>
+<body class="salle">
+<!-- Maquette de référence : pseudos, titres et paroles fictifs. -->
+<main class="salle__scene">
+  <section class="salle__principal" aria-label="Passage en cours">
+    <p class="paroles__titre"><span class="chiffres">N° 12</span> Léa et Sam · « Le Dernier Métro » · Les Néons</p>
+    <div class="paroles">
+      <p class="paroles__ligne">On a couru jusqu'au bout du quai</p>
+      <p class="paroles__ligne paroles__ligne--en-cours"><span class="paroles__chante">La ville s'éteint,</span> nous on reste allumés</p>
+      <p class="paroles__ligne">Encore un tour avant la fermeture</p>
+    </div>
+    <footer class="salle__pied">
+      <span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
+      <span>Au Zinc · Karaoké · Manche 3 sur 5</span>
+    </footer>
+  </section>
+  <aside class="salle__cote" aria-label="File d'attente">
+    <h2>File d'attente</h2>
+    <ol class="rouleau">
+      <li><div class="ticket ticket--orange ticket--detache"><span class="ticket__numero">12</span><span class="ticket__corps"><span class="ticket__qui">Léa et Sam</span><span class="ticket__quoi">Le Dernier Métro</span><span class="ticket__etat">Sur scène</span></span></div></li>
+      <li><div class="ticket ticket--eau"><span class="ticket__numero">13</span><span class="ticket__corps"><span class="ticket__qui">Karim</span><span class="ticket__quoi">Juste avant l'orage</span></span></div></li>
+      <li><div class="ticket ticket--bleu"><span class="ticket__numero">14</span><span class="ticket__corps"><span class="ticket__qui">Inès</span><span class="ticket__quoi">Freestyle · Pluie fine</span></span></div></li>
+      <li><div class="ticket ticket--rose"><span class="ticket__numero">15</span><span class="ticket__corps"><span class="ticket__qui">Tom, Jade et Max</span><span class="ticket__quoi">Les Grandes Vacances</span></span></div></li>
+    </ol>
+    <div class="talon">
+      <div class="talon__qr"><img src="qr-demo.svg" alt="QR code pour rejoindre la Soirée"></div>
+      <div><span class="talon__aide">Rejoins la Soirée</span><span class="talon__code">K7Q2</span><span class="talon__adresse"><span>croustyquizz-recette</span><wbr><span>.onrender.com</span></span></div>
+    </div>
+  </aside>
+</main>
+</body>
+</html>
