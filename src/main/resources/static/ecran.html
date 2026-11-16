@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Écran de salle · CroustyQuizz</title>
+  <link rel="stylesheet" href="/css/croustyquizz.css">
+  <link rel="stylesheet" href="/css/ecran-de-salle.css">
+  <script defer src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
+  <script type="module" src="/js/page.mjs"></script>
+</head>
+<body class="salle salle--coquille" data-ecran="ecran">
+<main class="salle__scene">
+  <section class="salle__principal" aria-label="Soirée et mode en cours">
+    <div class="coquille__commun">
+      <h1 data-titre>Soirée</h1><p class="commun__resume" data-resume></p>
+      <p data-manche>En attente de la prochaine Manche</p>
+    </div>
+    <p class="coupure" role="status" data-connexion>Synchronisation…</p><p class="envoi envoi--refuse" role="alert" data-erreur hidden></p><p class="envoi" role="status" data-envoi hidden></p>
+    <div class="coquille__mode" data-principale></div>
+    <p class="coquille__note" data-attente>La prochaine Manche s’affichera ici.</p>
+    <footer class="salle__pied"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span><span>Écran de salle</span></footer>
+  </section>
+  <aside class="salle__cote" aria-label="La salle">
+    <div class="coquille__mode" data-laterale></div>
+    <section class="commun" aria-label="Joueurs et Classement général">
+      <h2 data-nombre-joueurs>Joueurs</h2><ul class="commun__liste" data-joueurs></ul>
+      <h2>Classement général</h2><ol class="commun__liste" data-classement></ol>
+      <p data-buzz>Aucun Buzz reçu</p>
+    </section>
+    <div class="talon" data-talon hidden>
+      <div><span class="talon__aide">Code d’accès de la Soirée</span><span class="talon__code" data-code></span></div>
+    </div>
+  </aside>
+</main>
+<noscript>Active JavaScript pour recevoir la Vue synchronisée.</noscript>
+</body>
+</html>

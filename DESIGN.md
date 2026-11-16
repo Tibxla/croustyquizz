@@ -171,6 +171,17 @@ components:
     rounded: "{rounded.rayon}"
     padding: "12px 16px"
     height: "56px"
+  champ-erreur:
+    backgroundColor: "{colors.refus-fond}"
+    textColor: "{colors.refus}"
+    rounded: "{rounded.rayon}"
+    padding: "8px 12px"
+  dialogue:
+    backgroundColor: "{colors.fond-2}"
+    textColor: "{colors.texte}"
+    rounded: "{rounded.rayon-grand}"
+    padding: "24px"
+    width: "min(36rem, calc(100% - 32px))"
   envoi-en-cours:
     backgroundColor: "{colors.fond-2}"
     textColor: "{colors.texte-2}"
@@ -312,14 +323,14 @@ Trois mises en page pour un seul monde, sur une échelle d'espacement de 4 px (4
 
 ## Elevation & Depth
 
-Le système est plat. La profondeur vient des paliers de brun (fond-0 à fond-4) : une surface plus haute est un brun plus clair. Deux ombres seulement existent, et chacune a un propriétaire.
+Le système est plat. La profondeur vient des paliers de brun (fond-0 à fond-4) : une surface plus haute est un brun plus clair. Deux ombres existent ; le dialogue modal reprend celle du détachement pour isoler la décision.
 
 ### Shadow Vocabulary
-- **Détachement** (`box-shadow: 0 10px 24px rgb(0 0 0 / 0.45)`): le corps d'un ticket détaché, et lui seul.
+- **Détachement** (`box-shadow: 0 10px 24px rgb(0 0 0 / 0.45)`): le corps d'un ticket détaché et le dialogue modal (`--ombre`).
 - **Barre collée** (`box-shadow: 0 4px 12px rgb(0 0 0 / 0.35)`): la barre de pilotage de la Console, qui reste au-dessus du contenu qui défile.
 
 ### Named Rules
-**La règle de l'Ombre du détachement.** Une ombre portée signifie qu'un ticket a quitté le rouleau. Hors du ticket détaché et de la barre de pilotage, rien ne flotte.
+**La règle de l'Ombre du détachement.** Une ombre portée signifie qu'un ticket a quitté le rouleau ou qu'un dialogue exige une décision. Hors du ticket détaché, du dialogue modal et de la barre de pilotage, rien ne flotte.
 
 ## Shapes
 
@@ -343,7 +354,12 @@ Des boutons francs, à bordure épaisse, qui se laissent viser debout et d'une m
 ### Inputs / Fields
 - **Style:** fond brun comptoir, bordure de 2 px brun bouchon, coins de 10 px, 56 px de haut sur la Manette (52 px dans la recherche de la Console), texte à 1.25rem, curseur citron.
 - **Focus:** la bordure passe au citron ; la recherche de la Console allume sa bordure dès que son champ a le focus.
-- **Aide:** une ligne en crème fanée sous le champ. Aucun style d'erreur de champ n'existe encore.
+- **Aide:** une ligne en crème fanée sous le champ.
+- **Erreur (`.champ--erreur`):** message sous le champ en `--refus` sur `--refus-fond`, avec un texte explicite toujours présent quand l'erreur est affichée. Relier ce message au champ par `aria-describedby` et poser `aria-invalid="true"` ; la couleur ne suffit jamais. La classe se pose sur le message, pas sur le conteneur `.champ`.
+- `.champ`, `.recherche` et `.panneau` sont dans `croustyquizz.css` et utilisables sur les trois écrans.
+
+### Dialogue modal
+`<dialog class="dialogue" aria-labelledby="titre-dialogue">` : fond `--fond-2`, texte `--texte`, ombre `--ombre`, coins `--rayon-grand`, marge intérieure de 24 px. Le voile reprend le brun tabac à 80 %. Donner un titre, un contrôle de fermeture et une action nommée. Utiliser `ouvrirDialogue` (`js/dialogue.mjs`) : ouverture par `showModal()`, focus sur le contrôle `autofocus` ou le premier contrôle (à défaut, rendre le dialogue focalisable avec `tabindex="-1"`), fermeture native par Échap ou `close()`, puis retour au contrôle d'origine s'il existe encore. Le focus conserve son contour citron visible.
 
 ### Navigation
 - **Barre de pilotage (Console):** collée en haut, brun banquette, filet brun bois et ombre de barre collée. À gauche le mot-symbole et la Soirée, au centre le Mode de jeu en Barlow 800 avec la progression et les indicateurs, à droite les commandes, l'action citron en dernier.
@@ -393,7 +409,7 @@ Le seul aplat citron de l'Écran de salle : QR code sur carré blanc, phrase d'i
 - **Don't** laisser une couleur porter seule une information.
 - **Don't** poser un dégradé de couleur sur un ticket.
 - **Don't** ajouter d'ornement autre que la perforation et ses encoches.
-- **Don't** faire flotter une surface avec une ombre hors du ticket détaché et de la barre de pilotage.
+- **Don't** faire flotter une surface avec une ombre hors du ticket détaché, du dialogue modal et de la barre de pilotage.
 - **Don't** couper l'adresse d'accès sur un trait d'union.
 - **Don't** charger une police, une icône ou un script depuis une ressource externe.
 - **Don't** glisser vers la boîte de nuit violette à néons ni vers le tableau de bord blanc de logiciel en ligne.

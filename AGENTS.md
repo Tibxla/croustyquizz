@@ -54,6 +54,17 @@ Toute commande passe par le service : préparation externe hors verrou, verrou d
 
 Le temps passe exclusivement par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread). Ses callbacks repassent par le service ; la fabrique précise `typeEvenementMinuteur` pour ses phases. `reglagesCommuns` extrait les réglages du contexte depuis les réglages typés du mode. Les fournisseurs produisent des projections sans secrets pour chaque destination sous le même verrou ; seul le socle compose et publie la vue complète. La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`), notamment pour les refus sans mutation et après la fin.
 
+Côté navigateur, ne pas créer de page par mode : les coquilles `manette.html`, `console.html` et `ecran.html` chargent `static/js/modes/<mode>/<ecran>.mjs`. Dossiers : `quiz`, `blindtest` (pour `BLIND_TEST`), `karaoke`, `freestyle`. Chaque module exporte `monter(zones, contexte)`, qui rend `{ afficher(vue, origine), demonter() }` :
+
+- `zones.principale` sur les trois écrans ; `zones.laterale` aussi sur la Console et l'Écran de salle. Sur la salle, la principale est à gauche et la latérale en haut à droite : la coquille garde `.salle__scene`, le pied, le talon et les informations communes. Ne modifier que ses zones.
+- `afficher` reçoit la vue complète et `origine: { source: 'capture' | 'evenement', type }`. Une capture restaure sans rejouer d'animation ; seul un événement peut la déclencher. Les pages ne contiennent aucune règle de jeu.
+- `contexte.envoyer(methode, chemin, corps, { entetes, signal } = {})` authentifie toute requête HTTP, y compris `GET`, et rend `{ statut, corps }` pour tous les statuts HTTP ; une erreur réseau lève. Le module fournit `Idempotency-Key` dans `entetes` et le signal d'un `AbortController`. La coquille affiche l'envoi en cours puis le reçu ou le `detail` du `Probleme`, sans succès anticipé ; un reçu ne remplace jamais la vue. Ne pas réessayer automatiquement une commande.
+- `contexte.resynchroniser()` redemande une capture complète. `contexte.surEtatConnexion(rappel)` appelle immédiatement le rappel avec l'état courant (`synchronisation`, `synchronisee`, `coupure`), puis à chaque changement ; il rend la fonction de désabonnement. Désactiver les commandes tant que la vue n'est pas synchronisée.
+- `contexte.acteur` contient `type`, `soireeId` et l'`identifiant` de démonstration ; `contexte.soireeId` identifie la Soirée. La session Animateur remplacera cette identité avec #5. L'identité du Joueur viendra de #10.
+- `demonter()` annule ses requêtes, ses écouteurs, ses abonnements et ses animations, puis libère ses zones. Le changement de `modeEnCours` démonte l'ancien module avant de monter le suivant ; hors Manche, aucun module. Tester la logique pure par `node --test` dans `tools/ecrans/` (inclus dans `npm test --prefix tools/api`).
+
+Les styles `.panneau`, `.recherche`, `.champ`, `.champ--erreur` et `.dialogue` sont communs dans `croustyquizz.css`. Pour ouvrir un `<dialog class="dialogue">`, utiliser `ouvrirDialogue` de `js/dialogue.mjs` (focus initial et retour au déclencheur). Le module factice `modes/factice/` affiche le bloc reçu sans règle de jeu ; voir `docs/ecrans.md` pour la recette.
+
 ## Propriétaires
 
 Chaque package a un propriétaire, qui écrit et relit en premier ce qui s'y passe. Une PR qui touche le package d'un autre le dit dans sa description et demande sa relecture.
