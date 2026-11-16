@@ -6,4 +6,6 @@ import java.util.UUID;
 @FunctionalInterface
 public interface CaptureVueRepli {
 	Evenement capturerSalle(UUID soireeId);
+	default Evenement capturerConsole(UUID soireeId) { return capturerSalle(soireeId); }
+	default Evenement capturerJoueur(UUID soireeId, UUID joueurId) { return capturerSalle(soireeId); }
 }

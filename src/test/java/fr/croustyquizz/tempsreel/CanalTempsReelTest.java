@@ -75,7 +75,7 @@ class CanalTempsReelTest {
 	private RegistreAbonnements abonnements;
 
 	@MockitoBean
-	private CaptureVueRepli repli;
+	private CaptureVuePrototype repli;
 
 	private final HttpClient http = HttpClient.newHttpClient();
 	private final JsonMapper json = JsonMapper.builder().build();
@@ -146,12 +146,12 @@ class CanalTempsReelTest {
 		BlockingQueue<Map<String, Object>> manette = abonner(session, Canaux.joueur(joueur));
 		BlockingQueue<Map<String, Object>> autreManette = abonner(session, Canaux.joueur(UUID.fromString("00000000-0000-0000-0000-000000000001")));
 
-		diffuseur.envoyerJoueur(joueur, new EvenementDeTest("à toi de chanter"));
+		diffuseur.envoyerJoueur(UUID.randomUUID(), joueur, new EvenementDeTest("à toi de chanter"));
 
 		Map<String, Object> message = manette.poll(1, TimeUnit.SECONDS);
 		assertThat(message).isNotNull().containsEntry("type", "test");
 		assertThat(donnees(message)).containsEntry("texte", "à toi de chanter");
-		diffuseur.envoyerJoueur(UUID.fromString("00000000-0000-0000-0000-000000000001"), new EvenementDeTest("témoin"));
+		diffuseur.envoyerJoueur(UUID.randomUUID(), UUID.fromString("00000000-0000-0000-0000-000000000001"), new EvenementDeTest("témoin"));
 		assertThat(donnees(autreManette.poll(1, TimeUnit.SECONDS))).containsEntry("texte", "témoin");
 		assertThat(autreManette).isEmpty();
 	}

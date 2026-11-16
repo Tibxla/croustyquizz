@@ -46,12 +46,9 @@ public class BuzzControleur {
 		if (demande == null || demande.pseudo() == null || demande.pseudo().isBlank()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Un pseudo est requis");
 		}
-		String pseudo = demande.pseudo().strip();
-		if (pseudo.codePointCount(0, pseudo.length()) > LONGUEUR_MAX_PSEUDO) {
-			pseudo = pseudo.substring(0, pseudo.offsetByCodePoints(0, LONGUEUR_MAX_PSEUDO));
-		}
-		synchronized (verrous.pour(soireeId)) {
-			BuzzRecu buzz = new BuzzRecu(pseudo, horloge.instant());
+		return verrous.executer(soireeId, () -> {
+			BuzzRecu buzz = new BuzzRecu(demande.pseudo().strip().codePoints().limit(LONGUEUR_MAX_PSEUDO)
+					.collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append).toString(), horloge.instant());
 			List<BuzzRecu> historique = historiques.computeIfAbsent(soireeId, cle -> new ArrayList<>());
 			historique.add(buzz);
 			if (historique.size() > NOMBRE_MAX_BUZZ) {
@@ -59,7 +56,7 @@ public class BuzzControleur {
 			}
 			diffuseur.diffuserSalle(soireeId, new VueSallePrototype(historique));
 			return buzz;
-		}
+		});
 	}
 
 }

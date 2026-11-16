@@ -125,3 +125,29 @@ démonstration en profil `dev`. Il utilise HTTP pour les commandes et STOMP pour
 les événements. La tranche salle #47 y applique les Révisions et la capture synchronisée. Ses
 accès anonymes ne constituent pas une implémentation des autorisations métier
 décrites ci-dessus.
+
+## Implémentation du socle #79
+
+`ServiceDeManche<R, E>` porte le verrou, la transaction et les reçus de `manche_envoi`.
+Les modes fournissent leur fabrique typée, leur persistance JPA et leur bloc de vue.
+`restaurer` reçoit l'état commun persisté, notamment `EN_PAUSE`. Les minuteurs
+repassent par ce service ; `typeEvenementMinuteur` précise la cause selon la phase du mode.
+Une commande préparée hors verrou revalide sous verrou ; son refus peut être enregistré
+sans appeler le déroulement. Un rollback ne publie rien et évince l'instance du registre.
+Les captures de repli utilisent le même assembleur que les publications.
+
+En `dev` et `recette`, le résolveur reconnaît `Authorization: Bearer demo:TYPE:soireeId:acteurId`,
+avec `TYPE` dans `ANIMATEUR`, `JOUEUR`, `ECRAN`. #80 peut déposer la valeur
+`demo:TYPE:soireeId:acteurId` dans `sessionStorage` sous `croustyquizz.jeton`,
+puis la transmettre aussi dans CONNECT STOMP. Le Joueur fictif du fournisseur commun
+porte l'UUID `00000000-0000-4000-8000-000000000001`. Ces identités fictives ne sont pas
+une authentification ; en production le résolveur refuse systématiquement avec `401`.
+Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
+Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
+
+Les deux routes temporaires de création et de démarrage sont décrites dans
+[le contrat du prototype](prototype/openapi.yaml), réservées aux profils `dev`/`recette`
+et à l'Animateur de démonstration. Elles nécessitent qu'un service du mode soit installé ;
+aucun vrai mode n'est livré par #79. Le Buzz de test et son format historique restent disponibles.
+Le cycle interne `PRETE` apparaît sous le nom HTTP existant `EN_ATTENTE` dans le programme.
+Les schémas des Manches restent limités au Quiz jusqu'aux contrats des autres modes.

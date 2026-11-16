@@ -26,7 +26,7 @@ class EtatSalleTest {
 		var horloge = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
 		var verrous = new VerrousSoiree();
 		var diffuseur = new DiffuseurStomp(new SimpMessagingTemplate(new ExecutorSubscribableChannel()),
-				horloge, verrous, new CaptureSalleFactice());
+				horloge, verrous, new CaptureSalleFactice()::capturerSalle, new CaptureSalleFactice());
 		var registre = new RegistreAbonnements();
 		var mvc = MockMvcBuilders.standaloneSetup(new EtatSalleControleur(diffuseur, registre)).build();
 		UUID soiree = UUID.randomUUID();
