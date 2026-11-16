@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette · Manette · CroustyQuizz</title>
+<link rel="stylesheet" href="../css/croustyquizz.css">
+<link rel="stylesheet" href="../css/manette.css">
+<style>
+  /* Présentation de la maquette seulement : les états côte à côte sur grand écran. */
+  .planche { display: flex; flex-wrap: wrap; gap: 32px; padding: 32px; background: #0f0b09; }
+  .cadre { display: flex; flex-direction: column; gap: 10px; }
+  .cadre > p { color: var(--texte-2); font-size: 0.875rem; max-width: 390px; }
+  .cadre .manette { width: 390px; height: 844px; min-height: 0; border-radius: 28px; outline: 1px solid var(--fond-3); }
+  @media (max-width: 480px) {
+    .planche { padding: 0; gap: 0; }
+    .cadre > p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .cadre .manette { width: 100%; height: auto; min-height: 100svh; border-radius: 0; outline: 0; }
+  }
+</style>
+</head>
+<body>
+<!-- Maquette de référence : pseudos, titres et chiffres fictifs. -->
+<div class="planche">
+
+  <section class="cadre" aria-label="Arrivée">
+    <p>1. Arrivée par le QR code : le Lieu et la Soirée sont confirmés avant le pseudo.</p>
+    <div class="manette">
+      <header class="manette__entete"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
+      <h1 class="manette__titre">Au Zinc · Soirée du jeudi</h1>
+      <p class="manette__aide">Quiz, Karaoké et Freestyle ce soir. Choisis un pseudo, c'est tout : pas de compte.</p>
+      <form class="champ" onsubmit="return false">
+        <label for="pseudo">Ton pseudo</label>
+        <input id="pseudo" name="pseudo" autocomplete="nickname" maxlength="20" value="Inès">
+        <span class="champ__aide">Il s'affiche sur la télé. 20 caractères au plus.</span>
+      </form>
+      <div class="manette__actions">
+        <button class="bouton bouton--action bouton--grand">Rejoindre</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="cadre" aria-label="Attente de son Passage">
+    <p>2. Inscrite au Freestyle : son ticket, sa place, une seule action.</p>
+    <div class="manette">
+      <header class="manette__entete"><span>Au Zinc · <strong>Inès</strong></span><span>Karaoké</span></header>
+      <div class="mon-ticket">
+        <div class="mon-ticket__haut"><span class="mon-ticket__numero">14</span><span class="mon-ticket__etiquette">Ton Passage</span></div>
+        <div class="mon-ticket__bas"><span class="mon-ticket__quoi">Freestyle · Pluie fine</span><span class="mon-ticket__place">Encore 2 Passages avant toi</span></div>
+      </div>
+      <p class="manette__aide">On t'appellera ici et sur la télé. Garde ton téléphone à portée de main.</p>
+      <div class="manette__actions">
+        <button class="bouton bouton--action bouton--grand" disabled>Je suis prêt</button>
+        <p class="manette__aide" style="text-align:center">Le bouton s'active quand on t'appelle.</p>
+        <button class="bouton bouton--lien">Me désinscrire</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="cadre" aria-label="C'est ton tour">
+    <p>3. On l'appelle : le corps de son ticket se détache, comme sur l'Écran de salle, et « Je suis prêt » s'active.</p>
+    <div class="manette">
+      <header class="manette__entete"><span>Au Zinc · <strong>Inès</strong></span><span>Freestyle</span></header>
+      <div class="mon-ticket mon-ticket--appele">
+        <div class="mon-ticket__haut"><span class="mon-ticket__numero">14</span><span class="mon-ticket__etiquette">C'est ton tour</span></div>
+        <div class="mon-ticket__bas"><span class="mon-ticket__quoi">Freestyle · Pluie fine</span><span class="mon-ticket__place">Monte sur scène, tu as 30 secondes.</span></div>
+      </div>
+      <div class="manette__actions">
+        <button class="bouton bouton--action bouton--grand">Je suis prêt</button>
+        <button class="bouton bouton--lien">Je laisse passer mon tour</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="cadre" aria-label="Question en cours, envoi">
+    <p>4. Quiz : la Réponse choisie est en cours d'envoi, rien n'est encore annoncé.</p>
+    <div class="manette">
+      <header class="manette__entete"><span>Question <strong class="chiffres">7</strong> / 12</span><span class="chiffres" style="font-size:1.5rem">12 s</span></header>
+      <h1 class="manette__titre">Dans quelle ville se déroule « Le Fabuleux Destin d'Amélie Poulain » ?</h1>
+      <ol class="reponses">
+        <li><button class="reponse" disabled><span class="reponse__lettre">A</span><span>Lyon</span></button></li>
+        <li><button class="reponse" aria-pressed="true" disabled><span class="reponse__lettre">B</span><span>Paris</span></button></li>
+        <li><button class="reponse" disabled><span class="reponse__lettre">C</span><span>Marseille</span></button></li>
+        <li><button class="reponse" disabled><span class="reponse__lettre">D</span><span>Bruxelles</span></button></li>
+      </ol>
+      <div class="manette__actions"><p class="envoi envoi--en-cours" role="status">Envoi de ta Réponse B…</p></div>
+    </div>
+  </section>
+
+  <section class="cadre" aria-label="Réponse enregistrée">
+    <p>5. Le serveur a accepté : la Réponse est enregistrée, le résultat viendra à la correction.</p>
+    <div class="manette">
+      <header class="manette__entete"><span>Question <strong class="chiffres">7</strong> / 12</span><span class="chiffres" style="font-size:1.5rem">9 s</span></header>
+      <h1 class="manette__titre">Dans quelle ville se déroule « Le Fabuleux Destin d'Amélie Poulain » ?</h1>
+      <ol class="reponses">
+        <li><button class="reponse" disabled><span class="reponse__lettre">A</span><span>Lyon</span></button></li>
+        <li><button class="reponse" aria-pressed="true" disabled><span class="reponse__lettre">B</span><span>Paris</span><span class="icone icone--ok" aria-hidden="true"></span></button></li>
+        <li><button class="reponse" disabled><span class="reponse__lettre">C</span><span>Marseille</span></button></li>
+        <li><button class="reponse" disabled><span class="reponse__lettre">D</span><span>Bruxelles</span></button></li>
+      </ol>
+      <div class="manette__actions"><p class="envoi envoi--accepte" role="status"><span class="icone icone--ok" aria-hidden="true"></span>Réponse B enregistrée. Résultat à la correction.</p></div>
+    </div>
+  </section>
+
+  <section class="cadre" aria-label="Correction">
+    <p>6. Correction : les points validés par le serveur s'affichent tels quels ; une animation éventuelle part de cette valeur.</p>
+    <div class="manette">
+      <header class="manette__entete"><span>Question <strong class="chiffres">7</strong> / 12</span><span>Correction</span></header>
+      <ol class="reponses">
+        <li><button class="reponse" disabled><span class="reponse__lettre">A</span><span>Lyon</span></button></li>
+        <li><button class="reponse reponse--juste" aria-pressed="true" disabled><span class="reponse__lettre">B</span><span>Paris</span><span class="reponse__marque">Bonne réponse</span></button></li>
+        <li><button class="reponse" disabled><span class="reponse__lettre">C</span><span>Marseille</span></button></li>
+        <li><button class="reponse" disabled><span class="reponse__lettre">D</span><span>Bruxelles</span></button></li>
+      </ol>
+      <div class="resultat" role="status">
+        <span class="resultat__gain">+850</span>
+        <span>points, pour une Réponse en 4 secondes</span>
+        <span class="resultat__total">Total <strong class="chiffres">3 420</strong> points · <strong>4<sup>e</sup></strong> sur 31</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="cadre" aria-label="Coupure du réseau">
+    <p>7. Coupure : la Manette dit ce qu'elle sait (Réponse enregistrée) et qu'elle se reconnecte.</p>
+    <div class="manette">
+      <header class="manette__entete"><span>Question <strong class="chiffres">7</strong> / 12</span></header>
+      <div class="coupure" role="status"><span class="icone icone--coupure" aria-hidden="true"></span><div><strong>Connexion perdue, on se reconnecte…</strong><br><span class="manette__aide">Ta Réponse B était déjà enregistrée. Tu ne perds rien.</span></div></div>
+      <h1 class="manette__titre" style="color:var(--texte-3)">Dans quelle ville se déroule « Le Fabuleux Destin d'Amélie Poulain » ?</h1>
+      <div class="manette__actions"><button class="bouton bouton--grand">Réessayer maintenant</button></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
