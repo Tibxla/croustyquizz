@@ -1,5 +1,6 @@
 package fr.croustyquizz.tempsreel;
 
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,12 +17,15 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 @Profile({"dev", "recette"})
 public final class FournisseurCommunDemonstration implements FournisseurPartieCommune {
-	public static final UUID JOUEUR = UUID.fromString("00000000-0000-4000-8000-000000000001");
 	private final DepotDeManches depot;
 	private final JsonMapper json;
 	public FournisseurCommunDemonstration(DepotDeManches depot, JsonMapper json) { this.depot = depot; this.json = json; }
+	/** Identité stable par Soirée, partagée par les projections et les jetons de démonstration. */
+	public static UUID joueurId(UUID soireeId) {
+		return UUID.nameUUIDFromBytes(("croustyquizz:demo:joueur:" + soireeId).getBytes(StandardCharsets.UTF_8));
+	}
 	@Override
-	public List<UUID> joueurs(UUID soireeId) { return List.of(JOUEUR); }
+	public List<UUID> joueurs(UUID soireeId) { return List.of(joueurId(soireeId)); }
 	@Override
 	public Map<String, Object> fournir(UUID soireeId, Destination destination) {
 		List<ManchePersistante> programme = depot.deLaSoiree(soireeId);
@@ -32,7 +36,7 @@ public final class FournisseurCommunDemonstration implements FournisseurPartieCo
 				"etat", "EN_COURS", "codeAcces", "DEMO01"));
 		vue.put("mancheActive", active == null ? null : decrire(active, programme.indexOf(active)));
 		vue.put("modeEnCours", active == null ? null : active.getMode());
-		vue.put("joueurs", List.of(Map.of("id", JOUEUR, "pseudo", "Joueur de démonstration", "connecte", true)));
+		vue.put("joueurs", List.of(Map.of("id", joueurId(soireeId), "pseudo", "Joueur de démonstration", "connecte", true)));
 		vue.put("classement", List.of()); vue.put("dernierBuzz", null);
 		if (destination.type() == Destination.Type.CONSOLE) {
 			vue.put("programme", programme.stream().map(m -> decrire(m, programme.indexOf(m))).toList());

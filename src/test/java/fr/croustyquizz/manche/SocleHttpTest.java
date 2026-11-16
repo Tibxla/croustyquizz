@@ -124,7 +124,7 @@ class SocleHttpTest {
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, UUID soiree, Acteur.Type role, Object corps, UUID envoi) {
 		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
 		if (role != null) {
-			requete.header("Authorization", "Bearer demo:" + role + ":" + soiree + ":" + FournisseurCommunDemonstration.JOUEUR);
+			requete.header("Authorization", "Bearer demo:" + role + ":" + soiree + ":" + FournisseurCommunDemonstration.joueurId(soiree));
 		}
 		if (envoi != null) { requete.header("Idempotency-Key", envoi.toString()); }
 		if (corps != null) { requete.contentType(MediaType.APPLICATION_JSON).body(corps); }

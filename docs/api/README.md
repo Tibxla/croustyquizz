@@ -140,7 +140,10 @@ En `dev` et `recette`, le résolveur reconnaît `Authorization: Bearer demo:TYPE
 avec `TYPE` dans `ANIMATEUR`, `JOUEUR`, `ECRAN`. #80 peut déposer la valeur
 `demo:TYPE:soireeId:acteurId` dans `sessionStorage` sous `croustyquizz.jeton`,
 puis la transmettre aussi dans CONNECT STOMP. Le Joueur fictif du fournisseur commun
-porte l'UUID `00000000-0000-4000-8000-000000000001`. Ces identités fictives ne sont pas
+porte un UUID stable propre à sa Soirée, fourni par `FournisseurCommunDemonstration.joueurId(soireeId)` :
+`UUID.nameUUIDFromBytes` appliqué aux octets UTF-8 de `croustyquizz:demo:joueur:` suivi de `soireeId`.
+Les projections et le jeton `demo:JOUEUR:soireeId:acteurId` utilisent tous cet UUID comme `acteurId`.
+Ces identités fictives ne sont pas
 une authentification ; en production le résolveur refuse systématiquement avec `401`.
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.

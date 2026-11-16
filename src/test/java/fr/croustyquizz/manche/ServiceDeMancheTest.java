@@ -124,6 +124,69 @@ class ServiceDeMancheTest {
 	}
 
 	@Test
+	void passerEtapeAnnuleAussiLeMinuteurQuiAttendDejaLeVerrou() throws Exception {
+		UUID manche = demarrer();
+		int publications = banc.diffuseur.envois().size();
+		var filMinuteur = new AtomicReference<Thread>();
+		try (var fils = Executors.newSingleThreadExecutor()) {
+			var minuteur = banc.verrous.executer(soiree, () -> {
+				var rappel = fils.submit(() -> {
+					filMinuteur.set(Thread.currentThread());
+					banc.horloge.avancer(Duration.ofSeconds(20));
+				});
+				await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null
+						&& filMinuteur.get().getState() == Thread.State.WAITING);
+				var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, null);
+				assertThat(banc.service.piloter(manche, banc.envoi(soiree, "/commandes", passer), passer)).isInstanceOf(Accepte.class);
+				return rappel;
+			});
+			minuteur.get(2, TimeUnit.SECONDS);
+		}
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+		assertThat(banc.diffuseur.envois()).hasSize(publications + 3);
+		banc.registre.retirer(manche);
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+		banc.horloge.avancer(Duration.ofSeconds(20));
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(3);
+	}
+
+	@Test
+	void restaurerUneEcheanceDepasseeNePerdPasLeRappelLanceAvantLAttachement() throws Exception {
+		var temps = new HorlogeFactice();
+		var filMinuteur = new AtomicReference<Thread>();
+		var expiration = new AtomicReference<java.util.concurrent.Future<?>>();
+		try (var fils = Executors.newSingleThreadExecutor()) {
+			Horloge immediate = new Horloge() {
+				@Override
+				public java.time.Instant maintenant() { return temps.maintenant(); }
+				@Override
+				public Minuteur programmer(Duration delai, Runnable action) {
+					if (!delai.isZero()) { return temps.programmer(delai, action); }
+					var rappel = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); action.run(); });
+					expiration.set(rappel);
+					// L'ordonnanceur a lancé le rappel avant que programmer ne rende la main à restaurer.
+					await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null
+							&& filMinuteur.get().getState() == Thread.State.WAITING);
+					return () -> rappel.cancel(false);
+				}
+			};
+			var restauration = new BancDuSocle(immediate);
+			UUID manche = restauration.creer(soiree);
+			restauration.service.demarrer(manche, restauration.envoi(soiree, "/demarrer", Map.of()));
+			restauration.registre.retirer(manche);
+			temps.avancer(Duration.ofSeconds(21));
+			int publications = restauration.diffuseur.envois().size();
+			restauration.service.instantane(soiree, manche);
+			assertThat(expiration.get()).isNotNull();
+			expiration.get().get(2, TimeUnit.SECONDS);
+			assertThat(((DeroulementFactice.Etat) restauration.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+			assertThat(restauration.diffuseur.envois()).hasSize(publications + 3);
+			restauration.registre.retirer(manche);
+			assertThat(((DeroulementFactice.Etat) restauration.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+		}
+	}
+
+	@Test
 	void deuxCommandesConcurrentesDuneSoireePassentDansLOrdre() throws Exception {
 		UUID manche = demarrer();
 		var entree = new CountDownLatch(1); var sortir = new CountDownLatch(1);

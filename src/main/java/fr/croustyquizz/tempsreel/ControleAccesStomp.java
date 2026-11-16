@@ -1,5 +1,6 @@
 package fr.croustyquizz.tempsreel;
 
+import java.util.regex.Pattern;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.messaging.Message;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Component;
 /** Identifie CONNECT et autorise chaque destination ; seul le prototype dev/recette reste anonyme. */
 @Component
 public final class ControleAccesStomp implements ChannelInterceptor {
+	private static final Pattern CANAL_SALLE_PROTOTYPE = Pattern.compile(
+			"/topic/soirees/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/salle");
 	private final ResolveurDActeur resolveur;
 	private final boolean prototype;
 	public ControleAccesStomp(ResolveurDActeur resolveur, Environment environnement) {
@@ -34,8 +37,11 @@ public final class ControleAccesStomp implements ChannelInterceptor {
 				&& !AccesAuxVues.autorise(identite.acteur(), entetes.getDestination())) {
 			throw new MessageDeliveryException("Destination non autorisée pour cet acteur.");
 		}
-		if (!prototype && entetes.getMessageType() == SimpMessageType.SUBSCRIBE && !(entetes.getUser() instanceof IdentiteStomp)) {
-			throw new MessageDeliveryException("Une authentification est requise.");
+		if (entetes.getMessageType() == SimpMessageType.SUBSCRIBE && !(entetes.getUser() instanceof IdentiteStomp)) {
+			String destination = entetes.getDestination();
+			if (!prototype || destination == null || !CANAL_SALLE_PROTOTYPE.matcher(destination).matches()) {
+				throw new MessageDeliveryException("Une authentification est requise.");
+			}
 		}
 		return MessageBuilder.createMessage(message.getPayload(), entetes.getMessageHeaders());
 	}

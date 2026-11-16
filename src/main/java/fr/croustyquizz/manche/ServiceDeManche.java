@@ -112,12 +112,14 @@ public class ServiceDeManche<R, E> {
 			return d;
 		});
 	}
-	private void minuter(ManchePersistante identite, DeroulementDeManche d, Runnable action) {
+	private void minuter(ManchePersistante identite, Supplier<DeroulementDeManche> deroulement, HorlogeDeManche.Rappel rappel) {
 		sousTransaction(identite.getSoireeId(), identite.getMancheId(), () -> {
+			if (rappel.annule().getAsBoolean()) { return null; }
+			DeroulementDeManche d = deroulement.get();
 			if (!socle.registre().contient(identite.getMancheId(), d)) { return null; }
 			ManchePersistante manche = charger(identite.getMancheId(), identite.getSoireeId());
 			if (manche.getEtat() != EtatManche.EN_COURS) { return null; }
-			action.run();
+			rappel.action().run();
 			enregistrer(manche, d, null, new Accepte(null, TOUT, fabrique.typeEvenementMinuteur(d)));
 			return null;
 		});
