@@ -11,12 +11,13 @@ Un prototype jetable (#20, 16/11/2026) l'a écarté comme source principale : su
 ## Décision
 
 1. **Source audio, dans cet ordre** :
-   - **fichier local** : au début de la Soirée, l'Animateur choisit sur l'ordinateur de l'Écran de salle un dossier de fichiers audio (MP3, M4A, OGG, WAV). Ce clic débloque aussi le son. L'Écran de salle cherche le fichier d'une Chanson par son titre et son artiste et le lit. Les fichiers ne quittent jamais cette machine : le serveur ne reçoit, ne stocke ni ne diffuse aucun son, et le dépôt n'en contient aucun ;
-   - sinon, **vidéo YouTube intégrée**, seulement si le lecteur l'accepte ;
+   - **fichier local** : au début de la Soirée, l'Animateur choisit sur l'ordinateur de l'Écran de salle un dossier de fichiers audio (MP3, M4A, OGG, WAV). Ce clic débloque aussi le son. L'Écran de salle cherche le fichier d'une Chanson par son nom, « Artiste - Titre » ou « Titre - Artiste », sans tenir compte des majuscules, des accents ni de la ponctuation. Aucun fichier ou plusieurs fichiers qui correspondent : on passe à la source suivante, sans choix manuel. Les fichiers ne quittent jamais cette machine : le serveur ne reçoit, ne stocke ni ne diffuse aucun son, et le dépôt n'en contient aucun ;
+   - sinon, **vidéo YouTube intégrée**, seulement si le lecteur l'accepte. L'Animateur colle le lien de la vidéo pour une Chanson ; aucune recherche automatique, qui exigerait une clé de l'API YouTube. **Palier 2** : au palier 1, on passe directement du fichier local aux paroles seules ;
    - sinon, **paroles seules** : la musique est passée par le Lieu par ses propres moyens, l'Écran de salle fait défiler les paroles à partir de « Je suis prêt ».
 2. **Paroles** : LRCLIB. Parmi ses versions synchronisées d'une Chanson, on retient celle dont la durée est la plus proche du fichier ou de la vidéo.
-3. **Calage** : la première fois qu'une Chanson passe avec un fichier donné, un geste (« ça commence » au début du chant) calcule le décalage, réglable ensuite par pas de 0,1 s. Le décalage est mémorisé pour cette Chanson et ce fichier, et réappliqué ensuite.
-4. Le lecteur de l'Écran de salle est derrière un port (`LecteurDeChanson` : charger, lire, pause, reprise, position, fin, volume, erreur), avec une implémentation par source.
+3. **Calage** : la première fois qu'une Chanson passe avec un fichier donné, l'Animateur appuie sur « ça commence » dans la Console d'animation au début du chant ; le décalage est calculé, puis réglable depuis la Console par pas de 0,1 s. Le serveur le mémorise pour cette Chanson et ce fichier, repéré par son nom et sa taille, jamais par son contenu, et l'envoie dans la vue de l'Écran de salle, qui le réapplique ensuite. C'est un nombre, pas du son : il survit à un changement de navigateur ou d'ordinateur.
+4. **Fin du Passage** : la fin de lecture signalée par le lecteur (fichier local, puis YouTube au palier 2). Avec les paroles seules, aucun lecteur ne la signale : la fin est la durée de la Chanson augmentée du temps passé en pause, comptée par l'`Horloge`.
+5. Le lecteur de l'Écran de salle est derrière un port (`LecteurDeChanson` : charger, lire, pause, reprise, position, fin, volume, erreur), avec une implémentation par source.
 
 ## Alternatives écartées
 
