@@ -266,6 +266,13 @@ $defs:
     - expireLe
     description: Capacité de lecture seule pour l'Écran de salle, limitée à cette Soirée. Transport dans Authorization/CONNECT,
       jamais dans une chaîne de requête. La durée est donnée par expireLe.
+  ModeDeJeu:
+    type: string
+    enum:
+    - QUIZ
+    - BLIND_TEST
+    - KARAOKE
+    - FREESTYLE
   ReglagesQuiz:
     type: object
     additionalProperties: false
@@ -657,9 +664,9 @@ $defs:
         format: uuid
     required:
     - action
-    - etapeId
-    description: etapeId doit encore correspondre à l’étape courante ; une commande provenant d’un écran périmé
-      est refusée. La correction reste attachée au même etapeId jusqu’à l’étape suivante.
+    description: etapeId est facultatif pour une Manche sans étape courante (Karaoké, Freestyle). Pour le Quiz,
+      il doit être présent et correspondre à l’étape courante, sinon 409 ETAPE_INACTIVE. La correction reste
+      attachée au même etapeId jusqu’à l’étape suivante.
   AccuseCommande:
     type: object
     additionalProperties: false
@@ -768,7 +775,57 @@ $defs:
     - pseudo
     - recuLe
     - rang
+  BlocsDeMode:
+    type: object
+    description: Un bloc non nul appartient au modeEnCours ; hors Manche, tous les blocs sont nuls ou absents.
+    allOf:
+    - if:
+        required:
+        - quiz
+        properties:
+          quiz:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: QUIZ
+    - if:
+        required:
+        - blindtest
+        properties:
+          blindtest:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: BLIND_TEST
+    - if:
+        required:
+        - karaoke
+        properties:
+          karaoke:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: KARAOKE
+    - if:
+        required:
+        - freestyle
+        properties:
+          freestyle:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: FREESTYLE
   VueSalle:
+    allOf:
+    - $ref: '#/$defs/BlocsDeMode'
     type: object
     additionalProperties: false
     properties:
@@ -778,8 +835,20 @@ $defs:
         oneOf:
         - $ref: '#/$defs/Manche'
         - type: 'null'
+      modeEnCours:
+        oneOf:
+        - $ref: '#/$defs/ModeDeJeu'
+        - type: 'null'
       quiz:
-        $ref: '#/$defs/EtatQuiz'
+        oneOf:
+        - $ref: '#/$defs/EtatQuiz'
+        - type: 'null'
+      blindtest:
+        type: 'null'
+      karaoke:
+        type: 'null'
+      freestyle:
+        type: 'null'
       joueurs:
         type: array
         items:
@@ -795,11 +864,13 @@ $defs:
     required:
     - soiree
     - mancheActive
-    - quiz
+    - modeEnCours
     - joueurs
     - classement
     - dernierBuzz
   VueConsole:
+    allOf:
+    - $ref: '#/$defs/BlocsDeMode'
     type: object
     additionalProperties: false
     properties:
@@ -809,8 +880,20 @@ $defs:
         oneOf:
         - $ref: '#/$defs/Manche'
         - type: 'null'
+      modeEnCours:
+        oneOf:
+        - $ref: '#/$defs/ModeDeJeu'
+        - type: 'null'
       quiz:
-        $ref: '#/$defs/EtatQuiz'
+        oneOf:
+        - $ref: '#/$defs/EtatQuiz'
+        - type: 'null'
+      blindtest:
+        type: 'null'
+      karaoke:
+        type: 'null'
+      freestyle:
+        type: 'null'
       joueurs:
         type: array
         items:
@@ -830,7 +913,7 @@ $defs:
     required:
     - soiree
     - mancheActive
-    - quiz
+    - modeEnCours
     - joueurs
     - classement
     - dernierBuzz
@@ -845,8 +928,20 @@ $defs:
         oneOf:
         - $ref: '#/$defs/Manche'
         - type: 'null'
+      modeEnCours:
+        oneOf:
+        - $ref: '#/$defs/ModeDeJeu'
+        - type: 'null'
       quiz:
-        $ref: '#/$defs/EtatQuiz'
+        oneOf:
+        - $ref: '#/$defs/EtatQuiz'
+        - type: 'null'
+      blindtest:
+        type: 'null'
+      karaoke:
+        type: 'null'
+      freestyle:
+        type: 'null'
       joueurs:
         type: array
         items:
@@ -876,7 +971,7 @@ $defs:
     required:
     - soiree
     - mancheActive
-    - quiz
+    - modeEnCours
     - joueurs
     - classement
     - dernierBuzz
@@ -885,9 +980,13 @@ $defs:
     - derniereReponse
     - resultatPersonnel
     allOf:
+    - $ref: '#/$defs/BlocsDeMode'
     - if:
+        required:
+        - quiz
         properties:
           quiz:
+            type: object
             properties:
               phase:
                 enum:
@@ -1115,6 +1214,7 @@ $defs:
         - PSEUDO_DEJA_PRIS
         - ETAT_INCOMPATIBLE
         - ETAPE_INACTIVE
+        - COMMANDE_PERIMEE
         - PROGRAMME_INCOMPLET
         - REPONSE_DEJA_ENREGISTREE
         - ENVOI_REUTILISE
@@ -1123,6 +1223,7 @@ $defs:
         - BUZZ_NON_AUTORISE
         - DONNEES_INVALIDES
         - EMAIL_DEJA_UTILISE
+        - SERVICE_INDISPONIBLE
       detail:
         type: string
         minLength: 1

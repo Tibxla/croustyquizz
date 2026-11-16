@@ -15,7 +15,7 @@ Les opérations HTTP sont identifiées par leur `operationId` : les exemples uti
 
 Le premier parcours est : inscription du premier Animateur d’un Lieu, connexion, création d’une Soirée **Solo / Manuel**, préparation d’une Manche de **Quiz**, ouverture aux Joueurs, lancement, trois Questions et Classement général final. Les Questions de ce parcours sont rédigées par l’Animateur ; la banque française et l’import relèvent des extensions du Quiz.
 
-Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche dispose du nombre de Questions prévu. Chaque Question a quatre propositions distinctes et une seule solution.
+Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions. Chaque Question a quatre propositions distinctes et une seule solution.
 
 Les autres Modes de jeu, le Format Équipe, le Pilotage Automatique, les invitations d’Animateurs, la modération et le serveur MCP étendront ce contrat. Le Buzz est inclus uniquement pour le scénario du socle #7/#8, avant le lancement d’une Manche ; il est refusé pendant le Quiz. Son arbitrage en Blind test relève de #17. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
 
@@ -44,6 +44,16 @@ Les événements portent `type`, `soireeId`, `revision`, `emisLe` et `donnees`. 
 La salle suit `/topic/soirees/{soireeId}/salle`, la Console `/topic/soirees/{soireeId}/console` et la Manette `/topic/joueurs/{joueurId}`. La Manette utilise son canal personnel comme source complète de sa vue ; elle n’a pas besoin de combiner deux flux pour retrouver son état. La diffusion du serveur met à jour les projections concernées par chaque mutation, notamment tous les canaux Joueur lorsque le Quiz avance.
 
 L’ordre est garanti **par destination et par Soirée**, avec une révision contiguë croissante pour chaque événement publié sur cette destination. Deux destinations ont des compteurs indépendants : une révision de salle n’est pas comparable à une révision de Manette. Les captures HTTP, mutations et attributions de révision doivent être cohérentes avec la sérialisation d’une même Soirée. Les messages ne constituent pas un journal durable ; un écran resynchronise sa vue après toute coupure, erreur d’application ou rupture dans la suite des révisions. Les heartbeats STOMP détectent les connexions inactives ; le rythme prévu dans le contrat est de dix secondes.
+
+## Vues par blocs
+
+Selon l’[ADR 0006](../adr/0006-commandes-de-manche-et-vues-par-blocs.md), les trois vues partagent une partie commune : Soirée, Manche active, Joueurs, Classement général et dernier Buzz ; la Console porte aussi le programme et la Manette ses informations personnelles. Le champ obligatoire `modeEnCours` vaut `QUIZ`, `BLIND_TEST`, `KARAOKE`, `FREESTYLE` ou `null` hors Manche.
+
+La Manche en cours remplit le seul bloc de son Mode de jeu (`quiz`, `blindtest`, `karaoke` ou `freestyle`). Les autres blocs valent `null` ou sont absents. Hors Manche, `modeEnCours` vaut `null` et tous les blocs sont nuls ou absents ; les anciens exemples `quiz: {phase: ATTENTE}` hors Manche deviennent donc `quiz: null`. Une vue porte au plus un bloc non nul, correspondant à `modeEnCours` : cette règle est validée par le schéma partagé `BlocsDeMode` sur les trois destinations. Le serveur compose une vue dont `modeEnCours` correspond à la Manche active.
+
+Dans ce socle #78, `quiz` est facultatif, de type `EtatQuiz` ou `null`. Les blocs facultatifs `blindtest`, `karaoke` et `freestyle` n’acceptent encore que `null` ; chaque Mode de jeu ajoutera son schéma dans son issue de contrat. Les schémas de création et de description des Manches restent limités au Quiz jusqu’à ces extensions. La confidentialité du Quiz reste inchangée : si le bloc `quiz` est présent et non nul, aucun résultat personnel n’est révélé en `ATTENTE`, `QUESTION_OUVERTE` ou `EN_PAUSE`.
+
+Les captures HTTP et les messages STOMP utilisent les mêmes schémas de vue. Les trois canaux restent inchangés et chaque message remplace toujours la vue complète, partie commune et blocs compris.
 
 ## Reconnexion sans fenêtre de perte
 
@@ -77,6 +87,10 @@ Après contrôle d’identité et de portée, le serveur traite les répétition
 
 Un retry après perte de confirmation réutilise donc l’UUID et le corps conservés avant le premier envoi. La déduplication reste disponible jusqu’à expiration de l’accès Joueur, au minimum jusqu’à la fin de la Soirée ; les garanties après clôture supposent une identité encore valide. Les commandes de pilotage et d’ouverture utilisent le même principe via le header `Idempotency-Key`. Les codes et corps d’erreur sont décrits par `Probleme` dans `schemas.yaml`.
 
+Une commande visant un objet porte sa cible et la version sur laquelle l’acteur a décidé : si la cible a changé et rend la commande sans objet, le serveur répond `409 COMMANDE_PERIMEE` sans mutation ([ADR 0006](../adr/0006-commandes-de-manche-et-vues-par-blocs.md)). La Révision d’un écran ne sert jamais de garde de commande. Le Quiz conserve sa garde `etapeId` : absent ou non courant, il entraîne `409 ETAPE_INACTIVE`. Ce champ est facultatif dans `CommandeManche` pour permettre les Manches sans étape courante (Karaoké, Freestyle).
+
+Une base ou une transaction indisponible produit `503 SERVICE_INDISPONIBLE` au format `Probleme`, décrit par la réponse réutilisable `Erreur503`. L’envoi peut être réessayé avec le même `envoiId`, ou la même clé `Idempotency-Key` pour les commandes de pilotage et d’ouverture, et le même contenu.
+
 Un accusé HTTP retrouvé après répétition est un reçu de l’opération initiale : il ne doit pas remplacer une projection temps réel plus récente. Les écrans prennent leur état courant dans les captures cohérentes et événements révisés, même lorsqu’une ancienne réponse HTTP finit par arriver.
 
 La pause gèle le temps restant ; la reprise crée une nouvelle échéance serveur. En Manuel, `PASSER_ETAPE` clôt d’abord une Question ouverte et montre sa correction ; un nouvel appel, avec un nouvel identifiant d’envoi, passe à la Question suivante. Après la dernière correction, la Manche est terminée. L’Animateur demande ensuite `MANCHE_SUIVANTE`, qui clôt la Soirée si le programme est épuisé. L’arrêt explicite d’une Manche abandonne l’étape non corrigée sans lui attribuer de points.
@@ -90,7 +104,7 @@ npm ci --prefix tools/api --ignore-scripts --no-fund --no-audit
 npm test --prefix tools/api
 ```
 
-Le job `contrats-api` de GitHub Actions exécute les mêmes commandes. Les versions des validateurs et leurs dépendances sont verrouillées dans `tools/api/package-lock.json`. Les vérifications portent sur la structure OpenAPI/AsyncAPI, les références locales, la compilation de tous les schémas, les requêtes et réponses du parcours, les événements, les cas de refus de données sensibles et le scénario de raccordement entre capture et tampon. Les exemples utilisent des UUID, secrets et adresses fictifs.
+Le job `contrats-api` de GitHub Actions exécute les mêmes commandes. Les versions des validateurs et leurs dépendances sont verrouillées dans `tools/api/package-lock.json`. Les vérifications portent sur la structure OpenAPI/AsyncAPI, les références locales, la compilation de tous les schémas, les requêtes et réponses du parcours, les événements, les cas de refus de données sensibles et le scénario de raccordement entre capture et tampon. Elles couvrent aussi les blocs absents ou nuls, la correspondance entre bloc non nul et `modeEnCours` sur les trois vues, la confidentialité du Quiz, les nouveaux codes de refus et un réessai après `503`. Les exemples utilisent des UUID, secrets et adresses fictifs.
 
 Ces contrôles **ne prouvent pas la conformité d’un serveur non implémenté**. Les futures tâches #5, #6, #7, #8, #10, #12 et #14 devront vérifier les mêmes échanges contre Spring Boot : isolement entre Lieux et Joueurs, abonnements non autorisés, CSRF, autorité temporelle, pause/reprise, perte de confirmation, répétition après clôture, modification refusée et événement survenant pendant la reconnexion. Les tests utiliseront PostgreSQL via Testcontainers, une Horloge factice, des commandes HTTP et des clients STOMP ; la charge de soixante Joueurs reste à mesurer sur ce parcours réel.
 

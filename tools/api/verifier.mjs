@@ -168,6 +168,53 @@ for (const cas of exemples.cases) {
   assert.equal(validation(cas.valeur), cas.valide, `${cas.nom} : ${JSON.stringify(validation.errors)}`);
 }
 
+// Les blocs sont facultatifs sur les trois destinations, avec la même règle R1.
+for (const [schema, operationId] of [
+  ['VueSalle', 'retrouverEtatSalle'],
+  ['VueConsole', 'retrouverEtatConsole'],
+  ['VueManette', 'retrouverEtatManette'],
+]) {
+  const exemple = exemples.http.find((e) => e.operationId === operationId && e.statut === 200);
+  const vue = { ...exemple.reponse.vue, modeEnCours: 'QUIZ', quiz: { phase: 'ATTENTE' } };
+  valider(schema, vue, `${schema} : bloc Quiz inchangé`);
+  const validation = validations.get(schema);
+  for (const modeEnCours of [null, 'QUIZ', 'BLIND_TEST', 'KARAOKE', 'FREESTYLE']) {
+    const sansQuiz = { ...vue, modeEnCours };
+    delete sansQuiz.quiz;
+    valider(schema, sansQuiz, `${schema} : ${modeEnCours}, bloc Quiz absent`);
+    valider(schema, { ...sansQuiz, quiz: null, blindtest: null, karaoke: null, freestyle: null },
+      `${schema} : ${modeEnCours}, blocs nuls`);
+    assert.equal(validation({ ...vue, modeEnCours }), modeEnCours === 'QUIZ',
+      `${schema} : seul QUIZ peut porter un bloc Quiz non nul`);
+  }
+  const sansMode = { ...vue };
+  delete sansMode.modeEnCours;
+  assert.equal(validation(sansMode), false, `${schema} : modeEnCours obligatoire`);
+  assert.equal(validation({ ...vue, modeEnCours: 'INCONNU' }), false,
+    `${schema} : Mode de jeu inconnu`);
+  for (const bloc of ['blindtest', 'karaoke', 'freestyle']) {
+    assert.equal(validation({ ...vue, [bloc]: {} }), false,
+      `${schema} : le bloc ${bloc} reste limité à null dans le socle`);
+  }
+}
+
+// Le résultat personnel du Quiz reste privé avant correction. L'absence du
+// bloc Quiz ne doit pas déclencher cette condition par vérité vide de « if ».
+const manette = exemples.http.find((e) => e.operationId === 'retrouverEtatManette' && e.statut === 200).reponse.vue;
+const resultatPersonnel = { etapeId: exemples.parametresCommuns.etapeId, juste: true, pointsGagnes: 650 };
+const quizOuvert = manette.quiz;
+const quizPause = { phase: 'EN_PAUSE', question: quizOuvert.question, tempsRestantMs: 1000 };
+for (const quiz of [quizOuvert, quizPause, { phase: 'ATTENTE' }]) {
+  valider('VueManette', { ...manette, quiz }, `Manette sans résultat pendant ${quiz.phase}`);
+  assert.equal(validations.get('VueManette')({ ...manette, quiz, resultatPersonnel }), false,
+    `Résultat anticipé refusé pendant ${quiz.phase}`);
+}
+const sansQuiz = { ...manette, resultatPersonnel };
+delete sansQuiz.quiz;
+valider('VueManette', sansQuiz, 'La confidentialité conditionnelle exige un bloc Quiz présent');
+valider('VueManette', { ...sansQuiz, quiz: null }, 'La confidentialité conditionnelle exige un bloc Quiz non nul');
+console.log('Vues par blocs : trois destinations, modes, blocs facultatifs et confidentialité vérifiés.');
+
 // Valider les échanges puis les livrer au vrai module ES de Vue synchronisée.
 const synchro = exemples.resynchronisation;
 valider('EtatManette', synchro.etat, 'Capture de reconnexion');

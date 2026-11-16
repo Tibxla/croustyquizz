@@ -497,11 +497,6 @@ paths:
               schema:
                 type: string
                 const: no-store
-            Location:
-              description: URI de la ressource créée, sans secret.
-              schema:
-                type: string
-                format: uri-reference
           content:
             application/json:
               schema:
@@ -789,6 +784,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: soireeId
         in: path
@@ -815,8 +812,9 @@ paths:
     post:
       operationId: piloterSoiree
       summary: Lancer, enchaîner ou terminer la Soirée
-      description: 'LANCER : OUVERTE vers EN_COURS et démarrage de la première Manche ; programme non vide et toutes
-        Questions prêtes sinon 409 PROGRAMME_INCOMPLET. MANCHE_SUIVANTE : EN_COURS avec Manche précédente terminée
+      description: 'LANCER : OUVERTE vers EN_COURS et démarrage de la première Manche ; programme non vide, sinon
+        409 PROGRAMME_INCOMPLET. Ce code vise aussi les Manches de Quiz sans le nombre de Questions prêtes prévu ;
+        les Manches de Karaoké et de Freestyle ne nécessitent pas de Questions. MANCHE_SUIVANTE : EN_COURS avec Manche précédente terminée
         ; démarre la suivante ou termine la Soirée si le programme est épuisé. TERMINER : EN_COURS vers TERMINEE
         et clôture de la Manche active. En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
         d’une Question attend PASSER_ETAPE avant la prochaine Question ; le serveur déclenche la correction à l’échéance
@@ -850,6 +848,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: soireeId
         in: path
@@ -886,7 +886,8 @@ paths:
         REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la Question ouverte et révèle la correction, ou
         passe de CORRECTION à la Question suivante ; après la dernière correction, termine la Manche. TERMINER arrête
         la Manche sans révéler une Question abandonnée ni lui attribuer de points. Idempotence selon Idempotency-Key
-        ; etapeId périmé : 409 ETAPE_INACTIVE.'
+        ; etapeId absent ou non courant pour le Quiz : 409 ETAPE_INACTIVE. etapeId peut être omis pour une
+        Manche sans étape courante (Karaoké, Freestyle).'
       tags:
       - Soirée
       security:
@@ -916,6 +917,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: mancheId
         in: path
@@ -991,6 +994,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: etapeId
         in: path
@@ -1052,6 +1057,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: soireeId
         in: path
@@ -1339,7 +1346,8 @@ components:
           schema:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur409:
-      description: Conflit avec l’état courant, l’unicité ou l’idempotence.
+      description: Conflit avec l’état courant, l’unicité ou l’idempotence ; COMMANDE_PERIMEE si la cible
+        et sa version rendent la commande sans objet (ADR 0006), sans mutation.
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.
@@ -1352,6 +1360,19 @@ components:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur422:
       description: Données ne respectant pas le contrat.
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur503:
+      description: Base ou transaction indisponible (SERVICE_INDISPONIBLE). Réessayer avec le même envoiId
+        ou la même clé Idempotency-Key et le même contenu.
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.
