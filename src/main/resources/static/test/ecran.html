@@ -72,7 +72,7 @@
 				}));
 			},
 			surEtat(nouvelEtat) {
-				etat.textContent = { synchronisation: 'Synchronisation…', synchronisee: 'Connecté', reconnexion: 'Reconnexion…' }[nouvelEtat];
+				etat.textContent = { synchronisation: 'Synchronisation…', synchronisee: 'Connecté', coupure: 'Connexion perdue, reconnexion…' }[nouvelEtat];
 				etat.className = nouvelEtat === 'synchronisee' ? 'connecte' : '';
 			},
 		});

@@ -7,6 +7,23 @@ import { createRequire } from 'node:module';
 const { parse } = createRequire(new URL('../api/package.json', import.meta.url))('yaml');
 import { rejouerReconnexion } from './parcours.mjs';
 
+test('la recapture demandée annule l’ancien flux et livre une capture puis des événements identifiés', async () => {
+	const p = demarrer();
+	await repondre(p);
+	p.suivi.resynchroniser();
+	assert.equal(p.connexions[0].fermee, true);
+	assert.equal(p.etats.at(-1), 'synchronisation');
+	p.connexions[1].surConnexion();
+	assert.notEqual(p.requetes[0].abonnementId, p.requetes[1].abonnementId);
+	await repondre(p, 1, 20);
+	p.connexions[1].surMessage({ revision: 21, type: 'question-ouverte', donnees: { phase: 'ouverte' } });
+	assert.deepEqual(p.vues.at(-2), { vue: { phase: 'capture' }, source: 'capture', type: 'capture' });
+	assert.deepEqual(p.vues.at(-1), { vue: { phase: 'ouverte' }, source: 'evenement', type: 'question-ouverte' });
+	p.suivi.arreter();
+	p.suivi.resynchroniser();
+	assert.equal(p.connexions.length, 2);
+});
+
 const exemples = parse(await readFile(new URL('../../docs/api/exemples/parcours-quiz.yaml', import.meta.url), 'utf8'));
 
 test('rejouer la capture retardée, les Révisions déjà couvertes et le doublon du parcours Quiz', async () => {
@@ -52,7 +69,7 @@ test('attendre 250 ms entre cinq tentatives sur abonnement inactif puis reconnec
 		}
 	}
 	assert.equal(p.connexions[0].fermee, true);
-	assert.equal(p.etats.at(-1), 'reconnexion');
+	assert.equal(p.etats.at(-1), 'coupure');
 	await p.avancer(2000);
 	p.connexions[1].surConnexion();
 	assert.notEqual(p.requetes[5].abonnementId, p.requetes[0].abonnementId);
@@ -67,7 +84,7 @@ for (const pendantCapture of [true, false]) {
 		if (!pendantCapture) await repondre(p);
 		p.connexions[0].surMessage({ revision: 11, type: 'question-ouverte', donnees: { phase: 'incomplète' } });
 		if (pendantCapture) await repondre(p);
-		assert.equal(p.etats.at(-1), 'reconnexion');
+		assert.equal(p.etats.at(-1), 'coupure');
 		assert.ok(p.vues.every(v => v.vue.phase !== 'incomplète'));
 		await p.avancer(2000);
 		p.connexions[1].surConnexion();
@@ -87,7 +104,7 @@ test('conserver 64 messages au maximum puis abandonner la capture et son abonnem
 	assert.equal(p.requetes[0].signal.aborted, true);
 	await repondre(p);
 	assert.equal(p.vues.length, 0);
-	assert.equal(p.etats.at(-1), 'reconnexion');
+	assert.equal(p.etats.at(-1), 'coupure');
 	p.suivi.arreter();
 });
 
@@ -100,7 +117,7 @@ test('ignorer les réponses et messages d’un ancien abonnement après une coup
 	await repondre(p, 0, 9, { phase: 'ancienne' });
 	p.connexions[0].surMessage({ revision: 21, type: 'ancien', donnees: {} });
 	p.connexions[0].surDeconnexion();
-	assert.deepEqual(p.vues, [{ vue: { phase: 'nouvelle' }, type: 'capture' }]);
+	assert.deepEqual(p.vues, [{ vue: { phase: 'nouvelle' }, source: 'capture', type: 'capture' }]);
 	assert.equal(p.etats.at(-1), 'synchronisee');
 	p.suivi.arreter();
 });
@@ -110,7 +127,7 @@ test('refuser une capture dont l’UUID ne correspond pas à la requête courant
 	p.requetes[0].resoudre({ statut: 200, corps: exemples.resynchronisation.etat });
 	await viderPromesses();
 	assert.equal(p.vues.length, 0);
-	assert.equal(p.etats.at(-1), 'reconnexion');
+	assert.equal(p.etats.at(-1), 'coupure');
 	p.suivi.arreter();
 });
 
@@ -156,7 +173,7 @@ test('arrêter pendant l’attente du 409 empêche toute nouvelle tentative', as
 test('une erreur de rendu de la page impose une nouvelle capture', async () => {
 	const p = demarrer({ surVue() { throw new Error('Rendu interrompu'); } });
 	await repondre(p);
-	assert.equal(p.etats.at(-1), 'reconnexion');
+	assert.equal(p.etats.at(-1), 'coupure');
 	p.suivi.arreter();
 });
 
@@ -165,7 +182,7 @@ for (const revision of [undefined, -1, 1.5, '10', Number.MAX_SAFE_INTEGER + 1]) 
 		const p = demarrer();
 		await repondre(p, 0, revision === undefined ? null : revision);
 		assert.equal(p.vues.length, 0);
-		assert.equal(p.etats.at(-1), 'reconnexion');
+		assert.equal(p.etats.at(-1), 'coupure');
 		p.suivi.arreter();
 	});
 }
@@ -173,7 +190,7 @@ for (const revision of [undefined, -1, 1.5, '10', Number.MAX_SAFE_INTEGER + 1]) 
 test('refuser un message malformé avant la capture et reconnecter sur erreur réseau', async () => {
 	const p = demarrer();
 	p.connexions[0].surMessage({ revision: '10', donnees: {} });
-	assert.equal(p.etats.at(-1), 'reconnexion');
+	assert.equal(p.etats.at(-1), 'coupure');
 	await p.avancer(2000);
 	p.connexions[1].surConnexion();
 	p.requetes[1].rejeter(new Error('Hors ligne'));
@@ -189,6 +206,6 @@ test('borner une capture HTTP qui ne répond jamais', async () => {
 	await p.avancer(1);
 	assert.equal(p.connexions[0].fermee, true);
 	assert.equal(p.requetes[0].signal.aborted, true);
-	assert.equal(p.etats.at(-1), 'reconnexion');
+	assert.equal(p.etats.at(-1), 'coupure');
 	p.suivi.arreter();
 });

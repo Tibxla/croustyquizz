@@ -566,3 +566,133 @@ a {
     transition-duration: 1ms !important;
   }
 }
+
+/* ---------- Panneaux et champs partagés par tous les modes ---------- */
+
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-4);
+  padding: var(--espace-5);
+  border-radius: var(--rayon-grand);
+  background: var(--fond-1);
+}
+.panneau h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.375rem;
+}
+.panneau h2 small {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+.recherche {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--espace-3);
+  padding: 0 var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-0);
+}
+.recherche:focus-within {
+  border-color: var(--citron);
+}
+.recherche input {
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--texte);
+  font: 400 1.125rem var(--police-texte);
+  caret-color: var(--citron);
+}
+.recherche input:focus-visible {
+  outline: none;
+}
+.recherche .icone {
+  color: var(--texte-2);
+}
+
+/* Champ de saisie : grand, contrasté, message d'erreur sous le champ. */
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-2);
+}
+.champ label {
+  font-weight: 700;
+}
+.champ input {
+  min-height: 56px;
+  padding: var(--espace-3) var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-1);
+  color: var(--texte);
+  font: 400 1.25rem/1.2 var(--police-texte);
+  caret-color: var(--citron);
+}
+.champ input::placeholder {
+  color: var(--texte-3);
+}
+.champ input:focus-visible {
+  border-color: var(--citron);
+  outline-offset: 2px;
+}
+.champ__aide {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+
+.champ--erreur {
+  padding: var(--espace-2) var(--espace-3);
+  border-radius: var(--rayon);
+  background: var(--refus-fond);
+  color: var(--refus);
+}
+.champ select {
+  min-height: 56px;
+  padding: var(--espace-3) var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-1);
+  color: var(--texte);
+  font: inherit;
+}
+.champ input, .recherche input { min-width: 0; max-width: 100%; }
+
+.dialogue {
+  width: min(36rem, calc(100% - 32px));
+  max-height: calc(100svh - 48px);
+  padding: var(--espace-5);
+  border: 0;
+  border-radius: var(--rayon-grand);
+  background: var(--fond-2);
+  color: var(--texte);
+  box-shadow: var(--ombre);
+}
+.dialogue::backdrop { background: rgb(28 20 16 / 0.8); }
+.dialogue > * + * { margin-top: var(--espace-4); }
+
+/* Coquilles : seules les zones de mode sont remplacées. */
+[hidden] { display: none !important; }
+.coquille__entete { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espace-4); }
+.coquille__commun, .coquille__mode, .commun { display: flex; flex-direction: column; gap: var(--espace-4); min-width: 0; }
+.coquille__mode:empty { display: none; }
+.coquille__commun h1 { font-size: 1.5rem; text-wrap: balance; }
+.commun__resume, .commun__personnel { color: var(--texte-2); }
+.commun__liste { margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
+.commun summary { cursor: pointer; min-height: 44px; padding-block: var(--espace-2); font-weight: 700; }
+.commun h2 { font-size: 1.125rem; }
+.commun__programme { display: flex; flex-direction: column; gap: var(--espace-2); }
+.mode__contenu { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.mode__titre { font-size: 1.375rem; }
+.coquille__note { color: var(--texte-2); }
+.identite { max-width: 40rem; margin-inline: auto; padding: var(--espace-6) var(--espace-4); display: grid; gap: var(--espace-5); }
+.identite form { display: grid; gap: var(--espace-5); }
+.identite__option { display: flex; align-items: center; gap: var(--espace-3); min-height: 44px; }
+.identite__option input { width: 24px; height: 24px; accent-color: var(--citron); }

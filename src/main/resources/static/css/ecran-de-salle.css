@@ -255,3 +255,15 @@
   color: var(--texte);
   border-left-color: var(--fond-4);
 }
+
+/* La coquille garde le pied et le talon hors des zones confiées au mode. */
+.salle--coquille .salle__principal { justify-content: flex-start; gap: 1.2vw; padding-bottom: 6vw; }
+.salle--coquille .coquille__commun h1 { font-size: 2.4vw; }
+.salle--coquille .commun__resume { font-size: 1.5vw; }
+.salle--coquille .coupure { font-size: 1.3vw; padding: 0.7vw 1vw; }
+.salle--coquille .commun, .salle--coquille .coquille__mode { gap: 1vw; }
+.salle--coquille .commun__liste { padding-left: 0; }
+.salle--coquille .mode__titre { font-size: 2.4vw; }
+.salle--coquille .mode__contenu { font-size: 1.5vw; max-height: 48vh; overflow: auto; }
+.salle--coquille .coquille__note { font-size: 1.2vw; }
+.salle--coquille .salle__pied { gap: 1vw; }
