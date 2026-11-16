@@ -127,7 +127,7 @@ Suite de mesures qu'un seul Interprète rappe avant de laisser la place au suiva
 _Éviter_ : tour, round, relais
 
 **Passage** :
-Tour d'un à quatre Joueurs au micro, au Karaoké sur une Chanson ou au Freestyle sur une Instrumentale, noté ensuite par le Vote du public.
+Moment où un à quatre Joueurs passent au micro, au Karaoké sur une Chanson ou au Freestyle sur une Instrumentale, noté ensuite par le Vote du public.
 _Éviter_ : prestation, performance, tour de chant
 
 **Interprète** :
@@ -135,8 +135,12 @@ Joueur qui fait partie d'un Passage, qu'il l'ait inscrit ou qu'il y ait été in
 _Éviter_ : chanteur, rappeur, artiste
 
 **File d'attente** :
-Liste ordonnée des Passages à venir d'une Manche de Karaoké ou de Freestyle. Elle tourne par tours : le deuxième Passage d'un Interprète vient après le premier de chacun des autres.
+Liste ordonnée des Passages à venir d'une Manche de Karaoké ou de Freestyle. Elle avance par Tours : le deuxième Passage d'un Interprète vient après le premier de chacun des autres.
 _Éviter_ : playlist, queue
+
+**Tour** :
+Cycle de la File d'attente au cours duquel chaque Interprète a au plus un Passage. Un Passage placé en priorité compte comme le Passage de son Interprète pour le Tour.
+_Éviter_ : round, rotation (pour le cycle), tour de chant
 
 **Vote du public** :
 Avis donné par un Joueur sur un Passage dont il n'est pas Interprète : une note, ou, dans un Passage de Freestyle à plusieurs, le choix du meilleur Interprète.
