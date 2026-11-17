@@ -488,7 +488,7 @@ paths:
       operationId: consulterQrCodeSoiree
       summary: QR code qui mène à la Manette de la Soirée
       description: Image SVG générée par le serveur (sans bibliothèque JavaScript, ADR 0001), affichée par l’Écran de
-        salle. Elle encode l’adresse de la Manette avec le code d’accès dans un fragment, /manette.html#code=K7PQ2M ;
+        salle. Elle encode l’adresse de la Manette avec le code d’accès dans un fragment, /rejoindre.html#code=K7PQ2M ;
         le code d’accès n’est pas un secret. Une Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409
         SOIREE_NON_OUVERTE.
       tags:

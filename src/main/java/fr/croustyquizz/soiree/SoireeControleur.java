@@ -75,7 +75,7 @@ class SoireeControleur {
 	}
 
 	/**
-	 * QR code qui mène à la Manette avec le code d'accès dans le fragment : le
+	 * QR code qui mène à la page d'arrivée de la Manette avec le code d'accès dans le fragment : le
 	 * code n'est pas un secret, et un fragment n'est jamais envoyé au serveur.
 	 */
 	@GetMapping("/api/soirees/{soireeId}/qrcode")
@@ -84,7 +84,7 @@ class SoireeControleur {
 		if (!soiree.accepteLesArrivees()) {
 			throw new Refuse(409, "SOIREE_NON_OUVERTE", "La Soirée n'est pas ouverte aux Joueurs.").exception();
 		}
-		String manette = ServletUriComponentsBuilder.fromCurrentContextPath().path("/manette.html")
+		String manette = ServletUriComponentsBuilder.fromCurrentContextPath().path("/rejoindre.html")
 				.fragment("code=" + soiree.getCodeAcces()).toUriString();
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore())
 				.contentType(MediaType.valueOf("image/svg+xml"))

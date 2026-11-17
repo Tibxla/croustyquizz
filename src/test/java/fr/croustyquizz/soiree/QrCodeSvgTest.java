@@ -17,14 +17,14 @@ class QrCodeSvgTest {
 
 	@Test
 	void leQrCodeSeRelitEnAdresseDeLaManette() throws Exception {
-		String adresse = "https://croustyquizz.example/manette.html#code=K7PQ2M";
+		String adresse = "https://croustyquizz.example/rejoindre.html#code=K7PQ2M";
 
 		assertThat(relire(QrCodeSvg.de(adresse))).isEqualTo(adresse);
 	}
 
 	@Test
 	void leSvgEstAutonome() {
-		String svg = QrCodeSvg.de("http://localhost/manette.html#code=K7PQ2M");
+		String svg = QrCodeSvg.de("http://localhost/rejoindre.html#code=K7PQ2M");
 
 		assertThat(svg).startsWith("<svg ").doesNotContain("<script", "href", "url(");
 	}

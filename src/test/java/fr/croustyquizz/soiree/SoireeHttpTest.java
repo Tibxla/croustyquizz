@@ -208,7 +208,7 @@ class SoireeHttpTest {
 
 	@Test
 	void lesTroisEcransDuParcoursSontServis() {
-		for (String page : new String[] { "/console.html", "/ecran-de-salle.html", "/manette.html" }) {
+		for (String page : new String[] { "/preparer-soiree.html", "/ecran-de-salle.html", "/rejoindre.html" }) {
 			var reponse = envoyer(HttpMethod.GET, page, null);
 			assertThat(reponse.getStatusCode().value()).as(page).isEqualTo(200);
 			assertThat(reponse.getHeaders().getContentType().isCompatibleWith(MediaType.TEXT_HTML)).as(page).isTrue();
