@@ -75,10 +75,30 @@ class KaraokeHttpTest {
                 "{\"numeroModification\":0,\"tour\":1}", UUID.randomUUID()), 400);
         verifier("definirPrioritePassage", envoyer(HttpMethod.PUT, racine + "/file-attente/priorite", null,
                 Map.of("passage", Map.of("passageId", UUID.randomUUID(), "numeroModification", 0), "prioritaire", "true"), UUID.randomUUID()), 400);
-        verifier("reglerLimitePassages", envoyer(HttpMethod.PUT, racine + "/file-attente/limite", null,
-                Map.of("limitePassagesEnAttente", 0), UUID.randomUUID()), 400);
+        // Bornes de #96 : limite dans 1..20, chansonId de 1 à 128 caractères.
+        for (long limite : List.of(0L, 21L)) {
+            verifier("reglerLimitePassages", envoyer(HttpMethod.PUT, racine + "/file-attente/limite", null,
+                    Map.of("limitePassagesEnAttente", limite), UUID.randomUUID()), 400);
+        }
+        verifier("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", null,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", "x".repeat(129)), null), 400);
         verifier("desinscrirePassage", envoyer(HttpMethod.POST, racine + "/passages/" + UUID.randomUUID() + "/desinscription", null,
                 Map.of("envoiId", UUID.randomUUID(), "numeroModification", "0"), null), 400);
+    }
+
+    @Test void lesBornesDeLaLimiteEtDeChansonIdSuiventLeContrat() throws Exception {
+        UUID manche = demarrer(); String racine = racine(manche);
+        verifier("reglerLimitePassages", envoyer(HttpMethod.PUT, racine + "/file-attente/limite", animateur,
+                Map.of("limitePassagesEnAttente", 20), UUID.randomUUID()), 200);
+        verifier("reglerLimitePassages", envoyer(HttpMethod.PUT, racine + "/file-attente/limite", animateur,
+                Map.of("limitePassagesEnAttente", 21), UUID.randomUUID()), 400);
+        refuser("consulterChanson", envoyer(HttpMethod.GET, racine + "/chansons/" + "x".repeat(129), joueur, null, null), 400, "REQUETE_INVALIDE");
+        refuser("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", "x".repeat(129)), null), 400, "REQUETE_INVALIDE");
+        // 128 caractères passent la validation et vont jusqu'au métier : identifiant inconnu.
+        refuser("consulterChanson", envoyer(HttpMethod.GET, racine + "/chansons/" + "x".repeat(128), joueur, null, null), 404, "RESSOURCE_INTROUVABLE");
+        refuser("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", "x".repeat(128)), null), 404, "RESSOURCE_INTROUVABLE");
     }
 
     @Test void creationValideLeDefautEtRefuseLesReglagesNonObjetsOuNonEntiers() throws Exception {
@@ -87,9 +107,12 @@ class KaraokeHttpTest {
         verifierPrototype("creerMancheDeTest", creation, 201);
         UUID manche = UUID.fromString(json.readTree(creation.getBody()).path("mancheId").asString());
         assertThat(json.readTree(depot.charger(manche).getReglages()).path("limitePassagesEnAttente").asLong()).isEqualTo(1);
+        var maximum = envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches", animateur,
+                Map.of("mode", "KARAOKE", "reglages", Map.of("limitePassagesEnAttente", 20)), null);
+        verifierPrototype("creerMancheDeTest", maximum, 201);
         for (String reglages : List.of("[]", "\"texte\"", "{\"inconnu\":1}", "{\"limitePassagesEnAttente\":null}",
                 "{\"limitePassagesEnAttente\":1.0}", "{\"limitePassagesEnAttente\":\"2\"}", "{\"limitePassagesEnAttente\":0}",
-                "{\"limitePassagesEnAttente\":9007199254740992}")) {
+                "{\"limitePassagesEnAttente\":21}", "{\"limitePassagesEnAttente\":9007199254740992}")) {
             verifierPrototype("creerMancheDeTest", envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches", animateur,
                     "{\"mode\":\"KARAOKE\",\"reglages\":" + reglages + "}", null), 400);
         }
