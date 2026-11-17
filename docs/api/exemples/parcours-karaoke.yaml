@@ -1,0 +1,5652 @@
+description: 'Toutes les données sont fictives. Contrat seul : aucun serveur exécuté. Un Interprète
+  par Passage dans ce parcours ; courant null (#22/#23).'
+evenementsComplets: true
+parametresCommuns:
+  soireeId: 82000000-0000-4000-8000-000000000001
+  mancheId: 82000000-0000-4000-8000-000000000002
+  X-CSRF-TOKEN: csrf_session_karaoke_fictif_820000
+http:
+- nom: Préparer une Manche de Karaoké sans Questions
+  operationId: ajouterManche
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: {}
+  requete:
+    mode: KARAOKE
+    reglages: &a1
+      limitePassagesEnAttente: 2
+  statut: 201
+  reponse:
+    id: 82000000-0000-4000-8000-000000000002
+    ordre: 0
+    mode: KARAOKE
+    etat: EN_ATTENTE
+    reglages: *a1
+- nom: Résoudre la limite configurée de la Manche suivante
+  operationId: ajouterManche
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: {}
+  requete:
+    mode: KARAOKE
+    reglages: {}
+  statut: 201
+  reponse:
+    id: 82000000-0000-4000-8000-000000000020
+    ordre: 1
+    mode: KARAOKE
+    etat: EN_ATTENTE
+    reglages:
+      limitePassagesEnAttente: 1
+- nom: Lancer sans Questions
+  operationId: piloterSoiree
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000100
+  requete:
+    action: LANCER
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000100
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:03.000Z
+- nom: Capture initiale salle
+  operationId: retrouverEtatSalle
+  acteur: ecran:82000000-0000-4000-8000-000000000007
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 1
+    heureServeur: 2026-11-17T20:00:03.000Z
+    abonnementId: null
+    vue: &a43
+      soiree: &a2
+        id: 82000000-0000-4000-8000-000000000001
+        titre: Soirée fictive de Karaoké
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: CHANT8
+      mancheActive: &a3
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: &a4
+        - &a11
+          id: 82000000-0000-4000-8000-000000000003
+          pseudo: Alizé
+          connecte: true
+        - &a12
+          id: 82000000-0000-4000-8000-000000000004
+          pseudo: Basile
+          connecte: true
+      classement: &a5 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: &a6
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+        prochainsPassages: &a7 []
+        nombreAutresPassages: 0
+- nom: Capture initiale console
+  operationId: retrouverEtatConsole
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 1
+    heureServeur: 2026-11-17T20:00:04.000Z
+    abonnementId: null
+    vue: &a44
+      soiree: *a2
+      mancheActive: *a3
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a5
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Capture initiale joueur
+  operationId: retrouverEtatManette
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 1
+    heureServeur: 2026-11-17T20:00:05.000Z
+    abonnementId: null
+    vue: &a45
+      soiree: *a2
+      mancheActive: *a3
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a5
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke: &a176
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a7
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+- nom: Rechercher, réponse corrélée et saisie nettoyée
+  operationId: rechercherChansons
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: &a10
+    recherche: '  Étoiles   Lucioles  '
+    rechercheId: 82000000-0000-4000-8000-000000000030
+  statut: 200
+  reponse:
+    rechercheId: 82000000-0000-4000-8000-000000000030
+    recherche: Étoiles Lucioles
+    chansons:
+    - &a8
+      chansonId: ch_azur_7
+      titre: Sous les étoiles
+      artiste: Les Lucioles
+      album: null
+      dureeMs: 180000
+      etatParoles: SYNCHRONISEES
+    - &a177
+      chansonId: ch_brume_4
+      titre: Sous les étoiles
+      artiste: Les Lucioles
+      album: null
+      dureeMs: null
+      etatParoles: INCONNU
+    - &a9
+      chansonId: ch_sable_2
+      titre: Sous les étoiles
+      artiste: Les Lucioles
+      album: null
+      dureeMs: null
+      etatParoles: SYNCHRONISEES
+    - &a14
+      chansonId: ch_ambre_9
+      titre: La traversée
+      artiste: Les Lucioles
+      album: null
+      dureeMs: 210000
+      etatParoles: SYNCHRONISEES
+- nom: Recherche vide sans panne
+  operationId: rechercherChansons
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    recherche: Introuvable
+    rechercheId: 82000000-0000-4000-8000-000000000031
+  statut: 200
+  reponse:
+    rechercheId: 82000000-0000-4000-8000-000000000031
+    recherche: Introuvable
+    chansons: []
+- nom: Fiche inscriptible sans condition sur la source audio
+  operationId: consulterChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    chansonId: ch_azur_7
+  statut: 200
+  reponse:
+    chanson: *a8
+    inscriptionPossible: true
+    motifIndisponibilite: null
+- nom: Fiche indicative pour l’Animateur
+  operationId: consulterChanson
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    chansonId: ch_azur_7
+  statut: 200
+  reponse:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: ANIMATEUR
+- nom: Durée inconnue sur la fiche
+  operationId: consulterChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    chansonId: ch_sable_2
+  statut: 200
+  reponse:
+    chanson: *a9
+    inscriptionPossible: false
+    motifIndisponibilite: DUREE_INCONNUE
+- nom: Durée inconnue refusée à l’inscription
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: &a40 {}
+  requete: &a41
+    envoiId: 82000000-0000-4000-8000-000000000101
+    chansonId: ch_sable_2
+  statut: 422
+  reponse: &a42
+    type: about:blank
+    title: Commande refusée
+    status: 422
+    code: CHANSON_INDISPONIBLE
+    detail: La durée de cette Chanson est inconnue.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Panne de la source distincte du vide
+  operationId: consulterChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    chansonId: ch_disparue
+  statut: 503
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: SOURCE_PAROLES_INDISPONIBLE
+    detail: La source de paroles ne répond pas.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Panne de la source distincte du vide
+  operationId: rechercherChansons
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: *a10
+  statut: 503
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: SOURCE_PAROLES_INDISPONIBLE
+    detail: La source de paroles ne répond pas.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Chanson disparue
+  operationId: consulterChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    chansonId: ch_disparue
+  statut: 404
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 404
+    code: RESSOURCE_INTROUVABLE
+    detail: Cette Chanson n’est plus disponible.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Refus transitoire sans reçu puis réessai avec la même clé : SOURCE_PAROLES_INDISPONIBLE'
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000102
+    chansonId: ch_azur_7
+  statut: 503
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: SOURCE_PAROLES_INDISPONIBLE
+    detail: 'Refus transitoire sans reçu puis réessai avec la même clé : SOURCE_PAROLES_INDISPONIBLE'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Refus transitoire sans reçu puis réessai avec la même clé : SERVICE_INDISPONIBLE'
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000102
+    chansonId: ch_azur_7
+  statut: 503
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: SERVICE_INDISPONIBLE
+    detail: 'Refus transitoire sans reçu puis réessai avec la même clé : SERVICE_INDISPONIBLE'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Refus transitoire sans reçu puis réessai avec la même clé : ETAPE_INACTIVE'
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000102
+    chansonId: ch_azur_7
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAPE_INACTIVE
+    detail: 'Refus transitoire sans reçu puis réessai avec la même clé : ETAPE_INACTIVE'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Inscrire Alizé après réessais transitoires
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: &a35 {}
+  requete: &a36
+    envoiId: 82000000-0000-4000-8000-000000000102
+    chansonId: ch_azur_7
+  statut: 201
+  reponse: &a37
+    envoiId: 82000000-0000-4000-8000-000000000102
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: INSCRIRE
+    recueLe: 2026-11-17T20:00:19.000Z
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 0
+    etatApres: EN_ATTENTE
+- nom: Même Chanson permise à Basile
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000004
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000103
+    chansonId: ch_azur_7
+  statut: 201
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000103
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: INSCRIRE
+    recueLe: 2026-11-17T20:00:20.000Z
+    passageId: 82000000-0000-4000-8000-000000000042
+    numeroModification: 0
+    etatApres: EN_ATTENTE
+- nom: Deuxième Passage d’Alizé au Tour suivant
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000104
+    chansonId: ch_ambre_9
+  statut: 201
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000104
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: INSCRIRE
+    recueLe: 2026-11-17T20:00:21.000Z
+    passageId: 82000000-0000-4000-8000-000000000043
+    numeroModification: 0
+    etatApres: EN_ATTENTE
+- nom: Camille rejoint la Soirée en cours
+  operationId: rejoindreSoiree
+  acteur: public
+  parametres: {}
+  requete:
+    codeAcces: CHANT8
+    pseudo: Camille
+  statut: 201
+  reponse:
+    soireeId: 82000000-0000-4000-8000-000000000001
+    joueur: &a13
+      id: 82000000-0000-4000-8000-000000000005
+      pseudo: Camille
+      connecte: true
+    jetonReconnexion: jeton_fictif_camille_820000000000000000000000000000
+- nom: Retardataire admis en fin du Tour ouvert
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000005
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000105
+    chansonId: ch_ambre_9
+  statut: 201
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000105
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: INSCRIRE
+    recueLe: 2026-11-17T20:00:23.000Z
+    passageId: 82000000-0000-4000-8000-000000000044
+    numeroModification: 0
+    etatApres: EN_ATTENTE
+- nom: Doublon personnel avant quota
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000106
+    chansonId: ch_azur_7
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: PASSAGE_DEJA_INSCRIT
+    detail: Doublon personnel avant quota
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: CSRF refusé sans reçu
+  operationId: reglerLimitePassages
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000107
+    X-CSRF-TOKEN: csrf_refuse_fictif_820000
+  requete:
+    limitePassagesEnAttente: 3
+  statut: 403
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 403
+    code: CSRF_INVALIDE
+    detail: CSRF refusé sans reçu
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Première valeur concurrente de limite, même clé après accès rétabli
+  operationId: reglerLimitePassages
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000107
+  requete:
+    limitePassagesEnAttente: 3
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000107
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: REGLER_LIMITE
+    recueLe: 2026-11-17T20:00:26.000Z
+    passage: null
+- nom: Baisser la limite sans retirer les Passages
+  operationId: reglerLimitePassages
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000108
+  requete:
+    limitePassagesEnAttente: 1
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000108
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: REGLER_LIMITE
+    recueLe: 2026-11-17T20:00:27.000Z
+    passage: null
+- nom: Capturer le quota atteint et les deux Tours
+  operationId: retrouverEtatManette
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 8
+    heureServeur: 2026-11-17T20:00:27.000Z
+    abonnementId: null
+    vue: &a88
+      soiree: *a2
+      mancheActive: &a82
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: &a22
+        - *a11
+        - *a12
+        - *a13
+      classement: &a83 []
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke: &a174
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a84
+          - &a15
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: &a23
+              - &a180
+                joueurId: 82000000-0000-4000-8000-000000000003
+                pseudo: Alizé
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:27.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a85
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 0
+            numero: 2
+            chanson: *a8
+            interpretes: &a50
+              - &a181
+                joueurId: 82000000-0000-4000-8000-000000000004
+                pseudo: Basile
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:27.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a86
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 0
+            numero: 4
+            chanson: *a14
+            interpretes: &a24
+              - &a182
+                joueurId: 82000000-0000-4000-8000-000000000005
+                pseudo: Camille
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:27.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 1
+        mesPassagesEnAttente: &a175
+          - *a15
+          - &a87
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 0
+            numero: 3
+            chanson: *a14
+            interpretes: &a25
+              - joueurId: 82000000-0000-4000-8000-000000000003
+                pseudo: Alizé
+            position: 4
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:27.000Z
+              etat: ESTIMEE
+              dureeMs: 660000
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Quota atteint pour une autre Chanson
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000109
+    chansonId: ch_corail_6
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: LIMITE_ATTEINTE
+    detail: Quota atteint pour une autre Chanson
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Priorité au deuxième Passage
+  operationId: definirPrioritePassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000110
+  requete:
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000043
+      numeroModification: 0
+    prioritaire: true
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000110
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: DEFINIR_PRIORITE
+    recueLe: 2026-11-17T20:00:30.000Z
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000043
+      numeroModification: 1
+- nom: Remplacer la priorité sans perdre l’ordre normal
+  operationId: definirPrioritePassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000111
+  requete:
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 0
+    prioritaire: true
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000111
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: DEFINIR_PRIORITE
+    recueLe: 2026-11-17T20:00:31.000Z
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 1
+- nom: Priorité déjà satisfaite sans effet
+  operationId: definirPrioritePassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000112
+  requete:
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 1
+    prioritaire: true
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000112
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: DEFINIR_PRIORITE
+    recueLe: 2026-11-17T20:00:32.000Z
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 1
+- nom: Placement prioritaire protégé
+  operationId: deplacerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000042
+    Idempotency-Key: 82000000-0000-4000-8000-000000000113
+  requete:
+    numeroModification: 1
+    tour: 1
+    avant: null
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ROTATION_PROTEGEE
+    detail: Placement prioritaire protégé
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Retirer la priorité et restaurer l’ordre normal
+  operationId: definirPrioritePassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000114
+  requete:
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 1
+    prioritaire: false
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000114
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: DEFINIR_PRIORITE
+    recueLe: 2026-11-17T20:00:34.000Z
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 2
+- nom: Placer Camille avant Alizé dans le même Tour
+  operationId: deplacerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000044
+    Idempotency-Key: 82000000-0000-4000-8000-000000000115
+  requete:
+    numeroModification: 0
+    tour: 1
+    avant:
+      passageId: 82000000-0000-4000-8000-000000000041
+      numeroModification: 0
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000115
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: DEPLACER
+    recueLe: 2026-11-17T20:00:35.000Z
+    passageId: 82000000-0000-4000-8000-000000000044
+    numeroModification: 1
+    etatApres: EN_ATTENTE
+- nom: Replacer Camille en fin de Tour
+  operationId: deplacerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000044
+    Idempotency-Key: 82000000-0000-4000-8000-000000000116
+  requete:
+    numeroModification: 1
+    tour: 1
+    avant: null
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000116
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: DEPLACER
+    recueLe: 2026-11-17T20:00:36.000Z
+    passageId: 82000000-0000-4000-8000-000000000044
+    numeroModification: 2
+    etatApres: EN_ATTENTE
+- nom: Changement de Tour protégé
+  operationId: deplacerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000044
+    Idempotency-Key: 82000000-0000-4000-8000-000000000117
+  requete:
+    numeroModification: 2
+    tour: 2
+    avant: null
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ROTATION_PROTEGEE
+    detail: Changement de Tour protégé
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Ancre égale à la cible
+  operationId: deplacerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000044
+    Idempotency-Key: 82000000-0000-4000-8000-000000000118
+  requete:
+    numeroModification: 2
+    tour: 1
+    avant:
+      passageId: 82000000-0000-4000-8000-000000000044
+      numeroModification: 2
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 422
+    code: DONNEES_INVALIDES
+    detail: Ancre égale à la cible
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Retirer Basile malgré les inscriptions étrangères
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: &a16
+    passageId: 82000000-0000-4000-8000-000000000042
+    Idempotency-Key: 82000000-0000-4000-8000-000000000119
+  requete: &a17
+    numeroModification: 2
+  statut: 200
+  reponse: &a18
+    envoiId: 82000000-0000-4000-8000-000000000119
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: RETIRER
+    recueLe: 2026-11-17T20:00:39.000Z
+    passageId: 82000000-0000-4000-8000-000000000042
+    numeroModification: 3
+    etatApres: RETIRE
+- nom: Deuxième retrait distinct, cible sortie même avec le compteur courant
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000042
+    Idempotency-Key: 82000000-0000-4000-8000-000000000120
+  requete:
+    numeroModification: 3
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Deuxième retrait distinct, cible sortie même avec le compteur courant
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Même clé de retrait, reçu initial
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: *a16
+  requete: *a17
+  statut: 200
+  reponse: *a18
+- nom: Ancre connue sortie de l’attente
+  operationId: deplacerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000044
+    Idempotency-Key: 82000000-0000-4000-8000-000000000121
+  requete:
+    numeroModification: 2
+    tour: 1
+    avant:
+      passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 3
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Ancre connue sortie de l’attente
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Réinscrire Basile en fin du Tour admissible
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000004
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000122
+    chansonId: ch_azur_7
+  statut: 201
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000122
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: INSCRIRE
+    recueLe: 2026-11-17T20:00:43.000Z
+    passageId: 82000000-0000-4000-8000-000000000045
+    numeroModification: 0
+    etatApres: EN_ATTENTE
+- nom: Désinscription personnelle de Basile
+  operationId: desinscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000004
+  parametres: &a19
+    passageId: 82000000-0000-4000-8000-000000000045
+  requete: &a20
+    envoiId: 82000000-0000-4000-8000-000000000123
+    numeroModification: 0
+  statut: 200
+  reponse: &a21
+    envoiId: 82000000-0000-4000-8000-000000000123
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: DESINSCRIRE
+    recueLe: 2026-11-17T20:00:44.000Z
+    passageId: 82000000-0000-4000-8000-000000000045
+    numeroModification: 1
+    etatApres: RETIRE
+- nom: Reçu de désinscription inchangé
+  operationId: desinscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000004
+  parametres: *a19
+  requete: *a20
+  statut: 200
+  reponse: *a21
+- nom: Mettre en pause sans étape courante
+  operationId: piloterManche
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000124
+  requete:
+    action: METTRE_EN_PAUSE
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000124
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:46.000Z
+- nom: Gestion et attente suspendue en pause — salle
+  operationId: retrouverEtatSalle
+  acteur: ecran:82000000-0000-4000-8000-000000000007
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 17
+    heureServeur: 2026-11-17T20:00:46.000Z
+    abonnementId: null
+    vue: &a142
+      soiree: *a2
+      mancheActive: &a26
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_PAUSE
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a27 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_PAUSE
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a31
+          - &a28
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:46.000Z
+              etat: SUSPENDUE
+              dureeMs: null
+          - &a29
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 2
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:46.000Z
+              etat: SUSPENDUE
+              dureeMs: null
+          - &a30
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 2
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 3
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:46.000Z
+              etat: SUSPENDUE
+              dureeMs: null
+        nombreAutresPassages: 0
+- nom: Gestion et attente suspendue en pause — console
+  operationId: retrouverEtatConsole
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 17
+    heureServeur: 2026-11-17T20:00:47.000Z
+    abonnementId: null
+    vue: &a143
+      soiree: *a2
+      mancheActive: *a26
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a27
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_PAUSE
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_PAUSE
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a28
+        - *a29
+        - *a30
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Gestion et attente suspendue en pause — joueur
+  operationId: retrouverEtatManette
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 17
+    heureServeur: 2026-11-17T20:00:48.000Z
+    abonnementId: null
+    vue: &a144
+      soiree: *a2
+      mancheActive: *a26
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a27
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_PAUSE
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a31
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a28
+        - *a30
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Limite courante sans effet en pause
+  operationId: reglerLimitePassages
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: &a32
+    Idempotency-Key: 82000000-0000-4000-8000-000000000125
+  requete: &a33
+    limitePassagesEnAttente: 1
+  statut: 200
+  reponse: &a34
+    envoiId: 82000000-0000-4000-8000-000000000125
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: REGLER_LIMITE
+    recueLe: 2026-11-17T20:00:50.000Z
+    passage: null
+- nom: Reçu 200 de limite sans effet
+  operationId: reglerLimitePassages
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: *a32
+  requete: *a33
+  statut: 200
+  reponse: *a34
+- nom: Passer sans courant est inactif
+  operationId: piloterManche
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000126
+  requete:
+    action: PASSER_ETAPE
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAPE_INACTIVE
+    detail: Passer sans courant est inactif
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Reprendre sans étape courante
+  operationId: piloterManche
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000127
+  requete:
+    action: REPRENDRE
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000127
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:53.000Z
+- nom: Retirer Alizé du premier Tour
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000041
+    Idempotency-Key: 82000000-0000-4000-8000-000000000128
+  requete:
+    numeroModification: 0
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000128
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: RETIRER
+    recueLe: 2026-11-17T20:00:54.000Z
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 1
+    etatApres: RETIRE
+- nom: Rejouer l’inscription 201 après retrait
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: *a35
+  requete: *a36
+  statut: 201
+  reponse: *a37
+- nom: Dernier Passage du premier Tour, ouvrir le suivant
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000044
+    Idempotency-Key: 82000000-0000-4000-8000-000000000129
+  requete:
+    numeroModification: 2
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000129
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: RETIRER
+    recueLe: 2026-11-17T20:00:56.000Z
+    passageId: 82000000-0000-4000-8000-000000000044
+    numeroModification: 3
+    etatApres: RETIRE
+- nom: Fin du premier Tour, position recalculée sans incrément du Passage suivant
+  operationId: retrouverEtatConsole
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 20
+    heureServeur: 2026-11-17T20:00:56.000Z
+    abonnementId: null
+    vue: &a159
+      soiree: *a2
+      mancheActive: &a156
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a157 []
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - &a158
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 2
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 1
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:56.000Z
+            etat: ESTIMEE
+            dureeMs: 0
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Dernière attente retirée sans fin de Manche
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000043
+    Idempotency-Key: 82000000-0000-4000-8000-000000000130
+  requete:
+    numeroModification: 2
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000130
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000002
+    action: RETIRER
+    recueLe: 2026-11-17T20:00:58.000Z
+    passageId: 82000000-0000-4000-8000-000000000043
+    numeroModification: 3
+    etatApres: RETIRE
+- nom: File vide toujours ouverte après retrait
+  operationId: retrouverEtatSalle
+  acteur: ecran:82000000-0000-4000-8000-000000000007
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 21
+    heureServeur: 2026-11-17T20:00:58.000Z
+    abonnementId: null
+    vue: &a161
+      soiree: *a2
+      mancheActive: &a162
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a163 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 0
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a164 []
+        nombreAutresPassages: 0
+- nom: Terminer explicitement
+  operationId: piloterManche
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000131
+  requete:
+    action: TERMINER
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000131
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:01:00.000Z
+- nom: Coquille après fin — salle
+  operationId: retrouverEtatSalle
+  acteur: ecran:82000000-0000-4000-8000-000000000007
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 22
+    heureServeur: 2026-11-17T20:01:00.000Z
+    abonnementId: null
+    vue: &a165
+      soiree: *a2
+      mancheActive: &a38
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: TERMINEE
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a39 []
+      dernierBuzz: null
+      karaoke: null
+- nom: Coquille après fin — console
+  operationId: retrouverEtatConsole
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 22
+    heureServeur: 2026-11-17T20:01:01.000Z
+    abonnementId: null
+    vue: &a166
+      soiree: *a2
+      mancheActive: *a38
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a39
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: TERMINEE
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke: null
+- nom: Coquille après fin — joueur
+  operationId: retrouverEtatManette
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 22
+    heureServeur: 2026-11-17T20:01:02.000Z
+    abonnementId: null
+    vue: &a167
+      soiree: *a2
+      mancheActive: *a38
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a39
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke: null
+- nom: Rejouer l’inscription 201 après fin
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: *a35
+  requete: *a36
+  statut: 201
+  reponse: *a37
+- nom: Rejouer le retrait 200 après fin
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: *a16
+  requete: *a17
+  statut: 200
+  reponse: *a18
+- nom: Rejouer le refus définitif 422 après fin
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: *a40
+  requete: *a41
+  statut: 422
+  reponse: *a42
+- nom: 'Après fin : inscrirePassage'
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000132
+    chansonId: ch_ambre_9
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: 'Après fin : inscrirePassage'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Après fin : desinscrirePassage'
+  operationId: desinscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000041
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000133
+    numeroModification: 0
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: 'Après fin : desinscrirePassage'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Après fin : retirerPassage'
+  operationId: retirerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000041
+    Idempotency-Key: 82000000-0000-4000-8000-000000000134
+  requete:
+    numeroModification: 0
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: 'Après fin : retirerPassage'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Après fin : deplacerPassage'
+  operationId: deplacerPassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: 82000000-0000-4000-8000-000000000041
+    Idempotency-Key: 82000000-0000-4000-8000-000000000135
+  requete:
+    numeroModification: 0
+    tour: 1
+    avant: null
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: 'Après fin : deplacerPassage'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Après fin : definirPrioritePassage'
+  operationId: definirPrioritePassage
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000136
+  requete:
+    passage:
+      passageId: 82000000-0000-4000-8000-000000000041
+      numeroModification: 0
+    prioritaire: true
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: 'Après fin : definirPrioritePassage'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: 'Après fin : reglerLimitePassages'
+  operationId: reglerLimitePassages
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000137
+  requete:
+    limitePassagesEnAttente: 2
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: 'Après fin : reglerLimitePassages'
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Même clé d’inscription avec contenu différent
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000102
+    chansonId: ch_ambre_9
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ENVOI_REUTILISE
+    detail: Même clé d’inscription avec contenu différent
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+- nom: Démarrer la Manche suivante
+  operationId: piloterSoiree
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000138
+  requete:
+    action: MANCHE_SUIVANTE
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000138
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:01:14.000Z
+- nom: Numéro continu dans une nouvelle Manche
+  operationId: inscrirePassage
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    mancheId: 82000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 82000000-0000-4000-8000-000000000139
+    chansonId: ch_azur_7
+  statut: 201
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000139
+    soireeId: 82000000-0000-4000-8000-000000000001
+    mancheId: 82000000-0000-4000-8000-000000000020
+    action: INSCRIRE
+    recueLe: 2026-11-17T20:01:15.000Z
+    passageId: 82000000-0000-4000-8000-000000000046
+    numeroModification: 0
+    etatApres: EN_ATTENTE
+evenements:
+- nom: File vide au démarrage, ouverte — salle
+  canal: salle
+  message:
+    type: manche-demarree
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: 2026-11-17T20:00:03.000Z
+    donnees: *a43
+- nom: File vide au démarrage, ouverte — console
+  canal: console
+  message:
+    type: manche-demarree
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: 2026-11-17T20:00:03.000Z
+    donnees: *a44
+- nom: File vide au démarrage, ouverte — joueur
+  canal: joueur
+  message:
+    type: manche-demarree
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: 2026-11-17T20:00:03.000Z
+    donnees: *a45
+- nom: Inscrire Alizé après réessais transitoires — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: 2026-11-17T20:00:19.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a46
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: &a47 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a49
+          - &a48
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:19.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+        nombreAutresPassages: 0
+- nom: Inscrire Alizé après réessais transitoires — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: 2026-11-17T20:00:19.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a46
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a47
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a48
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Inscrire Alizé après réessais transitoires — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: 2026-11-17T20:00:19.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a46
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a47
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a49
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a48
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+- nom: Même Chanson permise à Basile — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: 2026-11-17T20:00:20.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a51
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: &a52 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a55
+          - &a53
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:20.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a54
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 0
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:20.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+        nombreAutresPassages: 0
+- nom: Même Chanson permise à Basile — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: 2026-11-17T20:00:20.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a51
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a52
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a53
+        - *a54
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Même Chanson permise à Basile — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: 2026-11-17T20:00:20.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a51
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a52
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a55
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a53
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+- nom: Deuxième Passage d’Alizé au Tour suivant — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: 2026-11-17T20:00:21.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a56
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: &a57 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a61
+          - &a58
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:21.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a59
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 0
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:21.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a60
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 0
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 3
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:21.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 0
+- nom: Deuxième Passage d’Alizé au Tour suivant — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: 2026-11-17T20:00:21.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a56
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a57
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a58
+        - *a59
+        - *a60
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Deuxième Passage d’Alizé au Tour suivant — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: 2026-11-17T20:00:21.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a56
+      modeEnCours: KARAOKE
+      joueurs: *a4
+      classement: *a57
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a61
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a58
+        - *a60
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Arrivée d’une retardataire — salle
+  canal: salle
+  message:
+    type: joueurs-modifies
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: 2026-11-17T20:00:22.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a62
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a63 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a67
+          - &a64
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:22.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a65
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 0
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:22.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a66
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 0
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 3
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:22.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 0
+- nom: Arrivée d’une retardataire — console
+  canal: console
+  message:
+    type: joueurs-modifies
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: 2026-11-17T20:00:22.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a62
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a63
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a64
+        - *a65
+        - *a66
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Arrivée d’une retardataire — joueur
+  canal: joueur
+  message: &a184
+    type: joueurs-modifies
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: 2026-11-17T20:00:22.000Z
+    donnees: &a183
+      soiree: *a2
+      mancheActive: *a62
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a63
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a67
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a64
+        - *a66
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Retardataire admis en fin du Tour ouvert — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: 2026-11-17T20:00:23.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a68
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a69 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a73
+          - &a70
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:23.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a71
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 0
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:23.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a72
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 0
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:23.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 1
+- nom: Retardataire admis en fin du Tour ouvert — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: 2026-11-17T20:00:23.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a68
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a69
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a70
+        - *a71
+        - *a72
+        - &a74
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 0
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:23.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Retardataire admis en fin du Tour ouvert — joueur
+  canal: joueur
+  message: &a185
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: 2026-11-17T20:00:23.000Z
+    donnees: &a186
+      soiree: *a2
+      mancheActive: *a68
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a69
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a73
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a70
+        - *a74
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Première limite dans l’ordre serveur — salle
+  canal: salle
+  message:
+    type: limite-passages-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: 2026-11-17T20:00:26.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a75
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a76 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 3
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a80
+          - &a77
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:26.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a78
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 0
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:26.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a79
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 0
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:26.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 1
+- nom: Première limite dans l’ordre serveur — console
+  canal: console
+  message:
+    type: limite-passages-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: 2026-11-17T20:00:26.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a75
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a76
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 3
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a77
+        - *a78
+        - *a79
+        - &a81
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 0
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:26.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Première limite dans l’ordre serveur — joueur
+  canal: joueur
+  message:
+    type: limite-passages-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: 2026-11-17T20:00:26.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a75
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a76
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 3
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a80
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a77
+        - *a81
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+- nom: Baisse de limite sans retrait — salle
+  canal: salle
+  message:
+    type: limite-passages-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: 2026-11-17T20:00:27.000Z
+    donnees: &a168
+      soiree: *a2
+      mancheActive: *a82
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a83
+      dernierBuzz: null
+      karaoke: &a169
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a84
+        nombreAutresPassages: 1
+- nom: Baisse de limite sans retrait — console
+  canal: console
+  message:
+    type: limite-passages-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: 2026-11-17T20:00:27.000Z
+    donnees: &a170
+      soiree: *a2
+      mancheActive: *a82
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a83
+      dernierBuzz: null
+      programme: &a171
+        - id: 82000000-0000-4000-8000-000000000002
+          ordre: 0
+          mode: KARAOKE
+          etat: EN_COURS
+          reglages: *a1
+        - id: 82000000-0000-4000-8000-000000000020
+          ordre: 1
+          mode: KARAOKE
+          etat: EN_ATTENTE
+          reglages:
+            limitePassagesEnAttente: 1
+      karaoke: &a172
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente: &a173
+          - *a15
+          - *a85
+          - *a86
+          - *a87
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Baisse de limite sans retrait — joueur
+  canal: joueur
+  message:
+    type: limite-passages-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: 2026-11-17T20:00:27.000Z
+    donnees: *a88
+- nom: Priorité au deuxième Passage — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 9
+    emisLe: 2026-11-17T20:00:30.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a89
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a90 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: 82000000-0000-4000-8000-000000000043
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a94
+          - &a91
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 1
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 1
+            tour: 2
+            prioritaire: true
+            attente:
+              calculeeLe: 2026-11-17T20:00:30.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a92
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:30.000Z
+              etat: ESTIMEE
+              dureeMs: 240000
+          - &a93
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 0
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:30.000Z
+              etat: ESTIMEE
+              dureeMs: 450000
+        nombreAutresPassages: 1
+- nom: Priorité au deuxième Passage — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 9
+    emisLe: 2026-11-17T20:00:30.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a89
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a90
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: 82000000-0000-4000-8000-000000000043
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a91
+        - *a92
+        - *a93
+        - passageId: 82000000-0000-4000-8000-000000000044
+          numeroModification: 0
+          numero: 4
+          chanson: *a14
+          interpretes: *a24
+          position: 4
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:30.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Priorité au deuxième Passage — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 9
+    emisLe: 2026-11-17T20:00:30.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a89
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a90
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: 82000000-0000-4000-8000-000000000043
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a94
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a91
+        - *a92
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Remplacer la priorité sans perdre l’ordre normal — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 10
+    emisLe: 2026-11-17T20:00:31.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a95
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a96 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: 82000000-0000-4000-8000-000000000042
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a100
+          - &a97
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 1
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 1
+            tour: 1
+            prioritaire: true
+            attente:
+              calculeeLe: 2026-11-17T20:00:31.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a98
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:31.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a99
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 0
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:31.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 1
+- nom: Remplacer la priorité sans perdre l’ordre normal — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 10
+    emisLe: 2026-11-17T20:00:31.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a95
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a96
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: 82000000-0000-4000-8000-000000000042
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a97
+        - *a98
+        - *a99
+        - &a101
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 2
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:31.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Remplacer la priorité sans perdre l’ordre normal — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 10
+    emisLe: 2026-11-17T20:00:31.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a95
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a96
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: 82000000-0000-4000-8000-000000000042
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a100
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a98
+        - *a101
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Priorité retirée — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 11
+    emisLe: 2026-11-17T20:00:34.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a102
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a103 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a107
+          - &a104
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:34.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a105
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 2
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:34.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a106
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 0
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:34.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 1
+- nom: Priorité retirée — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 11
+    emisLe: 2026-11-17T20:00:34.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a102
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a103
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a104
+        - *a105
+        - *a106
+        - &a108
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 2
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:34.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Priorité retirée — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 11
+    emisLe: 2026-11-17T20:00:34.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a102
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a103
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a107
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a104
+        - *a108
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Placement avant une ancre — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 12
+    emisLe: 2026-11-17T20:00:35.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a109
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a110 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a114
+          - &a111
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 1
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:35.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a112
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:35.000Z
+              etat: ESTIMEE
+              dureeMs: 240000
+          - &a113
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 2
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:35.000Z
+              etat: ESTIMEE
+              dureeMs: 450000
+        nombreAutresPassages: 1
+- nom: Placement avant une ancre — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 12
+    emisLe: 2026-11-17T20:00:35.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a109
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a110
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a111
+        - *a112
+        - *a113
+        - &a115
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 2
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:35.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Placement avant une ancre — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 12
+    emisLe: 2026-11-17T20:00:35.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a109
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a110
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a114
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a112
+        - *a115
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Fin de Tour admissible — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 13
+    emisLe: 2026-11-17T20:00:36.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a116
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a117 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a121
+          - &a118
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:36.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a119
+            passageId: 82000000-0000-4000-8000-000000000042
+            numeroModification: 2
+            numero: 2
+            chanson: *a8
+            interpretes: *a50
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:36.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a120
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 2
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:36.000Z
+              etat: ESTIMEE
+              dureeMs: 420000
+        nombreAutresPassages: 1
+- nom: Fin de Tour admissible — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 13
+    emisLe: 2026-11-17T20:00:36.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a116
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a117
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a118
+        - *a119
+        - *a120
+        - &a122
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 2
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:36.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Fin de Tour admissible — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 13
+    emisLe: 2026-11-17T20:00:36.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a116
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a117
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a121
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a118
+        - *a122
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Retirer Basile malgré les inscriptions étrangères — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 14
+    emisLe: 2026-11-17T20:00:39.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a123
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a124 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a128
+          - &a125
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:39.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a126
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 2
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:39.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a127
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 2
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 3
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:39.000Z
+              etat: ESTIMEE
+              dureeMs: 450000
+        nombreAutresPassages: 0
+- nom: Retirer Basile malgré les inscriptions étrangères — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 14
+    emisLe: 2026-11-17T20:00:39.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a123
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a124
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a125
+        - *a126
+        - *a127
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Retirer Basile malgré les inscriptions étrangères — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 14
+    emisLe: 2026-11-17T20:00:39.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a123
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a124
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a128
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a125
+        - *a127
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Réinscrire Basile en fin du Tour admissible — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 15
+    emisLe: 2026-11-17T20:00:43.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a129
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a130 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a134
+          - &a131
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:43.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a132
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 2
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:43.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a133
+            passageId: 82000000-0000-4000-8000-000000000045
+            numeroModification: 0
+            numero: 5
+            chanson: *a8
+            interpretes:
+            - joueurId: 82000000-0000-4000-8000-000000000004
+              pseudo: Basile
+            position: 3
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:43.000Z
+              etat: ESTIMEE
+              dureeMs: 450000
+        nombreAutresPassages: 1
+- nom: Réinscrire Basile en fin du Tour admissible — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 15
+    emisLe: 2026-11-17T20:00:43.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a129
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a130
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a131
+        - *a132
+        - *a133
+        - &a135
+          passageId: 82000000-0000-4000-8000-000000000043
+          numeroModification: 2
+          numero: 3
+          chanson: *a14
+          interpretes: *a25
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:00:43.000Z
+            etat: ESTIMEE
+            dureeMs: 660000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Réinscrire Basile en fin du Tour admissible — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 15
+    emisLe: 2026-11-17T20:00:43.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a129
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a130
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a134
+        nombreAutresPassages: 1
+        mesPassagesEnAttente:
+        - *a131
+        - *a135
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Désinscription personnelle de Basile — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 16
+    emisLe: 2026-11-17T20:00:44.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a136
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a137 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a141
+          - &a138
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:44.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a139
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 2
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:44.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a140
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 2
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 3
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:44.000Z
+              etat: ESTIMEE
+              dureeMs: 450000
+        nombreAutresPassages: 0
+- nom: Désinscription personnelle de Basile — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 16
+    emisLe: 2026-11-17T20:00:44.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a136
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a137
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a138
+        - *a139
+        - *a140
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Désinscription personnelle de Basile — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 16
+    emisLe: 2026-11-17T20:00:44.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a136
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a137
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a141
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a138
+        - *a140
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Pause sans courant — salle
+  canal: salle
+  message:
+    type: manche-en-pause
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 17
+    emisLe: 2026-11-17T20:00:46.000Z
+    donnees: *a142
+- nom: Pause sans courant — console
+  canal: console
+  message:
+    type: manche-en-pause
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 17
+    emisLe: 2026-11-17T20:00:46.000Z
+    donnees: *a143
+- nom: Pause sans courant — joueur
+  canal: joueur
+  message:
+    type: manche-en-pause
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 17
+    emisLe: 2026-11-17T20:00:46.000Z
+    donnees: *a144
+- nom: Reprise — salle
+  canal: salle
+  message:
+    type: manche-reprise
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 18
+    emisLe: 2026-11-17T20:00:53.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a145
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a146 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a150
+          - &a147
+            passageId: 82000000-0000-4000-8000-000000000041
+            numeroModification: 0
+            numero: 1
+            chanson: *a8
+            interpretes: *a23
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:53.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a148
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 2
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 2
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:53.000Z
+              etat: ESTIMEE
+              dureeMs: 210000
+          - &a149
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 2
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 3
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:53.000Z
+              etat: ESTIMEE
+              dureeMs: 450000
+        nombreAutresPassages: 0
+- nom: Reprise — console
+  canal: console
+  message:
+    type: manche-reprise
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 18
+    emisLe: 2026-11-17T20:00:53.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a145
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a146
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a147
+        - *a148
+        - *a149
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Reprise — joueur
+  canal: joueur
+  message:
+    type: manche-reprise
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 18
+    emisLe: 2026-11-17T20:00:53.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a145
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a146
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 3
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a150
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a147
+        - *a149
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Retirer Alizé du premier Tour — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 19
+    emisLe: 2026-11-17T20:00:54.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &a151
+        id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: &a152 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a155
+          - &a153
+            passageId: 82000000-0000-4000-8000-000000000044
+            numeroModification: 2
+            numero: 4
+            chanson: *a14
+            interpretes: *a24
+            position: 1
+            tour: 1
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:54.000Z
+              etat: ESTIMEE
+              dureeMs: 0
+          - &a154
+            passageId: 82000000-0000-4000-8000-000000000043
+            numeroModification: 2
+            numero: 3
+            chanson: *a14
+            interpretes: *a25
+            position: 2
+            tour: 2
+            prioritaire: false
+            attente:
+              calculeeLe: 2026-11-17T20:00:54.000Z
+              etat: ESTIMEE
+              dureeMs: 240000
+        nombreAutresPassages: 0
+- nom: Retirer Alizé du premier Tour — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 19
+    emisLe: 2026-11-17T20:00:54.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a151
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a152
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente:
+        - *a153
+        - *a154
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Retirer Alizé du premier Tour — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 19
+    emisLe: 2026-11-17T20:00:54.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a151
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a152
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a155
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a154
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Dernier Passage du premier Tour, ouvrir le suivant — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 20
+    emisLe: 2026-11-17T20:00:56.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a156
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a157
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &a160
+          - *a158
+        nombreAutresPassages: 0
+- nom: Dernier Passage du premier Tour, ouvrir le suivant — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 20
+    emisLe: 2026-11-17T20:00:56.000Z
+    donnees: *a159
+- nom: Dernier Passage du premier Tour, ouvrir le suivant — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 20
+    emisLe: 2026-11-17T20:00:56.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a156
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a157
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a160
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *a158
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+- nom: Dernière attente retirée sans fin de Manche — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 21
+    emisLe: 2026-11-17T20:00:58.000Z
+    donnees: *a161
+- nom: Dernière attente retirée sans fin de Manche — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 21
+    emisLe: 2026-11-17T20:00:58.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a162
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a163
+      dernierBuzz: null
+      programme:
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *a1
+      - id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 0
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Dernière attente retirée sans fin de Manche — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 21
+    emisLe: 2026-11-17T20:00:58.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *a162
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a163
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 0
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *a164
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+- nom: Fin, blocs Karaoké nuls — salle
+  canal: salle
+  message:
+    type: manche-terminee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 22
+    emisLe: 2026-11-17T20:01:00.000Z
+    donnees: *a165
+- nom: Fin, blocs Karaoké nuls — console
+  canal: console
+  message:
+    type: manche-terminee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 22
+    emisLe: 2026-11-17T20:01:00.000Z
+    donnees: *a166
+- nom: Fin, blocs Karaoké nuls — joueur
+  canal: joueur
+  message:
+    type: manche-terminee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 22
+    emisLe: 2026-11-17T20:01:00.000Z
+    donnees: *a167
+- nom: Démarrer la Manche suivante — salle
+  canal: salle
+  message:
+    type: manche-demarree
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 23
+    emisLe: 2026-11-17T20:01:14.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: &mancheSuivante
+        id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a5
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000020
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: []
+        nombreAutresPassages: 0
+- nom: Démarrer la Manche suivante — console
+  canal: console
+  message:
+    type: manche-demarree
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 23
+    emisLe: 2026-11-17T20:01:14.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *mancheSuivante
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a5
+      dernierBuzz: null
+      programme: &programmeSuivant
+      - id: 82000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: TERMINEE
+        reglages: *a1
+      - *mancheSuivante
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000020
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Démarrer la Manche suivante — joueur
+  canal: joueur
+  message:
+    type: manche-demarree
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 23
+    emisLe: 2026-11-17T20:01:14.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *mancheSuivante
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a5
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000020
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+- nom: Numéro suivant sur la Soirée
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 24
+    emisLe: 2026-11-17T20:01:15.000Z
+    donnees:
+      soiree: *a2
+      mancheActive:
+        id: 82000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a5
+      dernierBuzz: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000020
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: &passagesMancheSuivante
+        - passageId: 82000000-0000-4000-8000-000000000046
+          numeroModification: 0
+          numero: 6
+          chanson: *a8
+          interpretes:
+          - joueurId: 82000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-17T20:01:15.000Z
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+- nom: Numéro suivant sur la Soirée — console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 24
+    emisLe: 2026-11-17T20:01:15.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *mancheSuivante
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a5
+      dernierBuzz: null
+      programme: *programmeSuivant
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000020
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        passagesEnAttente: *passagesMancheSuivante
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+- nom: Numéro suivant sur la Soirée — joueur
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 82000000-0000-4000-8000-000000000001
+    revision: 24
+    emisLe: 2026-11-17T20:01:15.000Z
+    donnees:
+      soiree: *a2
+      mancheActive: *mancheSuivante
+      modeEnCours: KARAOKE
+      joueurs: *a22
+      classement: *a5
+      dernierBuzz: null
+      joueurId: 82000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 82000000-0000-4000-8000-000000000020
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *a6
+        prochainsPassages: *passagesMancheSuivante
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: *passagesMancheSuivante
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+cases:
+- nom: Création avec limite configurée
+  schema: CreationManche
+  valeur:
+    mode: KARAOKE
+    reglages: {}
+  valide: true
+- nom: Manche résolue sans limite initiale refusée
+  schema: Manche
+  valeur:
+    id: 82000000-0000-4000-8000-000000000002
+    ordre: 0
+    mode: KARAOKE
+    etat: EN_COURS
+    reglages: {}
+  valide: false
+- nom: ReglagesKaraoke refuse nombreEtapes
+  schema: ReglagesKaraoke
+  valeur:
+    nombreEtapes: 3
+  valide: false
+- nom: Vue Karaoké sans bloc Quiz — salle
+  schema: VueSalle
+  valeur: *a168
+  valide: true
+- nom: Karaoké sous mode Quiz refusé — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: QUIZ
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke: *a169
+  valide: false
+- nom: Deux blocs non nuls refusés — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke: *a169
+    quiz:
+      phase: ATTENTE
+  valide: false
+- nom: Manche terminée avec bloc rempli refusée — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive:
+      id: 82000000-0000-4000-8000-000000000002
+      ordre: 0
+      mode: KARAOKE
+      etat: TERMINEE
+      reglages: *a1
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke: *a169
+  valide: false
+- nom: Bloc sans Manche refusé — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive: null
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke: *a169
+  valide: false
+- nom: Fin avec bloc nul valide — salle
+  schema: VueSalle
+  valeur: *a165
+  valide: true
+- nom: Mode sans fournisseur autorisé — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke: null
+  valide: true
+- nom: Vue sans paroles — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      prochainsPassages: *a84
+      nombreAutresPassages: 1
+      paroles: interdit
+  valide: false
+- nom: Vue sans jetonReconnexion — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      prochainsPassages: *a84
+      nombreAutresPassages: 1
+      jetonReconnexion: interdit
+  valide: false
+- nom: Vue sans cleEcran — salle
+  schema: VueSalle
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      prochainsPassages: *a84
+      nombreAutresPassages: 1
+      cleEcran: interdit
+  valide: false
+- nom: Vue Karaoké sans bloc Quiz — console
+  schema: VueConsole
+  valeur: *a170
+  valide: true
+- nom: Karaoké sous mode Quiz refusé — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: QUIZ
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke: *a172
+  valide: false
+- nom: Deux blocs non nuls refusés — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke: *a172
+    quiz:
+      phase: ATTENTE
+  valide: false
+- nom: Manche terminée avec bloc rempli refusée — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive:
+      id: 82000000-0000-4000-8000-000000000002
+      ordre: 0
+      mode: KARAOKE
+      etat: TERMINEE
+      reglages: *a1
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke: *a172
+  valide: false
+- nom: Bloc sans Manche refusé — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive: null
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke: *a172
+  valide: false
+- nom: Fin avec bloc nul valide — console
+  schema: VueConsole
+  valeur: *a166
+  valide: true
+- nom: Mode sans fournisseur autorisé — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke: null
+  valide: true
+- nom: Vue sans paroles — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      passagesEnAttente: *a173
+      peutGererFile: true
+      peutReglerLimite: true
+      peutRechercher: true
+      paroles: interdit
+  valide: false
+- nom: Vue sans jetonReconnexion — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      passagesEnAttente: *a173
+      peutGererFile: true
+      peutReglerLimite: true
+      peutRechercher: true
+      jetonReconnexion: interdit
+  valide: false
+- nom: Vue sans cleEcran — console
+  schema: VueConsole
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    programme: *a171
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      passagesEnAttente: *a173
+      peutGererFile: true
+      peutReglerLimite: true
+      peutRechercher: true
+      cleEcran: interdit
+  valide: false
+- nom: Vue Karaoké sans bloc Quiz — joueur
+  schema: VueManette
+  valeur: *a88
+  valide: true
+- nom: Karaoké sous mode Quiz refusé — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: QUIZ
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke: *a174
+  valide: false
+- nom: Deux blocs non nuls refusés — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke: *a174
+    quiz:
+      phase: ATTENTE
+  valide: false
+- nom: Manche terminée avec bloc rempli refusée — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive:
+      id: 82000000-0000-4000-8000-000000000002
+      ordre: 0
+      mode: KARAOKE
+      etat: TERMINEE
+      reglages: *a1
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke: *a174
+  valide: false
+- nom: Bloc sans Manche refusé — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: null
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke: *a174
+  valide: false
+- nom: Fin avec bloc nul valide — joueur
+  schema: VueManette
+  valeur: *a167
+  valide: true
+- nom: Mode sans fournisseur autorisé — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke: null
+  valide: true
+- nom: Vue sans paroles — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      prochainsPassages: *a84
+      nombreAutresPassages: 1
+      mesPassagesEnAttente: *a175
+      nombrePersonnelEnAttente: 2
+      peutRechercher: true
+      peutInscrire: false
+      motifInscriptionRefusee: LIMITE_ATTEINTE
+      paroles: interdit
+  valide: false
+- nom: Vue sans jetonReconnexion — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      prochainsPassages: *a84
+      nombreAutresPassages: 1
+      mesPassagesEnAttente: *a175
+      nombrePersonnelEnAttente: 2
+      peutRechercher: true
+      peutInscrire: false
+      motifInscriptionRefusee: LIMITE_ATTEINTE
+      jetonReconnexion: interdit
+  valide: false
+- nom: Vue sans cleEcran — joueur
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a82
+    modeEnCours: KARAOKE
+    joueurs: *a22
+    classement: *a83
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    karaoke:
+      mancheId: 82000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 1
+      nombreEnAttente: 4
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface: *a6
+      prochainsPassages: *a84
+      nombreAutresPassages: 1
+      mesPassagesEnAttente: *a175
+      nombrePersonnelEnAttente: 2
+      peutRechercher: true
+      peutInscrire: false
+      motifInscriptionRefusee: LIMITE_ATTEINTE
+      cleEcran: interdit
+  valide: false
+- nom: Retardataire présent peut s’inscrire
+  schema: VueManette
+  valeur: *a45
+  valide: true
+- nom: Réponse Quiz interdite en Karaoké
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a3
+    modeEnCours: KARAOKE
+    joueurs: *a4
+    classement: *a5
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse:
+      envoiId: 82000000-0000-4000-8000-000000000900
+      reponseId: 82000000-0000-4000-8000-000000000901
+      etapeId: 82000000-0000-4000-8000-000000000902
+      propositionId: 82000000-0000-4000-8000-000000000903
+      recueLe: 2026-11-17T20:01:15.000Z
+    resultatPersonnel: null
+    karaoke: *a176
+  valide: false
+- nom: Résultat personnel interdit en Karaoké
+  schema: VueManette
+  valeur:
+    soiree: *a2
+    mancheActive: *a3
+    modeEnCours: KARAOKE
+    joueurs: *a4
+    classement: *a5
+    dernierBuzz: null
+    joueurId: 82000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel:
+      etapeId: 82000000-0000-4000-8000-000000000902
+      juste: true
+      pointsGagnes: 1
+    karaoke: *a176
+  valide: false
+- nom: Code PASSAGE_DEJA_INSCRIT
+  schema: Probleme
+  valeur:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: PASSAGE_DEJA_INSCRIT
+    detail: Refus fictif.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+  valide: true
+- nom: Code LIMITE_ATTEINTE
+  schema: Probleme
+  valeur:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: LIMITE_ATTEINTE
+    detail: Refus fictif.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+  valide: true
+- nom: Code ROTATION_PROTEGEE
+  schema: Probleme
+  valeur:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ROTATION_PROTEGEE
+    detail: Refus fictif.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+  valide: true
+- nom: Code CHANSON_INDISPONIBLE
+  schema: Probleme
+  valeur:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: CHANSON_INDISPONIBLE
+    detail: Refus fictif.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+  valide: true
+- nom: Code SOURCE_PAROLES_INDISPONIBLE
+  schema: Probleme
+  valeur:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: SOURCE_PAROLES_INDISPONIBLE
+    detail: Refus fictif.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+  valide: true
+- nom: Code COMMANDE_PERIMEE
+  schema: Probleme
+  valeur:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Refus fictif.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+  valide: true
+- nom: Code SERVICE_INDISPONIBLE
+  schema: Probleme
+  valeur:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: SERVICE_INDISPONIBLE
+    detail: Refus fictif.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002
+  valide: true
+- nom: Motif ANIMATEUR
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: ANIMATEUR
+  valide: true
+- nom: Motif SANS_VOIX
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: SANS_VOIX
+  valide: true
+- nom: Motif PAROLES_NON_SYNCHRONISEES
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: PAROLES_NON_SYNCHRONISEES
+  valide: true
+- nom: Motif DUREE_INCONNUE
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: DUREE_INCONNUE
+  valide: true
+- nom: Motif PASSAGE_DEJA_INSCRIT
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: PASSAGE_DEJA_INSCRIT
+  valide: true
+- nom: Motif LIMITE_ATTEINTE
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: LIMITE_ATTEINTE
+  valide: true
+- nom: Fiche disponible
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: true
+    motifIndisponibilite: null
+  valide: true
+- nom: Fiche vraie sans durée refusée
+  schema: FicheChanson
+  valeur:
+    chanson: *a9
+    inscriptionPossible: true
+    motifIndisponibilite: null
+  valide: false
+- nom: Fiche vraie sans synchronisation refusée
+  schema: FicheChanson
+  valeur:
+    chanson: &chansonNonSynchronisee
+      chansonId: ch_brume_4
+      titre: Sous les étoiles
+      artiste: Les Lucioles
+      album: null
+      dureeMs: 180000
+      etatParoles: NON_SYNCHRONISEES
+    inscriptionPossible: true
+    motifIndisponibilite: null
+  valide: false
+  correction:
+    chemin: [chanson, etatParoles]
+    valeur: SYNCHRONISEES
+- nom: Fiche vraie avec motif refusée
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: true
+    motifIndisponibilite: LIMITE_ATTEINTE
+  valide: false
+- nom: Fiche fausse sans motif refusée
+  schema: FicheChanson
+  valeur:
+    chanson: *a8
+    inscriptionPossible: false
+    motifIndisponibilite: null
+  valide: false
+- nom: Ticket sans durée refusé
+  schema: PassageEnAttentePublic
+  valeur:
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 0
+    numero: 1
+    chanson: *a9
+    interpretes: *a23
+    position: 1
+    tour: 1
+    prioritaire: false
+    attente: &a178
+      calculeeLe: 2026-11-17T20:00:18.000Z
+      etat: ESTIMEE
+      dureeMs: 0
+  valide: false
+- nom: Ticket sans paroles synchronisées refusé
+  schema: PassageEnAttentePublic
+  valeur:
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 0
+    numero: 1
+    chanson: *chansonNonSynchronisee
+    interpretes: *a23
+    position: 1
+    tour: 1
+    prioritaire: false
+    attente: *a178
+  valide: false
+  correction:
+    chemin: [chanson, etatParoles]
+    valeur: SYNCHRONISEES
+- nom: Compteur interdit dans LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+    numeroModification: 0
+  valide: false
+- nom: Recherche de 0 points de code
+  schema: RechercheChanson
+  valeur: ''
+  valide: false
+- nom: Recherche de 1 points de code
+  schema: RechercheChanson
+  valeur: é
+  valide: true
+- nom: Recherche de 120 points de code
+  schema: RechercheChanson
+  valeur: éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé
+  valide: true
+- nom: Recherche de 121 points de code
+  schema: RechercheChanson
+  valeur: ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé
+  valide: false
+- nom: Recherche Unicode hors BMP de 120 points de code
+  schema: RechercheChanson
+  valeur: 𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀
+  valide: true
+- nom: Limite de recherche configurée à 0
+  schema: ConfigurationInterfaceKaraoke
+  valeur:
+    longueurRechercheMax: 0
+    delaiConsultationNavigateurMs: 8000
+    delaiConfirmationNavigateurMs: 10000
+  valide: false
+- nom: Limite de recherche configurée à 1
+  schema: ConfigurationInterfaceKaraoke
+  valeur:
+    longueurRechercheMax: 1
+    delaiConsultationNavigateurMs: 8000
+    delaiConfirmationNavigateurMs: 10000
+  valide: true
+- nom: Limite de recherche configurée à 120
+  schema: ConfigurationInterfaceKaraoke
+  valeur:
+    longueurRechercheMax: 120
+    delaiConsultationNavigateurMs: 8000
+    delaiConfirmationNavigateurMs: 10000
+  valide: true
+- nom: Limite de recherche configurée à 121
+  schema: ConfigurationInterfaceKaraoke
+  valeur:
+    longueurRechercheMax: 121
+    delaiConsultationNavigateurMs: 8000
+    delaiConfirmationNavigateurMs: 10000
+  valide: false
+- nom: Commande valide — InscriptionPassage
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    chansonId: ch_azur_7
+  valide: true
+- nom: Commande refuse acteur — InscriptionPassage
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    chansonId: ch_azur_7
+    acteur: 82000000-0000-4000-8000-000000000003
+  valide: false
+- nom: Commande refuse pseudo — InscriptionPassage
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    chansonId: ch_azur_7
+    pseudo: usurpé
+  valide: false
+- nom: Commande refuse url — InscriptionPassage
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    chansonId: ch_azur_7
+    url: https://example.test
+  valide: false
+- nom: Commande refuse date — InscriptionPassage
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    chansonId: ch_azur_7
+    date: 2026-11-17T20:01:15.000Z
+  valide: false
+- nom: Commande refuse paroles — InscriptionPassage
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    chansonId: ch_azur_7
+    paroles: interdit
+  valide: false
+- nom: Commande refuse revision — InscriptionPassage
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    chansonId: ch_azur_7
+    revision: 12
+  valide: false
+- nom: Commande valide — DesinscriptionPassage
+  schema: DesinscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    numeroModification: 0
+  valide: true
+- nom: Commande refuse acteur — DesinscriptionPassage
+  schema: DesinscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    numeroModification: 0
+    acteur: 82000000-0000-4000-8000-000000000003
+  valide: false
+- nom: Commande refuse pseudo — DesinscriptionPassage
+  schema: DesinscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    numeroModification: 0
+    pseudo: usurpé
+  valide: false
+- nom: Commande refuse url — DesinscriptionPassage
+  schema: DesinscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    numeroModification: 0
+    url: https://example.test
+  valide: false
+- nom: Commande refuse date — DesinscriptionPassage
+  schema: DesinscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    numeroModification: 0
+    date: 2026-11-17T20:01:15.000Z
+  valide: false
+- nom: Commande refuse paroles — DesinscriptionPassage
+  schema: DesinscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    numeroModification: 0
+    paroles: interdit
+  valide: false
+- nom: Commande refuse revision — DesinscriptionPassage
+  schema: DesinscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000999
+    numeroModification: 0
+    revision: 12
+  valide: false
+- nom: Commande valide — RetraitPassage
+  schema: RetraitPassage
+  valeur:
+    numeroModification: 0
+  valide: true
+- nom: Commande refuse acteur — RetraitPassage
+  schema: RetraitPassage
+  valeur:
+    numeroModification: 0
+    acteur: 82000000-0000-4000-8000-000000000003
+  valide: false
+- nom: Commande refuse pseudo — RetraitPassage
+  schema: RetraitPassage
+  valeur:
+    numeroModification: 0
+    pseudo: usurpé
+  valide: false
+- nom: Commande refuse url — RetraitPassage
+  schema: RetraitPassage
+  valeur:
+    numeroModification: 0
+    url: https://example.test
+  valide: false
+- nom: Commande refuse date — RetraitPassage
+  schema: RetraitPassage
+  valeur:
+    numeroModification: 0
+    date: 2026-11-17T20:01:15.000Z
+  valide: false
+- nom: Commande refuse paroles — RetraitPassage
+  schema: RetraitPassage
+  valeur:
+    numeroModification: 0
+    paroles: interdit
+  valide: false
+- nom: Commande refuse revision — RetraitPassage
+  schema: RetraitPassage
+  valeur:
+    numeroModification: 0
+    revision: 12
+  valide: false
+- nom: Commande valide — PlacementPassage
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant: null
+  valide: true
+- nom: Commande refuse acteur — PlacementPassage
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant: null
+    acteur: 82000000-0000-4000-8000-000000000003
+  valide: false
+- nom: Commande refuse pseudo — PlacementPassage
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant: null
+    pseudo: usurpé
+  valide: false
+- nom: Commande refuse url — PlacementPassage
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant: null
+    url: https://example.test
+  valide: false
+- nom: Commande refuse date — PlacementPassage
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant: null
+    date: 2026-11-17T20:01:15.000Z
+  valide: false
+- nom: Commande refuse paroles — PlacementPassage
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant: null
+    paroles: interdit
+  valide: false
+- nom: Commande refuse revision — PlacementPassage
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant: null
+    revision: 12
+  valide: false
+- nom: Commande valide — PrioritePassage
+  schema: PrioritePassage
+  valeur:
+    passage: &a179
+      passageId: 82000000-0000-4000-8000-000000000041
+      numeroModification: 0
+    prioritaire: true
+  valide: true
+- nom: Commande refuse acteur — PrioritePassage
+  schema: PrioritePassage
+  valeur:
+    passage: *a179
+    prioritaire: true
+    acteur: 82000000-0000-4000-8000-000000000003
+  valide: false
+- nom: Commande refuse pseudo — PrioritePassage
+  schema: PrioritePassage
+  valeur:
+    passage: *a179
+    prioritaire: true
+    pseudo: usurpé
+  valide: false
+- nom: Commande refuse url — PrioritePassage
+  schema: PrioritePassage
+  valeur:
+    passage: *a179
+    prioritaire: true
+    url: https://example.test
+  valide: false
+- nom: Commande refuse date — PrioritePassage
+  schema: PrioritePassage
+  valeur:
+    passage: *a179
+    prioritaire: true
+    date: 2026-11-17T20:01:15.000Z
+  valide: false
+- nom: Commande refuse paroles — PrioritePassage
+  schema: PrioritePassage
+  valeur:
+    passage: *a179
+    prioritaire: true
+    paroles: interdit
+  valide: false
+- nom: Commande refuse revision — PrioritePassage
+  schema: PrioritePassage
+  valeur:
+    passage: *a179
+    prioritaire: true
+    revision: 12
+  valide: false
+- nom: Commande valide — LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+  valide: true
+- nom: Commande refuse acteur — LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+    acteur: 82000000-0000-4000-8000-000000000003
+  valide: false
+- nom: Commande refuse pseudo — LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+    pseudo: usurpé
+  valide: false
+- nom: Commande refuse url — LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+    url: https://example.test
+  valide: false
+- nom: Commande refuse date — LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+    date: 2026-11-17T20:01:15.000Z
+  valide: false
+- nom: Commande refuse paroles — LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+    paroles: interdit
+  valide: false
+- nom: Commande refuse revision — LimitePassages
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 1
+    revision: 12
+  valide: false
+- nom: Ancre sans compteur refusée
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant:
+      passageId: 82000000-0000-4000-8000-000000000041
+  valide: false
+- nom: Ancre mal formée refusée
+  schema: PlacementPassage
+  valeur:
+    numeroModification: 0
+    tour: 1
+    avant:
+      passageId: invalide
+      numeroModification: 0
+  valide: false
+- nom: Attente suspendue sans durée
+  schema: AttenteEstimee
+  valeur:
+    calculeeLe: 2026-11-17T20:01:15.000Z
+    etat: SUSPENDUE
+    dureeMs: null
+  valide: true
+- nom: Attente inconnue sans durée
+  schema: AttenteEstimee
+  valeur:
+    calculeeLe: 2026-11-17T20:01:15.000Z
+    etat: INCONNUE
+    dureeMs: null
+  valide: true
+- nom: Estimation requiert une durée
+  schema: AttenteEstimee
+  valeur:
+    calculeeLe: 2026-11-17T20:01:15.000Z
+    etat: ESTIMEE
+    dureeMs: null
+  valide: false
+- nom: Pause ne porte pas de durée
+  schema: AttenteEstimee
+  valeur:
+    calculeeLe: 2026-11-17T20:01:15.000Z
+    etat: SUSPENDUE
+    dureeMs: 1
+  valide: false
+- nom: Compteur négatif refusé
+  schema: CiblePassage
+  valeur:
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: -1
+  valide: false
+- nom: Compteur dépassant les entiers sûrs refusé
+  schema: CiblePassage
+  valeur:
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 9007199254740992
+  valide: false
+- nom: Au plus trois prochains Passages
+  schema: BlocKaraokeSalle
+  valeur:
+    mancheId: 82000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 1
+    nombreEnAttente: 4
+    tourOuvert: 1
+    passagePrioritaireId: null
+    courant: null
+    configurationInterface: *a6
+    prochainsPassages:
+    - passageId: 82000000-0000-4000-8000-000000000041
+      numeroModification: 0
+      numero: 1
+      chanson: *a8
+      interpretes: *a23
+      position: 1
+      tour: 1
+      prioritaire: false
+      attente: *a178
+    - passageId: 82000000-0000-4000-8000-000000000042
+      numeroModification: 0
+      numero: 2
+      chanson: *a8
+      interpretes: *a50
+      position: 1
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: 2026-11-17T20:00:19.000Z
+        etat: ESTIMEE
+        dureeMs: 0
+    - passageId: 82000000-0000-4000-8000-000000000043
+      numeroModification: 0
+      numero: 3
+      chanson: *a14
+      interpretes: *a25
+      position: 1
+      tour: 2
+      prioritaire: false
+      attente:
+        calculeeLe: 2026-11-17T20:00:20.000Z
+        etat: ESTIMEE
+        dureeMs: 0
+    - passageId: 82000000-0000-4000-8000-000000000044
+      numeroModification: 0
+      numero: 4
+      chanson: *a14
+      interpretes: *a24
+      position: 1
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: 2026-11-17T20:00:22.000Z
+        etat: ESTIMEE
+        dureeMs: 0
+    nombreAutresPassages: 1
+  valide: false
+- nom: Pas de teinte JSON
+  schema: PassageEnAttentePublic
+  valeur:
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 0
+    numero: 1
+    chanson: *a8
+    interpretes: *a23
+    position: 1
+    tour: 1
+    prioritaire: false
+    attente: *a178
+    teinte: eau
+  valide: false
+- nom: Un à quatre Interprètes, extension prévue
+  schema: PassageEnAttentePublic
+  valeur:
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 0
+    numero: 1
+    chanson: *a8
+    interpretes:
+    - *a180
+    - *a181
+    - *a182
+    - joueurId: 82000000-0000-4000-8000-000000000010
+      pseudo: Dune
+    position: 1
+    tour: 1
+    prioritaire: false
+    attente: *a178
+  valide: true
+- nom: Pas de Passage sans Interprète
+  schema: PassageEnAttentePublic
+  valeur:
+    passageId: 82000000-0000-4000-8000-000000000041
+    numeroModification: 0
+    numero: 1
+    chanson: *a8
+    interpretes: []
+    position: 1
+    tour: 1
+    prioritaire: false
+    attente: *a178
+  valide: false
+resynchronisation:
+  destination: /topic/joueurs/82000000-0000-4000-8000-000000000003
+  routeEtat: /api/soirees/82000000-0000-4000-8000-000000000001/etat/manette
+  typeEvenementFinal: file-attente-modifiee
+  etat:
+    abonnementId: 82000000-0000-4000-8000-000000000080
+    revision: 5
+    heureServeur: 2026-11-17T20:00:22.000Z
+    vue: *a183
+  tampon:
+  - *a184
+  - *a185
+  - *a185
+  revisionFinale: 6
+  vueFinale: *a186

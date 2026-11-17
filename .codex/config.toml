@@ -1,0 +1,10 @@
+# Réglages Codex propres à ce dépôt (Codex les lit quand le dossier est approuvé).
+# Les skills mattpocock et Impeccable sont versionnés dans .agents/skills/ :
+# ceux qui ont aussi ces plugins en global ne les chargent pas deux fois ici.
+# Hors de ce dépôt, leurs plugins restent actifs.
+
+[plugins."mattpocock-skills@mattpocock"]
+enabled = false
+
+[plugins."impeccable@impeccable"]
+enabled = false

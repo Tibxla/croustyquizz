@@ -360,6 +360,7 @@ Des boutons francs, à bordure épaisse, qui se laissent viser debout et d'une m
 
 ### Dialogue modal
 `<dialog class="dialogue" aria-labelledby="titre-dialogue">` : fond `--fond-2`, texte `--texte`, ombre `--ombre`, coins `--rayon-grand`, marge intérieure de 24 px. Le voile reprend le brun tabac à 80 %. Donner un titre, un contrôle de fermeture et une action nommée. Utiliser `ouvrirDialogue` (`js/dialogue.mjs`) : ouverture par `showModal()`, focus sur le contrôle `autofocus` ou le premier contrôle (à défaut, rendre le dialogue focalisable avec `tabindex="-1"`), fermeture native par Échap ou `close()`, puis retour au contrôle d'origine s'il existe encore. Le focus conserve son contour citron visible.
+- **Aide:** une ligne en crème fanée sous le champ. Aucun style d'erreur de champ n'existe encore.
 
 ### Navigation
 - **Barre de pilotage (Console):** collée en haut, brun banquette, filet brun bois et ombre de barre collée. À gauche le mot-symbole et la Soirée, au centre le Mode de jeu en Barlow 800 avec la progression et les indicateurs, à droite les commandes, l'action citron en dernier.
@@ -410,6 +411,7 @@ Le seul aplat citron de l'Écran de salle : QR code sur carré blanc, phrase d'i
 - **Don't** poser un dégradé de couleur sur un ticket.
 - **Don't** ajouter d'ornement autre que la perforation et ses encoches.
 - **Don't** faire flotter une surface avec une ombre hors du ticket détaché, du dialogue modal et de la barre de pilotage.
+- **Don't** faire flotter une surface avec une ombre hors du ticket détaché et de la barre de pilotage.
 - **Don't** couper l'adresse d'accès sur un trait d'union.
 - **Don't** charger une police, une icône ou un script depuis une ressource externe.
 - **Don't** glisser vers la boîte de nuit violette à néons ni vers le tableau de bord blanc de logiciel en ligne.
