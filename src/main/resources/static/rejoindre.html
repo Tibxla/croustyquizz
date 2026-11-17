@@ -11,7 +11,7 @@
 		[hidden] { display: none !important; }
 		.erreur { margin: 0; padding: var(--espace-3) var(--espace-4); border-radius: var(--rayon); background: var(--fond-3); color: var(--texte); }
 		/* Le formulaire et l'attente laissent leurs enfants dans la colonne de la Manette : seuls les boutons vont en bas. */
-		#arrivee, #attente { display: contents; }
+		#arrivee, #attente, #reconnexion { display: contents; }
 		.code-acces { font-family: var(--police-chiffres); letter-spacing: 0.2em; text-transform: uppercase; }
 	</style>
 </head>
@@ -43,6 +43,11 @@
 			<p class="manette__aide">Tu es dans la Soirée sous le pseudo <strong id="mon-pseudo"></strong>.</p>
 			<p class="manette__aide">On attend le début. Garde cette page ouverte, ton téléphone suivra le jeu.</p>
 		</section>
+
+		<section id="reconnexion" hidden aria-live="polite">
+			<h1 class="manette__titre">Connexion perdue</h1>
+			<p class="manette__aide">Tu es toujours dans la Soirée. On te reconnecte dès que le réseau revient : garde cette page ouverte.</p>
+		</section>
 	</div>
 
 	<script type="module">
@@ -55,6 +60,7 @@
 		const champPseudo = document.getElementById('pseudo');
 		const bouton = document.getElementById('rejoindre');
 		const erreur = document.getElementById('erreur');
+		const RECONNEXION_MS = 3000;
 
 		const MESSAGES = {
 			CODE_ACCES_INVALIDE: 'Ce code ne mène à aucune Soirée ouverte. Vérifie-le sur l’Écran de salle : la Soirée n’a peut-être pas encore commencé, ou elle est terminée.',
@@ -71,7 +77,14 @@
 			document.getElementById('titre-soiree').textContent = titre;
 			document.getElementById('mon-pseudo').textContent = pseudo;
 			formulaire.hidden = true;
+			document.getElementById('reconnexion').hidden = true;
 			document.getElementById('attente').hidden = false;
+		}
+
+		function afficherFormulaire() {
+			document.getElementById('reconnexion').hidden = true;
+			formulaire.hidden = false;
+			(champCode.value ? champPseudo : champCode).focus();
 		}
 
 		// Le QR code met le code dans le fragment : jamais envoyé au serveur, retiré après lecture.
@@ -81,19 +94,36 @@
 			history.replaceState(null, '', location.pathname);
 		}
 
+		// Rend 'reprise', 'aucune' (pas de jeton, ou jeton refusé et oublié) ou 'coupure'.
 		async function reprendre() {
 			const jeton = memoire.lire(JETON);
 			const soiree = memoire.lire(SOIREE);
-			if (!jeton || !soiree) return false;
+			if (!jeton || !soiree) return 'aucune';
 			const etat = await appeler('GET', `/api/soirees/${encodeURIComponent(soiree)}/etat/manette`, { secret: jeton });
-			if (!etat.ok) {
-				memoire.oublier(JETON);
-				return false;
+			if (etat.ok) {
+				const { vue } = etat.corps;
+				const moi = vue.joueurs.find((joueur) => joueur.id === vue.joueurId);
+				afficherAttente(vue.soiree.titre, moi?.pseudo ?? '');
+				return 'reprise';
 			}
-			const { vue } = etat.corps;
-			const moi = vue.joueurs.find((joueur) => joueur.id === vue.joueurId);
-			afficherAttente(vue.soiree.titre, moi?.pseudo ?? '');
-			return true;
+			// Seul un refus du jeton (inconnu, Joueur exclu, autre Soirée) l'invalide. Une coupure réseau ou
+			// un serveur indisponible le garde : rejoindre à nouveau créerait un second Joueur.
+			if (etat.statut === 401 || etat.statut === 404) {
+				memoire.oublier(JETON);
+				return 'aucune';
+			}
+			return 'coupure';
+		}
+
+		async function demarrer() {
+			const resultat = await reprendre();
+			if (resultat === 'aucune') {
+				afficherFormulaire();
+			} else if (resultat === 'coupure') {
+				formulaire.hidden = true;
+				document.getElementById('reconnexion').hidden = false;
+				setTimeout(demarrer, RECONNEXION_MS);
+			}
 		}
 
 		formulaire.addEventListener('submit', async (evenement) => {
@@ -124,9 +154,7 @@
 			afficherAttente(etat.ok ? etat.corps.vue.soiree.titre : 'Tu es dans la Soirée', joueur.pseudo);
 		});
 
-		if (!(await reprendre())) {
-			(champCode.value ? champPseudo : champCode).focus();
-		}
+		demarrer();
 	</script>
 </body>
 </html>
