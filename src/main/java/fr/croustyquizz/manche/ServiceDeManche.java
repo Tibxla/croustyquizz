@@ -65,8 +65,12 @@ public class ServiceDeManche<R, E> {
 		UUID soireeId = envoi.acteur().soireeId();
 		// Une répétition évite aussi un nouvel appel externe, sans retenir le verrou pendant la préparation.
 		ResultatDeCommande repetition = sousTransaction(soireeId, id, () -> {
-			charger(id, soireeId);
-			return socle.envois().retrouver(envoi);
+			ManchePersistante manche = charger(id, soireeId);
+			ResultatDeCommande recu = socle.envois().retrouver(envoi);
+			if (recu != null) { return recu; }
+			Refuse refus = verifierAvantPreparation(manche, envoi, demarrage);
+			if (refus != null) { conserver(envoi, refus); }
+			return refus;
 		});
 		if (repetition != null) { return repetition; }
 		PreparationDeCommande preparation = preparer.get();
@@ -76,19 +80,33 @@ public class ServiceDeManche<R, E> {
 			if (dejaRecu != null) { return dejaRecu; }
 			ResultatDeCommande resultat = preparation.refus();
 			if (resultat == null) {
-				boolean prete = manche.getEtat() == EtatManche.PRETE;
-				if (manche.getEtat() == EtatManche.TERMINEE || prete != demarrage || (demarrage && uneAutreActive(manche))) {
-					resultat = new Refuse(409, "ETAT_INCOMPATIBLE", "Commande incompatible avec la Manche.");
-				} else {
+				resultat = verifierEtat(manche, demarrage);
+				if (resultat == null) { resultat = verifierAvantPreparation(manche, envoi, demarrage); }
+				if (resultat == null) {
 					var deroulement = deroulement(manche);
 					resultat = preparation.appliquer().apply(deroulement);
 					if (resultat instanceof Accepte accepte) { enregistrer(manche, deroulement, cible, accepte); }
 				}
 			}
-			socle.envois().enregistrer(envoi, resultat, socle.horloge().maintenant());
+			conserver(envoi, resultat);
 			return resultat;
 		});
 	}
+	/** Par défaut les autres modes ne décident rien avant leur préparation externe. */
+	protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {
+		return null;
+	}
+	protected Refuse verifierEtat(ManchePersistante manche, boolean demarrage) {
+		boolean prete = manche.getEtat() == EtatManche.PRETE;
+		return manche.getEtat() == EtatManche.TERMINEE || prete != demarrage || (demarrage && uneAutreActive(manche))
+				? new Refuse(409, "ETAT_INCOMPATIBLE", "Commande incompatible avec la Manche.") : null;
+	}
+	protected boolean doitConserverRecu(ResultatDeCommande resultat) { return true; }
+	private void conserver(EnvoiDeCommande envoi, ResultatDeCommande resultat) {
+		if (!doitConserverRecu(resultat) && resultat instanceof Refuse refus) { throw refus.exception(); }
+		socle.envois().enregistrer(envoi, resultat, socle.horloge().maintenant());
+	}
+
 	private boolean uneAutreActive(ManchePersistante manche) {
 		return socle.depot().deLaSoiree(manche.getSoireeId()).stream().anyMatch(m -> !m.getMancheId().equals(manche.getMancheId())
 				&& (m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE));

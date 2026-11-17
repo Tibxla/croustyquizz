@@ -19,7 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
 @ActiveProfiles("recette")
 @Import({TestcontainersConfiguration.class, SocleMancheJpaTest.Configuration.class})
 class SocleMancheJpaTest {
-	@Autowired private ServiceDeManche<?, ?> service;
+	@Autowired @org.springframework.beans.factory.annotation.Qualifier("serviceFacticeJpa") private ServiceDeManche<?, ?> service;
 	@Autowired private RegistreDesDeroulements registre;
 	@Autowired private JsonMapper json;
 
