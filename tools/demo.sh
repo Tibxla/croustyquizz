@@ -11,7 +11,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "Créer .env depuis .env.example (docs/deploiement.md, « Première installation »)." >&2; exit 1; }
-set -a; . ./.env; set +a
+# Fins de ligne Windows tolérées (fichier édité sous Windows).
+set -a; . <(tr -d '\r' < .env); set +a
 
 compose=(docker compose -f compose.prod.yaml)
 port_local="${CROUSTYQUIZZ_PORT_LOCAL:-8080}"
