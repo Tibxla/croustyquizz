@@ -33,8 +33,22 @@ test('un GET ne déclenche aucun état de commande ; une panne réseau reste une
 	const { contexte } = creerContexte({ envoyer: async methode => {
 		if (methode === 'GET') return { statut: 200, corps: {} };
 		throw new Error('Hors ligne');
-	}, surEnvoi: etat => etats.push(etat) });
+	}, surEnvoi: (etat, detail) => etats.push({ etat, detail }) });
 	await contexte.envoyer('GET', '/etat'); assert.deepEqual(etats, []);
 	await assert.rejects(contexte.envoyer('POST', '/commande'), /Hors ligne/);
-	assert.deepEqual(etats, ['en-cours', 'refuse']);
+	assert.deepEqual(etats.at(-1), { etat: 'en-cours', detail: "Confirmation indisponible : vérifie l'état affiché." });
+});
+
+test('AbortError reste silencieuse et une réponse ancienne ne remplace pas le dernier envoi', async () => {
+	const etats = [], reponses = [];
+	const { contexte } = creerContexte({ envoyer: () => new Promise((resolve, reject) => reponses.push({ resolve, reject })), surEnvoi: (...e) => etats.push(e) });
+	const ancien = contexte.envoyer('POST', '/a', {});
+	const courant = contexte.envoyer('POST', '/b', {});
+	reponses[1].resolve({ statut: 200, corps: {} }); await courant;
+	reponses[0].resolve({ statut: 409, corps: { detail: 'Ancien refus' } }); await ancien;
+	assert.equal(etats.at(-1)[0], 'accepte');
+	const annule = contexte.envoyer('POST', '/c', {});
+	const nombre = etats.length;
+	reponses[2].reject(new DOMException('Annulation', 'AbortError'));
+	await assert.rejects(annule, { name: 'AbortError' }); assert.equal(etats.length, nombre);
 });

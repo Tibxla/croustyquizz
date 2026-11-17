@@ -15,3 +15,9 @@ test('la partie commune restitue les données du serveur, y compris les personne
 	assert.equal(description.personnel, '<script>Joueur</script> · Tu participeras à la prochaine Manche. · 850 points à la dernière correction');
 	assert.deepEqual(description.programme, ['3. Blind test · En pause']);
 });
+
+test('un retardataire joue au Karaoké sans avertissement d’inéligibilité, les autres modes le gardent', () => {
+	const vue = { soiree: {}, mancheActive: { ordre: 0 }, joueurs: [{ id: 'j', pseudo: 'Jo' }], joueurId: 'j', eligiblePourMancheActive: false, classement: [] };
+	assert.equal(decrireVue({ ...vue, modeEnCours: 'KARAOKE' }).personnel, 'Jo');
+	for (const modeEnCours of ['QUIZ', 'BLIND_TEST', 'FREESTYLE']) assert.match(decrireVue({ ...vue, modeEnCours }).personnel, /Tu participeras/);
+});

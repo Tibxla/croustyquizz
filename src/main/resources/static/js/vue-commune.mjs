@@ -13,7 +13,7 @@ export function decrireVue(vue) {
 		classement: vue.classement.map(ligne => `${ligne.rang}. ${ligne.nom} · ${ligne.points} points`),
 		buzz: vue.dernierBuzz ? `Dernier Buzz : ${vue.dernierBuzz.pseudo}` : 'Aucun Buzz reçu',
 		programme: (vue.programme ?? []).map(m => `${m.ordre + 1}. ${modes[m.mode] ?? m.mode} · ${etats[m.etat] ?? m.etat}`),
-		personnel: joueur ? [`${joueur.pseudo}`, vue.mancheActive && !vue.eligiblePourMancheActive ?
+		personnel: joueur ? [`${joueur.pseudo}`, vue.mancheActive && vue.modeEnCours !== 'KARAOKE' && !vue.eligiblePourMancheActive ?
 			'Tu participeras à la prochaine Manche.' : '', vue.resultatPersonnel ?
 			`${vue.resultatPersonnel.pointsGagnes} points à la dernière correction` : ''].filter(Boolean).join(' · ') : '',
 		codeAcces: vue.soiree.codeAcces,

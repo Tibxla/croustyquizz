@@ -27,7 +27,7 @@ export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, surEn
 					}
 					return reponse;
 				} catch (erreur) {
-					if (numero === dernierEnvoi) surEnvoi('refuse', 'Confirmation indisponible. Resynchronise avant de réessayer avec le même identifiant d’envoi.');
+					if (numero === dernierEnvoi && erreur.name !== 'AbortError') surEnvoi('en-cours', "Confirmation indisponible : vérifie l'état affiché.");
 					throw erreur;
 				}
 			},

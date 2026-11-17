@@ -229,7 +229,7 @@ components:
 
 Une Soirée CroustyQuizz est un rouleau de tickets numérotés. Chaque Joueur reçoit le sien en entrant, chaque Passage se détache du rouleau quand son tour vient, et les trois interfaces (Console d'animation, Manette, Écran de salle) montrent le même rouleau à trois distances : le comptoir, la main, cinq mètres. Tout le système découle de cet objet : des aplats de couleur francs portant de l'encre brune, une perforation pointillée avec ses deux encoches rondes, un chiffre condensé très gras qui se lit d'un coup d'œil.
 
-Le fond est un brun tabac profond, pensé pour ne pas éblouir une salle sombre ni un téléphone à luminosité basse ; cinq paliers de brun sont les seuls neutres du produit. Sur ce fond, les tickets prennent quatre teintes (orange, vert d'eau, bleu, rose) qui servent à distinguer, jamais à signifier seules. Le jaune citron est mis de côté pour ce qu'on touche et pour le talon d'accès : il désigne l'action, il ne décore pas. La densité suit l'interface : large et vue de loin sur l'Écran de salle (échelle en largeur d'écran), une seule action en bas de la Manette, une Console dense mais dont la barre de pilotage ne quitte jamais l'écran.
+Le fond est un brun tabac profond, pensé pour ne pas éblouir une salle sombre ni un téléphone à luminosité basse ; cinq paliers de brun sont les seuls neutres du produit. Sur ce fond, les tickets prennent quatre teintes (orange, vert d'eau, bleu, rose) qui servent à distinguer, jamais à signifier seules. Le jaune citron est mis de côté pour ce qu'on touche et pour le talon d'accès : il désigne l'action, il ne décore pas. La densité suit l'interface : large et vue de loin sur l'Écran de salle (échelle en largeur d'écran), une action en bas de la Manette quand l'écran a une action unique, une Console dense mais dont la barre de pilotage ne quitte jamais l'écran.
 
 Le monde refuse explicitement la boîte de nuit violette à néons et le tableau de bord blanc de logiciel en ligne. Les perforations sont le seul ornement ; il n'y a ni photo, ni illustration, ni dégradé de couleur.
 
@@ -313,7 +313,7 @@ L'Écran de salle a sa propre échelle, entièrement en largeur d'écran (base 1
 Trois mises en page pour un seul monde, sur une échelle d'espacement de 4 px (4, 8, 12, 16, 24, 32, 48).
 
 - **Écran de salle** : plein écran sans défilement, deux colonnes (contenu principal à gauche, colonne de 30vw à droite sur le brun comptoir). Le Karaoké met les paroles sur la gauche et le rouleau de la File d'attente à droite, ticket en cours détaché en tête, talon d'accès en bas. Le Quiz met l'énoncé, les quatre Réponses en grille 2 × 2 et le minuteur à gauche, les souches des Joueurs qui ont répondu à droite. Toutes les mesures sont en vw.
-- **Manette** : une colonne pleine hauteur (100svh), marges de 16 et 24 px, zone de sécurité du bas respectée. Le ticket du Joueur en haut, l'action unique pleine largeur poussée en bas, à portée du pouce.
+- **Manette** : une colonne pleine hauteur (100svh), marges de 16 et 24 px, zone de sécurité du bas respectée. Le ticket du Joueur en haut ; quand l'écran a une action unique, elle est pleine largeur et poussée en bas, à portée du pouce. La File d'attente du Karaoké garde les tickets personnels en haut et la recherche dessous ; seule l'inscription dans la fiche est une action citron.
 - **Console d'animation** : barre de pilotage collée en haut, puis un plan en deux colonnes (File d'attente de 360 à 440 px, catalogue à droite). À 1200 px et moins, la colonne passe de 300 à 360 px et les marges se resserrent ; à 860 px et moins, une seule colonne.
 
 ### Named Rules
@@ -345,7 +345,7 @@ Des boutons francs, à bordure épaisse, qui se laissent viser debout et d'une m
 - **Shape:** coins doucement arrondis (10 px), bordure de 2 px, hauteur minimale de 44 px.
 - **Ordinaire:** fond transparent, bordure brun bouchon, texte crème en Atkinson 700.
 - **Action:** fond et bordure citron, texte encre. Un seul par écran, pour ce qui fait avancer la Soirée ou l'action du Joueur.
-- **Grand format:** pleine largeur, 64 px de haut, coins de 18 px, libellé Barlow 800 en capitales à 1.75rem. Sur la Manette, le bouton grand format est l'action unique.
+- **Grand format:** pleine largeur, 64 px de haut, coins de 18 px, libellé Barlow 800 en capitales à 1.75rem. Sur la Manette, quand l'écran a une action unique, le bouton grand format la porte.
 - **Lien:** sans bordure, texte crème fanée souligné, pour l'action de repli (« Me désinscrire », « Lancer maintenant »).
 - **Hover / Focus:** survol en brun banquette avec une bordure crème usée ; l'action passe en citron appuyé ; enfoncement de 1 px à l'appui ; transitions de 120 ms sur la courbe de sortie. Le focus est un contour citron de 3 px décalé de 3 px, sur tout élément.
 - **Désactivé:** texte crème usée et bordure brun bois ; l'action désactivée passe sur brun bois.
@@ -368,7 +368,7 @@ Des boutons francs, à bordure épaisse, qui se laissent viser debout et d'une m
 La pièce maîtresse. Une souche numérotée (4.5rem de large, numéro Barlow 800) et un corps (nom en Atkinson 700 à 1.125rem, détail en encre délavée), chacun dans la teinte du ticket, séparés par la perforation. L'état éventuel s'imprime dans le coin haut droit du corps, en étiquette. Le ticket de la Manette est la même pièce posée à la verticale : numéro géant en haut, détail en bas, encoches sur les côtés.
 
 ### Rouleau
-Des tickets empilés sans espace et reliés par une perforation horizontale, comme une bande continue : la File d'attente sur la salle et dans la Console. Les teintes tournent dans l'ordre orange, eau, bleu, rose.
+Des tickets empilés sans espace et reliés par une perforation horizontale, comme une bande continue : la File d'attente sur la salle et dans la Console. La teinte dépend du numéro modulo 4 : orange (0), eau (1), bleu (2), rose (3). Sur la Console, un ticket sélectionné garde sa grille, porte `aria-pressed="true"`, un contour épais dans sa teinte et un fond légèrement éclairci, sans anneau citron ; le focus commun reste visible.
 
 ### Réponses
 Une Réponse a l'anatomie d'un ticket : la lettre (Barlow 800) dans la souche, une perforation, puis le texte. Elle porte toujours un texte. Les quatre Réponses prennent les quatre teintes dans l'ordre (A orange, B eau, C bleu, D rose). La Réponse choisie s'entoure d'un anneau citron de 3 px séparé par 3 px de brun tabac ; les autres s'éteignent en brun banquette, texte crème usée ; la bonne Réponse le dit en toutes lettres. Sur l'Écran de salle, les Réponses ne sont pas des commandes et ne portent jamais l'anneau citron.
@@ -377,7 +377,7 @@ Une Réponse a l'anatomie d'un ticket : la lettre (Barlow 800) dans la souche, u
 Le seul aplat citron de l'Écran de salle : QR code sur carré blanc, phrase d'invitation, code d'accès en Barlow 800, adresse insécable.
 
 ### Envoi, résultat, coupure
-- **Envoi en cours:** brun banquette, crème fanée, roue de 800 ms ; rien n'est encore annoncé.
+- **Envoi en cours:** brun banquette, crème fanée, roue de 800 ms ; rien n'est encore annoncé. Après une panne réseau sur mutation, `.envoi--en-cours` signifie une confirmation inconnue et affiche « Confirmation indisponible : vérifie l'état affiché. ». Le délai du Karaoké affiche « Confirmation à vérifier. » près de l'action, sans inventer de refus ni de succès.
 - **Envoi accepté:** vert d'eau, encre, coche, libellé qui dit ce qui est enregistré.
 - **Envoi refusé:** fond de refus, texte de refus, avec l'explication.
 - **Résultat:** les points validés en gain vert d'eau, puis le total et le rang.
