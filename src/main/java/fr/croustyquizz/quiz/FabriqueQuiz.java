@@ -6,6 +6,7 @@ import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.FabriqueDeDeroulement;
 import fr.croustyquizz.manche.ModeDeJeu;
 import fr.croustyquizz.manche.ReglagesDeManche;
+import java.time.Duration;
 import java.util.List;
 
 public final class FabriqueQuiz implements FabriqueDeDeroulement<ReglagesQuiz, EtatQuizPersiste> {
@@ -28,7 +29,7 @@ public final class FabriqueQuiz implements FabriqueDeDeroulement<ReglagesQuiz, E
 
 	@Override
 	public ReglagesDeManche reglagesCommuns(ReglagesQuiz reglages) {
-		return new ReglagesDeManche(reglages.nombreEtapes(), reglages.tempsParEtape());
+		return new ReglagesDeManche(reglages.nombreEtapes(), Duration.ofSeconds(reglages.tempsParEtapeSecondes()));
 	}
 
 	@Override

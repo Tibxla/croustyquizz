@@ -53,7 +53,7 @@ class FabriqueQuizTest {
 
 		assertThat(fabrique.mode()).isEqualTo(ModeDeJeu.QUIZ);
 		assertThat(fabrique.typeReglages()).isEqualTo(ReglagesQuiz.class);
-		assertThat(fabrique.reglagesCommuns(new ReglagesQuiz(5, Duration.ofSeconds(15))))
+		assertThat(fabrique.reglagesCommuns(new ReglagesQuiz(5, 15)))
 				.isEqualTo(new ReglagesDeManche(5, Duration.ofSeconds(15)));
 	}
 
@@ -79,7 +79,7 @@ class FabriqueQuizTest {
 		);
 
 		FabriqueQuiz fabrique = new FabriqueQuiz(null);
-		DeroulementQuiz deroulement = fabrique.restaurer(contexte, new ReglagesQuiz(1, Duration.ofSeconds(20)), etat, EtatManche.EN_COURS);
+		DeroulementQuiz deroulement = fabrique.restaurer(contexte, new ReglagesQuiz(1, 20), etat, EtatManche.EN_COURS);
 
 		InstantaneQuiz instantane = (InstantaneQuiz) deroulement.instantane();
 		assertThat(instantane.phase()).isEqualTo(PhaseQuiz.QUESTION_OUVERTE);
