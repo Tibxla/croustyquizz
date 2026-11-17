@@ -65,6 +65,8 @@
 		const MESSAGES = {
 			CODE_ACCES_INVALIDE: 'Ce code ne mène à aucune Soirée ouverte. Vérifie-le sur l’Écran de salle : la Soirée n’a peut-être pas encore commencé, ou elle est terminée.',
 			DONNEES_INVALIDES: 'Choisis un pseudo de 1 à 30 caractères.',
+			PSEUDO_REFUSE: 'Ce pseudo n’est pas accepté. Choisis-en un autre.',
+			PSEUDO_DEJA_PRIS: 'Ce pseudo est déjà pris dans la Soirée. Ajoute une initiale ou choisis-en un autre.',
 			RESEAU_INDISPONIBLE: 'Pas de connexion pour l’instant. Vérifie ton réseau puis réessaie.',
 		};
 
@@ -145,6 +147,9 @@
 			bouton.disabled = false;
 			if (!arrivee.ok) {
 				afficherErreur(MESSAGES[arrivee.code] ?? 'Impossible de rejoindre la Soirée pour l’instant. Réessaie dans un instant.');
+				if (arrivee.code?.startsWith('PSEUDO_') || arrivee.code === 'DONNEES_INVALIDES') {
+					champPseudo.select();
+				}
 				return;
 			}
 			const { soireeId, joueur, jetonReconnexion } = arrivee.corps;
