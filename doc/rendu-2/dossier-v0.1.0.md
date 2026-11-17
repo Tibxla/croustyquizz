@@ -47,7 +47,7 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 | Étudiant | Feature | Issues | PR fusionnées | PR en cours | Ce qui reste |
 |---|---|---|---|---|---|
-| Tibxla | Karaoké : File d’attente, puis Passage | #21, en tranches #82, #86, #89, #91, #93, #96 ; #22, en tranches #98 à #100 | #88 (contrat) et #87 (domaine) le 17/11 ; socle des Modes de jeu #81, #83, #84 | #90, #92, #94 et #97, en relecture | fusionner les tranches 3a, 3b et 4 ; Passage (#22) : contrat en cours (#98), domaine, service, interface ; Vote et Palmarès (#23) |
+| Tibxla | Karaoké : File d’attente, puis Passage | #21, en tranches #82, #86, #89, #91, #93, #96 ; #22, en tranches #98 à #100 | #88 (contrat) et #87 (domaine) le 17/11 ; socle des Modes de jeu #81, #83, #84 | #90, #92, #94 et #97, en relecture ; #104 en brouillon | fusionner les tranches 3a, 3b et 4 ; Passage (#22) : contrat en cours (#98), domaine, service, interface ; Vote et Palmarès (#23) |
 | nRayen | Soirée : créer et rejoindre par code | #6 ; suite dans #10 | aucune pour l’instant | #38 : changements demandés le 17/11 ; branche `feature/10-rejoindre-sans-accroc`, sans PR | traiter les quatre points de relecture et fusionner #38 ; ouvrir la PR de #10 ; déroulement manuel (#12), puis Blind test (#17) |
 | Piyakabib | Quiz : première Manche jouable | #14, bloquée par #12 et #13 | aucune pour le Quiz | aucune au 17/11 au soir <!-- À COMPLÉTER : branche ou PR brouillon de #14 si ouverte avant le tag --> | source des Questions en français (#13) ; `DeroulementQuiz`, routes et écrans de la Manche |
 
@@ -67,7 +67,7 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 - **#94** (tranche 4) : l’interface de la File d’attente sur la Manette, la Console d’animation et l’Écran de salle.
 - **#97** : corrections du contrat demandées par nRayen à la relecture de #88.
 
-**Suite : le Passage (#22).** L’ADR 0007 a tranché la source audio. La tranche 1, le contrat de l’appel, de la lecture et du calage (#98), est en cours d’écriture : l’issue est ouverte et assignée, sans PR au 17/11.
+**Suite : le Passage (#22).** L’ADR 0007 a tranché la source audio. La tranche 1, le contrat de l’appel, de la lecture et du calage (#98), est écrite : PR #104 en brouillon (dix opérations, parcours d’exemple vérifié), qui sera proposée à la relecture après le Rendu 2. Le domaine (#99) et le service (#100) suivent.
 
 **Travail transverse fusionné depuis le Rendu 1** : canal temps réel (#30), Vue synchronisée et Révisions (#49, #60), routes de test en recette (#58), vérification des réponses HTTP contre les contrats (#59), socle des Modes de jeu (#77, #81, #83, #84), direction visuelle (#75), source audio du Karaoké (#85), livraison et recette (#46, #50), outillage de l’équipe (#41, #44, #45, #52). L’étude de l’existant (#63) est en relecture dans la PR #64.
 
