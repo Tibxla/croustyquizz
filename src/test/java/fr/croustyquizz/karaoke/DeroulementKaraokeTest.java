@@ -100,14 +100,16 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         var action = (InscrirePassage) uneAction(JOUEUR, horloge.maintenant());
         assertThatThrownBy(() -> new InscrirePassage(action.acteur(), action.recueLe(), action.envoiId(),
                 action.faits(), "autre", action.contenu())).isInstanceOf(IllegalArgumentException.class);
-        for (long limite : new long[] {0, -1, 9007199254740992L}) {
+        for (long limite : new long[] {0, -1, 21, 9007199254740991L}) {
             assertThatThrownBy(() -> new ReglagesKaraoke(limite)).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> new ReglerLimitePassages(pilotage().acteur(), horloge.maintenant(), UUID.randomUUID(), limite))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> new EtatFileAttente(SOIREE, MANCHE, limite, 1, 1, 1, null, List.of(), Map.of()))
                     .isInstanceOf(IllegalArgumentException.class);
         }
-        assertThat(new ReglagesKaraoke(9007199254740991L).limitePassagesEnAttente()).isEqualTo(9007199254740991L);
+        assertThat(new ReglagesKaraoke(20).limitePassagesEnAttente()).isEqualTo(20);
+        assertThat(new ReglerLimitePassages(pilotage().acteur(), horloge.maintenant(), UUID.randomUUID(), 20)
+                .limitePassagesEnAttente()).isEqualTo(20);
         assertThatThrownBy(() -> new DeplacerPassage(pilotage().acteur(), horloge.maintenant(), UUID.randomUUID(),
                 new CiblePassage(UUID.randomUUID(), 0), 0, null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new DefinirPrioritePassage(pilotage().acteur(), horloge.maintenant(), UUID.randomUUID(), null, true))
