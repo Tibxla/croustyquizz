@@ -43,10 +43,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 
 import tools.jackson.databind.json.JsonMapper;
 
 import fr.croustyquizz.TestcontainersConfiguration;
+import fr.croustyquizz.manche.Acteur;
 
 /** De bout en bout : de vrais clients STOMP contre l'application démarrée. */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -75,7 +77,7 @@ class CanalTempsReelTest {
 	private RegistreAbonnements abonnements;
 
 	@MockitoBean
-	private CaptureVueRepli repli;
+	private CaptureVuePrototype repli;
 
 	private final HttpClient http = HttpClient.newHttpClient();
 	private final JsonMapper json = JsonMapper.builder().build();
@@ -141,24 +143,27 @@ class CanalTempsReelTest {
 
 	@Test
 	void leDiffuseurJointLaSeuleManetteVisee() throws Exception {
-		UUID joueur = UUID.randomUUID();
-		StompSession session = connecter();
-		BlockingQueue<Map<String, Object>> manette = abonner(session, Canaux.joueur(joueur));
-		BlockingQueue<Map<String, Object>> autreManette = abonner(session, Canaux.joueur(UUID.fromString("00000000-0000-0000-0000-000000000001")));
+		UUID soiree = UUID.randomUUID();
+		UUID autreSoiree = UUID.randomUUID();
+		UUID joueur = FournisseurCommunDemonstration.joueurId(soiree);
+		UUID autreJoueur = FournisseurCommunDemonstration.joueurId(autreSoiree);
+		BlockingQueue<Map<String, Object>> manette = abonner(connecter(new Acteur(Acteur.Type.JOUEUR, joueur, soiree)), Canaux.joueur(joueur));
+		BlockingQueue<Map<String, Object>> autreManette = abonner(connecter(new Acteur(Acteur.Type.JOUEUR, autreJoueur, autreSoiree)),
+				Canaux.joueur(autreJoueur));
 
-		diffuseur.envoyerJoueur(joueur, new EvenementDeTest("à toi de chanter"));
+		diffuseur.envoyerJoueur(soiree, joueur, new EvenementDeTest("à toi de chanter"));
 
 		Map<String, Object> message = manette.poll(1, TimeUnit.SECONDS);
 		assertThat(message).isNotNull().containsEntry("type", "test");
 		assertThat(donnees(message)).containsEntry("texte", "à toi de chanter");
-		diffuseur.envoyerJoueur(UUID.fromString("00000000-0000-0000-0000-000000000001"), new EvenementDeTest("témoin"));
+		diffuseur.envoyerJoueur(autreSoiree, autreJoueur, new EvenementDeTest("témoin"));
 		assertThat(donnees(autreManette.poll(1, TimeUnit.SECONDS))).containsEntry("texte", "témoin");
 		assertThat(autreManette).isEmpty();
 	}
 
 	@Test
 	void leDiffuseurJointLaConsoleSansPasserParLaSalle() throws Exception {
-		StompSession session = connecter();
+		StompSession session = connecter(new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), SOIREE));
 		BlockingQueue<Map<String, Object>> console = abonner(session, Canaux.console(SOIREE));
 		BlockingQueue<Map<String, Object>> salle = abonner(session, Canaux.salle(SOIREE));
 
@@ -177,11 +182,20 @@ class CanalTempsReelTest {
 	}
 
 	private StompSession connecter() throws Exception {
+		return connecter(null);
+	}
+
+	private StompSession connecter(Acteur acteur) throws Exception {
 		WebSocketStompClient client = new WebSocketStompClient(clientWebSocket());
 		clients.add(client);
 		client.setMessageConverter(new JacksonJsonMessageConverter());
+		StompHeaders entetes = new StompHeaders();
+		if (acteur != null) {
+			entetes.set("Authorization", "Bearer demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant());
+		}
 		StompSession session = client
 				.connectAsync("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION,
+						new WebSocketHttpHeaders(), entetes,
 						new StompSessionHandlerAdapter() {
 						})
 				.get(5, TimeUnit.SECONDS);

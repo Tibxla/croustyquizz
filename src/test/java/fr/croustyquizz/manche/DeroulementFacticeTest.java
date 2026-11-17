@@ -26,14 +26,7 @@ class DeroulementFacticeTest extends ContratDeroulementDeManche {
 	@Test
 	void enchaineLesEtapesPuisSignaleLaFinUneSeuleFois() {
 		deroulement.demarrer();
-		assertThat(diffuseur.typesSalle()).containsExactly("etape-commencee");
-
-		horloge.avancer(Duration.ofSeconds(20));
-		assertThat(diffuseur.typesSalle()).containsExactly("etape-commencee", "etape-commencee");
-
 		horloge.avancer(Duration.ofMinutes(5));
-		assertThat(diffuseur.typesSalle())
-				.containsExactly("etape-commencee", "etape-commencee", "etape-commencee", "manche-terminee");
 		assertThat(deroulement.estTerminee()).isTrue();
 		assertThat(finsSignalees).isEqualTo(1);
 	}
@@ -42,25 +35,22 @@ class DeroulementFacticeTest extends ContratDeroulementDeManche {
 	void laPauseGeleLeTempsRestant() {
 		deroulement.demarrer();
 		horloge.avancer(Duration.ofSeconds(5));
-
-		deroulement.mettreEnPause();
+		deroulement.mettreEnPause(pilotage());
+		Object avant = deroulement.instantane();
 		horloge.avancer(Duration.ofHours(1));
-		assertThat(diffuseur.typesSalle()).hasSize(1);
-
-		deroulement.reprendre();
+		assertThat(deroulement.instantane()).isEqualTo(avant);
+		deroulement.reprendre(pilotage());
 		horloge.avancer(Duration.ofSeconds(14));
-		assertThat(diffuseur.typesSalle()).hasSize(1);
+		assertThat(((DeroulementFactice.Etat) deroulement.instantane()).etape()).isEqualTo(1);
 		horloge.avancer(Duration.ofSeconds(1));
-		assertThat(diffuseur.typesSalle()).hasSize(2);
+		assertThat(((DeroulementFactice.Etat) deroulement.instantane()).etape()).isEqualTo(2);
 	}
 
 	@Test
 	void passerEtapeCommenceLaSuivanteSansAttendre() {
 		deroulement.demarrer();
-
-		deroulement.passerEtape();
-
-		assertThat(diffuseur.typesSalle()).containsExactly("etape-commencee", "etape-commencee");
+		assertThat(deroulement.passerEtape(pilotage())).isInstanceOf(Accepte.class);
+		assertThat(((DeroulementFactice.Etat) deroulement.instantane()).etape()).isEqualTo(2);
 	}
 
 	@Test
@@ -78,7 +68,7 @@ class DeroulementFacticeTest extends ContratDeroulementDeManche {
 	@Test
 	void ignoreLesActionsPendantLaPause() {
 		deroulement.demarrer();
-		deroulement.mettreEnPause();
+		deroulement.mettreEnPause(pilotage());
 
 		deroulement.recevoir(uneAction(JOUEUR, horloge.maintenant()));
 

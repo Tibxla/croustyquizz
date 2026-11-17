@@ -4,5 +4,6 @@ package fr.croustyquizz.manche;
 public enum ModeDeJeu {
 	QUIZ,
 	BLIND_TEST,
-	KARAOKE
+	KARAOKE,
+	FREESTYLE
 }

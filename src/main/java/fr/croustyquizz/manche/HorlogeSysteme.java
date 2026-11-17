@@ -8,9 +8,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Horloge réelle. L'exécuteur doit être à fil unique et partagé avec tous les
- * appels du déroulement : c'est lui qui garantit qu'un minuteur ne s'exécute
- * jamais en même temps qu'une action de Joueur.
+ * Horloge réelle partagée. L'HorlogeDeManche replace les callbacks dans le
+ * service transactionnel ; le verrou de Soirée garantit leur sérialisation.
  */
 public final class HorlogeSysteme implements Horloge {
 

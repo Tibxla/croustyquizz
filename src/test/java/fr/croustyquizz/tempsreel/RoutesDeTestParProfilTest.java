@@ -19,10 +19,11 @@ class RoutesDeTestParProfilTest {
 		try (AnnotationConfigApplicationContext contexte = new AnnotationConfigApplicationContext()) {
 			contexte.getEnvironment().setActiveProfiles(profils.split(","));
 			// L'enregistrement évalue @Profile sans démarrer les beans ni leurs dépendances.
-			contexte.register(CanauxDeTestControleur.class, BuzzControleur.class);
+			contexte.register(CanauxDeTestControleur.class, BuzzControleur.class, fr.croustyquizz.manche.ManchesDeTestControleur.class);
 
 			assertThat(contexte.containsBeanDefinition("canauxDeTestControleur")).isEqualTo(presentes);
 			assertThat(contexte.containsBeanDefinition("buzzControleur")).isEqualTo(presentes);
+			assertThat(contexte.containsBeanDefinition("manchesDeTestControleur")).isEqualTo(presentes);
 		}
 	}
 }

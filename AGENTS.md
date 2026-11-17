@@ -48,7 +48,11 @@ Sous Windows, dans PowerShell : `.\mvnw.cmd` au lieu de `./mvnw`.
 
 ## Coder un Mode de jeu
 
-Le contrat est dans le package `manche` : implémenter `DeroulementDeManche` et déclarer une `FabriqueDeDeroulement` en bean Spring. Le temps passe par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread), et les écrans ne se joignent que par le `DiffuseurTempsReel`, auquel le mode publie à chaque changement la vue complète de chaque destination, jamais un changement partiel (ADR 0004). La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`).
+Le contrat est dans `manche` : implémenter `DeroulementDeManche` et une `FabriqueDeDeroulement<R, E>` (réglages typés, création, restauration avec `EtatManche`). Déclarer un service de mode qui étend `ServiceDeManche<R, E>`, sa `PersistanceDuMode<E>` JPA et un `FournisseurDeBloc` dans le package du mode. Les tables du mode sont migrées par Flyway ; `manche_deroulement` conserve le cycle commun et `manche_envoi` les reçus idempotents.
+
+Toute commande passe par le service : préparation externe hors verrou, verrou de Soirée, transaction, appel du déroulement, persistance, assemblage des vues, puis publication après commit et avant libération du verrou (ADR 0006). Un refus ne change jamais l'`instantane()` immuable. Le déroulement rend un `ResultatDeCommande` avec l'accusé HTTP, les destinations modifiées et un type d'événement du contrat ; il n'a plus de diffuseur. Si la transaction échoue, le service évince le déroulement pour le restaurer à la prochaine commande.
+
+Le temps passe exclusivement par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread). Ses callbacks repassent par le service ; la fabrique précise `typeEvenementMinuteur` pour ses phases. `reglagesCommuns` extrait les réglages du contexte depuis les réglages typés du mode. Les fournisseurs produisent des projections sans secrets pour chaque destination sous le même verrou ; seul le socle compose et publie la vue complète. La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`), notamment pour les refus sans mutation et après la fin.
 
 ## Propriétaires
 

@@ -6,7 +6,7 @@ import java.util.UUID;
 /**
  * Ce qu'un Joueur envoie depuis sa Manette pendant une Manche : Réponse, Buzz,
  * proposition de titre, inscription au Karaoké, « Je suis prêt », Vote…
- * Chaque Mode de jeu déclare ses propres actions et ignore celles qu'il ne connaît pas.
+ * Chaque Mode de jeu déclare ses propres actions et refuse celles qu'il ne connaît pas.
  */
 public interface ActionJoueur {
 

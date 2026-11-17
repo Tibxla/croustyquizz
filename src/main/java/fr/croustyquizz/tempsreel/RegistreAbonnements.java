@@ -3,6 +3,7 @@ package fr.croustyquizz.tempsreel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import fr.croustyquizz.manche.Acteur;
 
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.Message;
@@ -19,12 +20,17 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 @Component
 public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 	private final Map<String, Map<UUID, String>> connexions = new HashMap<>();
+	private final Map<String, Acteur> acteurs = new HashMap<>();
 
 	@Override
 	public synchronized Message<?> beforeHandle(Message<?> message, MessageChannel canal, MessageHandler gestionnaire) {
 		if (gestionnaire instanceof SimpleBrokerMessageHandler
 				&& SimpMessageHeaderAccessor.getMessageType(message.getHeaders()) == SimpMessageType.CONNECT) {
-			connexions.putIfAbsent(SimpMessageHeaderAccessor.getSessionId(message.getHeaders()), new HashMap<>());
+			String connexion = SimpMessageHeaderAccessor.getSessionId(message.getHeaders());
+			connexions.putIfAbsent(connexion, new HashMap<>());
+			if (SimpMessageHeaderAccessor.getUser(message.getHeaders()) instanceof IdentiteStomp identite) {
+				acteurs.put(connexion, identite.acteur());
+			}
 		}
 		return message;
 	}
@@ -39,6 +45,7 @@ public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 		SimpMessageType type = SimpMessageHeaderAccessor.getMessageType(message.getHeaders());
 		if (type == SimpMessageType.DISCONNECT) {
 			connexions.remove(connexion);
+			acteurs.remove(connexion);
 			return;
 		}
 		Map<UUID, String> abonnements = connexions.get(connexion);
@@ -69,8 +76,15 @@ public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 				.anyMatch(a -> destination.equals(a.get(abonnementId)));
 	}
 
+	/** La barrière métier exige aussi le même Acteur que la connexion STOMP. */
+	public synchronized boolean estInstalle(UUID abonnementId, String destination, Acteur acteur) {
+		return estInstalle(abonnementId, destination) && connexions.entrySet().stream()
+				.anyMatch(c -> destination.equals(c.getValue().get(abonnementId)) && acteur.equals(acteurs.get(c.getKey())));
+	}
+
 	@EventListener
 	public synchronized void deconnecter(SessionDisconnectEvent evenement) {
 		connexions.remove(evenement.getSessionId());
+		acteurs.remove(evenement.getSessionId());
 	}
 }
