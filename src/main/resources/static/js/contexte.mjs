@@ -14,8 +14,10 @@ export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, surEn
 				rappel(etat);
 				return () => abonnes.delete(rappel);
 			},
-			async envoyer(methode, chemin, corps, options) {
-				if (['GET', 'HEAD'].includes(methode.toUpperCase())) return envoyer(methode, chemin, corps, options);
+			// surEnvoi(etat, detail) pilote le bandeau de la coquille ; surEnvoi(null) l'efface.
+			// { annoncer: false } : le module affiche son propre statut près de l'action, la coquille se tait.
+			async envoyer(methode, chemin, corps, { annoncer = true, ...options } = {}) {
+				if (!annoncer || ['GET', 'HEAD'].includes(methode.toUpperCase())) return envoyer(methode, chemin, corps, options);
 				const numero = ++dernierEnvoi;
 				surEnvoi('en-cours', 'Envoi en cours…');
 				try {
@@ -27,7 +29,10 @@ export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, surEn
 					}
 					return reponse;
 				} catch (erreur) {
-					if (numero === dernierEnvoi && erreur.name !== 'AbortError') surEnvoi('en-cours', "Confirmation indisponible : vérifie l'état affiché.");
+					if (numero === dernierEnvoi) {
+						if (erreur.name === 'AbortError') surEnvoi(null);
+						else surEnvoi('inconnu', "Confirmation indisponible : vérifie l'état affiché.");
+					}
 					throw erreur;
 				}
 			},

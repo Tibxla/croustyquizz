@@ -1,3 +1,5 @@
+import { lireCorps, reponseIllisible } from './transport.mjs';
+
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const roles = { manette: 'JOUEUR', console: 'ANIMATEUR', ecran: 'ECRAN' };
 
@@ -32,8 +34,9 @@ export async function preparerIdentite(type, soireeId, acteurId, requete) {
 		headers: { Authorization: `Bearer demo:ECRAN:${soireeId}:${acteurId}` },
 		cache: 'no-store', credentials: 'same-origin',
 	});
-	const corps = await reponse.json();
-	if (!reponse.ok) throw new Error(corps.detail ?? `Identité refusée (HTTP ${reponse.status}).`);
+	const { lisible, corps } = await lireCorps(reponse);
+	if (!lisible) throw new Error(reponseIllisible);
+	if (!reponse.ok) throw new Error(corps?.detail ?? `Identité refusée (HTTP ${reponse.status}).`);
 	const identifiant = type === 'JOUEUR' ? corps.vue?.joueurs?.[0]?.id : acteurId;
 	if (!uuid.test(identifiant ?? '')) throw new Error('Le serveur n’a pas fourni de Joueur de démonstration.');
 	return { jeton: `demo:${type}:${soireeId}:${identifiant}`, page: { JOUEUR: 'manette', ANIMATEUR: 'console', ECRAN: 'ecran' }[type] };

@@ -245,3 +245,17 @@ test('changer de Manche ou démonter annule les lectures et ignore toute répons
 	b.appels[1].reject(new Error()); await terminerMicrotaches(); assert.equal(b.principale.childElementCount, 0);
 	assert.equal(b.captures(), 0);
 });
+
+test('les mutations Karaoké se taisent dans le bandeau de la coquille : un seul statut annoncé, près de l’action', () => {
+	const console_ = creerBanc(consoleKaraoke, 'ANIMATEUR'); console_.connecter('synchronisee');
+	console_.module.afficher(vue({ passagesEnAttente: [passage('p', 12), passage('r', 15), passage('s', 16)] }), capture);
+	console_.principale.querySelector('button[data-passage-id=p]').click();
+	bouton(console_.principale, 'Descendre').click();
+	assert.notEqual(console_.appels[0].args[0], 'GET'); assert.equal(console_.appels[0].args[3].annoncer, false);
+	console_.module.demonter();
+	const p = passage(), manetteBanc = creerBanc(manette);
+	manetteBanc.module.afficher(vue({ mesPassagesEnAttente: [p] }), capture); manetteBanc.connecter('synchronisee');
+	bouton(manetteBanc.principale, 'Me désinscrire').click(); bouton(manetteBanc.principale, 'Confirmer la désinscription').click();
+	assert.notEqual(manetteBanc.appels[0].args[0], 'GET'); assert.equal(manetteBanc.appels[0].args[3].annoncer, false);
+	manetteBanc.module.demonter();
+});

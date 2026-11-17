@@ -25,7 +25,8 @@ export const tableMotifsKaraoke = Object.freeze({
 });
 
 export function etatInscription(fiche, bloc, synchronisee) {
-	const code = bloc.motifInscriptionRefusee ?? fiche.motifIndisponibilite;
+	// Ordre des gardes du contrat : la Chanson (sans voix, paroles, durée) avant le doublon et le quota du bloc.
+	const code = fiche.motifIndisponibilite ?? bloc.motifInscriptionRefusee;
 	return { possible: Boolean(!code && fiche.inscriptionPossible && bloc.peutInscrire && synchronisee),
 		motif: code ? (Object.hasOwn(tableMotifsKaraoke, code) ? tableMotifsKaraoke[code] : code) : null };
 }

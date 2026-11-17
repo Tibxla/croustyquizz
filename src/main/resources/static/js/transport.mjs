@@ -1,4 +1,17 @@
 // Frontières réseau injectables ; aucun accès au DOM ni stockage d'identité ici.
+
+export const reponseIllisible = 'Le serveur ne répond pas correctement.';
+
+// Lit le corps sans jamais lever de SyntaxError : seul un JSON annoncé comme tel (application/json ou
+// application/problem+json) est analysé. Une page HTML de proxy (502…) rend { lisible: false }.
+export async function lireCorps(reponse) {
+	const texte = await reponse.text();
+	if (!texte) return { lisible: true, corps: null };
+	const type = reponse.headers?.get('Content-Type') ?? '';
+	if (!/^application\/(?:problem\+)?json\s*(?:;|$)/i.test(type)) return { lisible: false };
+	try { return { lisible: true, corps: JSON.parse(texte) }; } catch { return { lisible: false }; }
+}
+
 export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 	const adresse = adaptations.adresse ?? globalThis.location?.href;
 	const requete = adaptations.requete ?? ((...args) => fetch(...args));
@@ -15,8 +28,11 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 				...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetesIdentite() },
 			...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
 		});
-		const texte = await reponse.text();
-		return { statut: reponse.status, corps: texte ? JSON.parse(texte) : null };
+		const { lisible, corps: lu } = await lireCorps(reponse);
+		if (lisible) return { statut: reponse.status, corps: lu };
+		// Un succès illisible n'est pas une confirmation : l'appelant le traite comme une panne réseau.
+		if (reponse.status >= 200 && reponse.status < 300) throw new Error(reponseIllisible);
+		return { statut: reponse.status, corps: { detail: reponseIllisible } };
 	}
 	return {
 		envoyer,

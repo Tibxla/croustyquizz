@@ -188,6 +188,12 @@ components:
     rounded: "{rounded.rayon}"
     padding: "8px 12px"
     height: "44px"
+  envoi-inconnu:
+    backgroundColor: "{colors.fond-2}"
+    textColor: "{colors.texte}"
+    rounded: "{rounded.rayon}"
+    padding: "8px 12px"
+    height: "44px"
   envoi-accepte:
     backgroundColor: "{colors.eau}"
     textColor: "{colors.encre}"
@@ -260,9 +266,9 @@ Un fond chaud et sourd, quatre teintes de ticket vives et une couleur d'action u
 ### Neutral
 - **Brun tabac** (fond-0): fond de page des trois interfaces, fond d'encoche par défaut.
 - **Brun comptoir** (fond-1): colonne latérale de l'Écran de salle, panneaux de la Console, fond des champs.
-- **Brun banquette** (fond-2): barre de pilotage, survol des boutons et des lignes, envoi en cours, résultat, Réponse éteinte.
+- **Brun banquette** (fond-2): barre de pilotage, survol des boutons et des lignes, envoi en cours ou à confirmation inconnue, résultat, Réponse éteinte.
 - **Brun bois** (fond-3): bandeau de coupure, fond de la barre du minuteur, bouton d'action désactivé, filets de séparation.
-- **Brun bouchon** (fond-4): bordure des boutons et des champs au repos, barre de défilement.
+- **Brun bouchon** (fond-4): bordure des boutons et des champs au repos, barre de défilement, filet de l'envoi à confirmation inconnue.
 - **Crème** (texte): texte principal sur fond brun.
 - **Crème fanée** (texte-2): texte secondaire, aides, titres de colonne de la salle.
 - **Crème usée** (texte-3): texte désactivé, lignes de paroles hors ligne en cours, textes indicatifs des champs.
@@ -377,7 +383,8 @@ Une Réponse a l'anatomie d'un ticket : la lettre (Barlow 800) dans la souche, u
 Le seul aplat citron de l'Écran de salle : QR code sur carré blanc, phrase d'invitation, code d'accès en Barlow 800, adresse insécable.
 
 ### Envoi, résultat, coupure
-- **Envoi en cours:** brun banquette, crème fanée, roue de 800 ms ; rien n'est encore annoncé. Après une panne réseau sur mutation, `.envoi--en-cours` signifie une confirmation inconnue et affiche « Confirmation indisponible : vérifie l'état affiché. ». Le délai du Karaoké affiche « Confirmation à vérifier. » près de l'action, sans inventer de refus ni de succès.
+- **Envoi en cours:** brun banquette, crème fanée, roue de 800 ms ; rien n'est encore annoncé. Un envoi annulé (changement de Manche, démontage) efface le bandeau.
+- **Confirmation inconnue:** `.envoi--inconnu`, brun banquette, texte crème, filet brun bouchon de 4 px à gauche, sans roue : après une panne réseau sur mutation, plus rien n'est en cours et le bandeau affiche « Confirmation indisponible : vérifie l'état affiché. », sans inventer de refus ni de succès. Le délai du Karaoké affiche « Confirmation à vérifier. » près de l'action ; un module qui affiche ainsi son propre statut envoie avec `{ annoncer: false }`, et la coquille se tait pour qu'un seul `role="status"` annonce l'envoi.
 - **Envoi accepté:** vert d'eau, encre, coche, libellé qui dit ce qui est enregistré.
 - **Envoi refusé:** fond de refus, texte de refus, avec l'explication.
 - **Résultat:** les points validés en gain vert d'eau, puis le total et le rang.

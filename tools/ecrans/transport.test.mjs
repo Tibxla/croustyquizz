@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { creerTransport } from '../../src/main/resources/static/js/transport.mjs';
 
+const json = new Headers({ 'Content-Type': 'application/json' });
+const probleme = new Headers({ 'Content-Type': 'application/problem+json;charset=UTF-8' });
+
 test('Bearer authentifie CONNECT, capture et commandes sans perdre clé idempotente ni annulation', async () => {
 	const requetes = [];
 	const clients = [];
@@ -14,7 +17,7 @@ test('Bearer authentifie CONNECT, capture et commandes sans perdre clé idempote
 		},
 		requete: async (url, options) => {
 			requetes.push({ url, options });
-			return { status: 200, text: async () => '{"ok":true}' };
+			return { status: 200, headers: json, text: async () => '{"ok":true}' };
 		},
 	});
 	transport.ouvrir({});
@@ -35,8 +38,8 @@ test('Bearer authentifie CONNECT, capture et commandes sans perdre clé idempote
 test('la Console transmet session et CSRF sur HTTP et CONNECT ; 204, Probleme et réseau restent distincts', async () => {
 	let optionsConnexion;
 	const reponses = [
-		{ status: 204, text: async () => '' },
-		{ status: 409, text: async () => '{"detail":"Commande périmée."}' },
+		{ status: 204, headers: new Headers(), text: async () => '' },
+		{ status: 409, headers: probleme, text: async () => '{"code":"COMMANDE_PERIMEE","detail":"Commande périmée."}' },
 	];
 	const transport = creerTransport({ csrf: 'csrf-session' }, {
 		adresse: 'https://exemple.test/console.html',
@@ -52,7 +55,23 @@ test('la Console transmet session et CSRF sur HTTP et CONNECT ; 204, Probleme et
 	transport.ouvrir({});
 	assert.deepEqual(optionsConnexion.connectHeaders, { 'X-CSRF-TOKEN': 'csrf-session' });
 	assert.deepEqual(await transport.envoyer('DELETE', '/commande'), { statut: 204, corps: null });
-	assert.deepEqual(await transport.envoyer('GET', '/commande'), { statut: 409, corps: { detail: 'Commande périmée.' } });
+	assert.deepEqual(await transport.envoyer('GET', '/commande'), { statut: 409, corps: { code: 'COMMANDE_PERIMEE', detail: 'Commande périmée.' } });
 	await assert.rejects(transport.envoyer('POST', '/commande'), /Hors ligne/);
 	await assert.rejects(transport.envoyer('GET', 'https://autre.test/'), /rester sur CroustyQuizz/);
+});
+
+test('une page d’erreur HTML d’un proxy donne un refus lisible, jamais une SyntaxError ni un faux succès', async () => {
+	const page = '<html><body><h1>502 Bad Gateway</h1></body></html>';
+	const html = new Headers({ 'Content-Type': 'text/html; charset=utf-8' });
+	const reponses = [
+		{ status: 502, headers: html, text: async () => page },
+		{ status: 500, headers: json, text: async () => '<html>tronqué' },
+		{ status: 200, headers: html, text: async () => page },
+		{ status: 200, headers: new Headers({ 'Content-Type': 'application/json; charset=utf-8' }), text: async () => '{"ok":true}' },
+	];
+	const transport = creerTransport({}, { adresse: 'https://exemple.test/manette.html', requete: async () => reponses.shift() });
+	assert.deepEqual(await transport.envoyer('POST', '/commande', {}), { statut: 502, corps: { detail: 'Le serveur ne répond pas correctement.' } });
+	assert.deepEqual(await transport.envoyer('POST', '/commande', {}), { statut: 500, corps: { detail: 'Le serveur ne répond pas correctement.' } });
+	await assert.rejects(transport.envoyer('POST', '/commande', {}), { message: 'Le serveur ne répond pas correctement.' });
+	assert.deepEqual(await transport.envoyer('GET', '/etat'), { statut: 200, corps: { ok: true } });
 });

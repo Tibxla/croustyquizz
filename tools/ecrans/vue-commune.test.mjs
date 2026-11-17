@@ -16,8 +16,12 @@ test('la partie commune restitue les données du serveur, y compris les personne
 	assert.deepEqual(description.programme, ['3. Blind test · En pause']);
 });
 
-test('un retardataire joue au Karaoké sans avertissement d’inéligibilité, les autres modes le gardent', () => {
-	const vue = { soiree: {}, mancheActive: { ordre: 0 }, joueurs: [{ id: 'j', pseudo: 'Jo' }], joueurId: 'j', eligiblePourMancheActive: false, classement: [] };
-	assert.equal(decrireVue({ ...vue, modeEnCours: 'KARAOKE' }).personnel, 'Jo');
-	for (const modeEnCours of ['QUIZ', 'BLIND_TEST', 'FREESTYLE']) assert.match(decrireVue({ ...vue, modeEnCours }).personnel, /Tu participeras/);
+test('l’avertissement du retardataire ne dépend que de eligiblePourMancheActive, quel que soit le Mode de jeu', () => {
+	// Le serveur met ce champ à vrai quand le Mode de jeu de la Manche active admet les retardataires (Karaoké, Freestyle).
+	const vue = { soiree: {}, mancheActive: { ordre: 0 }, joueurs: [{ id: 'j', pseudo: 'Jo' }], joueurId: 'j', classement: [] };
+	for (const modeEnCours of ['QUIZ', 'BLIND_TEST', 'KARAOKE', 'FREESTYLE']) {
+		assert.match(decrireVue({ ...vue, modeEnCours, eligiblePourMancheActive: false }).personnel, /Tu participeras/, modeEnCours);
+		assert.equal(decrireVue({ ...vue, modeEnCours, eligiblePourMancheActive: true }).personnel, 'Jo', modeEnCours);
+	}
+	assert.equal(decrireVue({ ...vue, mancheActive: null, modeEnCours: null, eligiblePourMancheActive: false }).personnel, 'Jo');
 });

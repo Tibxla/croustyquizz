@@ -20,9 +20,22 @@ test('le Joueur de démonstration prend son UUID dans la projection du serveur',
 	const acces = await preparerIdentite('JOUEUR', soiree, joueur, async (url, options) => {
 		autorisation = options.headers.Authorization;
 		assert.equal(url, `/api/soirees/${soiree}/etat/salle`);
-		return { ok: true, json: async () => ({ vue: { joueurs: [{ id: joueur }] } }) };
+		return { ok: true, status: 200, headers: new Headers({ 'Content-Type': 'application/json' }),
+			text: async () => JSON.stringify({ vue: { joueurs: [{ id: joueur }] } }) };
 	});
 	assert.equal(autorisation, `Bearer demo:ECRAN:${soiree}:${joueur}`);
 	assert.equal(acces.jeton, `demo:JOUEUR:${soiree}:${joueur}`);
 	assert.equal(acces.page, 'manette');
+});
+
+test('une page d’erreur HTML ou un Probleme donnent un refus lisible, jamais une SyntaxError', async () => {
+	const html = { ok: false, status: 502, headers: new Headers({ 'Content-Type': 'text/html' }), text: async () => '<html>502 Bad Gateway</html>' };
+	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, async () => html), { message: 'Le serveur ne répond pas correctement.' });
+	const portail = { ...html, ok: true, status: 200 };
+	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, async () => portail), { message: 'Le serveur ne répond pas correctement.' });
+	const probleme = { ok: false, status: 404, headers: new Headers({ 'Content-Type': 'application/problem+json' }),
+		text: async () => '{"code":"RESSOURCE_INTROUVABLE","detail":"Soirée introuvable."}' };
+	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, async () => probleme), { message: 'Soirée introuvable.' });
+	const vide = { ok: false, status: 401, headers: new Headers(), text: async () => '' };
+	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, async () => vide), { message: 'Identité refusée (HTTP 401).' });
 });

@@ -36,7 +36,7 @@ async page => {
 			{ ...bloc, passagesEnAttente: passages, peutGererFile: true, peutReglerLimite: true, peutRechercher: true } };
 		const suite = { prochainsPassages: passages.slice(0, 3), nombreAutresPassages: Math.max(0, passages.length - 3) };
 		if (client.type === 'ECRAN') return { ...commun, karaoke: terminee ? null : { ...bloc, ...suite } };
-		return { ...commun, joueurId: client.identifiant, eligiblePourMancheActive: false, derniereReponse: null, resultatPersonnel: null,
+		return { ...commun, joueurId: client.identifiant, eligiblePourMancheActive: true, derniereReponse: null, resultatPersonnel: null,
 			karaoke: terminee ? null : { ...bloc, ...suite, mesPassagesEnAttente: personnels, nombrePersonnelEnAttente: personnels.length,
 				peutRechercher: true, peutInscrire: personnels.length < limite, motifInscriptionRefusee: personnels.length < limite ? null : 'LIMITE_ATTEINTE' } };
 	}

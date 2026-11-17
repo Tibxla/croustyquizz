@@ -44,8 +44,10 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			const { statut, corps } = reponse;
 			if (statut >= 200 && statut < 300) transition(envoi, { etat: 'accepte', statut, corps });
 			else {
-				const etat = { etat: statut === 503 ? 'indisponible' : 'refuse', statut, corps, code: corps?.code, detail: corps?.detail };
-				if (!envoi.enCours || (statut !== 503 && !peutReessayer(etat))) transition(envoi, etat);
+				// 503, ou erreur 5xx sans code du contrat (page d'erreur d'un relais) : panne passagère, réessayable.
+				const transitoire = statut === 503 || (statut >= 500 && !corps?.code);
+				const etat = { etat: transitoire ? 'indisponible' : 'refuse', statut, corps, code: corps?.code, detail: corps?.detail };
+				if (!envoi.enCours || (!transitoire && !peutReessayer(etat))) transition(envoi, etat);
 			}
 		};
 		const echouer = () => {

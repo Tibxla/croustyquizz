@@ -20,7 +20,7 @@ test('l’attente est une estimation sans décompte, personnelle à zéro', () =
 	assert.equal(formaterAttente({ etat: 'INCONNUE' }), 'Attente à confirmer');
 });
 
-test('le motif du bloc prime sur la fiche, y compris un motif inconnu', () => {
+test('le motif de la fiche passe avant celui du bloc, qui reste affiché seul, y compris un motif inconnu', () => {
 	const fiche = { inscriptionPossible: true, motifIndisponibilite: null };
 	assert.deepEqual(etatInscription(fiche, { peutInscrire: true }, false), { possible: false, motif: null });
 	assert.deepEqual(etatInscription(fiche, { peutInscrire: true }, true), { possible: true, motif: null });
@@ -28,4 +28,14 @@ test('le motif du bloc prime sur la fiche, y compris un motif inconnu', () => {
 	assert.deepEqual(etatInscription(fiche, { peutInscrire: false, motifInscriptionRefusee: 'constructor' }, true), { possible: false, motif: 'constructor' });
 	assert.equal(tableMotifsKaraoke.ANIMATEUR, 'Consultation uniquement');
 	assert.deepEqual(etatInscription({ inscriptionPossible: false, motifIndisponibilite: 'ANIMATEUR' }, { peutInscrire: true }, true), { possible: false, motif: 'Consultation uniquement' });
+});
+
+test('les motifs de la Chanson priment sur le quota du bloc, dans l’ordre des gardes du contrat', () => {
+	const quota = { peutInscrire: false, motifInscriptionRefusee: 'LIMITE_ATTEINTE' };
+	for (const code of ['SANS_VOIX', 'PAROLES_NON_SYNCHRONISEES', 'DUREE_INCONNUE', 'PASSAGE_DEJA_INSCRIT']) {
+		assert.deepEqual(etatInscription({ inscriptionPossible: false, motifIndisponibilite: code }, quota, true),
+			{ possible: false, motif: tableMotifsKaraoke[code] }, code);
+	}
+	assert.deepEqual(etatInscription({ inscriptionPossible: true, motifIndisponibilite: null }, quota, true),
+		{ possible: false, motif: 'Ta limite de Passages est atteinte.' });
 });

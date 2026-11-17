@@ -28,7 +28,7 @@ test('une commande attend le serveur, restitue le Probleme et ne remplace jamais
 	assert.equal(envois.at(-1).etat, 'accepte');
 });
 
-test('un GET ne déclenche aucun état de commande ; une panne réseau reste une absence de confirmation', async () => {
+test('un GET ne déclenche aucun état de commande ; une panne réseau donne un état inconnu, sans roue', async () => {
 	const etats = [];
 	const { contexte } = creerContexte({ envoyer: async methode => {
 		if (methode === 'GET') return { statut: 200, corps: {} };
@@ -36,10 +36,10 @@ test('un GET ne déclenche aucun état de commande ; une panne réseau reste une
 	}, surEnvoi: (etat, detail) => etats.push({ etat, detail }) });
 	await contexte.envoyer('GET', '/etat'); assert.deepEqual(etats, []);
 	await assert.rejects(contexte.envoyer('POST', '/commande'), /Hors ligne/);
-	assert.deepEqual(etats.at(-1), { etat: 'en-cours', detail: "Confirmation indisponible : vérifie l'état affiché." });
+	assert.deepEqual(etats.at(-1), { etat: 'inconnu', detail: "Confirmation indisponible : vérifie l'état affiché." });
 });
 
-test('AbortError reste silencieuse et une réponse ancienne ne remplace pas le dernier envoi', async () => {
+test('AbortError efface le bandeau et une réponse ancienne ne remplace pas le dernier envoi', async () => {
 	const etats = [], reponses = [];
 	const { contexte } = creerContexte({ envoyer: () => new Promise((resolve, reject) => reponses.push({ resolve, reject })), surEnvoi: (...e) => etats.push(e) });
 	const ancien = contexte.envoyer('POST', '/a', {});
@@ -48,7 +48,26 @@ test('AbortError reste silencieuse et une réponse ancienne ne remplace pas le d
 	reponses[0].resolve({ statut: 409, corps: { detail: 'Ancien refus' } }); await ancien;
 	assert.equal(etats.at(-1)[0], 'accepte');
 	const annule = contexte.envoyer('POST', '/c', {});
-	const nombre = etats.length;
+	assert.deepEqual(etats.at(-1), ['en-cours', 'Envoi en cours…']);
 	reponses[2].reject(new DOMException('Annulation', 'AbortError'));
-	await assert.rejects(annule, { name: 'AbortError' }); assert.equal(etats.length, nombre);
+	await assert.rejects(annule, { name: 'AbortError' });
+	assert.deepEqual(etats.at(-1), [null], 'un envoi annulé ne laisse pas « Envoi en cours… »');
+});
+
+test('un envoi annoncer: false n’écrit rien dans le bandeau et ne rend pas périmé l’envoi annoncé en vol', async () => {
+	const etats = [], appels = [];
+	const { contexte } = creerContexte({ envoyer: (...args) => new Promise((resolve, reject) => appels.push({ args, resolve, reject })),
+		surEnvoi: (...e) => etats.push(e) });
+	const annonce = contexte.envoyer('POST', '/a', {});
+	const muet = contexte.envoyer('POST', '/b', {}, { entetes: { 'Idempotency-Key': 'k' }, annoncer: false });
+	assert.deepEqual(etats, [['en-cours', 'Envoi en cours…']]);
+	assert.deepEqual(appels[1].args[3], { entetes: { 'Idempotency-Key': 'k' } }, 'annoncer ne part pas vers le transport');
+	appels[1].resolve({ statut: 409, corps: { detail: 'Refus du module' } }); await muet;
+	appels[0].resolve({ statut: 204, corps: null }); await annonce;
+	assert.deepEqual(etats, [['en-cours', 'Envoi en cours…'], ['accepte', 'Envoi accepté par le serveur.']]);
+	const panne = contexte.envoyer('POST', '/c', {}, { annoncer: false });
+	appels[2].reject(new Error('Hors ligne')); await assert.rejects(panne, /Hors ligne/);
+	const annule = contexte.envoyer('POST', '/d', {}, { annoncer: false });
+	appels[3].reject(new DOMException('Annulation', 'AbortError')); await assert.rejects(annule, { name: 'AbortError' });
+	assert.equal(etats.length, 2);
 });

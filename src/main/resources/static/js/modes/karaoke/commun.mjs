@@ -64,7 +64,9 @@ export function creerInterface(zones, contexte) {
 		}
 	}
 	function creerMachine() {
-		return creerMachineEnvoi({ envoyer: (...args) => contexte.envoyer(...args), creerUuid,
+		// Le module affiche son propre statut près de l'action : la coquille ne l'annonce pas une seconde fois.
+		return creerMachineEnvoi({ envoyer: (methode, chemin, corps, options) =>
+			contexte.envoyer(methode, chemin, corps, { ...options, annoncer: false }), creerUuid,
 			programmerDelai: (f, ms) => setTimeout(f, ms), annulerDelai: clearTimeout,
 			delaiConfirmationMs: bloc.configurationInterface.delaiConfirmationNavigateurMs,
 			resynchroniser: () => contexte.resynchroniser(),

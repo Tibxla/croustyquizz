@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { creerMachineEnvoi } from '../../src/main/resources/static/js/modes/karaoke/envois.mjs';
+import { creerMachineEnvoi, peutReessayer } from '../../src/main/resources/static/js/modes/karaoke/envois.mjs';
 import { creerUuid } from '../../src/main/resources/static/js/modes/karaoke/commun.mjs';
 
 const commande = { methode: 'POST', chemin: '/passages', corps: { chansonId: 'c' }, mancheId: 'm', acteurType: 'JOUEUR', chansonId: 'c' };
@@ -93,4 +93,17 @@ test('une désinscription ne se réconcilie pas ; oubli et démontage ignorent l
 	b.machine.envoyerCommande(commande); [...b.delais.values()][0](); b.machine.changerManche('autre'); await vider();
 	assert.equal(b.captures(), 0); assert.equal(b.machine.retrouverInscription('m', 'c'), null);
 	b.machine.detruire(); assert.equal(b.machine.envoyerCommande(commande), null);
+});
+
+test('une erreur 5xx sans code du contrat (page d’erreur d’un relais) reste réessayable, une 409 non', async () => {
+	const b = banc();
+	b.machine.envoyerCommande(commande);
+	b.appels[0].resolve({ statut: 502, corps: { detail: 'Le serveur ne répond pas correctement.' } }); await vider();
+	assert.equal(b.etats.at(-1).etat, 'indisponible');
+	assert.equal(peutReessayer(b.etats.at(-1)), true);
+	const autre = banc();
+	autre.machine.envoyerCommande(commande);
+	autre.appels[0].resolve({ statut: 409, corps: { code: 'PASSAGE_DEJA_INSCRIT', detail: 'Déjà inscrit.' } }); await vider();
+	assert.equal(autre.etats.at(-1).etat, 'refuse');
+	b.machine.detruire(); autre.machine.detruire();
 });

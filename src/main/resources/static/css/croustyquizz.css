@@ -493,6 +493,12 @@ a {
   border-radius: 50%;
   animation: tourner 800ms linear infinite;
 }
+/* Confirmation inconnue (panne réseau) : plus rien ne tourne, l'état affiché fait foi. */
+.envoi--inconnu {
+  background: var(--fond-2);
+  color: var(--texte);
+  box-shadow: inset 4px 0 0 var(--fond-4);
+}
 .envoi--accepte {
   background: var(--eau);
   color: var(--encre);
