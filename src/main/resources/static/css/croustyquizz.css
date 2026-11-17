@@ -1,0 +1,568 @@
+/*
+ * CroustyQuizz : feuille de style commune aux trois interfaces
+ * (Console d'animation, Manette, Écran de salle).
+ *
+ * Monde visuel « rouleau de tickets » : fond brun tabac pour ne pas éblouir
+ * une salle sombre, tickets en aplats francs, jaune citron réservé à ce qu'on
+ * touche. Les règles et leurs raisons sont dans DESIGN.md à la racine.
+ *
+ * Polices auto-hébergées (licence OFL, textes dans /fonts) et icônes Lucide
+ * (licence ISC, /icones) : aucune ressource externe n'est chargée.
+ */
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/atkinson-hyperlegible-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/atkinson-hyperlegible-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-800.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Rampe de tons : les seuls neutres du produit. */
+  --fond-0: #1c1410;
+  --fond-1: #241a15;
+  --fond-2: #2e221b;
+  --fond-3: #3a2c24;
+  --fond-4: #54443a;
+  --texte: #f6ede4;
+  --texte-2: #cdbfb2;
+  --texte-3: #9c8c7f;
+  --encre: #1c1410;
+  --encre-2: #3d2c22;
+  --encre-perforation: rgb(28 20 16 / 0.55);
+
+  /* Tickets : aplats, jamais de dégradé. */
+  --orange: #ff7a2f;
+  --eau: #7ed8be;
+  --bleu: #5aa7ee;
+  --rose: #ff9aa8;
+
+  /* Réservé à ce qu'on touche, et au focus. */
+  --citron: #f7df4a;
+  --citron-appuye: #e5cb2c;
+
+  /* États. */
+  --refus: #ff8a7a;
+  --refus-fond: #4a1f1a;
+
+  --police-texte: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --police-chiffres: "Barlow Condensed", "Atkinson Hyperlegible", sans-serif;
+
+  --rayon: 10px;
+  --rayon-grand: 18px;
+  --ombre: 0 10px 24px rgb(0 0 0 / 0.45);
+  --ombre-douce: 0 4px 12px rgb(0 0 0 / 0.35);
+
+  --espace-1: 4px;
+  --espace-2: 8px;
+  --espace-3: 12px;
+  --espace-4: 16px;
+  --espace-5: 24px;
+  --espace-6: 32px;
+  --espace-7: 48px;
+
+  --sortie: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fond-0);
+  color: var(--texte);
+  font-family: var(--police-texte);
+  font-size: 1rem;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+::selection {
+  background: var(--citron);
+  color: var(--encre);
+}
+
+:focus-visible {
+  outline: 3px solid var(--citron);
+  outline-offset: 3px;
+}
+
+a {
+  color: var(--texte);
+  text-underline-offset: 0.2em;
+}
+
+* {
+  scrollbar-color: var(--fond-4) transparent;
+  scrollbar-width: thin;
+}
+
+.chiffres {
+  font-family: var(--police-chiffres);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.visuellement-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Icônes (Lucide, trait de 2 px, couleur du texte) ---------- */
+
+.icone {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  flex: none;
+  background: currentColor;
+  mask: var(--icone) center / contain no-repeat;
+}
+.icone--pause { --icone: url("../icones/pause.svg"); }
+.icone--lecture { --icone: url("../icones/play.svg"); }
+.icone--passer { --icone: url("../icones/skip-forward.svg"); }
+.icone--ajouter { --icone: url("../icones/plus.svg"); }
+.icone--chercher { --icone: url("../icones/search.svg"); }
+.icone--ok { --icone: url("../icones/check.svg"); }
+.icone--fermer { --icone: url("../icones/x.svg"); }
+.icone--coupure { --icone: url("../icones/wifi-off.svg"); }
+.icone--file { --icone: url("../icones/list-ordered.svg"); }
+.icone--micro { --icone: url("../icones/mic.svg"); }
+.icone--joueurs { --icone: url("../icones/users.svg"); }
+.icone--reglages { --icone: url("../icones/settings.svg"); }
+.icone--plein-ecran { --icone: url("../icones/maximize.svg"); }
+
+/* ---------- Boutons ---------- */
+
+.bouton {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espace-2);
+  min-height: 44px;
+  padding: var(--espace-2) var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: transparent;
+  color: var(--texte);
+  font: 700 1rem/1.1 var(--police-texte);
+  cursor: pointer;
+  transition: background-color 120ms var(--sortie), border-color 120ms var(--sortie), transform 120ms var(--sortie);
+}
+.bouton:hover {
+  border-color: var(--texte-3);
+  background: var(--fond-2);
+}
+.bouton:active {
+  transform: translateY(1px);
+}
+.bouton:disabled,
+.bouton[aria-disabled="true"] {
+  color: var(--texte-3);
+  border-color: var(--fond-3);
+  background: transparent;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* La seule couleur d'action : ce qui fait avancer la Soirée ou l'action du Joueur. */
+.bouton--action {
+  border-color: var(--citron);
+  background: var(--citron);
+  color: var(--encre);
+}
+.bouton--action:hover {
+  border-color: var(--citron-appuye);
+  background: var(--citron-appuye);
+}
+.bouton--action:disabled {
+  background: var(--fond-3);
+  border-color: var(--fond-3);
+  color: var(--texte-3);
+}
+
+.bouton--grand {
+  width: 100%;
+  min-height: 64px;
+  padding: var(--espace-4) var(--espace-5);
+  border-radius: var(--rayon-grand);
+  font: 800 1.75rem/1 var(--police-chiffres);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bouton--lien {
+  border-color: transparent;
+  min-height: 44px;
+  color: var(--texte-2);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.bouton--lien:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--texte);
+}
+
+/* ---------- Tickets ---------- */
+
+/*
+ * Un ticket = une souche (le numéro) + un corps, séparés par une perforation
+ * pointillée avec ses deux encoches. Chaque moitié porte sa propre teinte pour
+ * que le corps puisse se détacher en laissant la souche sur le rouleau.
+ */
+.ticket {
+  --teinte: var(--eau);
+  --perforation: 4.5rem;
+  --encoche: 14px;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--perforation) 1fr;
+  align-items: stretch;
+  color: var(--encre);
+}
+.ticket--orange { --teinte: var(--orange); }
+.ticket--eau { --teinte: var(--eau); }
+.ticket--bleu { --teinte: var(--bleu); }
+.ticket--rose { --teinte: var(--rose); }
+
+.ticket__numero {
+  display: grid;
+  place-items: center;
+  padding: var(--espace-2);
+  border-radius: var(--rayon) 0 0 var(--rayon);
+  background: var(--teinte);
+  font: 800 2.25rem/1 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+.ticket__corps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--espace-3) var(--espace-4);
+  border-left: 3px dotted var(--encre-perforation);
+  border-radius: 0 var(--rayon) var(--rayon) 0;
+  background: var(--teinte);
+  transform-origin: 0 0;
+}
+
+/* Les encoches rondes au bout de la perforation : le ticket se lit sans texte. */
+.ticket::before,
+.ticket::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: var(--perforation);
+  width: var(--encoche);
+  height: var(--encoche);
+  margin-left: calc(var(--encoche) / -2);
+  border-radius: 50%;
+  background: var(--fond-encoche, var(--fond-0));
+}
+.ticket::before { top: calc(var(--encoche) / -2); }
+.ticket::after { bottom: calc(var(--encoche) / -2); }
+
+.ticket__qui {
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.15;
+}
+.ticket__quoi {
+  color: var(--encre-2);
+  font-size: 0.9375rem;
+}
+.ticket__etat {
+  position: absolute;
+  top: var(--espace-2);
+  right: var(--espace-3);
+  font: 800 0.8125rem/1 var(--police-chiffres);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/*
+ * Le geste signature : quand son tour vient, le corps du ticket se détache le
+ * long de la perforation ; la souche numérotée reste sur le rouleau.
+ */
+.ticket--detache .ticket__corps {
+  transform: translate(var(--arrache-x, 10px), var(--arrache-y, 6px)) rotate(var(--arrache-angle, 2.5deg));
+  border-left-style: solid;
+  border-left-color: transparent;
+  box-shadow: var(--ombre);
+  animation: detacher 900ms var(--sortie) both;
+}
+.ticket--detache .ticket__numero {
+  background:
+    linear-gradient(90deg, transparent calc(100% - 3px), rgb(28 20 16 / 0.35) 0),
+    var(--teinte);
+}
+@keyframes detacher {
+  0% { transform: none; box-shadow: none; }
+  30% { transform: translate(2px, 0) rotate(0.4deg); }
+  100% { transform: translate(var(--arrache-x, 10px), var(--arrache-y, 6px)) rotate(var(--arrache-angle, 2.5deg)); box-shadow: var(--ombre); }
+}
+
+/*
+ * Le rouleau : des tickets reliés les uns aux autres, séparés par une
+ * perforation horizontale, comme une bande continue.
+ */
+.rouleau {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rouleau > li + li .ticket__numero,
+.rouleau > li + li .ticket__corps {
+  border-top: 3px dotted var(--encre-perforation);
+}
+.rouleau > li:not(:first-child) .ticket__numero { border-top-left-radius: 0; }
+.rouleau > li:not(:first-child) .ticket__corps { border-top-right-radius: 0; }
+.rouleau > li:not(:last-child) .ticket__numero { border-bottom-left-radius: 0; }
+.rouleau > li:not(:last-child) .ticket__corps { border-bottom-right-radius: 0; }
+.rouleau > li:not(:first-child) .ticket::before,
+.rouleau > li:not(:last-child) .ticket::after {
+  display: none;
+}
+/* Un ticket détaché garde ses angles : il a quitté la bande. */
+.rouleau > li .ticket--detache .ticket__corps {
+  border-radius: 0 var(--rayon) var(--rayon) 0;
+  border-top-color: transparent;
+}
+
+/* ---------- Talon d'accès : code et QR ---------- */
+
+.talon {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--espace-4);
+  padding: var(--espace-3);
+  border-radius: var(--rayon);
+  background: var(--citron);
+  color: var(--encre);
+}
+.talon__qr {
+  width: 6rem;
+  aspect-ratio: 1;
+  padding: 6px;
+  border-radius: 6px;
+  background: #fff;
+}
+.talon__qr svg,
+.talon__qr img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.talon__code {
+  display: block;
+  font: 800 3rem/0.95 var(--police-chiffres);
+  letter-spacing: 0.06em;
+}
+.talon__aide {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+/* ---------- Réponses du Quiz : des tickets lettrés, jamais la seule couleur ---------- */
+
+.reponses {
+  display: grid;
+  gap: var(--espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.reponse {
+  --teinte: var(--orange);
+  --encoche: 14px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.5rem 1fr auto;
+  align-items: center;
+  width: 100%;
+  min-height: 68px;
+  padding: 0 var(--espace-4) 0 0;
+  border: 0;
+  border-radius: var(--rayon);
+  background: var(--teinte);
+  color: var(--encre);
+  font: 700 1.1875rem/1.35 var(--police-texte);
+  text-align: left;
+  cursor: pointer;
+}
+.reponses > li:nth-child(2) .reponse { --teinte: var(--eau); }
+.reponses > li:nth-child(3) .reponse { --teinte: var(--bleu); }
+.reponses > li:nth-child(4) .reponse { --teinte: var(--rose); }
+.reponse::before,
+.reponse::after {
+  content: "";
+  position: absolute;
+  left: 3.5rem;
+  width: var(--encoche);
+  height: var(--encoche);
+  margin-left: calc(var(--encoche) / -2);
+  border-radius: 50%;
+  background: var(--fond-encoche, var(--fond-0));
+}
+.reponse::before { top: calc(var(--encoche) / -2); }
+.reponse::after { bottom: calc(var(--encoche) / -2); }
+.reponse__lettre {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  margin-right: var(--espace-4);
+  border-right: 3px dotted var(--encre-perforation);
+  font: 800 2rem/1 var(--police-chiffres);
+}
+.reponse[aria-pressed="true"] {
+  box-shadow: 0 0 0 3px var(--fond-0), 0 0 0 6px var(--citron);
+}
+.reponse:disabled {
+  cursor: default;
+}
+.reponse:disabled:not([aria-pressed="true"]):not(.reponse--juste) {
+  background: var(--fond-2);
+  color: var(--texte-3);
+}
+.reponse:disabled:not([aria-pressed="true"]):not(.reponse--juste) .reponse__lettre {
+  border-right-color: var(--fond-4);
+}
+.reponse__marque {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* ---------- États d'un envoi : rien n'est annoncé réussi sans le serveur ---------- */
+
+.envoi {
+  display: flex;
+  align-items: center;
+  gap: var(--espace-2);
+  min-height: 44px;
+  padding: var(--espace-2) var(--espace-3);
+  border-radius: var(--rayon);
+  font-weight: 700;
+}
+.envoi--en-cours {
+  background: var(--fond-2);
+  color: var(--texte-2);
+}
+.envoi--en-cours::before {
+  content: "";
+  width: 1.1em;
+  height: 1.1em;
+  border: 3px solid var(--fond-4);
+  border-top-color: var(--texte);
+  border-radius: 50%;
+  animation: tourner 800ms linear infinite;
+}
+.envoi--accepte {
+  background: var(--eau);
+  color: var(--encre);
+}
+.envoi--refuse {
+  background: var(--refus-fond);
+  color: var(--refus);
+}
+@keyframes tourner {
+  to { transform: rotate(360deg); }
+}
+
+/* Résultat d'une Question : la valeur validée par le serveur s'affiche
+   d'abord, telle quelle ; une animation éventuelle part de cette valeur. */
+.resultat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-1);
+  padding: var(--espace-4) var(--espace-5);
+  border-radius: var(--rayon-grand);
+  background: var(--fond-2);
+}
+.resultat__gain {
+  font: 800 4rem/0.9 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+  color: var(--eau);
+}
+.resultat__total {
+  color: var(--texte-2);
+}
+.resultat__total strong {
+  color: var(--texte);
+}
+
+/* Bandeau de coupure : la Manette dit ce qu'elle sait, et ce qu'elle ne sait pas. */
+.coupure {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espace-3);
+  padding: var(--espace-3) var(--espace-4);
+  border-radius: var(--rayon);
+  background: var(--fond-3);
+  color: var(--texte);
+}
+
+/* ---------- Mot-symbole ---------- */
+
+.marque {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15em;
+  font: 800 1.5rem/1 var(--police-chiffres);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--texte);
+  text-decoration: none;
+}
+.marque__accent {
+  padding: 0.05em 0.25em 0.1em;
+  border-radius: 4px;
+  background: var(--orange);
+  color: var(--encre);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

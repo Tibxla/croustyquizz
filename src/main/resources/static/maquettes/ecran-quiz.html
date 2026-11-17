@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette · Écran de salle, Quiz · CroustyQuizz</title>
+<link rel="stylesheet" href="../css/croustyquizz.css">
+<link rel="stylesheet" href="../css/ecran-de-salle.css">
+</head>
+<body class="salle">
+<!-- Maquette de référence : Question et chiffres fictifs. -->
+<main class="salle__scene">
+  <section class="salle__principal" aria-label="Question en cours">
+    <p class="question__entete"><span>Question <span class="chiffres">N° 7</span> sur 12 · Cinéma</span><span>Quiz · Manche 1 sur 5</span></p>
+    <h1 class="question__enonce">Dans quelle ville se déroule le film « Le Fabuleux Destin d'Amélie Poulain » ?</h1>
+    <ol class="reponses">
+      <li><div class="reponse"><span class="reponse__lettre">A</span><span>Lyon</span></div></li>
+      <li><div class="reponse"><span class="reponse__lettre">B</span><span>Paris</span></div></li>
+      <li><div class="reponse"><span class="reponse__lettre">C</span><span>Marseille</span></div></li>
+      <li><div class="reponse"><span class="reponse__lettre">D</span><span>Bruxelles</span></div></li>
+    </ol>
+    <div class="minuteur" role="timer" aria-label="Temps restant : 12 secondes">
+      <div class="minuteur__barre"><div class="minuteur__reste" style="--reste: 60%"></div></div>
+      <span class="minuteur__secondes">12 s</span>
+    </div>
+  </section>
+  <aside class="salle__cote" aria-label="Réponses reçues">
+    <section class="ont-repondu" aria-label="Joueurs qui ont répondu">
+      <h2>Ont répondu <span class="chiffres">23 / 31</span></h2>
+      <ol class="souches"><li class="souche">Inès</li><li class="souche">Karim</li><li class="souche">Léa</li><li class="souche">Sam</li><li class="souche">Tom</li><li class="souche">Jade</li><li class="souche">Max</li><li class="souche">Nora</li><li class="souche">Yanis</li><li class="souche">Chloé</li><li class="souche">Hugo</li><li class="souche">Mehdi</li><li class="souche">Sarah</li><li class="souche">Lucas</li><li class="souche souche--reste">et 9 autres</li></ol>
+    </section>
+    <div class="talon">
+      <div class="talon__qr"><img src="qr-demo.svg" alt="QR code pour rejoindre la Soirée"></div>
+      <div><span class="talon__aide">Rejoins la Soirée</span><span class="talon__code">K7Q2</span><span class="talon__adresse"><span>croustyquizz-recette</span><wbr><span>.onrender.com</span></span></div>
+    </div>
+    <footer class="salle__pied">
+      <span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
+      <span>Au Zinc</span>
+    </footer>
+  </aside>
+</main>
+</body>
+</html>
