@@ -156,7 +156,8 @@ class FileAttenteTest {
         sansEffet(() -> file.reglerLimite(1));
         assertThat(passage("1").numeroModification()).isZero();
         assertThatThrownBy(() -> file.reglerLimite(0)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> file.reglerLimite(9007199254740992L)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> file.reglerLimite(21)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(file.reglerLimite(20)).isInstanceOf(ResultatFile.Modifiee.class);
     }
 
     @Test

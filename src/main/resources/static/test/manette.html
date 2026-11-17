@@ -54,7 +54,7 @@
 				},
 				surEtat(nouvelEtat) {
 					synchronisee = nouvelEtat === 'synchronisee';
-					etat.textContent = { synchronisation: 'Synchronisation…', synchronisee: 'Connecté', reconnexion: 'Reconnexion…' }[nouvelEtat];
+					etat.textContent = { synchronisation: 'Synchronisation…', synchronisee: 'Connecté', coupure: 'Connexion perdue, reconnexion…' }[nouvelEtat];
 					etat.className = synchronisee ? 'connecte' : '';
 					bouton.disabled = !synchronisee || envoiEnCours;
 				},
