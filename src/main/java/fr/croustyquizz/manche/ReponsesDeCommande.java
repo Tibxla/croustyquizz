@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 public final class ReponsesDeCommande {
 	private ReponsesDeCommande() { }
 	public static int statut(ResultatDeCommande resultat) {
-		return resultat instanceof Refuse refus ? refus.statutHttp() : ((Accepte) resultat).accuse() == null ? 204 : 200;
+		return resultat instanceof Refuse refus ? refus.statutHttp() : ((Accepte) resultat).statutHttp();
 	}
 	public static Object corps(ResultatDeCommande resultat, String route) {
 		return resultat instanceof Refuse refus ? Probleme.de(refus, route) : ((Accepte) resultat).accuse();
