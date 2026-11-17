@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: CroustyQuizz — premier parcours de Quiz
+  title: CroustyQuizz — contrats Quiz et File d’attente du Karaoké
   version: 0.1.0
-  description: Contrat cible à relire (#34), pas une déclaration d’endpoints déjà déployés. Format Solo, Pilotage
-    Manuel et Quiz ; socle de Buzz inclus. Les règles temporelles, droits et invariants transverses décrits dans
-    README.md font partie du contrat.
+  description: 'Contrat cible à relire (#34, #82), pas une déclaration d’endpoints déjà déployés.
+    Format Solo, Pilotage Manuel, Quiz et File d’attente du Karaoké ; socle de Buzz inclus.
+    README.md fait partie du contrat.'
 servers:
 - url: http://localhost:8080
   description: Développement local
@@ -18,6 +18,7 @@ tags:
 - name: Soirée
 - name: Quiz
 - name: Socle
+- name: Karaoké
 paths:
   /api/csrf:
     get:
@@ -481,9 +482,9 @@ paths:
   /api/soirees/{soireeId}/manches:
     post:
       operationId: ajouterManche
-      summary: Ajouter une Manche de Quiz
-      description: PREPARATION ou OUVERTE uniquement ; le serveur affecte l’ordre final. Les autres Modes de jeu
-        feront l’objet d’une extension.
+      summary: Ajouter une Manche de Quiz ou de Karaoké
+      description: PREPARATION ou OUVERTE uniquement ; le serveur affecte l’ordre final. KARAOKE résout la
+        limite initiale configurée si elle est absente ; aucun Idempotency-Key ajouté à cette route.
       tags:
       - Soirée
       security:
@@ -1277,6 +1278,656 @@ paths:
         schema:
           type: string
           format: uuid
+  /api/soirees/{soireeId}/manches/{mancheId}/chansons:
+    get:
+      operationId: rechercherChansons
+      summary: Rechercher des Chansons
+      description: 'Saisie brute : 1 à 120 points de code. NFC, espaces Unicode regroupées et extrémités
+        supprimées, puis limite configurée 1..120 sans troncature. Vide, sans lettre/chiffre Unicode
+        ou trop longue : REQUETE_INVALIDE. rechercheId client renvoyé tel quel, sans reçu, pour
+        ignorer les réponses tardives. Classement/déduplication déterministes selon README ;
+        interprétations distinctes et non inscriptibles conservées, seul le malformé est exclu. Aucun
+        résultat : 200 chansons:[], aucune publication. Manche Karaoké active EN_COURS/EN_PAUSE,
+        Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence du Joueur
+        suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de garde Karaoké.
+        Règles détaillées : README.md, section Karaoké. Refus : 400 REQUETE_INVALIDE (saisie ou
+        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
+        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
+        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 503
+        SERVICE_INDISPONIBLE (base ou transaction) ; 503 SOURCE_PAROLES_INDISPONIBLE (délai, taille,
+        protocole ou HTTP externe en échec, sauf 404 de fiche/inscription).'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: recherche
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description: Saisie brute, bornée en points de code avant nettoyage.
+      - name: rechercheId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID client renvoyé tel quel ; aucun reçu.
+      responses:
+        '200':
+          description: Résultats de recherche corrélés par rechercheId.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ResultatsChansons
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/chansons/{chansonId}:
+    get:
+      operationId: consulterChanson
+      summary: Consulter une Chanson
+      description: 'chansonId opaque serveur stable, sans identifiant ni préfixe de fournisseur public ;
+        inconnu/disparu ou 404 externe : RESSOURCE_INTROUVABLE. Fiche indicative, gardes dans l’ordre
+        : sans voix, paroles non synchronisées (absentes/inconnues incluses), durée inconnue, doublon
+        personnel en attente, quota EN_ATTENTE. Premier motif ou null ; Animateur : false/ANIMATEUR.
+        Aucun corps ni publication. Manche Karaoké active EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité
+        déduite de l’accès ; hors portée : 404. Présence du Joueur suffisante, y compris retardataire
+        ; eligiblePourMancheActive ne sert jamais de garde Karaoké. Règles détaillées : README.md,
+        section Karaoké. Refus : 400 REQUETE_INVALIDE (saisie ou schéma), 401 AUTHENTIFICATION_REQUISE
+        (identité), 403 ACCES_REFUSE (rôle), 404 RESSOURCE_INTROUVABLE (inconnu, hors portée
+        Soirée/Lieu, attente d’autrui ou Chanson disparue) ; 409 ETAPE_INACTIVE (Manche non active en
+        EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 503 SERVICE_INDISPONIBLE (base ou transaction) ;
+        503 SOURCE_PAROLES_INDISPONIBLE (délai, taille, protocole ou HTTP externe en échec, sauf 404
+        de fiche/inscription).'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: chansonId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+        description: Identifiant opaque stable attribué par le serveur.
+      responses:
+        '200':
+          description: Fiche indicative, revalidée à l’inscription.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/FicheChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages:
+    post:
+      operationId: inscrirePassage
+      summary: Inscrire son Passage
+      description: 'Accès/reçu/état, consultation de la source hors verrou, revalidation sous verrou.
+        Gardes : sans voix, paroles non synchronisées (absentes/inconnues incluses), durée inconnue,
+        doublon, quota. Détail de Chanson figé à l’inscription. Même Chanson permise à deux Joueurs.
+        Source audio et fichier local sans incidence sur l’inscription. Manche Karaoké active
+        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
+        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
+        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
+        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
+        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
+        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
+        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
+        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
+        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
+        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
+        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
+        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
+        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
+        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
+        transaction) ; 503 SOURCE_PAROLES_INDISPONIBLE (délai, taille, protocole ou HTTP externe en
+        échec, sauf 404 de fiche/inscription) ; 409 PASSAGE_DEJA_INSCRIT (doublon personnel en
+        attente), 409 LIMITE_ATTEINTE (quota EN_ATTENTE) ; 422 CHANSON_INDISPONIBLE (contenu
+        inutilisable, detail motivé).'
+      tags:
+      - Karaoké
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/InscriptionPassage
+      responses:
+        '201':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/desinscription:
+    post:
+      operationId: desinscrirePassage
+      summary: Désinscrire son Passage en attente
+      description: 'Réservé au Joueur inscripteur. Cible sortie de l’attente : COMMANDE_PERIMEE quel que
+        soit son compteur. La réinscription rejoint la fin du Tour admissible. Retirer la dernière
+        attente ne termine pas la Manche. Manche Karaoké active EN_COURS/EN_PAUSE, Soirée EN_COURS.
+        Identité déduite de l’accès ; hors portée : 404. Présence du Joueur suffisante, y compris
+        retardataire ; eligiblePourMancheActive ne sert jamais de garde Karaoké. Règles détaillées :
+        README.md, section Karaoké. Après schéma et accès : reçu avant métier, clé
+        acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique. Même contenu :
+        statut et corps initiaux, même après retrait/fin ; contenu différent : ENVOI_REUTILISE. Succès
+        et refus définitifs conservés jusqu’à expiration de l’accès, au minimum fin de Soirée ;
+        expiration inconnue : conserver. Accès refusé, 503 et 409 ETAPE_INACTIVE sans reçu, réessai
+        avec même clé et contenu. Reçu distinct de la vue courante. Aucun événement sur refus, rejeu
+        ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou schéma), 401
+        AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404 RESSOURCE_INTROUVABLE
+        (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue) ; 409 ETAPE_INACTIVE
+        (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409 ETAT_INCOMPATIBLE
+        (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409 ENVOI_REUTILISE
+        (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou transaction) ; 409
+        COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de l’attente ou ancre sortie
+        du Tour affiché).'
+      tags:
+      - Karaoké
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/DesinscriptionPassage
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/retrait:
+    post:
+      operationId: retirerPassage
+      summary: Retirer un Passage en attente
+      description: 'Animateur du Lieu. Garde par Passage, indépendante des inscriptions étrangères. Deux
+        retraits distincts : succès puis COMMANDE_PERIMEE quel que soit le compteur après sortie de
+        l’attente. Retirer la dernière attente ne termine pas la Manche. Manche Karaoké active
+        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
+        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
+        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
+        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
+        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
+        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
+        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
+        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
+        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
+        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
+        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
+        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
+        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
+        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
+        transaction) ; 409 COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de
+        l’attente ou ancre sortie du Tour affiché) ; 403 CSRF_INVALIDE (contrôle CSRF de session
+        mutante).'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/RetraitPassage
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/placement:
+    put:
+      operationId: deplacerPassage
+      summary: Placer un Passage dans son Tour
+      description: 'avant:null place en fin du Tour. Garde du compteur de la cible et de l’ancre ; ancre
+        sortie du Tour depuis affichage : COMMANDE_PERIMEE. Geste déjà satisfait accepté sans
+        incrément ni événement seulement si la cible attend encore. Manche Karaoké active
+        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
+        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
+        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
+        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
+        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
+        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
+        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
+        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
+        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
+        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
+        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
+        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
+        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
+        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
+        transaction) ; 409 COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de
+        l’attente ou ancre sortie du Tour affiché) ; 403 CSRF_INVALIDE (contrôle CSRF de session
+        mutante) ; 409 ROTATION_PROTEGEE (changement de Tour ou cible/ancre prioritaire) ; 422
+        DONNEES_INVALIDES (ancre égale à la cible).'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/PlacementPassage
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/file-attente/priorite:
+    put:
+      operationId: definirPrioritePassage
+      summary: Définir la priorité unique de la File d’attente
+      description: 'true remplace l’unique priorité après le courant ; false retire celle de la cible,
+        sinon sans effet. Ordre normal conservé sous la priorité et rétabli au retrait/remplacement.
+        Seuls les Passages affectés incrémentent leur compteur. Geste déjà satisfait accepté sans
+        incrément ni événement seulement pour une cible encore en attente. Manche Karaoké active
+        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
+        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
+        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
+        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
+        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
+        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
+        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
+        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
+        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
+        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
+        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
+        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
+        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
+        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
+        transaction) ; 409 COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de
+        l’attente ou ancre sortie du Tour affiché) ; 403 CSRF_INVALIDE (contrôle CSRF de session
+        mutante).'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/PrioritePassage
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseFileAttente
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/file-attente/limite:
+    put:
+      operationId: reglerLimitePassages
+      summary: Régler la limite de Passages en attente
+      description: 'Aucune garde de compteur de Passage. Concurrence dans l’ordre serveur, dernière valeur
+        retenue ; valeur courante sans effet. Baisse sans retrait. KaraokeCommun porte la limite
+        courante, Manche.reglages conserve la limite initiale résolue immuable. Manche Karaoké active
+        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
+        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
+        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
+        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
+        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
+        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
+        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
+        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
+        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
+        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
+        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
+        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
+        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
+        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
+        transaction) ; 403 CSRF_INVALIDE (contrôle CSRF de session mutante).'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/LimitePassages
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseFileAttente
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
 components:
   securitySchemes:
     sessionAnimateur:
@@ -1371,8 +2022,9 @@ components:
           schema:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur503:
-      description: Base ou transaction indisponible (SERVICE_INDISPONIBLE). Réessayer avec le même envoiId
-        ou la même clé Idempotency-Key et le même contenu.
+      description: 'SERVICE_INDISPONIBLE : base ou transaction indisponible. SOURCE_PAROLES_INDISPONIBLE :
+        consultation externe en échec sur les routes Karaoké prévues. Aucun reçu ; pour une mutation
+        seulement, réessayer avec la même clé et le même contenu.'
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.

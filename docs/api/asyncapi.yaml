@@ -1,9 +1,9 @@
 asyncapi: 3.1.0
 info:
-  title: CroustyQuizz — événements du premier parcours
+  title: CroustyQuizz — événements Quiz et File d’attente du Karaoké
   version: 0.1.0
-  description: 'Application décrite : serveur CroustyQuizz. Contrat cible à relire (#34). STOMP 1.2 sur WebSocket
-    ; authentification et barrière d’abonnement décrites dans README.md.'
+  description: 'Application décrite : serveur CroustyQuizz. Contrat cible à relire (#34). STOMP 1.2
+    sur WebSocket ; authentification et barrière d’abonnement décrites dans README.md.'
 defaultContentType: application/json
 servers:
   local:
@@ -19,9 +19,14 @@ servers:
 channels:
   salle:
     address: /topic/soirees/{soireeId}/salle
-    description: Écran avec capacité pour cette Soirée, Joueur de la Soirée ou Animateur du Lieu. Messages serveur
-      → écran exclusivement ; aucun SEND de commande métier. Une révision est propre à cette destination et à cette
-      Soirée.
+    description: "Écran avec capacité pour cette Soirée, Joueur de la Soirée ou Animateur du Lieu.
+      Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
+      propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
+      inscription, désinscription, retrait, placement, priorité ou future extraction ;
+      limite-passages-modifiee après changement utile de limite. Vue complète avec bloc karaoke,
+      sans paroles ni secrets ; cycle par les causes existantes. Toutes les Manettes de la Soirée
+      sont mises à jour. Recherche, refus, rejeu, sans effet et rollback sans publication. Aucun
+      événement par seconde."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -30,8 +35,13 @@ channels:
         $ref: '#/components/messages/EvenementSalle'
   console:
     address: /topic/soirees/{soireeId}/console
-    description: Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND de commande métier.
-      Une révision est propre à cette destination et à cette Soirée.
+    description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND de
+      commande métier. Une révision est propre à cette destination et à cette Soirée. Karaoké :
+      file-attente-modifiee après inscription, désinscription, retrait, placement, priorité ou
+      future extraction ; limite-passages-modifiee après changement utile de limite. Vue complète
+      avec bloc karaoke, sans paroles ni secrets ; cycle par les causes existantes. Toutes les
+      Manettes de la Soirée sont mises à jour. Recherche, refus, rejeu, sans effet et rollback sans
+      publication. Aucun événement par seconde."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -40,9 +50,14 @@ channels:
         $ref: '#/components/messages/EvenementConsole'
   joueur:
     address: /topic/joueurs/{joueurId}
-    description: Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit. Messages serveur
-      → écran exclusivement ; aucun SEND de commande métier. Une révision est propre à cette destination et à cette
-      Soirée.
+    description: "Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit.
+      Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
+      propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
+      inscription, désinscription, retrait, placement, priorité ou future extraction ;
+      limite-passages-modifiee après changement utile de limite. Vue complète avec bloc karaoke,
+      sans paroles ni secrets ; cycle par les causes existantes. Toutes les Manettes de la Soirée
+      sont mises à jour. Recherche, refus, rejeu, sans effet et rollback sans publication. Aucun
+      événement par seconde."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
