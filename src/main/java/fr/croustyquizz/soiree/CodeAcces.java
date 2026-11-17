@@ -28,14 +28,15 @@ public final class CodeAcces {
 	}
 
 	/**
-	 * Remet en forme un code tapé à la main : espaces retirés, majuscules.
+	 * Remet en forme un code tapé ou collé : blancs retirés (espaces, tabulations,
+	 * retours à la ligne), majuscules.
 	 * Vide si le résultat ne peut pas être un code d'accès.
 	 */
 	public static Optional<String> normaliser(String saisie) {
 		if (saisie == null) {
 			return Optional.empty();
 		}
-		String code = saisie.replaceAll("\s", "").toUpperCase(Locale.ROOT);
+		String code = saisie.replaceAll("\\s", "").toUpperCase(Locale.ROOT);
 		return estValide(code) ? Optional.of(code) : Optional.empty();
 	}
 

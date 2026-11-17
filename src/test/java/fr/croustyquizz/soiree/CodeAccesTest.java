@@ -23,6 +23,12 @@ class CodeAccesTest {
 	}
 
 	@Test
+	void unCodeColleAvecDesBlancsEstRemisEnForme() {
+		assertThat(CodeAcces.normaliser("K7PQ2M\n")).contains("K7PQ2M");
+		assertThat(CodeAcces.normaliser("\tK7P\r\nQ2M")).contains("K7PQ2M");
+	}
+
+	@Test
 	void uneSaisieQuiNePeutPasEtreUnCodeEstRejetee() {
 		assertThat(CodeAcces.normaliser(null)).isEmpty();
 		assertThat(CodeAcces.normaliser("K7PQ2")).isEmpty();
