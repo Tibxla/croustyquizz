@@ -13,6 +13,11 @@ test('rejouer la capture retardée, les Révisions déjà couvertes et le doublo
 	await rejouerReconnexion(exemples.resynchronisation);
 });
 
+test('rejouer la capture retardée, les Révisions déjà couvertes et le doublon du parcours Karaoké', async () => {
+	const karaoke = parse(await readFile(new URL('../../docs/api/exemples/parcours-karaoke.yaml', import.meta.url), 'utf8'), { maxAliasCount: 1000 });
+	await rejouerReconnexion(karaoke.resynchronisation);
+});
+
 function demarrer(options = {}, adaptations = {}) {
 	const pilote = creerAdaptateurPilotable();
 	const vues = [];

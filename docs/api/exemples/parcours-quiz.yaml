@@ -2558,6 +2558,9 @@ cases:
       dernierBuzz: null
     cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 resynchronisation:
+  destination: /topic/joueurs/00000003-0000-4000-8000-000000000000
+  routeEtat: /api/soirees/00000001-0000-4000-8000-000000000000/etat/manette
+  typeEvenementFinal: question-ouverte
   description: Abonnement 702 actif avant capture ; snapshot révision 9 retardé par le réseau. L’événement 10 arrive
     dans le tampon avant la réponse HTTP. Les événements 8 et 9 déjà couverts et le doublon 10 sont ignorés. La
     vue finale reste la Question 2, jamais un retour à la Question 1.
