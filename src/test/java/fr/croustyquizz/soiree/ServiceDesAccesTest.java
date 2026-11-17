@@ -29,7 +29,7 @@ import fr.croustyquizz.manche.Acteur;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceDesAcces.class, TirageAuHasard.class,
+@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceDesAcces.class, TirageAuHasard.class, FiltreParListe.class,
 		ServiceDesAccesTest.Reglages.class })
 class ServiceDesAccesTest {
 

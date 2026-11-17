@@ -14,4 +14,7 @@ interface DepotDeJoueurs extends JpaRepository<Joueur, UUID> {
 	/** Joueur dont la Manette présente ce jeton de reconnexion. */
 	Optional<Joueur> findByEmpreinteJeton(byte[] empreinteJeton);
 
+	/** Vrai si un Joueur de la Soirée, même parti ou exclu, porte déjà ce pseudo. */
+	boolean existsBySoireeIdAndPseudoNormalise(UUID soireeId, String pseudoNormalise);
+
 }

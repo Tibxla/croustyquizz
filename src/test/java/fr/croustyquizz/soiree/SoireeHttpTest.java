@@ -247,6 +247,17 @@ class SoireeHttpTest {
 	}
 
 	@Test
+	void unPseudoInjurieuxOuDejaPrisEstRefuseSelonLeContrat() throws Exception {
+		String code = soireeOuverte().path("codeAcces").asString();
+		envoyer(HttpMethod.POST, "/api/soirees/rejoindre", Map.of("codeAcces", code, "pseudo", "Léa"));
+
+		verifierRefus("rejoindreSoiree", envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
+				Map.of("codeAcces", code, "pseudo", "LÉA")), 409, "PSEUDO_DEJA_PRIS");
+		verifierRefus("rejoindreSoiree", envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
+				Map.of("codeAcces", code, "pseudo", "s@l0pe")), 422, "PSEUDO_REFUSE");
+	}
+
+	@Test
 	void lesTroisEcransDuParcoursSontServis() {
 		for (String page : new String[] { "/preparer-soiree.html", "/ecran-de-salle.html", "/rejoindre.html" }) {
 			var reponse = envoyer(HttpMethod.GET, page, null);

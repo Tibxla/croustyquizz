@@ -29,19 +29,24 @@ public class ServiceSoiree {
 	/** Index qui garantit qu'un code ne désigne qu'une Soirée qu'on peut rejoindre. */
 	static final String INDEX_CODE_ACTIF = "soiree_code_acces_actif";
 
+	/** Index qui garantit qu'un pseudo ne désigne qu'un Joueur dans une Soirée. */
+	static final String INDEX_PSEUDO = "joueur_pseudo_par_soiree";
+
 	private final DepotDeSoirees depotDeSoirees;
 	private final DepotDeJoueurs depotDeJoueurs;
 	private final Clock horloge;
 	private final TirageDeCode tirage;
+	private final FiltreDePseudos filtre;
 	private final TransactionTemplate nouvelleTransaction;
 	private final SecureRandom hasard = new SecureRandom();
 
 	ServiceSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs, Clock horloge, TirageDeCode tirage,
-			PlatformTransactionManager transactions) {
+			FiltreDePseudos filtre, PlatformTransactionManager transactions) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.horloge = horloge;
 		this.tirage = tirage;
+		this.filtre = filtre;
 		this.nouvelleTransaction = new TransactionTemplate(transactions);
 		this.nouvelleTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 	}
@@ -80,7 +85,7 @@ public class ServiceSoiree {
 			try {
 				return nouvelleTransaction.execute(statut -> ouvrirAvecUnTirage(soireeId));
 			} catch (DataIntegrityViolationException refus) {
-				if (!violeIndexCodeActif(refus)) {
+				if (!violeIndex(refus, INDEX_CODE_ACTIF)) {
 					throw refus;
 				}
 			}
@@ -101,10 +106,10 @@ public class ServiceSoiree {
 		return soiree;
 	}
 
-	private static boolean violeIndexCodeActif(Throwable refus) {
+	private static boolean violeIndex(Throwable refus, String index) {
 		for (Throwable cause = refus; cause != null; cause = cause.getCause()) {
 			if (cause instanceof ConstraintViolationException violation
-					&& INDEX_CODE_ACTIF.equals(violation.getConstraintName())) {
+					&& index.equals(violation.getConstraintName())) {
 				return true;
 			}
 		}
@@ -126,11 +131,16 @@ public class ServiceSoiree {
 
 	/**
 	 * Fait arriver un Joueur dans la Soirée ouverte ou en cours qui porte ce code.
-	 * Le refus des pseudos déjà pris ou injurieux vient avec #10.
+	 * <p>
+	 * L'index {@value #INDEX_PSEUDO} garantit l'unicité du pseudo, même entre deux
+	 * arrivées simultanées ; la vérification préalable évite seulement d'aller
+	 * jusqu'à l'erreur de la base dans le cas courant.
 	 *
 	 * @param saisieDuCode code tel que tapé ou lu dans le QR code ; casse et espaces sont tolérés
 	 * @throws CodeAccesInvalide si aucune Soirée à rejoindre ne porte ce code
 	 * @throws PseudoInvalide    si le pseudo est absent, vide ou trop long
+	 * @throws PseudoRefuse      si le filtre de pseudos l'écarte
+	 * @throws PseudoDejaPris    si un Joueur de la Soirée le porte déjà, même parti ou exclu
 	 */
 	@Transactional
 	public ArriveeDeJoueur rejoindre(String saisieDuCode, String pseudo) {
@@ -139,7 +149,22 @@ public class ServiceSoiree {
 				.filter(Soiree::accepteLesArrivees)
 				.orElseThrow(CodeAccesInvalide::new);
 		JetonDeReconnexion jeton = JetonDeReconnexion.generer(hasard);
-		Joueur joueur = depotDeJoueurs.save(new Joueur(soiree.getId(), pseudo, jeton, horloge.instant()));
+		Joueur joueur = new Joueur(soiree.getId(), pseudo, jeton, horloge.instant());
+		if (!filtre.estAcceptable(joueur.getPseudo())) {
+			throw new PseudoRefuse();
+		}
+		if (depotDeJoueurs.existsBySoireeIdAndPseudoNormalise(soiree.getId(), joueur.getPseudoNormalise())) {
+			throw new PseudoDejaPris();
+		}
+		try {
+			depotDeJoueurs.saveAndFlush(joueur);
+		}
+		catch (DataIntegrityViolationException refus) {
+			if (violeIndex(refus, INDEX_PSEUDO)) {
+				throw new PseudoDejaPris(refus);
+			}
+			throw refus;
+		}
 		return new ArriveeDeJoueur(joueur, jeton, soiree);
 	}
 

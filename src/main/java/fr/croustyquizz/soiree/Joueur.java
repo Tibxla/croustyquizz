@@ -1,8 +1,11 @@
 package fr.croustyquizz.soiree;
 
+import java.text.Normalizer;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -16,12 +19,18 @@ public class Joueur {
 
 	static final int LONGUEUR_MAX_PSEUDO = 30;
 
+	private static final Pattern MARQUES = Pattern.compile("\\p{M}+");
+	private static final Pattern BLANCS = Pattern.compile("\\s+");
+
 	@Id
 	private UUID id;
 
 	private UUID soireeId;
 
 	private String pseudo;
+
+	/** Clé d'unicité du pseudo dans la Soirée, voir {@link #cleDePseudo(String)}. */
+	private String pseudoNormalise;
 
 	private byte[] empreinteJeton;
 
@@ -43,6 +52,7 @@ public class Joueur {
 		this.id = UUID.randomUUID();
 		this.soireeId = Objects.requireNonNull(soireeId, "soireeId");
 		this.pseudo = nettoyerPseudo(pseudo);
+		this.pseudoNormalise = cleDePseudo(this.pseudo);
 		this.empreinteJeton = Objects.requireNonNull(jeton, "jeton").empreinte();
 		this.arriveLe = Objects.requireNonNull(arriveLe, "arriveLe");
 	}
@@ -64,6 +74,16 @@ public class Joueur {
 		return nettoye;
 	}
 
+	/**
+	 * Deux pseudos de même clé désignent le même nom à l'écran : « Léa »,
+	 * « lea » et « LÉA » se confondent, tout comme « Jean  Luc » et « Jean Luc ».
+	 */
+	static String cleDePseudo(String pseudo) {
+		String sansAccent = MARQUES.matcher(Normalizer.normalize(pseudo, Normalizer.Form.NFD)).replaceAll("");
+		String recompose = Normalizer.normalize(sansAccent, Normalizer.Form.NFC);
+		return BLANCS.matcher(recompose.strip()).replaceAll(" ").toLowerCase(Locale.ROOT);
+	}
+
 	public UUID getId() {
 		return id;
 	}
@@ -74,6 +94,10 @@ public class Joueur {
 
 	public String getPseudo() {
 		return pseudo;
+	}
+
+	String getPseudoNormalise() {
+		return pseudoNormalise;
 	}
 
 	public Instant getArriveLe() {

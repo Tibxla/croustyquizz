@@ -11,6 +11,13 @@ import org.junit.jupiter.api.Test;
 
 class JoueurTest {
 
+	@Test
+	void laCleDePseudoConfondAccentsCasseEtEspaces() {
+		assertThat(Joueur.cleDePseudo("Léa")).isEqualTo(Joueur.cleDePseudo("LEA")).isEqualTo("lea");
+		assertThat(Joueur.cleDePseudo("  Jean   Luc ")).isEqualTo("jean luc");
+		assertThat(Joueur.cleDePseudo("한글")).isEqualTo("한글");
+	}
+
 	private static final UUID SOIREE = UUID.randomUUID();
 	private static final Instant ARRIVEE = Instant.parse("2026-11-12T19:41:07Z");
 
