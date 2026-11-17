@@ -5,18 +5,21 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import fr.croustyquizz.manche.Refuse;
 
 /**
  * Routes de Soirée du contrat docs/api/openapi.yaml : creerSoiree,
- * consulterSoiree, ouvrirSoiree, creerAccesEcran et rejoindreSoiree. Toutes passent par
+ * consulterSoiree, ouvrirSoiree, creerAccesEcran, consulterQrCodeSoiree et
+ * rejoindreSoiree. Toutes passent par
  * {@link ServiceSoiree} et répondent en {@code Cache-Control: no-store}.
  * <p>
  * Avant la connexion de l'Animateur (#5), les routes de la Console sont
@@ -69,6 +72,23 @@ class SoireeControleur {
 	ResponseEntity<ProjectionAccesEcran> ouvrirEcran(@PathVariable UUID soireeId) {
 		OuvertureEcran ouverture = acces.ouvrirEcran(soireeId);
 		return ok(new ProjectionAccesEcran(soireeId, ouverture.cle(), ouverture.acces().getExpireLe()));
+	}
+
+	/**
+	 * QR code qui mène à la Manette avec le code d'accès dans le fragment : le
+	 * code n'est pas un secret, et un fragment n'est jamais envoyé au serveur.
+	 */
+	@GetMapping("/api/soirees/{soireeId}/qrcode")
+	ResponseEntity<String> qrCode(@PathVariable UUID soireeId) {
+		Soiree soiree = service.consulter(soireeId);
+		if (!soiree.accepteLesArrivees()) {
+			throw new Refuse(409, "SOIREE_NON_OUVERTE", "La Soirée n'est pas ouverte aux Joueurs.").exception();
+		}
+		String manette = ServletUriComponentsBuilder.fromCurrentContextPath().path("/manette.html")
+				.fragment("code=" + soiree.getCodeAcces()).toUriString();
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+				.contentType(MediaType.valueOf("image/svg+xml"))
+				.body(QrCodeSvg.de(manette));
 	}
 
 	private static <T> ResponseEntity<T> ok(T corps) {

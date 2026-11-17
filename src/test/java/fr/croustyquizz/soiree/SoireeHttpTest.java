@@ -189,6 +189,24 @@ class SoireeHttpTest {
 	}
 
 	@Test
+	void leQrCodeMeneALaManetteAvecLeCodeDUneSoireeOuverte() throws Exception {
+		String preparee = json.readTree(envoyer(HttpMethod.POST, "/api/soirees",
+				Map.of("titre", "Quiz", "format", "SOLO", "pilotage", "MANUEL")).getBody()).path("id").asString();
+		var tropTot = envoyer(HttpMethod.GET, "/api/soirees/" + preparee + "/qrcode", null);
+		verifierRefus("consulterQrCodeSoiree", tropTot, 409, "SOIREE_NON_OUVERTE");
+		verifierRefus("consulterQrCodeSoiree", envoyer(HttpMethod.GET, "/api/soirees/" + UUID.randomUUID() + "/qrcode",
+				null), 404, "RESSOURCE_INTROUVABLE");
+
+		envoyer(HttpMethod.POST, "/api/soirees/" + preparee + "/ouverture", null);
+		var qrCode = envoyer(HttpMethod.GET, "/api/soirees/" + preparee + "/qrcode", null);
+
+		ContratApi.verifier(CONTRAT, "consulterQrCodeSoiree", qrCode);
+		assertThat(qrCode.getStatusCode().value()).isEqualTo(200);
+		assertThat(qrCode.getHeaders().getContentType()).hasToString("image/svg+xml");
+		assertThat(qrCode.getHeaders().getCacheControl()).isEqualTo("no-store");
+	}
+
+	@Test
 	void uneSoireeAbsenteDeLaBaseResteCelleDeLaDemonstration() throws Exception {
 		UUID soiree = UUID.randomUUID();
 		String jetonDemo = "demo:ECRAN:" + soiree + ":" + UUID.randomUUID();
