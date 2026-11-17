@@ -446,8 +446,12 @@ classDiagram
     }
     class SourceDeParoles {
         <<interface>>
-        +List~Chanson~ rechercher(String requete)
-        +Chanson charger(long idLrclib)
+        +List~Chanson~ rechercher(String recherche)
+        +Optional~ContenuKaraoke~ charger(long idLrclib)
+    }
+    class AdaptateurLrclib
+    class ServiceKaraoke {
+        <<futur>>
     }
     class CorrecteurTolerant {
         +Verdict juger(String saisie, Morceau)
@@ -531,6 +535,11 @@ classDiagram
     DeroulementBlindTest --> CatalogueMusical
     DeroulementBlindTest --> CorrecteurTolerant
     DeroulementKaraoke --> FileAttente
+    ServiceKaraoke --> SourceDeParoles : consulte hors verrou
+    SourceDeParoles <|.. AdaptateurLrclib
+    SourceDeParoles ..> Chanson
+    SourceDeParoles ..> ContenuKaraoke
+    AdaptateurLrclib --> Horloge : attente Retry-After
     FabriqueDeDeroulement <|.. FabriqueKaraoke : R=ReglagesKaraoke, E=EtatKaraokePersiste
     FabriqueKaraoke ..> DeroulementKaraoke : crée ou restaure
     DeroulementKaraoke ..> InstantaneKaraoke : capture
