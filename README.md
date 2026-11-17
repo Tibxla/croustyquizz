@@ -1,6 +1,6 @@
 # CroustyQuizz
 
-[![Version du socle : 0.0.1-SNAPSHOT](https://img.shields.io/badge/version-0.0.1--SNAPSHOT-blue)](pom.xml)
+[![Version : 0.1.0](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/Tibxla/croustyquizz/releases/tag/v0.1.0)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
 [![Couverture des lignes — JaCoCo](https://raw.githubusercontent.com/Tibxla/croustyquizz/mesures-qualite/develop/couverture.svg)](https://github.com/Tibxla/croustyquizz/actions/workflows/ci.yml?query=branch%3Adevelop)
 [![Alertes de qualité — PMD](https://raw.githubusercontent.com/Tibxla/croustyquizz/mesures-qualite/develop/qualite.svg)](https://github.com/Tibxla/croustyquizz/actions/workflows/ci.yml?query=branch%3Adevelop)
@@ -18,17 +18,21 @@ Projet de groupe du M1 MIAGE, Université Paris Nanterre.
 | Harris Hamadache | [Piyakabib](https://github.com/Piyakabib) | Quiz : Questions, Réponses, correction et calcul des points |
 | Rayen Ndiaye | [nRayen](https://github.com/nRayen) | Blind test : Morceaux, Buzz, correction et calcul des points |
 
-## Dossier de lancement — Rendu 1
+## Dossiers de rendu
 
-Le dossier demandé par le cours est regroupé dans **`doc/rendu-1/`** : [source Markdown](doc/rendu-1/dossier-lancement.md) et [PDF de quatre pages](doc/rendu-1/dossier-lancement.pdf). Il sera mis à jour avec les livraisons ; `docs/` conserve la documentation technique.
+Les dossiers demandés par le cours sont dans `doc/` ; `docs/` conserve la documentation technique.
+
+- **Rendu 1, dossier de lancement** : `doc/rendu-1/`, [source Markdown](doc/rendu-1/dossier-lancement.md) et [PDF de quatre pages](doc/rendu-1/dossier-lancement.pdf).
+- **Rendu 2, version intermédiaire v0.1.0** : `doc/rendu-2/`, [source Markdown](doc/rendu-2/dossier-v0.1.0.md) et [PDF](doc/rendu-2/dossier-v0.1.0.pdf) ; [release v0.1.0](https://github.com/Tibxla/croustyquizz/releases/tag/v0.1.0).
 
 Pour régénérer le PDF, installer [Pandoc](https://pandoc.org/installing.html) et Chrome ou Chromium, puis lancer depuis la racine :
 
 ```bash
-python3 tools/generer-dossier.py
+python3 tools/generer-dossier.py          # Rendu 1, quatre pages
+python3 tools/generer-dossier.py rendu-2  # Rendu 2, sans limite de pages
 ```
 
-Le script produit le PDF à partir du Markdown et de `tools/dossier-lancement.css`. Le HTML intermédiaire est généré dans `target/dossier-lancement/`, ignoré par Git. Si nécessaire, définir `CHROME_BIN` avec le chemin du navigateur. Vérifier les quatre pages après chaque modification.
+Le script produit le PDF à partir du Markdown et de `tools/dossier-lancement.css` (plus `tools/dossier-continu.css` pour le Rendu 2). Le HTML intermédiaire est généré dans `target/dossier-lancement/`, ignoré par Git. Si nécessaire, définir `CHROME_BIN` avec le chemin du navigateur. Vérifier la mise en page après chaque modification (quatre pages pour le Rendu 1).
 
 ## Installer
 
@@ -79,7 +83,7 @@ Pour consulter les résultats localement :
 
 La CI conserve les rapports et les résultats de tests comme artefacts téléchargeables depuis chaque exécution. Après un build réussi sur `develop` ou `main`, elle publie les badges et le commit analysé sur la branche dédiée [`mesures-qualite`](https://github.com/Tibxla/croustyquizz/tree/mesures-qualite). Les badges ci-dessus reflètent le **dernier build réussi de `develop`** ; consulter aussi le badge CI pour détecter un échec plus récent. Avant la première publication, les images ne sont pas encore disponibles.
 
-La couverture porte sur le code existant, pas sur les fonctionnalités encore à développer. Un résultat PMD sans alerte indique l'absence de problèmes détectés par les règles configurées ; il ne garantit pas l'absence de bugs. Le badge de version reflète le `pom.xml`. Le déploiement automatisé de l'application reste à mettre en place.
+La couverture porte sur le code existant, pas sur les fonctionnalités encore à développer. Un résultat PMD sans alerte indique l'absence de problèmes détectés par les règles configurées ; il ne garantit pas l'absence de bugs. Le badge de version reflète le `pom.xml`. La CI redéploie la recette après chaque fusion sur `develop` ; chaque tag `vX.Y.Z` sur `main` construit la release (JAR), publie l'image sur GHCR et demande le déploiement de la production.
 
 ## Licence
 
