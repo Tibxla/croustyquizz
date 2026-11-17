@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.networknt.schema.SchemaLocation;
@@ -35,10 +36,19 @@ public final class ContratApi {
 	}
 
 	public static void verifier(String fichierContrat, String operationId, MvcResult resultat) throws IOException {
+		verifier(fichierContrat, operationId, resultat.getResponse().getStatus(),
+				resultat.getResponse().getContentType(), resultat.getResponse().getContentAsString());
+	}
+
+	public static void verifier(String fichierContrat, String operationId, ResponseEntity<String> reponse) throws IOException {
+		verifier(fichierContrat, operationId, reponse.getStatusCode().value(),
+				reponse.getHeaders().getFirst("Content-Type"), reponse.getBody() == null ? "" : reponse.getBody());
+	}
+
+	public static void verifier(String fichierContrat, String operationId, int statut, String type, String corps) throws IOException {
 		Path fichier = Path.of(fichierContrat).toAbsolutePath().normalize();
 		JsonNode contrat = YAML.readTree(fichier.toFile());
 		String operation = trouverOperation(contrat, operationId);
-		int statut = resultat.getResponse().getStatus();
 		String contexte = fichierContrat + " : " + operationId + " (HTTP " + statut + ")";
 		String reponse = operation + "/responses/" + statut;
 		if (contrat.at(reponse).isMissingNode()) {
@@ -46,14 +56,12 @@ public final class ContratApi {
 		}
 		reponse = resoudreReference(contrat, reponse);
 		JsonNode contenu = contrat.at(reponse).path("content");
-		String corps = resultat.getResponse().getContentAsString();
 		if (contenu.isMissingNode()) {
 			if (!corps.isEmpty()) {
 				throw new AssertionError(contexte + " : réponse sans corps attendue");
 			}
 			return;
 		}
-		String type = resultat.getResponse().getContentType();
 		if (type == null) {
 			throw new AssertionError(contexte + " : Content-Type manquant");
 		}

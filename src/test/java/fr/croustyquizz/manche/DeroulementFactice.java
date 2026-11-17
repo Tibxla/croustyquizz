@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import fr.croustyquizz.tempsreel.Evenement;
+import java.util.Set;
 
 /**
  * Mode de jeu minimal qui sert de modèle aux vrais modes et de doublure au socle :
@@ -16,20 +16,6 @@ import fr.croustyquizz.tempsreel.Evenement;
 final class DeroulementFactice implements DeroulementDeManche {
 
 	record ActionFactice(UUID joueurId, Instant recueLe) implements ActionJoueur {
-	}
-
-	record EtapeCommencee(int numero) implements Evenement {
-		@Override
-		public String type() {
-			return "etape-commencee";
-		}
-	}
-
-	record MancheTerminee() implements Evenement {
-		@Override
-		public String type() {
-			return "manche-terminee";
-		}
 	}
 
 	private final ContexteDeManche contexte;
@@ -53,50 +39,82 @@ final class DeroulementFactice implements DeroulementDeManche {
 	}
 
 	@Override
-	public void recevoir(ActionJoueur action) {
-		if (terminee || enPause || etapeRemportee || !(action instanceof ActionFactice)) {
-			return;
+	public ResultatDeCommande recevoir(ActionJoueur action) {
+		if (terminee || etape == 0 || enPause || etapeRemportee || !(action instanceof ActionFactice)) {
+			return refus();
 		}
 		etapeRemportee = true;
 		points.add(new AttributionDePoints(action.joueurId(), 1, "première action de l'étape " + etape));
+		return new Accepte(null, Set.of(Destination.CONSOLE), "classement-modifie");
 	}
 
 	@Override
-	public void mettreEnPause() {
-		if (terminee || enPause) {
-			return;
+	public ResultatDeCommande mettreEnPause(CommandePilotage commande) {
+		if (terminee || enPause || etape == 0) {
+			return refus();
 		}
 		enPause = true;
 		minuteur.annuler();
 		resteAuMomentDeLaPause = Duration.between(contexte.horloge().maintenant(), finEtapeLe);
+		return accepte(commande, "manche-en-pause");
 	}
 
 	@Override
-	public void reprendre() {
-		if (terminee || !enPause) {
-			return;
+	public ResultatDeCommande reprendre(CommandePilotage commande) {
+		if (terminee || !enPause || etape == 0) {
+			return refus();
 		}
 		enPause = false;
 		programmerFinEtape(resteAuMomentDeLaPause);
+		return accepte(commande, "manche-reprise");
 	}
 
 	@Override
-	public void passerEtape() {
-		if (terminee) {
-			return;
+	public ResultatDeCommande passerEtape(CommandePilotage commande) {
+		if (etape == 0) { return new Refuse(409, "ETAPE_INACTIVE", "Aucune étape courante."); }
+		if (terminee || enPause) {
+			return refus();
 		}
 		minuteur.annuler();
 		enPause = false;
 		finirEtape();
+		return accepte(commande, terminee ? "manche-terminee" : "question-ouverte");
 	}
 
 	@Override
-	public void terminer() {
+	public ResultatDeCommande terminer(CommandePilotage commande) {
 		if (terminee) {
-			return;
+			return refus();
 		}
 		minuteur.annuler();
 		cloturer();
+		return accepte(commande, "manche-terminee");
+	}
+
+	@Override
+	public ResultatDeCommande commander(CommandeDeManche commande) { return refus(); }
+
+	record Etat(int etape, boolean remportee, boolean pause, boolean terminee, Instant fin,
+			Duration reste, List<AttributionDePoints> points) { }
+
+	@Override
+	public Object instantane() { return new Etat(etape, etapeRemportee, enPause, terminee, finEtapeLe, resteAuMomentDeLaPause, points()); }
+
+	static DeroulementFactice restaurer(ContexteDeManche contexte, Etat etat, EtatManche cycle) {
+		var d = new DeroulementFactice(contexte);
+		d.etape = etat.etape(); d.etapeRemportee = etat.remportee(); d.enPause = cycle == EtatManche.EN_PAUSE;
+		d.terminee = cycle == EtatManche.TERMINEE; d.finEtapeLe = etat.fin(); d.resteAuMomentDeLaPause = etat.reste();
+		d.points.addAll(etat.points());
+		if (!d.enPause && !d.terminee) {
+			d.programmerFinEtape(Duration.between(contexte.horloge().maintenant(), etat.fin()).isNegative()
+					? Duration.ZERO : Duration.between(contexte.horloge().maintenant(), etat.fin()));
+		}
+		return d;
+	}
+
+	private Refuse refus() { return new Refuse(409, "ETAT_INCOMPATIBLE", "Commande incompatible avec la Manche."); }
+	private Accepte accepte(CommandePilotage commande, String type) {
+		return new Accepte(commande.accuse(), Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES), type);
 	}
 
 	@Override
@@ -112,7 +130,6 @@ final class DeroulementFactice implements DeroulementDeManche {
 	private void commencerEtape(int numero) {
 		etape = numero;
 		etapeRemportee = false;
-		contexte.diffuseur().diffuserSalle(contexte.soireeId(), new EtapeCommencee(numero));
 		programmerFinEtape(contexte.reglages().tempsParEtape());
 	}
 
@@ -132,7 +149,6 @@ final class DeroulementFactice implements DeroulementDeManche {
 
 	private void cloturer() {
 		terminee = true;
-		contexte.diffuseur().diffuserSalle(contexte.soireeId(), new MancheTerminee());
 	}
 
 }

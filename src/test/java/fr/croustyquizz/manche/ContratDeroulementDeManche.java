@@ -1,7 +1,6 @@
 package fr.croustyquizz.manche;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -10,8 +9,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import fr.croustyquizz.tempsreel.DiffuseurFactice;
 
 /**
  * Tests que tout Mode de jeu doit passer. Pour s'en servir, la classe de test du
@@ -25,7 +22,6 @@ public abstract class ContratDeroulementDeManche {
 	protected static final UUID JOUEUR = UUID.fromString("00000000-0000-0000-0000-00000000a001");
 
 	protected final HorlogeFactice horloge = new HorlogeFactice();
-	protected final DiffuseurFactice diffuseur = new DiffuseurFactice();
 	protected int finsSignalees;
 	protected DeroulementDeManche deroulement;
 
@@ -42,7 +38,7 @@ public abstract class ContratDeroulementDeManche {
 	@BeforeEach
 	void creerLeDeroulement() {
 		ContexteDeManche contexte = new ContexteDeManche(
-				SOIREE, MANCHE, reglages(), horloge, diffuseur, () -> finsSignalees++);
+				SOIREE, MANCHE, reglages(), horloge, () -> finsSignalees++);
 		deroulement = creer(contexte);
 	}
 
@@ -58,25 +54,27 @@ public abstract class ContratDeroulementDeManche {
 	void terminerArreteLaMancheSansSignalerDeFin() {
 		deroulement.demarrer();
 
-		deroulement.terminer();
+		deroulement.terminer(pilotage());
 
 		assertThat(deroulement.estTerminee()).isTrue();
 		assertThat(finsSignalees).isZero();
 	}
 
 	@Test
-	void ignoreLesActionsApresLaFin() {
+	void refuseLesActionsApresLaFin() {
 		deroulement.demarrer();
-		deroulement.terminer();
+		deroulement.terminer(pilotage());
 		List<AttributionDePoints> avant = deroulement.points();
 
-		deroulement.recevoir(uneAction(JOUEUR, horloge.maintenant()));
+		Object instantane = deroulement.instantane();
+		verifierRefus(deroulement.recevoir(uneAction(JOUEUR, horloge.maintenant())));
+		assertThat(deroulement.instantane()).isEqualTo(instantane);
 
 		assertThat(deroulement.points()).isEqualTo(avant);
 	}
 
 	@Test
-	void ignoreUneActionInconnueDuMode() {
+	void refuseUneActionInconnueDuMode() {
 		deroulement.demarrer();
 		ActionJoueur inconnue = new ActionJoueur() {
 			@Override
@@ -90,21 +88,24 @@ public abstract class ContratDeroulementDeManche {
 			}
 		};
 
-		assertThatCode(() -> deroulement.recevoir(inconnue)).doesNotThrowAnyException();
+		Object avant = deroulement.instantane();
+		verifierRefus(deroulement.recevoir(inconnue));
+		assertThat(deroulement.instantane()).isEqualTo(avant);
 		assertThat(deroulement.points()).isEmpty();
 	}
 
 	@Test
 	void resteTermineeQuoiQueFasseLAnimateur() {
 		deroulement.demarrer();
-		deroulement.terminer();
+		deroulement.terminer(pilotage());
 
-		assertThatCode(() -> {
-			deroulement.mettreEnPause();
-			deroulement.reprendre();
-			deroulement.passerEtape();
-			deroulement.terminer();
-		}).doesNotThrowAnyException();
+		Object avant = deroulement.instantane();
+		verifierRefus(deroulement.mettreEnPause(pilotage()));
+		verifierRefus(deroulement.reprendre(pilotage()));
+		verifierRefus(deroulement.passerEtape(pilotage()));
+		verifierRefus(deroulement.terminer(pilotage()));
+		assertThat(deroulement.instantane()).isEqualTo(avant);
+
 		assertThat(deroulement.estTerminee()).isTrue();
 		assertThat(finsSignalees).isZero();
 	}
@@ -120,9 +121,35 @@ public abstract class ContratDeroulementDeManche {
 	void neLaissePasDeMinuteurApresLaFin() {
 		deroulement.demarrer();
 
-		deroulement.terminer();
+		deroulement.terminer(pilotage());
 
 		assertThat(horloge.minuteursEnAttente()).isZero();
+	}
+
+	private void verifierRefus(ResultatDeCommande resultat) {
+		assertThat(resultat).isInstanceOfSatisfying(Refuse.class, refus -> {
+			assertThat(refus.statutHttp()).isEqualTo(409);
+			assertThat(refus.code()).isEqualTo("ETAT_INCOMPATIBLE");
+		});
+	}
+
+	protected CommandePilotage pilotage() {
+		return new CommandePilotage(new Acteur(Acteur.Type.ANIMATEUR, JOUEUR, SOIREE),
+				UUID.randomUUID(), horloge.maintenant());
+	}
+
+	@Test
+	void refuseUneCommandeInconnueSansMutation() {
+		deroulement.demarrer();
+		Object avant = deroulement.instantane();
+		CommandeDeManche inconnue = new CommandeDeManche() {
+			public Acteur acteur() { return pilotage().acteur(); }
+			public Instant recueLe() { return horloge.maintenant(); }
+		};
+		verifierRefus(deroulement.commander(inconnue));
+		assertThat(deroulement.instantane()).isEqualTo(avant);
+		deroulement.terminer(pilotage());
+		verifierRefus(deroulement.commander(inconnue));
 	}
 
 }

@@ -32,11 +32,11 @@ class VueSynchroniseeTest {
 				Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), new VerrousSoiree(), soiree -> {
 					replis.incrementAndGet();
 					return new VueSallePrototype(List.of());
-				});
+				}, new CaptureSalleFactice());
 		UUID soiree = UUID.randomUUID();
 		UUID abonnement = UUID.randomUUID();
 		assertThat(diffuseur.capturerSalle(soiree, abonnement).revision()).isZero();
-		var vue = new VueSallePrototype(List.of(new BuzzRecu("Alpha", Instant.EPOCH)));
+		var vue = new VueComposee("buzz-recu", java.util.Map.of("buzz", List.of(new BuzzRecu("Alpha", Instant.EPOCH))));
 		diffuseur.diffuserSalle(soiree, vue);
 		diffuseur.envoyerConsole(soiree, vue);
 		diffuseur.diffuserSalle(soiree, vue);
@@ -64,9 +64,9 @@ class VueSynchroniseeTest {
 						throw new IllegalStateException(interruption);
 					}
 					return new VueSallePrototype(List.of());
-				});
+				}, new CaptureSalleFactice());
 		UUID soiree = UUID.randomUUID();
-		var vue = new VueSallePrototype(List.of(new BuzzRecu("Pendant", Instant.EPOCH)));
+		var vue = new VueComposee("buzz-recu", java.util.Map.of("buzz", List.of(new BuzzRecu("Pendant", Instant.EPOCH))));
 		AtomicReference<Thread> publication = new AtomicReference<>();
 		try (var executeur = Executors.newFixedThreadPool(2)) {
 			try {
@@ -75,9 +75,9 @@ class VueSynchroniseeTest {
 				var envoi = executeur.submit(() -> {
 					publication.set(Thread.currentThread());
 					diffuseur.diffuserSalle(soiree, vue);
-				});
+				}, new CaptureSalleFactice());
 				await().atMost(Duration.ofSeconds(2)).until(() -> publication.get() != null
-						&& publication.get().getState() == Thread.State.BLOCKED);
+						&& publication.get().getState() == Thread.State.WAITING);
 				terminerCapture.countDown();
 				assertThat(capture.get(2, TimeUnit.SECONDS).revision()).isZero();
 				envoi.get(2, TimeUnit.SECONDS);

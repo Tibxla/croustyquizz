@@ -6,7 +6,7 @@ avec `suivreVue`. Il n'existe pas de troisième page Console dans cette branche.
 
 - [OpenAPI](openapi.yaml) : heure serveur, destinations, commande Buzz et capture de salle.
 - [AsyncAPI](asyncapi.yaml) et [schémas](schemas.yaml) : vues complètes révisées.
-- Les routes `/api/test/...` restent en profil `dev` seulement ; `/api/heure` reste publique.
+- Les routes `/api/test/...` restent en profils `dev`/`recette` seulement ; `/api/heure` reste publique.
 - La vue conserve les 64 derniers Buzz, du plus ancien au plus récent. Une commande
   acceptée publie toute la vue, horodatée avec la Clock du serveur.
 
@@ -20,12 +20,14 @@ interne ni hypothèse de RECEIPT. Il lie l'UUID d'abonnement à la connexion STO
 et à sa destination, et le retire à UNSUBSCRIBE ou déconnexion. Un UUID ambigu
 sur plusieurs connexions est inactif. Un UUID neuf est obligatoire à chaque reprise.
 Le prototype est anonyme : l'UUID permet le raccordement au flux, pas l'authentification
-de l'appelant HTTP. Le contrôle de l'acteur et des droits reste à intégrer avec #5/#10.
+de l'appelant HTTP. En `dev`/`recette`, la seule destination ouverte sans identité est
+`/topic/soirees/{soireeId}/salle`, avec un UUID de Soirée valide. Les destinations
+Console et Joueur exigent une identité autorisée dans tous les profils. En production,
+aucun abonnement anonyme n'est accepté.
 Toutes les trames client STOMP SEND sont refusées.
 
-Les canaux Console et Joueur restent des sorties techniques sans route de capture
-ni projection métier. Le canal Joueur ne connaît pas encore sa Soirée ; son enveloppe
-porte `soireeId: null` jusqu'à l'intégration des accès. Leurs Révisions sont indépendantes.
+Les canaux Console et Joueur utilisent les accès et projections du [socle #79](../README.md#implémentation-du-socle-79).
+Leurs Révisions sont indépendantes et leurs enveloppes portent l'UUID de leur Soirée.
 Le Buzz n'a ni idempotence ni arbitrage Blind test, son pseudo n'est pas une identité.
 
 `suivreVue(options, adaptations)` reçoit facultativement un transport (connexion,

@@ -56,7 +56,7 @@ class EntreesHttpTest {
 					return controleur.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Second"));
 				});
 				await().atMost(Duration.ofSeconds(2)).until(() -> secondThread.get() != null
-						&& secondThread.get().getState() == Thread.State.BLOCKED);
+						&& secondThread.get().getState() == Thread.State.WAITING);
 				assertThat(lectures.get()).isEqualTo(1);
 				autoriserPublication.countDown();
 				assertThat(premier.get(2, TimeUnit.SECONDS).recuLe()).isBefore(second.get(2, TimeUnit.SECONDS).recuLe());
@@ -69,7 +69,7 @@ class EntreesHttpTest {
 	@Test
 	void lesClientsNePeuventEnvoyerNiCommandeNiEvenementSurStomp() {
 		CanalDeTest canal = new CanalDeTest();
-		new ConfigurationTempsReel(new RegistreAbonnements()).configureClientInboundChannel(canal);
+		new ConfigurationTempsReel(new RegistreAbonnements(), new org.springframework.beans.factory.support.DefaultListableBeanFactory().getBeanProvider(ControleAccesStomp.class)).configureClientInboundChannel(canal);
 		ChannelInterceptor filtre = canal.filtre();
 		for (String destination : new String[] { "/app/soirees/test/buzz", "/topic/soirees/test/salle" }) {
 			var entetes = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);

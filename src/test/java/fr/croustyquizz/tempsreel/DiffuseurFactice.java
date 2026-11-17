@@ -22,7 +22,7 @@ public final class DiffuseurFactice implements DiffuseurTempsReel {
 	}
 
 	@Override
-	public void envoyerJoueur(UUID joueurId, Evenement evenement) {
+	public void envoyerJoueur(UUID soireeId, UUID joueurId, Evenement evenement) {
 		envois.add(new Envoi(Cible.JOUEUR, joueurId, evenement));
 	}
 
