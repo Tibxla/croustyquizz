@@ -403,6 +403,34 @@ http:
       pseudo: Bravo
       connecte: false
     jetonReconnexion: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+- nom: Refuser un pseudo déjà porté dans la Soirée
+  operationId: rejoindreSoiree
+  acteur: public
+  statut: 409
+  requete:
+    codeAcces: QUIZ42
+    pseudo: bravo
+  reponse:
+    type: about:blank
+    title: PSEUDO_DEJA_PRIS
+    status: 409
+    code: PSEUDO_DEJA_PRIS
+    detail: Ce pseudo est déjà pris dans la Soirée.
+    instance: /api/soirees/rejoindre
+- nom: Refuser un pseudo injurieux
+  operationId: rejoindreSoiree
+  acteur: public
+  statut: 422
+  requete:
+    codeAcces: QUIZ42
+    pseudo: C0nnard
+  reponse:
+    type: about:blank
+    title: PSEUDO_REFUSE
+    status: 422
+    code: PSEUDO_REFUSE
+    detail: Ce pseudo n’est pas accepté. Choisis-en un autre.
+    instance: /api/soirees/rejoindre
 - nom: Afficher la salle après abonnement STOMP
   operationId: retrouverEtatSalle
   acteur: ecran
