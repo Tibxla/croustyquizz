@@ -1,6 +1,7 @@
 package fr.croustyquizz.soiree;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.http.CacheControl;
@@ -15,7 +16,7 @@ import fr.croustyquizz.manche.Refuse;
 
 /**
  * Routes de Soirée du contrat docs/api/openapi.yaml : creerSoiree,
- * consulterSoiree, ouvrirSoiree et rejoindreSoiree. Toutes passent par
+ * consulterSoiree, ouvrirSoiree, creerAccesEcran et rejoindreSoiree. Toutes passent par
  * {@link ServiceSoiree} et répondent en {@code Cache-Control: no-store}.
  * <p>
  * Avant la connexion de l'Animateur (#5), les routes de la Console sont
@@ -27,9 +28,11 @@ import fr.croustyquizz.manche.Refuse;
 class SoireeControleur {
 
 	private final ServiceSoiree service;
+	private final ServiceDesAcces acces;
 
-	SoireeControleur(ServiceSoiree service) {
+	SoireeControleur(ServiceSoiree service, ServiceDesAcces acces) {
 		this.service = service;
+		this.acces = acces;
 	}
 
 	@PostMapping("/api/soirees")
@@ -62,12 +65,29 @@ class SoireeControleur {
 				.body(ProjectionAccesJoueur.de(arrivee));
 	}
 
+	@PostMapping("/api/soirees/{soireeId}/acces-ecran")
+	ResponseEntity<ProjectionAccesEcran> ouvrirEcran(@PathVariable UUID soireeId) {
+		OuvertureEcran ouverture = acces.ouvrirEcran(soireeId);
+		return ok(new ProjectionAccesEcran(soireeId, ouverture.cle(), ouverture.acces().getExpireLe()));
+	}
+
 	private static <T> ResponseEntity<T> ok(T corps) {
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(corps);
 	}
 
 	/** Corps de creerSoiree ({@code CreationSoiree} dans schemas.yaml). */
 	record DemandeDeCreation(String titre, Format format, Pilotage pilotage) {
+	}
+
+	/** Réponse de creerAccesEcran ({@code AccesEcran} dans schemas.yaml). */
+	record ProjectionAccesEcran(UUID soireeId, String cleEcran, Instant expireLe) {
+
+		/** La clé ne doit jamais finir dans un journal. */
+		@Override
+		public String toString() {
+			return "ProjectionAccesEcran[soireeId=" + soireeId + ", cleEcran=***, expireLe=" + expireLe + "]";
+		}
+
 	}
 
 	/** Corps de rejoindreSoiree ({@code Rejoindre} dans schemas.yaml). */

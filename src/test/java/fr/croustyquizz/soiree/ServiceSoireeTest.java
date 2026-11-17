@@ -122,6 +122,7 @@ class ServiceSoireeTest {
 	@AfterEach
 	void effacerLaBase() {
 		tirage.oublier();
+		jdbc.update("delete from acces_ecran");
 		jdbc.update("delete from joueur");
 		jdbc.update("delete from soiree");
 	}

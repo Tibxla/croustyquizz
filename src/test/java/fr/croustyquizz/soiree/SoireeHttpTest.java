@@ -42,6 +42,7 @@ class SoireeHttpTest {
 
 	@AfterEach
 	void effacerLaBase() {
+		jdbc.update("delete from acces_ecran");
 		jdbc.update("delete from joueur");
 		jdbc.update("delete from soiree");
 	}
@@ -146,8 +147,69 @@ class SoireeHttpTest {
 		assertThat(reponse.getHeaders().getCacheControl()).isEqualTo("no-store");
 	}
 
+	@Test
+	void lEcranDeSalleVoitLesJoueursEtChacunNeVoitQueSaPortee() throws Exception {
+		JsonNode soiree = soireeOuverte();
+		String id = soiree.path("id").asString();
+		String code = soiree.path("codeAcces").asString();
+		JsonNode lea = json.readTree(envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
+				Map.of("codeAcces", code, "pseudo", "Léa")).getBody());
+		envoyer(HttpMethod.POST, "/api/soirees/rejoindre", Map.of("codeAcces", code, "pseudo", "Tom"));
+
+		var ouvertureEcran = envoyer(HttpMethod.POST, "/api/soirees/" + id + "/acces-ecran", null);
+		ContratApi.verifier(CONTRAT, "creerAccesEcran", ouvertureEcran);
+		assertThat(ouvertureEcran.getHeaders().getCacheControl()).isEqualTo("no-store");
+		String cle = json.readTree(ouvertureEcran.getBody()).path("cleEcran").asString();
+
+		var salle = envoyer(HttpMethod.GET, "/api/soirees/" + id + "/etat/salle", null, cle);
+		ContratApi.verifier(CONTRAT, "retrouverEtatSalle", salle);
+		JsonNode vue = json.readTree(salle.getBody()).path("vue");
+		assertThat(vue.at("/soiree/codeAcces").asString()).isEqualTo(code);
+		assertThat(vue.path("joueurs").findValuesAsString("pseudo")).containsExactly("Léa", "Tom");
+		assertThat(vue.path("mancheActive").isNull()).isTrue();
+
+		var console = envoyer(HttpMethod.GET, "/api/soirees/" + id + "/etat/console", null, cle);
+		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", console);
+		assertThat(console.getStatusCode().value()).isEqualTo(403);
+
+		String jeton = lea.path("jetonReconnexion").asString();
+		var manette = envoyer(HttpMethod.GET, "/api/soirees/" + id + "/etat/manette", null, jeton);
+		ContratApi.verifier(CONTRAT, "retrouverEtatManette", manette);
+		assertThat(json.readTree(manette.getBody()).at("/vue/joueurId").asString())
+				.isEqualTo(lea.at("/joueur/id").asString());
+
+		String autre = soireeOuverte().path("id").asString();
+		var horsPortee = envoyer(HttpMethod.GET, "/api/soirees/" + autre + "/etat/salle", null, cle);
+		ContratApi.verifier(CONTRAT, "retrouverEtatSalle", horsPortee);
+		assertThat(horsPortee.getStatusCode().value()).isEqualTo(404);
+
+		var inconnue = envoyer(HttpMethod.GET, "/api/soirees/" + id + "/etat/salle", null, "a".repeat(43));
+		ContratApi.verifier(CONTRAT, "retrouverEtatSalle", inconnue);
+		assertThat(inconnue.getStatusCode().value()).isEqualTo(401);
+	}
+
+	@Test
+	void uneSoireeAbsenteDeLaBaseResteCelleDeLaDemonstration() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		String jetonDemo = "demo:ECRAN:" + soiree + ":" + UUID.randomUUID();
+
+		var salle = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/salle", null, jetonDemo);
+
+		ContratApi.verifier(CONTRAT, "retrouverEtatSalle", salle);
+		assertThat(salle.getStatusCode().value()).isEqualTo(200);
+		assertThat(json.readTree(salle.getBody()).at("/vue/soiree/titre").asString())
+				.isEqualTo("Soirée de démonstration");
+	}
+
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps) {
+		return envoyer(methode, route, corps, null);
+	}
+
+	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps, String secret) {
 		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
+		if (secret != null) {
+			requete.header("Authorization", "Bearer " + secret);
+		}
 		if (methode == HttpMethod.POST && route.endsWith("/ouverture")) {
 			requete.header("Idempotency-Key", UUID.randomUUID().toString());
 		}
