@@ -489,8 +489,10 @@ paths:
       summary: QR code qui mène à la Manette de la Soirée
       description: Image SVG générée par le serveur (sans bibliothèque JavaScript, ADR 0001), affichée par l’Écran de
         salle. Elle encode l’adresse de la Manette avec le code d’accès dans un fragment, /rejoindre.html#code=K7PQ2M ;
-        le code d’accès n’est pas un secret. Une Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409
-        SOIREE_NON_OUVERTE.
+        le code d’accès n’est pas un secret. L’adresse reprend le schéma et l’hôte publics vus par le relais HTTPS. Une
+        Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409 SOIREE_NON_OUVERTE. Sans clé, 401
+        AUTHENTIFICATION_REQUISE ; la clé d’une autre Soirée donne 404 RESSOURCE_INTROUVABLE ; un jeton de Joueur, 403
+        ACCES_REFUSE. L’image se charge avec la clé dans Authorization, jamais dans l’URL.
       tags:
       - Soirée
       security:
@@ -513,6 +515,8 @@ paths:
           $ref: '#/components/responses/Erreur400'
         '401':
           $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
         '404':
           $ref: '#/components/responses/Erreur404'
         '409':

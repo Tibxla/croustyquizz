@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.tempsreel.AccesAuxVues;
 
 /**
  * Routes de Soirée du contrat docs/api/openapi.yaml : creerSoiree,
@@ -25,7 +27,8 @@ import fr.croustyquizz.manche.Refuse;
  * Avant la connexion de l'Animateur (#5), les routes de la Console sont
  * ouvertes à tous, comme le prévoit #6 : ni session ni jeton CSRF ne sont
  * vérifiés. L'en-tête Idempotency-Key de l'ouverture est accepté sans être
- * stocké : rouvrir une Soirée déjà ouverte la rend déjà inchangée.
+ * stocké : rouvrir une Soirée déjà ouverte la rend déjà inchangée. Le QR code
+ * est réservé à l'Écran de salle, qui possède déjà sa clé.
  */
 @RestController
 class SoireeControleur {
@@ -76,10 +79,16 @@ class SoireeControleur {
 
 	/**
 	 * QR code qui mène à la page d'arrivée de la Manette avec le code d'accès dans le fragment : le
-	 * code n'est pas un secret, et un fragment n'est jamais envoyé au serveur.
+	 * code n'est pas un secret, et un fragment n'est jamais envoyé au serveur. L'adresse reprend le
+	 * schéma et l'hôte publics transmis par le relais HTTPS ({@code server.forward-headers-strategy}).
+	 * Réservé à l'Écran de salle de cette Soirée (l'Animateur s'y ajoutera avec #5) : un Joueur reçoit 403.
 	 */
 	@GetMapping("/api/soirees/{soireeId}/qrcode")
-	ResponseEntity<String> qrCode(@PathVariable UUID soireeId) {
+	ResponseEntity<String> qrCode(@PathVariable UUID soireeId, Acteur acteur) {
+		AccesAuxVues.verifier(acteur, soireeId, null);
+		if (acteur.type() == Acteur.Type.JOUEUR) {
+			throw new Refuse(403, "ACCES_REFUSE", "Le QR code est réservé à l'Écran de salle.").exception();
+		}
 		Soiree soiree = service.consulter(soireeId);
 		if (!soiree.accepteLesArrivees()) {
 			throw new Refuse(409, "SOIREE_NON_OUVERTE", "La Soirée n'est pas ouverte aux Joueurs.").exception();

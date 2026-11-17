@@ -82,11 +82,7 @@
 			const page = document.createElement('span');
 			page.textContent = '/rejoindre.html';
 			document.getElementById('adresse').replaceChildren(hote, document.createElement('wbr'), page);
-			const qr = document.getElementById('qr');
-			if (soiree.codeAcces && qr.hidden) {
-				qr.src = `/api/soirees/${encodeURIComponent(soiree.id)}/qrcode`;
-				qr.hidden = false;
-			}
+			if (soiree.codeAcces) chargerQrCode(soiree.id);
 			const liste = document.getElementById('joueurs');
 			liste.replaceChildren(...joueurs.map((joueur) => {
 				const element = document.createElement('li');
@@ -95,6 +91,27 @@
 			}));
 			document.getElementById('nombre').textContent = joueurs.length;
 			document.getElementById('vide').hidden = joueurs.length > 0;
+		}
+
+		// Le QR code est réservé à l'Écran : un <img src> ne peut pas porter la clé, on lit donc l'image
+		// avec Authorization, puis on l'affiche depuis une adresse locale. Un échec réessaie au tour suivant.
+		let qrCode = 'absent';
+		async function chargerQrCode(id) {
+			if (qrCode !== 'absent') return;
+			qrCode = 'en-cours';
+			try {
+				const reponse = await fetch(`/api/soirees/${encodeURIComponent(id)}/qrcode`,
+					{ headers: { Authorization: `Bearer ${cle}` }, cache: 'no-store' });
+				if (!reponse.ok) throw new Error(`QR code indisponible (HTTP ${reponse.status}).`);
+				const qr = document.getElementById('qr');
+				const adresse = URL.createObjectURL(await reponse.blob());
+				qr.addEventListener('load', () => URL.revokeObjectURL(adresse), { once: true });
+				qr.src = adresse;
+				qr.hidden = false;
+				qrCode = 'affiche';
+			} catch {
+				qrCode = 'absent';
+			}
 		}
 
 		async function relire() {

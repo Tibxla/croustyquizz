@@ -10,6 +10,12 @@ spring:
     hibernate:
       # Le schéma appartient à Flyway : Hibernate vérifie, il ne crée rien.
       ddl-auto: validate
+server:
+  # Render et Tailscale Funnel terminent le HTTPS puis relaient en HTTP : Tomcat reprend le schéma
+  # et l'hôte publics de X-Forwarded-Proto et X-Forwarded-Host, sans quoi le QR code de l'Écran de
+  # salle mènerait à une adresse http://. Seuls les relais d'adresse interne (127.0.0.1, réseaux
+  # privés) sont crus ; en développement, sans relais, rien ne change.
+  forward-headers-strategy: native
 
 croustyquizz:
   passage:

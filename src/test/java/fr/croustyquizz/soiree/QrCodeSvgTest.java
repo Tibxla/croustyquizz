@@ -29,8 +29,8 @@ class QrCodeSvgTest {
 		assertThat(svg).startsWith("<svg ").doesNotContain("<script", "href", "url(");
 	}
 
-	/** Reconstruit la matrice à partir du tracé, sans la marge, puis la décode. */
-	private static String relire(String svg) throws Exception {
+	/** Reconstruit la matrice à partir du tracé, sans la marge, puis la décode. Sert aussi à SoireeHttpTest. */
+	static String relire(String svg) throws Exception {
 		Matcher cote = COTE.matcher(svg);
 		assertThat(cote.find()).isTrue();
 		int marge = 4;

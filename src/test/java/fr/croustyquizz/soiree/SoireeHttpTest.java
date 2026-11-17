@@ -192,18 +192,58 @@ class SoireeHttpTest {
 	void leQrCodeMeneALaManetteAvecLeCodeDUneSoireeOuverte() throws Exception {
 		String preparee = json.readTree(envoyer(HttpMethod.POST, "/api/soirees",
 				Map.of("titre", "Quiz", "format", "SOLO", "pilotage", "MANUEL")).getBody()).path("id").asString();
-		var tropTot = envoyer(HttpMethod.GET, "/api/soirees/" + preparee + "/qrcode", null);
+		String cle = cleEcran(preparee);
+		var tropTot = envoyer(HttpMethod.GET, "/api/soirees/" + preparee + "/qrcode", null, cle);
 		verifierRefus("consulterQrCodeSoiree", tropTot, 409, "SOIREE_NON_OUVERTE");
-		verifierRefus("consulterQrCodeSoiree", envoyer(HttpMethod.GET, "/api/soirees/" + UUID.randomUUID() + "/qrcode",
-				null), 404, "RESSOURCE_INTROUVABLE");
 
-		envoyer(HttpMethod.POST, "/api/soirees/" + preparee + "/ouverture", null);
-		var qrCode = envoyer(HttpMethod.GET, "/api/soirees/" + preparee + "/qrcode", null);
+		JsonNode ouverte = json.readTree(envoyer(HttpMethod.POST, "/api/soirees/" + preparee + "/ouverture", null)
+				.getBody());
+		var qrCode = envoyer(HttpMethod.GET, "/api/soirees/" + preparee + "/qrcode", null, cle);
 
 		ContratApi.verifier(CONTRAT, "consulterQrCodeSoiree", qrCode);
 		assertThat(qrCode.getStatusCode().value()).isEqualTo(200);
 		assertThat(qrCode.getHeaders().getContentType()).hasToString("image/svg+xml");
 		assertThat(qrCode.getHeaders().getCacheControl()).isEqualTo("no-store");
+		assertThat(QrCodeSvgTest.relire(qrCode.getBody()))
+				.isEqualTo("http://localhost:" + port + "/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
+	}
+
+	@Test
+	void derriereUnRelaisHttpsLeQrCodeMeneALAdressePublique() throws Exception {
+		JsonNode ouverte = soireeOuverte();
+		String id = ouverte.path("id").asString();
+
+		var qrCode = RestClient.create("http://localhost:" + port).get().uri("/api/soirees/" + id + "/qrcode")
+				.header("Authorization", "Bearer " + cleEcran(id))
+				.header("X-Forwarded-Proto", "https")
+				.header("X-Forwarded-Host", "croustyquizz.example")
+				.retrieve().toEntity(String.class);
+
+		assertThat(QrCodeSvgTest.relire(qrCode.getBody()))
+				.isEqualTo("https://croustyquizz.example/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
+	}
+
+	@Test
+	void leQrCodeEstReserveALEcranDeSaSoiree() throws Exception {
+		JsonNode ouverte = soireeOuverte();
+		String id = ouverte.path("id").asString();
+		String route = "/api/soirees/" + id + "/qrcode";
+
+		verifierRefus("consulterQrCodeSoiree", envoyer(HttpMethod.GET, route, null), 401, "AUTHENTIFICATION_REQUISE");
+		String cleDUneAutre = cleEcran(soireeOuverte().path("id").asString());
+		verifierRefus("consulterQrCodeSoiree", envoyer(HttpMethod.GET, route, null, cleDUneAutre), 404,
+				"RESSOURCE_INTROUVABLE");
+		verifierRefus("consulterQrCodeSoiree", envoyer(HttpMethod.GET, "/api/soirees/" + UUID.randomUUID() + "/qrcode",
+				null, cleDUneAutre), 404, "RESSOURCE_INTROUVABLE");
+		String jeton = json.readTree(envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
+				Map.of("codeAcces", ouverte.path("codeAcces").asString(), "pseudo", "Léa")).getBody())
+				.path("jetonReconnexion").asString();
+		verifierRefus("consulterQrCodeSoiree", envoyer(HttpMethod.GET, route, null, jeton), 403, "ACCES_REFUSE");
+	}
+
+	private String cleEcran(String soireeId) {
+		return json.readTree(envoyer(HttpMethod.POST, "/api/soirees/" + soireeId + "/acces-ecran", null).getBody())
+				.path("cleEcran").asString();
 	}
 
 	@Test
