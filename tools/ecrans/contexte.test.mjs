@@ -71,3 +71,21 @@ test('un envoi annoncer: false n’écrit rien dans le bandeau et ne rend pas p�
 	appels[3].reject(new DOMException('Annulation', 'AbortError')); await assert.rejects(annule, { name: 'AbortError' });
 	assert.equal(etats.length, 2);
 });
+
+test('un 503 ou un 5xx sans code du contrat donne un état inconnu, jamais un refus inventé', async () => {
+	const etats = []; let reponse;
+	const { contexte } = creerContexte({ envoyer: async () => reponse, surEnvoi: (etat, detail) => etats.push({ etat, detail }) });
+	const inconnu = { etat: 'inconnu', detail: "Confirmation indisponible : vérifie l'état affiché." };
+	for (const r of [
+		{ statut: 502, corps: { detail: 'Le serveur ne répond pas correctement.' } },
+		{ statut: 504, corps: null },
+		{ statut: 503, corps: { code: 'SERVICE_INDISPONIBLE', detail: 'Réessaie dans un instant.' } },
+	]) {
+		reponse = r;
+		assert.equal((await contexte.envoyer('POST', '/commande', {})).statut, r.statut);
+		assert.deepEqual(etats.at(-1), inconnu, `HTTP ${r.statut}`);
+	}
+	reponse = { statut: 409, corps: { code: 'ETAPE_INACTIVE', detail: 'La Manche est terminée.' } };
+	await contexte.envoyer('POST', '/commande', {});
+	assert.deepEqual(etats.at(-1), { etat: 'refuse', detail: 'La Manche est terminée.' }, 'un 4xx reste un refus');
+});

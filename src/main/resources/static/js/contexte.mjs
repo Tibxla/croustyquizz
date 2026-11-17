@@ -1,3 +1,5 @@
+const INCONNU = "Confirmation indisponible : vérifie l'état affiché.";
+
 export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, surEnvoi = () => {} }) {
 	let etat = 'synchronisation';
 	let dernierEnvoi = 0;
@@ -23,15 +25,18 @@ export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, surEn
 				try {
 					const reponse = await envoyer(methode, chemin, corps, options);
 					if (numero === dernierEnvoi) {
-						const accepte = reponse.statut >= 200 && reponse.statut < 300;
-						surEnvoi(accepte ? 'accepte' : 'refuse', accepte ? 'Envoi accepté par le serveur.' :
-							(reponse.corps?.detail ?? `Envoi refusé (HTTP ${reponse.statut}).`));
+						const { statut, corps } = reponse;
+						// Même règle qu'envois.mjs : un 503, ou un 5xx sans code du contrat (relais, passerelle),
+						// peut suivre une commande appliquée ; on ne peut donc pas l'annoncer comme un refus.
+						if (statut === 503 || (statut >= 500 && !corps?.code)) surEnvoi('inconnu', INCONNU);
+						else if (statut >= 200 && statut < 300) surEnvoi('accepte', 'Envoi accepté par le serveur.');
+						else surEnvoi('refuse', corps?.detail ?? `Envoi refusé (HTTP ${statut}).`);
 					}
 					return reponse;
 				} catch (erreur) {
 					if (numero === dernierEnvoi) {
 						if (erreur.name === 'AbortError') surEnvoi(null);
-						else surEnvoi('inconnu', "Confirmation indisponible : vérifie l'état affiché.");
+						else surEnvoi('inconnu', INCONNU);
 					}
 					throw erreur;
 				}
