@@ -646,7 +646,8 @@ paths:
       summary: Remplacer les Questions de la Manche
       description: PREPARATION ou OUVERTE. Remplacement atomique et ordonné. Le serveur crée les identifiants et
         conserve une seule proposition juste. Source ANIMATEUR ; pas de même Question répétée dans la Soirée. Le
-        nombre doit correspondre aux réglages pour permettre le lancement.
+        nombre doit correspondre aux réglages pour permettre le lancement. Seule une Manche de Quiz a des
+        Questions ; sur une Manche d’un autre Mode de jeu (KARAOKE), 409 ETAT_INCOMPATIBLE, sans modification.
       tags:
       - Quiz
       security:
@@ -1288,20 +1289,16 @@ paths:
     get:
       operationId: rechercherChansons
       summary: Rechercher des Chansons
-      description: 'Saisie brute : 1 à 120 points de code. NFC, espaces Unicode regroupées et extrémités
-        supprimées, puis limite configurée 1..120 sans troncature. Vide, sans lettre/chiffre Unicode
-        ou trop longue : REQUETE_INVALIDE. rechercheId client renvoyé tel quel, sans reçu, pour
-        ignorer les réponses tardives. Classement/déduplication déterministes selon README ;
-        interprétations distinctes et non inscriptibles conservées, seul le malformé est exclu. Aucun
-        résultat : 200 chansons:[], aucune publication. Manche Karaoké active EN_COURS/EN_PAUSE,
-        Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence du Joueur
-        suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de garde Karaoké.
-        Règles détaillées : README.md, section Karaoké. Refus : 400 REQUETE_INVALIDE (saisie ou
-        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
-        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
-        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 503
-        SERVICE_INDISPONIBLE (base ou transaction) ; 503 SOURCE_PAROLES_INDISPONIBLE (délai, taille,
-        protocole ou HTTP externe en échec, sauf 404 de fiche/inscription).'
+      description: 'Saisie brute de 1 à 120 points de code. NFC, espaces Unicode regroupées et
+        extrémités supprimées, puis limite configurée 1..120 sans troncature ; vide, sans lettre ni
+        chiffre Unicode ou trop longue : REQUETE_INVALIDE. rechercheId client renvoyé tel quel, sans
+        reçu, pour ignorer les réponses tardives. Classement et déduplication déterministes selon le
+        README ; interprétations distinctes et Chansons non inscriptibles conservées, seul le malformé
+        est exclu. Aucun résultat : 200 chansons:[]. Aucune publication. Animateur du Lieu ou Joueur
+        présent, retardataire compris. Refus (groupes N, V, T, S) : 400 REQUETE_INVALIDE, 401
+        AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 503
+        SERVICE_INDISPONIBLE, 503 SOURCE_PAROLES_INDISPONIBLE ; aucun 422. Conditions de chaque code :
+        tableau des groupes de refus, README.md, section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
       security:
@@ -1364,19 +1361,16 @@ paths:
     get:
       operationId: consulterChanson
       summary: Consulter une Chanson
-      description: 'chansonId opaque serveur stable, sans identifiant ni préfixe de fournisseur public ;
-        inconnu/disparu ou 404 externe : RESSOURCE_INTROUVABLE. Fiche indicative, gardes dans l’ordre
-        : sans voix, paroles non synchronisées (absentes/inconnues incluses), durée inconnue, doublon
-        personnel en attente, quota EN_ATTENTE. Premier motif ou null ; Animateur : false/ANIMATEUR.
-        Aucun corps ni publication. Manche Karaoké active EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité
-        déduite de l’accès ; hors portée : 404. Présence du Joueur suffisante, y compris retardataire
-        ; eligiblePourMancheActive ne sert jamais de garde Karaoké. Règles détaillées : README.md,
-        section Karaoké. Refus : 400 REQUETE_INVALIDE (saisie ou schéma), 401 AUTHENTIFICATION_REQUISE
-        (identité), 403 ACCES_REFUSE (rôle), 404 RESSOURCE_INTROUVABLE (inconnu, hors portée
-        Soirée/Lieu, attente d’autrui ou Chanson disparue) ; 409 ETAPE_INACTIVE (Manche non active en
-        EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 503 SERVICE_INDISPONIBLE (base ou transaction) ;
-        503 SOURCE_PAROLES_INDISPONIBLE (délai, taille, protocole ou HTTP externe en échec, sauf 404
-        de fiche/inscription).'
+      description: 'chansonId opaque et stable attribué par le serveur, sans identifiant ni préfixe de
+        fournisseur public, de 1 à 128 caractères ; au-delà : REQUETE_INVALIDE. Inconnu, disparu ou 404
+        externe : RESSOURCE_INTROUVABLE. Fiche indicative, revalidée à l’inscription ; motifs dans
+        l’ordre : sans voix, paroles non synchronisées (absentes et inconnues incluses), durée inconnue,
+        doublon personnel en attente, quota EN_ATTENTE. Premier motif ou null ; Animateur :
+        false/ANIMATEUR. Aucune publication. Animateur du Lieu ou Joueur présent, retardataire compris.
+        Refus (groupes N, V, T, S) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403
+        ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 503 SERVICE_INDISPONIBLE, 503
+        SOURCE_PAROLES_INDISPONIBLE ; aucun 422. Conditions de chaque code : tableau des groupes de
+        refus, README.md, section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
       security:
@@ -1401,7 +1395,9 @@ paths:
         schema:
           type: string
           minLength: 1
-        description: Identifiant opaque stable attribué par le serveur.
+          maxLength: 128
+        description: Identifiant opaque stable attribué par le serveur ; au-delà de 128 caractères, 400
+          REQUETE_INVALIDE.
       responses:
         '200':
           description: Fiche indicative, revalidée à l’inscription.
@@ -1431,28 +1427,19 @@ paths:
     post:
       operationId: inscrirePassage
       summary: Inscrire son Passage
-      description: 'Accès/reçu/état, consultation de la source hors verrou, revalidation sous verrou.
-        Gardes : sans voix, paroles non synchronisées (absentes/inconnues incluses), durée inconnue,
-        doublon, quota. Détail de Chanson figé à l’inscription. Même Chanson permise à deux Joueurs.
-        Source audio et fichier local sans incidence sur l’inscription. Manche Karaoké active
-        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
-        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
-        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
-        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
-        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
-        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
-        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
-        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
-        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
-        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
-        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
-        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
-        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
-        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
-        transaction) ; 503 SOURCE_PAROLES_INDISPONIBLE (délai, taille, protocole ou HTTP externe en
-        échec, sauf 404 de fiche/inscription) ; 409 PASSAGE_DEJA_INSCRIT (doublon personnel en
-        attente), 409 LIMITE_ATTEINTE (quota EN_ATTENTE) ; 422 CHANSON_INDISPONIBLE (contenu
-        inutilisable, detail motivé).'
+      description: 'Joueur présent, retardataire compris : eligiblePourMancheActive n’est jamais une
+        garde. chansonId de 1 à 128 caractères, sinon REQUETE_INVALIDE. Reçu consulté avant le métier,
+        source consultée hors verrou, revalidation sous verrou. Gardes dans l’ordre : sans voix, paroles
+        non synchronisées (absentes et inconnues incluses), durée inconnue, doublon personnel en
+        attente, quota EN_ATTENTE. Détail de la Chanson figé à l’inscription ; la même Chanson reste
+        permise à deux Joueurs ; source audio et fichier local sans incidence. Reçu et rejeu :
+        README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus (groupes N, V, X, D, T,
+        S) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404
+        RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 409 ETAT_INCOMPATIBLE, 409 ENVOI_REUTILISE, 503
+        SERVICE_INDISPONIBLE, 503 SOURCE_PAROLES_INDISPONIBLE. Propres à cette route : 409
+        PASSAGE_DEJA_INSCRIT (doublon personnel en attente), 409 LIMITE_ATTEINTE (quota EN_ATTENTE
+        atteint), 422 CHANSON_INDISPONIBLE (contenu inutilisable, detail motivé). Conditions de chaque
+        code : tableau des groupes de refus, README.md, section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
       security:
@@ -1507,25 +1494,15 @@ paths:
     post:
       operationId: desinscrirePassage
       summary: Désinscrire son Passage en attente
-      description: 'Réservé au Joueur inscripteur. Cible sortie de l’attente : COMMANDE_PERIMEE quel que
-        soit son compteur. La réinscription rejoint la fin du Tour admissible. Retirer la dernière
-        attente ne termine pas la Manche. Manche Karaoké active EN_COURS/EN_PAUSE, Soirée EN_COURS.
-        Identité déduite de l’accès ; hors portée : 404. Présence du Joueur suffisante, y compris
-        retardataire ; eligiblePourMancheActive ne sert jamais de garde Karaoké. Règles détaillées :
-        README.md, section Karaoké. Après schéma et accès : reçu avant métier, clé
-        acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique. Même contenu :
-        statut et corps initiaux, même après retrait/fin ; contenu différent : ENVOI_REUTILISE. Succès
-        et refus définitifs conservés jusqu’à expiration de l’accès, au minimum fin de Soirée ;
-        expiration inconnue : conserver. Accès refusé, 503 et 409 ETAPE_INACTIVE sans reçu, réessai
-        avec même clé et contenu. Reçu distinct de la vue courante. Aucun événement sur refus, rejeu
-        ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou schéma), 401
-        AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404 RESSOURCE_INTROUVABLE
-        (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue) ; 409 ETAPE_INACTIVE
-        (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409 ETAT_INCOMPATIBLE
-        (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409 ENVOI_REUTILISE
-        (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou transaction) ; 409
-        COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de l’attente ou ancre sortie
-        du Tour affiché).'
+      description: 'Réservé au Joueur qui a inscrit le Passage ; l’attente d’un autre Joueur donne
+        RESSOURCE_INTROUVABLE. Garde du compteur de la cible ; cible sortie de l’attente :
+        COMMANDE_PERIMEE quel que soit son compteur. La réinscription rejoint la fin du Tour admissible.
+        Retirer la dernière attente ne termine pas la Manche. Reçu et rejeu : README.md, section
+        Karaoké, « Commandes, compteurs et reçus ». Refus (groupes N, V, X, D, T, P) : 400
+        REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 409
+        ETAPE_INACTIVE, 409 ETAT_INCOMPATIBLE, 409 ENVOI_REUTILISE, 409 COMMANDE_PERIMEE, 503
+        SERVICE_INDISPONIBLE. Conditions de chaque code : tableau des groupes de refus, README.md,
+        section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
       security:
@@ -1584,26 +1561,15 @@ paths:
     post:
       operationId: retirerPassage
       summary: Retirer un Passage en attente
-      description: 'Animateur du Lieu. Garde par Passage, indépendante des inscriptions étrangères. Deux
-        retraits distincts : succès puis COMMANDE_PERIMEE quel que soit le compteur après sortie de
-        l’attente. Retirer la dernière attente ne termine pas la Manche. Manche Karaoké active
-        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
-        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
-        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
-        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
-        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
-        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
-        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
-        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
-        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
-        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
-        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
-        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
-        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
-        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
-        transaction) ; 409 COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de
-        l’attente ou ancre sortie du Tour affiché) ; 403 CSRF_INVALIDE (contrôle CSRF de session
-        mutante).'
+      description: 'Animateur du Lieu. Garde du compteur de la cible seule, indépendante des
+        inscriptions étrangères. Deux retraits distincts : succès, puis COMMANDE_PERIMEE quel que soit
+        le compteur, la cible étant sortie de l’attente. Retirer la dernière attente ne termine pas la
+        Manche. Reçu et rejeu : README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus
+        (groupes N, V, X, D, T, P, C) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403
+        ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 403 CSRF_INVALIDE, 409 ETAPE_INACTIVE, 409
+        ETAT_INCOMPATIBLE, 409 ENVOI_REUTILISE, 409 COMMANDE_PERIMEE, 503 SERVICE_INDISPONIBLE.
+        Conditions de chaque code : tableau des groupes de refus, README.md, section Karaoké, « Routes
+        et codes de refus ».'
       tags:
       - Karaoké
       security:
@@ -1675,27 +1641,16 @@ paths:
     put:
       operationId: deplacerPassage
       summary: Placer un Passage dans son Tour
-      description: 'avant:null place en fin du Tour. Garde du compteur de la cible et de l’ancre ; ancre
-        sortie du Tour depuis affichage : COMMANDE_PERIMEE. Geste déjà satisfait accepté sans
-        incrément ni événement seulement si la cible attend encore. Manche Karaoké active
-        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
-        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
-        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
-        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
-        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
-        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
-        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
-        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
-        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
-        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
-        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
-        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
-        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
-        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
-        transaction) ; 409 COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de
-        l’attente ou ancre sortie du Tour affiché) ; 403 CSRF_INVALIDE (contrôle CSRF de session
-        mutante) ; 409 ROTATION_PROTEGEE (changement de Tour ou cible/ancre prioritaire) ; 422
-        DONNEES_INVALIDES (ancre égale à la cible).'
+      description: 'Animateur du Lieu. avant:null place en fin du Tour. Garde du compteur de la cible et
+        de l’ancre ; ancre sortie du Tour depuis l’affichage : COMMANDE_PERIMEE. Geste déjà satisfait
+        accepté sans incrément ni événement, seulement si la cible attend encore. Reçu et rejeu :
+        README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus (groupes N, V, X, D, T, P,
+        C) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404
+        RESSOURCE_INTROUVABLE, 403 CSRF_INVALIDE, 409 ETAPE_INACTIVE, 409 ETAT_INCOMPATIBLE, 409
+        ENVOI_REUTILISE, 409 COMMANDE_PERIMEE, 503 SERVICE_INDISPONIBLE. Propres à cette route : 409
+        ROTATION_PROTEGEE (changement de Tour, cible ou ancre prioritaire), 422 DONNEES_INVALIDES (ancre
+        égale à la cible). Conditions de chaque code : tableau des groupes de refus, README.md, section
+        Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
       security:
@@ -1769,27 +1724,16 @@ paths:
     put:
       operationId: definirPrioritePassage
       summary: Définir la priorité unique de la File d’attente
-      description: 'true remplace l’unique priorité après le courant ; false retire celle de la cible,
-        sinon sans effet. Ordre normal conservé sous la priorité et rétabli au retrait/remplacement.
-        Seuls les Passages affectés incrémentent leur compteur. Geste déjà satisfait accepté sans
-        incrément ni événement seulement pour une cible encore en attente. Manche Karaoké active
-        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
-        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
-        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
-        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
-        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
-        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
-        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
-        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
-        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
-        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
-        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
-        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
-        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
-        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
-        transaction) ; 409 COMMANDE_PERIMEE (compteur différent, cible/ancre connue sortie de
-        l’attente ou ancre sortie du Tour affiché) ; 403 CSRF_INVALIDE (contrôle CSRF de session
-        mutante).'
+      description: 'Animateur du Lieu. true remplace l’unique priorité, placée juste après le courant ;
+        false retire celle de la cible, sinon reste sans effet. L’ordre normal est conservé sous la
+        priorité et rétabli au retrait ou au remplacement. Seuls les Passages affectés incrémentent leur
+        compteur. Geste déjà satisfait accepté sans incrément ni événement, seulement pour une cible
+        encore en attente. Reçu et rejeu : README.md, section Karaoké, « Commandes, compteurs et
+        reçus ». Refus (groupes N, V, X, D, T, P, C) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403
+        ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 403 CSRF_INVALIDE, 409 ETAPE_INACTIVE, 409
+        ETAT_INCOMPATIBLE, 409 ENVOI_REUTILISE, 409 COMMANDE_PERIMEE, 503 SERVICE_INDISPONIBLE.
+        Conditions de chaque code : tableau des groupes de refus, README.md, section Karaoké, « Routes
+        et codes de refus ».'
       tags:
       - Karaoké
       security:
@@ -1855,24 +1799,15 @@ paths:
     put:
       operationId: reglerLimitePassages
       summary: Régler la limite de Passages en attente
-      description: 'Aucune garde de compteur de Passage. Concurrence dans l’ordre serveur, dernière valeur
-        retenue ; valeur courante sans effet. Baisse sans retrait. KaraokeCommun porte la limite
-        courante, Manche.reglages conserve la limite initiale résolue immuable. Manche Karaoké active
-        EN_COURS/EN_PAUSE, Soirée EN_COURS. Identité déduite de l’accès ; hors portée : 404. Présence
-        du Joueur suffisante, y compris retardataire ; eligiblePourMancheActive ne sert jamais de
-        garde Karaoké. Règles détaillées : README.md, section Karaoké. Après schéma et accès : reçu
-        avant métier, clé acteur(type/id)+route concrète+envoiId, empreinte méthode+JSON canonique.
-        Même contenu : statut et corps initiaux, même après retrait/fin ; contenu différent :
-        ENVOI_REUTILISE. Succès et refus définitifs conservés jusqu’à expiration de l’accès, au
-        minimum fin de Soirée ; expiration inconnue : conserver. Accès refusé, 503 et 409
-        ETAPE_INACTIVE sans reçu, réessai avec même clé et contenu. Reçu distinct de la vue courante.
-        Aucun événement sur refus, rejeu ou geste sans effet. Refus : 400 REQUETE_INVALIDE (saisie ou
-        schéma), 401 AUTHENTIFICATION_REQUISE (identité), 403 ACCES_REFUSE (rôle), 404
-        RESSOURCE_INTROUVABLE (inconnu, hors portée Soirée/Lieu, attente d’autrui ou Chanson disparue)
-        ; 409 ETAPE_INACTIVE (Manche non active en EN_COURS/EN_PAUSE ou Soirée non EN_COURS) ; 409
-        ETAT_INCOMPATIBLE (Manche terminée, après recherche du reçu et avant garde du Passage) ; 409
-        ENVOI_REUTILISE (même clé, empreinte différente) ; 503 SERVICE_INDISPONIBLE (base ou
-        transaction) ; 403 CSRF_INVALIDE (contrôle CSRF de session mutante).'
+      description: 'Animateur du Lieu. Limite de 1 à 20, sinon REQUETE_INVALIDE. Réglée par valeur, sans
+        garde de compteur de Passage : concurrence dans l’ordre serveur, dernière valeur retenue ;
+        valeur courante sans effet. Une baisse ne retire aucun Passage. KaraokeCommun porte la limite
+        courante ; Manche.reglages conserve la limite initiale résolue, immuable. Reçu et rejeu :
+        README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus (groupes N, V, X, D, T,
+        C) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404
+        RESSOURCE_INTROUVABLE, 403 CSRF_INVALIDE, 409 ETAPE_INACTIVE, 409 ETAT_INCOMPATIBLE, 409
+        ENVOI_REUTILISE, 503 SERVICE_INDISPONIBLE. Conditions de chaque code :
+        tableau des groupes de refus, README.md, section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
       security:

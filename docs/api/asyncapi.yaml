@@ -23,10 +23,10 @@ channels:
       Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
       propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
       inscription, désinscription, retrait, placement, priorité ou future extraction ;
-      limite-passages-modifiee après changement utile de limite. Vue complète avec bloc karaoke,
-      sans paroles ni secrets ; cycle par les causes existantes. Toutes les Manettes de la Soirée
-      sont mises à jour. Recherche, refus, rejeu, sans effet et rollback sans publication. Aucun
-      événement par seconde."
+      limite-passages-modifiee après changement utile de limite. Vue complète avec bloc karaoke
+      (BlocKaraokeSalle : courant, trois prochains Passages et nombre des autres), sans paroles ni
+      secrets ; cycle par les causes existantes. Recherche, refus, rejeu, geste sans effet et
+      rollback sans publication. Aucun événement par seconde."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -35,13 +35,13 @@ channels:
         $ref: '#/components/messages/EvenementSalle'
   console:
     address: /topic/soirees/{soireeId}/console
-    description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND de
-      commande métier. Une révision est propre à cette destination et à cette Soirée. Karaoké :
+    description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND
+      de commande métier. Une révision est propre à cette destination et à cette Soirée. Karaoké :
       file-attente-modifiee après inscription, désinscription, retrait, placement, priorité ou
       future extraction ; limite-passages-modifiee après changement utile de limite. Vue complète
-      avec bloc karaoke, sans paroles ni secrets ; cycle par les causes existantes. Toutes les
-      Manettes de la Soirée sont mises à jour. Recherche, refus, rejeu, sans effet et rollback sans
-      publication. Aucun événement par seconde."
+      avec bloc karaoke (BlocKaraokeConsole : toute la File d’attente et les droits de gestion),
+      sans paroles ni secrets ; cycle par les causes existantes. Recherche, refus, rejeu, geste sans
+      effet et rollback sans publication. Aucun événement par seconde."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -54,10 +54,11 @@ channels:
       Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
       propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
       inscription, désinscription, retrait, placement, priorité ou future extraction ;
-      limite-passages-modifiee après changement utile de limite. Vue complète avec bloc karaoke,
-      sans paroles ni secrets ; cycle par les causes existantes. Toutes les Manettes de la Soirée
-      sont mises à jour. Recherche, refus, rejeu, sans effet et rollback sans publication. Aucun
-      événement par seconde."
+      limite-passages-modifiee après changement utile de limite. Pour ces deux causes, chaque Joueur
+      de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
+      Passages. Vue complète avec bloc karaoke (BlocKaraokeManette : trois prochains Passages et ses
+      Passages en attente), sans paroles ni secrets ; cycle par les causes existantes. Recherche,
+      refus, rejeu, geste sans effet et rollback sans publication. Aucun événement par seconde."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.

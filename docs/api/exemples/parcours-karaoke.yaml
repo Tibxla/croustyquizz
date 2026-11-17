@@ -36,6 +36,29 @@ http:
     etat: EN_ATTENTE
     reglages:
       limitePassagesEnAttente: 1
+- nom: Questions refusées sur une Manche de Karaoké
+  operationId: preparerQuestions
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres: {}
+  requete:
+    questions:
+    - enonce: Quelle chanson ouvre la Soirée ?
+      categorie: Musique
+      difficulte: FACILE
+      propositions:
+      - La première
+      - La deuxième
+      - La troisième
+      - La quatrième
+      indexPropositionJuste: 0
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: Seule une Manche de Quiz a des Questions.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002/questions
 - nom: Lancer sans Questions
   operationId: piloterSoiree
   acteur: animateur:82000000-0000-4000-8000-000000000006
@@ -5137,6 +5160,57 @@ cases:
   correction:
     chemin: [chanson, etatParoles]
     valeur: SYNCHRONISEES
+- nom: Limite de 20 Passages en attente acceptée à la création
+  schema: ReglagesKaraoke
+  valeur:
+    limitePassagesEnAttente: 20
+  valide: true
+- nom: Limite de 21 Passages en attente refusée à la création
+  schema: ReglagesKaraoke
+  valeur:
+    limitePassagesEnAttente: 21
+  valide: false
+  correction:
+    chemin: [limitePassagesEnAttente]
+    valeur: 20
+- nom: Création de Manche avec une limite de 21 refusée
+  schema: CreationManche
+  valeur:
+    mode: KARAOKE
+    reglages:
+      limitePassagesEnAttente: 21
+  valide: false
+  correction:
+    chemin: [reglages, limitePassagesEnAttente]
+    valeur: 20
+- nom: Limite réglée à 20 acceptée
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 20
+  valide: true
+- nom: Limite réglée à 21 refusée
+  schema: LimitePassages
+  valeur:
+    limitePassagesEnAttente: 21
+  valide: false
+  correction:
+    chemin: [limitePassagesEnAttente]
+    valeur: 20
+- nom: chansonId de 128 caractères accepté à l’inscription
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000190
+    chansonId: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  valide: true
+- nom: chansonId de 129 caractères refusé à l’inscription
+  schema: InscriptionPassage
+  valeur:
+    envoiId: 82000000-0000-4000-8000-000000000190
+    chansonId: ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  valide: false
+  correction:
+    chemin: [chansonId]
+    valeur: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 - nom: Compteur interdit dans LimitePassages
   schema: LimitePassages
   valeur:

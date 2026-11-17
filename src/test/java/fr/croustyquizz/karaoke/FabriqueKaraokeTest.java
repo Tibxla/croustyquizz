@@ -23,7 +23,7 @@ class FabriqueKaraokeTest {
 	void declareLeModeEtLesReglagesCommunsSansPlafondDePassages() {
 		assertThat(fabrique.mode()).isEqualTo(ModeDeJeu.KARAOKE);
 		assertThat(fabrique.typeReglages()).isEqualTo(ReglagesKaraoke.class);
-		assertThat(fabrique.reglagesCommuns(new ReglagesKaraoke(500)))
+		assertThat(fabrique.reglagesCommuns(new ReglagesKaraoke(EtatFileAttente.LIMITE_PASSAGES_MAX)))
 				.isEqualTo(new ReglagesDeManche(1, Duration.ofSeconds(30)));
 		var deroulement = fabrique.creer(contexte, reglages);
 		assertThat(deroulement.instantane().etatManche()).isEqualTo(EtatManche.PRETE);
