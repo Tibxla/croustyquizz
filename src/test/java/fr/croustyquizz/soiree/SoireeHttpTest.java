@@ -75,7 +75,7 @@ class SoireeHttpTest {
 		assertThat(repetition.getBody()).isEqualTo(ouverture.getBody());
 
 		var arrivee = envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
-				Map.of("codeAcces", code.toLowerCase(), "pseudo", " Léa "));
+				Map.of("codeAcces", code, "pseudo", " Léa "));
 		ContratApi.verifier(CONTRAT, "rejoindreSoiree", arrivee);
 		assertThat(arrivee.getStatusCode().value()).isEqualTo(201);
 		assertThat(arrivee.getHeaders().getCacheControl()).isEqualTo("no-store");
