@@ -15,6 +15,19 @@ test('les trois pages utilisent la portée du jeton de démonstration, sans acce
 	assert.equal(lireAcces('console', `?soiree=${soiree}`, null).destination, `/topic/soirees/${soiree}/console`);
 });
 
+test('un vrai jeton de Joueur, opaque, s’accompagne de l’UUID rangé par la page d’arrivée', () => {
+	const jeton = 'a'.repeat(43);
+	const acces = lireAcces('manette', `?soiree=${soiree}`, jeton, joueur);
+	assert.equal(acces.destination, `/topic/joueurs/${joueur}`);
+	assert.equal(acces.routeEtat, `/api/soirees/${soiree}/etat/manette`);
+	assert.deepEqual(acces.acteur, { type: 'JOUEUR', identifiant: joueur, soireeId: soiree });
+	assert.throws(() => lireAcces('manette', `?soiree=${soiree}`, jeton, null), /Rejoins/);
+	assert.throws(() => lireAcces('manette', `?soiree=${soiree}`, 'trop-court', joueur), /identité/);
+	const ecran = lireAcces('ecran', `?soiree=${soiree}`, 'b'.repeat(43));
+	assert.equal(ecran.destination, `/topic/soirees/${soiree}/salle`);
+	assert.deepEqual(ecran.acteur, { type: 'ECRAN', soireeId: soiree });
+});
+
 test('le Joueur de démonstration prend son UUID dans la projection du serveur', async () => {
 	let autorisation;
 	const acces = await preparerIdentite('JOUEUR', soiree, joueur, async (url, options) => {

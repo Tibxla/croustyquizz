@@ -46,7 +46,7 @@ function afficherCommun(vue) {
 
 async function demarrer() {
 	const jeton = sessionStorage.getItem('croustyquizz.jeton');
-	const acces = lireAcces(ecran, location.search, jeton);
+	const acces = lireAcces(ecran, location.search, jeton, sessionStorage.getItem('croustyquizz.joueur'));
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
