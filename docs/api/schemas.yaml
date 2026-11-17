@@ -1268,6 +1268,10 @@ $defs:
     - donnees
     description: Projection complète après mutation ; remplacement atomique de la vue, pas un delta.
       Révision strictement croissante par destination, indépendante des autres canaux.
+  ImageSvg:
+    type: string
+    pattern: ^<svg[\s>]
+    description: Document SVG autonome, sans script ni ressource externe.
   Probleme:
     type: object
     additionalProperties: false

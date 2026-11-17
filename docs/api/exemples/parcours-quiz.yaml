@@ -370,6 +370,11 @@ http:
     soireeId: 00000001-0000-4000-8000-000000000000
     cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
     expireLe: '2026-11-11T02:00:00Z'
+- nom: Afficher le QR code de la Soirée sur l’Écran de salle
+  operationId: consulterQrCodeSoiree
+  acteur: ecran
+  statut: 200
+  reponse: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33"><path d="M0 0h7v7h-7z"/></svg>
 - nom: Rejoindre avec le pseudo Alpha
   operationId: rejoindreSoiree
   acteur: public
