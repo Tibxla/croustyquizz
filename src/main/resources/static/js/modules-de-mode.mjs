@@ -28,6 +28,14 @@ export function creerGestionnaireDeMode({ ecran, zones, contexte, charger = chem
 		afficher(vue, origine) {
 			if (arrete) return Promise.resolve();
 			derniere = { vue, origine };
+			// Bloc du mode explicitement nul (Manche terminée) : aucun module n'est monté, et le mode
+			// est oublié pour que la Manche suivante du même mode remonte un module neuf.
+			if (vue.modeEnCours && vue[blocDuMode(vue.modeEnCours)] === null) {
+				if (mode !== undefined) { generation++; vider(); }
+				mode = undefined;
+				chargement = undefined;
+				return Promise.resolve();
+			}
 			if (mode === vue.modeEnCours) {
 				if (instance) {
 					try { instance.afficher(vue, origine); } catch (erreur) { surErreur(erreur); }

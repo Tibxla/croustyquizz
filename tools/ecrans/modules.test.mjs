@@ -61,3 +61,21 @@ test('un import en cours affiche la dernière vue et un échec peut être réess
 	await attente;
 	assert.deepEqual(affichages, [2]);
 });
+
+test('un bloc nul en fin de Manche démonte le module, et la Manche suivante du même mode en remonte un neuf', async () => {
+	const appels = [];
+	const zones = { principale: { replaceChildren() {} } };
+	const gestionnaire = creerGestionnaireDeMode({ ecran: 'ecran', zones, contexte: {},
+		charger: async () => ({ monter() {
+			const numero = appels.filter(a => a === 'monter').length + 1;
+			appels.push('monter');
+			return { afficher: vue => appels.push(`afficher ${numero} ${vue.karaoke?.mancheId ?? 'nul'}`),
+				demonter: () => appels.push(`demonter ${numero}`) };
+		} }),
+	});
+	await gestionnaire.afficher({ modeEnCours: 'KARAOKE', karaoke: { mancheId: 'm1' } }, { source: 'capture' });
+	await gestionnaire.afficher({ modeEnCours: 'KARAOKE', karaoke: null }, { source: 'evenement' });
+	await gestionnaire.afficher({ modeEnCours: 'KARAOKE', karaoke: null }, { source: 'capture' });
+	await gestionnaire.afficher({ modeEnCours: 'KARAOKE', karaoke: { mancheId: 'm2' } }, { source: 'evenement' });
+	assert.deepEqual(appels, ['monter', 'afficher 1 m1', 'demonter 1', 'monter', 'afficher 2 m2']);
+});
