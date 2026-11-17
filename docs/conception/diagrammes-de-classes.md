@@ -4,7 +4,7 @@ Source : PRD (issue #2). Les noms de classes sont ceux du code Java, sans accent
 
 ## Domaine
 
-Les entités persistées.
+Les objets du domaine ; les captures immuables du Karaoké sont persistées par son service.
 
 ```mermaid
 classDiagram
@@ -99,7 +99,7 @@ classDiagram
     }
     class EtatManche {
         <<enumeration>>
-        EN_ATTENTE
+        PRETE
         EN_COURS
         EN_PAUSE
         TERMINEE
@@ -187,31 +187,81 @@ classDiagram
     }
 
     class MancheKaraoke {
-        +Duration delaiConfirmation
+        +Duration delaiAppel
     }
     class Chanson {
-        +UUID id
+        <<record>>
+        +String chansonId
         +long idLrclib
         +String titre
         +String artiste
-        +Duration duree
-        +String parolesSynchronisees
+        +String album
+        +Long dureeMs
+        +EtatParoles etatParoles
     }
-    class Passage {
-        +UUID id
-        +int position
-        +EtatPassage etat
-        +Instant appeleLe
-        +Instant debuteLe
-        +noteMoyenne() double
+    class ContenuKaraoke {
+        <<record>>
+        +Chanson chanson
+        +List~LigneParoles~ lignes
     }
-    class EtatPassage {
-        <<enumeration>>
-        EN_ATTENTE
-        APPELE
-        EN_COURS
-        TERMINE
-        SAUTE
+    class LigneParoles {
+        <<record>>
+        +long positionMs
+        +String texte
+    }
+    namespace passage {
+        class FileAttente {
+            +depuis(EtatFileAttente) FileAttente
+            +etat() EtatFileAttente
+            +ordreEffectif() List~Passage~
+            +positions() Map
+            +extraireProchainPassage(boolean) Optional~Passage~
+        }
+        class Passage {
+            <<record>>
+            +UUID id
+            +UUID soireeId
+            +UUID mancheId
+            +UUID inscripteurId
+            +List~UUID~ interpretes
+            +String contenuId
+            +Duration duree
+            +long numero
+            +long numeroModification
+            +EtatPassage etat
+            +Instant inscriptionLe
+            +long ordreInscription
+            +long tourNormal
+            +long cleOrdre
+            +Long tourConsomme
+            +TraceTerminale traceTerminale
+        }
+        class EtatPassage {
+            <<enumeration>>
+            EN_ATTENTE
+            RETIRE
+            ANNULE
+            APPELE
+            EN_COURS
+            TERMINE
+            SAUTE
+        }
+        class EtatFileAttente {
+            <<record>>
+            +long limitePassagesEnAttente
+            +long tourOuvert
+            +long prochainOrdreInscription
+            +long prochaineCleOrdre
+            +UUID passagePrioritaireId
+            +List~Passage~ passages
+            +Map derniersToursConsommes
+        }
+        class TraceTerminale {
+            <<record>>
+            +String motif
+            +UUID acteurId
+            +Instant instant
+        }
     }
     class Vote {
         +UUID id
@@ -249,9 +299,15 @@ classDiagram
     Buzz "*" --> "1" Joueur : auteur
     Buzz "1" --> "0..1" PropositionDeTitre
 
-    MancheKaraoke "1" *-- "*" Passage : file d'attente
-    Passage "*" --> "1" Joueur : chanteur
-    Passage "*" --> "1" Chanson
+    MancheKaraoke "1" *-- "1" FileAttente
+    FileAttente "1" *-- "*" Passage : conserve tous les états
+    FileAttente ..> EtatFileAttente : capture
+    Passage "*" --> "1..4" Joueur : Interprètes ordonnés
+    Passage --> EtatPassage
+    Passage "1" *-- "0..1" TraceTerminale
+    MancheKaraoke "1" *-- "*" ContenuKaraoke : indexé par passageId
+    ContenuKaraoke --> Chanson
+    ContenuKaraoke "1" *-- "*" LigneParoles
     Passage "1" *-- "*" Vote
     Vote "*" --> "1" Joueur : votant
 ```
@@ -266,19 +322,24 @@ Le contrat de Manche (package `manche`) : chaque Mode de jeu fournit une `Fabriq
 classDiagram
     direction TB
 
-    class FabriqueDeDeroulement {
+    class FabriqueDeDeroulement~R,E~ {
         <<interface>>
         +ModeDeJeu mode()
-        +DeroulementDeManche creer(ContexteDeManche)
+        +Class~R~ typeReglages()
+        +ReglagesDeManche reglagesCommuns(R)
+        +DeroulementDeManche creer(ContexteDeManche, R)
+        +DeroulementDeManche restaurer(ContexteDeManche, R, E, EtatManche)
     }
     class DeroulementDeManche {
         <<interface>>
         +demarrer()
         +recevoir(ActionJoueur)
-        +mettreEnPause()
-        +reprendre()
-        +passerEtape()
-        +terminer()
+        +commander(CommandeDeManche) ResultatDeCommande
+        +mettreEnPause(CommandePilotage) ResultatDeCommande
+        +reprendre(CommandePilotage) ResultatDeCommande
+        +passerEtape(CommandePilotage) ResultatDeCommande
+        +terminer(CommandePilotage) ResultatDeCommande
+        +instantane() Object
         +boolean estTerminee()
         +List~AttributionDePoints~ points()
     }
@@ -288,7 +349,6 @@ classDiagram
         +UUID mancheId
         +ReglagesDeManche reglages
         +Horloge horloge
-        +DiffuseurTempsReel diffuseur
         +Runnable signalerFin
     }
     class ReglagesDeManche {
@@ -392,18 +452,61 @@ classDiagram
     class CorrecteurTolerant {
         +Verdict juger(String saisie, Morceau)
     }
-    class FileAttente {
-        +inscrire(Joueur, Chanson)
-        +desinscrire(Joueur)
-        +reordonner(UUID passageId, int position)
-        +Passage appelerSuivant()
+    class FabriqueKaraoke {
+        +creer(ContexteDeManche, ReglagesKaraoke) DeroulementKaraoke
+        +restaurer(ContexteDeManche, ReglagesKaraoke, EtatKaraokePersiste, EtatManche) DeroulementKaraoke
+    }
+    class ReglagesKaraoke {
+        +long limitePassagesEnAttente
+    }
+    class InstantaneKaraoke {
+        +EtatManche etatManche
+        +EtatFileAttente file
+        +Map contenus
+    }
+    class EtatKaraokePersiste {
+        +EtatFileAttente file
+        +Map contenus
+    }
+    class CommandeDeManche {
+        <<interface>>
+        +Acteur acteur()
+        +Instant recueLe()
+    }
+    class Accepte {
+        +Object accuse
+        +Set~Destination~ aRepublier
+        +String typeEvenement
+        +int statutHttp
+    }
+    namespace passage {
+        class FileAttente {
+            +verifierInscription(UUID, String) Optional~Refuse~
+            +inscrire(NouveauPassage) ResultatFile
+            +desinscrire(UUID, CiblePassage, Instant) ResultatFile
+            +retirer(UUID, CiblePassage, Instant) ResultatFile
+            +deplacer(CiblePassage, long, CiblePassage) ResultatFile
+            +definirPriorite(CiblePassage, boolean) ResultatFile
+            +reglerLimite(long) ResultatFile
+            +annulerAttentes(Instant, UUID) ResultatFile
+            +estimerAttentes(Instant, boolean, Instant, boolean, Duration) Map
+        }
+        class CiblePassage {
+            +UUID passageId
+            +long numeroModification
+        }
+        class ResultatFile {
+            <<interface>>
+            Refus
+            SansEffet
+            Modifiee
+        }
     }
 
     FabriqueDeDeroulement ..> DeroulementDeManche : crée
     FabriqueDeDeroulement ..> ContexteDeManche
     ContexteDeManche --> ReglagesDeManche
     ContexteDeManche --> Horloge
-    ContexteDeManche --> DiffuseurTempsReel
     DeroulementDeManche ..> ActionJoueur : reçoit
     DeroulementDeManche ..> AttributionDePoints : produit
     Horloge ..> Minuteur
@@ -427,8 +530,32 @@ classDiagram
     DeroulementQuiz --> SourceDeQuestions
     DeroulementBlindTest --> CatalogueMusical
     DeroulementBlindTest --> CorrecteurTolerant
-    DeroulementKaraoke --> SourceDeParoles
     DeroulementKaraoke --> FileAttente
+    FabriqueDeDeroulement <|.. FabriqueKaraoke : R=ReglagesKaraoke, E=EtatKaraokePersiste
+    FabriqueKaraoke ..> DeroulementKaraoke : crée ou restaure
+    DeroulementKaraoke ..> InstantaneKaraoke : capture
+    DeroulementKaraoke ..> Accepte : rend
+    DeroulementDeManche ..> CommandeDeManche : reçoit
+    FileAttente ..> CiblePassage
+    FileAttente ..> ResultatFile
 ```
 
 ![Diagramme de classes des services](diagramme-classes-services.png)
+
+## Régénérer les images
+
+Depuis la racine, extraire les deux blocs Mermaid dans des fichiers temporaires :
+
+```sh
+python3 - <<'PYTHON'
+from pathlib import Path
+source = Path("docs/conception/diagrammes-de-classes.md").read_text()
+blocs = [partie.split("```", 1)[0].strip() for partie in source.split("```mermaid\n")[1:]]
+for nom, bloc in zip(("domaine", "services"), blocs):
+    Path(f"/tmp/croustyquizz-{nom}.mmd").write_text(bloc + "\n")
+PYTHON
+npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-domaine.mmd -o docs/conception/diagramme-classes-domaine.png
+npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-services.mmd -o docs/conception/diagramme-classes-services.png
+```
+
+Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
