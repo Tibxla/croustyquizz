@@ -202,10 +202,12 @@ class ServiceKaraokeTest {
         UUID manche = banc.service.creer(soiree, Map.of());
         assertThat(banc.json.readTree(banc.depot.charger(manche).getReglages()).path("limitePassagesEnAttente").asLong()).isEqualTo(1);
         for (Object reglages : List.of(List.of(), "texte", Map.of("inconnu", 1), Map.of("limitePassagesEnAttente", 1.0),
-                Map.of("limitePassagesEnAttente", "2"), Map.of("limitePassagesEnAttente", 0), Map.of("limitePassagesEnAttente", 9007199254740992L))) {
+                Map.of("limitePassagesEnAttente", "2"), Map.of("limitePassagesEnAttente", 0), Map.of("limitePassagesEnAttente", 21L), Map.of("limitePassagesEnAttente", 9007199254740992L))) {
             assertThatThrownBy(() -> banc.service.creer(soiree, reglages)).isInstanceOfSatisfying(RefusDeCommande.class,
                     e -> assertThat(e.refus().statutHttp()).isEqualTo(400));
         }
+        UUID maximum = banc.service.creer(soiree, Map.of("limitePassagesEnAttente", 20));
+        assertThat(banc.json.readTree(banc.depot.charger(maximum).getReglages()).path("limitePassagesEnAttente").asLong()).isEqualTo(20);
         var nul = new HashMap<String, Object>(); nul.put("limitePassagesEnAttente", null);
         assertThatThrownBy(() -> banc.service.creer(soiree, nul)).isInstanceOf(RefusDeCommande.class);
     }

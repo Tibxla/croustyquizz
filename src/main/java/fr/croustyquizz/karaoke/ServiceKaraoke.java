@@ -40,7 +40,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         }
         JsonNode valeur = socle.json().valueToTree(resolus.get(CLE_LIMITE));
         if (!valeur.isIntegralNumber() || !valeur.canConvertToLong()) { CorpsKaraoke.invalide(); }
-        CorpsKaraoke.entier(valeur.longValue(), false);
+        CorpsKaraoke.limite(valeur.longValue());
         resolus.put(CLE_LIMITE, valeur.longValue());
         return super.creer(soireeId, resolus);
     }
@@ -132,7 +132,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         });
     }
     public VuesKaraoke.FicheChanson consulterChanson(Acteur acteur, UUID soireeId, UUID mancheId, String chansonId) {
-        if (chansonId == null || chansonId.isEmpty()) { CorpsKaraoke.invalide(); }
+        CorpsKaraoke.identifiantChanson(chansonId);
         lecture(soireeId, () -> { verifierLecture(acteur, soireeId, mancheId); return null; });
         var contenu = chargerContenu(chansonId);
         return lecture(soireeId, () -> {
