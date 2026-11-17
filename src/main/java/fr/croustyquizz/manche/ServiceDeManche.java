@@ -1,0 +1,142 @@
+package fr.croustyquizz.manche;
+
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Supplier;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/**
+ * Parcours unique : préparation, verrou de Soirée, transaction, domaine, persistance, publication après commit.
+ * Chaque mode déclare un bean qui étend ce service et fournit sa fabrique et sa persistance JPA.
+ */
+public class ServiceDeManche<R, E> {
+	private static final Set<Destination> TOUT = Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
+	private final FabriqueDeDeroulement<R, E> fabrique;
+	private final PersistanceDuMode<E> persistance;
+	private final SocleDeManche socle;
+	private final TransactionTemplate transaction;
+
+	public ServiceDeManche(FabriqueDeDeroulement<R, E> fabrique, PersistanceDuMode<E> persistance, SocleDeManche socle) {
+		this.fabrique = fabrique; this.persistance = persistance; this.socle = socle;
+		transaction = new TransactionTemplate(socle.transactions());
+		// Le commit doit terminer avant de rendre le verrou, même si l'appelant a une transaction.
+		transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+	}
+	/** Lecture pour le FournisseurDeBloc, dans la transaction existante ou une transaction de capture. */
+	public Object instantane(UUID soireeId, UUID mancheId) {
+		return socle.verrous().executer(soireeId, () -> {
+			Supplier<Object> lecture = () -> deroulement(charger(mancheId, soireeId)).instantane();
+			if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+				return lecture.get();
+			}
+			return transaction.execute(statut -> lecture.get());
+		});
+	}
+	public ModeDeJeu mode() { return fabrique.mode(); }
+	public UUID creer(UUID soireeId, Object reglages) {
+		R valeurs = socle.json().convertValue(reglages, fabrique.typeReglages());
+		fabrique.reglagesCommuns(valeurs); // Validation avant toute écriture.
+		UUID id = UUID.randomUUID();
+		return sousTransaction(soireeId, id, () -> {
+			socle.depot().enregistrer(new ManchePersistante(id, soireeId, mode(), socle.json().writeValueAsString(valeurs),
+					socle.horloge().maintenant()));
+			return id;
+		});
+	}
+	public ResultatDeCommande demarrer(UUID mancheId, EnvoiDeCommande envoi) {
+		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete(d -> {
+			d.demarrer();
+			return new Accepte(new AccuseCommande(envoi.envoiId(), socle.horloge().maintenant(), envoi.acteur().soireeId()),
+					TOUT, "manche-demarree");
+		}), EtatManche.EN_COURS, true);
+	}
+	public ResultatDeCommande piloter(UUID mancheId, EnvoiDeCommande envoi, InterventionDeManche intervention) {
+		CommandePilotage commande = new CommandePilotage(envoi.acteur(), envoi.envoiId(), socle.horloge().maintenant());
+		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete(d -> intervention.appliquer(d, commande)),
+				intervention.etatCible(), false);
+	}
+	/** La préparation externe est hors verrou ; sa fonction revalide ensuite le domaine sous verrou. */
+	public ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer) {
+		return traiter(mancheId, envoi, preparer, null, false);
+	}
+	private ResultatDeCommande traiter(UUID id, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer,
+			EtatManche cible, boolean demarrage) {
+		UUID soireeId = envoi.acteur().soireeId();
+		// Une répétition évite aussi un nouvel appel externe, sans retenir le verrou pendant la préparation.
+		ResultatDeCommande repetition = sousTransaction(soireeId, id, () -> {
+			charger(id, soireeId);
+			return socle.envois().retrouver(envoi);
+		});
+		if (repetition != null) { return repetition; }
+		PreparationDeCommande preparation = preparer.get();
+		return sousTransaction(soireeId, id, () -> {
+			ManchePersistante manche = charger(id, soireeId);
+			ResultatDeCommande dejaRecu = socle.envois().retrouver(envoi);
+			if (dejaRecu != null) { return dejaRecu; }
+			ResultatDeCommande resultat = preparation.refus();
+			if (resultat == null) {
+				boolean prete = manche.getEtat() == EtatManche.PRETE;
+				if (manche.getEtat() == EtatManche.TERMINEE || prete != demarrage || (demarrage && uneAutreActive(manche))) {
+					resultat = new Refuse(409, "ETAT_INCOMPATIBLE", "Commande incompatible avec la Manche.");
+				} else {
+					var deroulement = deroulement(manche);
+					resultat = preparation.appliquer().apply(deroulement);
+					if (resultat instanceof Accepte accepte) { enregistrer(manche, deroulement, cible, accepte); }
+				}
+			}
+			socle.envois().enregistrer(envoi, resultat, socle.horloge().maintenant());
+			return resultat;
+		});
+	}
+	private boolean uneAutreActive(ManchePersistante manche) {
+		return socle.depot().deLaSoiree(manche.getSoireeId()).stream().anyMatch(m -> !m.getMancheId().equals(manche.getMancheId())
+				&& (m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE));
+	}
+	private ManchePersistante charger(UUID id, UUID soireeId) {
+		ManchePersistante manche = socle.depot().charger(id);
+		if (manche == null || !manche.getSoireeId().equals(soireeId) || manche.getMode() != mode()) {
+			throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche introuvable.").exception();
+		}
+		return manche;
+	}
+	private DeroulementDeManche deroulement(ManchePersistante manche) {
+		return socle.registre().obtenir(manche.getMancheId(), () -> {
+			R reglages = socle.json().readValue(manche.getReglages(), fabrique.typeReglages());
+			HorlogeDeManche horloge = new HorlogeDeManche(socle.horloge(), (d, action) -> minuter(manche, d, action));
+			var contexte = new ContexteDeManche(manche.getSoireeId(), manche.getMancheId(), fabrique.reglagesCommuns(reglages),
+					horloge, () -> { }); // Le service constate estTerminee et persiste la fin naturelle.
+			DeroulementDeManche d = manche.getEtat() == EtatManche.PRETE ? fabrique.creer(contexte, reglages)
+					: fabrique.restaurer(contexte, reglages, persistance.charger(manche.getMancheId()), manche.getEtat());
+			horloge.attacher(d);
+			return d;
+		});
+	}
+	private void minuter(ManchePersistante identite, Supplier<DeroulementDeManche> deroulement, HorlogeDeManche.Rappel rappel) {
+		sousTransaction(identite.getSoireeId(), identite.getMancheId(), () -> {
+			if (rappel.annule().getAsBoolean()) { return null; }
+			DeroulementDeManche d = deroulement.get();
+			if (!socle.registre().contient(identite.getMancheId(), d)) { return null; }
+			ManchePersistante manche = charger(identite.getMancheId(), identite.getSoireeId());
+			if (manche.getEtat() != EtatManche.EN_COURS) { return null; }
+			rappel.action().run();
+			enregistrer(manche, d, null, new Accepte(null, TOUT, fabrique.typeEvenementMinuteur(d)));
+			return null;
+		});
+	}
+	private void enregistrer(ManchePersistante manche, DeroulementDeManche d, EtatManche cible, Accepte accepte) {
+		manche.changerEtat(d.estTerminee() ? EtatManche.TERMINEE : cible == null ? manche.getEtat() : cible, socle.horloge().maintenant());
+		persistance.enregistrer(manche.getMancheId(), d.instantane());
+		socle.depot().enregistrer(manche);
+		socle.vues().publier(manche.getSoireeId(), accepte);
+	}
+	private <T> T sousTransaction(UUID soireeId, UUID mancheId, Supplier<T> action) {
+		return socle.verrous().executer(soireeId, () -> {
+			try { return transaction.execute(statut -> action.get()); }
+			catch (RuntimeException erreur) {
+				socle.registre().retirer(mancheId);
+				throw erreur;
+			}
+		});
+	}
+}

@@ -41,6 +41,8 @@ Docker doit tourner pour lancer l'application et pour les tests.
 | `npm ci --prefix tools/api` puis `npm test --prefix tools/api` | valide les contrats, les exemples et les cas de confidentialité de `docs/api/` (Node 24) |
 | `python3 tools/generer-dossier.py` | régénère le PDF du dossier de rendu depuis `doc/rendu-1/` (Pandoc et Chrome) ; vérifier qu'il fait toujours quatre pages |
 | `tools/demo.sh demarrer` / `arreter` | démo sur le serveur, le temps d'une séance : jamais en développement, procédure dans `docs/deploiement.md` |
+
+La recette de `develop` est sur https://croustyquizz-recette.onrender.com : la CI la redéploie après chaque fusion verte. La production (https://croustyquizz-prod.onrender.com, à partir de `v0.1.0`) reçoit chaque livraison taguée. Chacune a sa base Neon (`docs/deploiement.md`, « Recette et production sur Render et Neon »).
 | `docker compose down -v` | efface la base locale pour repartir de zéro |
 | `git config core.hooksPath .githooks` | une fois par clone : refuse les messages de commit hors format |
 
@@ -48,7 +50,11 @@ Sous Windows, dans PowerShell : `.\mvnw.cmd` au lieu de `./mvnw`.
 
 ## Coder un Mode de jeu
 
-Le contrat est dans le package `manche` : implémenter `DeroulementDeManche` et déclarer une `FabriqueDeDeroulement` en bean Spring. Le temps passe par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread), et les écrans ne se joignent que par le `DiffuseurTempsReel`, auquel le mode publie à chaque changement la vue complète de chaque destination, jamais un changement partiel (ADR 0004). La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`).
+Le contrat est dans `manche` : implémenter `DeroulementDeManche` et une `FabriqueDeDeroulement<R, E>` (réglages typés, création, restauration avec `EtatManche`). Déclarer un service de mode qui étend `ServiceDeManche<R, E>`, sa `PersistanceDuMode<E>` JPA et un `FournisseurDeBloc` dans le package du mode. Les tables du mode sont migrées par Flyway ; `manche_deroulement` conserve le cycle commun et `manche_envoi` les reçus idempotents.
+
+Toute commande passe par le service : préparation externe hors verrou, verrou de Soirée, transaction, appel du déroulement, persistance, assemblage des vues, puis publication après commit et avant libération du verrou (ADR 0006). Un refus ne change jamais l'`instantane()` immuable. Le déroulement rend un `ResultatDeCommande` avec l'accusé HTTP, les destinations modifiées et un type d'événement du contrat ; il n'a plus de diffuseur. Si la transaction échoue, le service évince le déroulement pour le restaurer à la prochaine commande.
+
+Le temps passe exclusivement par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread). Ses callbacks repassent par le service ; la fabrique précise `typeEvenementMinuteur` pour ses phases. `reglagesCommuns` extrait les réglages du contexte depuis les réglages typés du mode. Les fournisseurs produisent des projections sans secrets pour chaque destination sous le même verrou ; seul le socle compose et publie la vue complète. La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`), notamment pour les refus sans mutation et après la fin.
 
 ## Propriétaires
 
@@ -62,7 +68,7 @@ Chaque package a un propriétaire, qui écrit et relit en premier ce qui s'y pas
 
 ## Skills d'agent
 
-Les skills de [mattpocock/skills](https://github.com/mattpocock/skills) et d'[Impeccable](https://impeccable.style) sont partagés : Claude Code les propose à l'ouverture du dépôt (`.claude/settings.json`), les autres agents les installent comme décrit dans `CONTRIBUTING.md`. Repères :
+Les skills de [mattpocock/skills](https://github.com/mattpocock/skills) et d'[Impeccable](https://impeccable.style) sont partagés : Claude Code les reçoit en plugins par `.claude/settings.json`, Codex et Antigravity les lisent dans `.agents/skills/` (détails dans `CONTRIBUTING.md`). Les dossiers de `.agents/skills/` listés dans `.agents/skills/.copies` sont des copies générées : ils se mettent à jour par `tools/mettre-a-jour-skills.sh`, pas à la main. Repères :
 
 - `tdd` pour implémenter une issue, `diagnosing-bugs` pour un bug qui résiste.
 - `grill-with-docs` pour trancher un terme ou une décision ; il met à jour `GLOSSARY.md` et `docs/adr/`.

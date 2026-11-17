@@ -2,7 +2,6 @@ package fr.croustyquizz.manche;
 
 import java.util.UUID;
 
-import fr.croustyquizz.tempsreel.DiffuseurTempsReel;
 
 /**
  * Tout ce qu'un déroulement reçoit du socle à sa création.
@@ -11,7 +10,6 @@ import fr.croustyquizz.tempsreel.DiffuseurTempsReel;
  * @param mancheId    Manche à dérouler
  * @param reglages    réglages communs choisis par l'Animateur
  * @param horloge     seule source de temps et de minuteurs
- * @param diffuseur   seule sortie vers les écrans
  * @param signalerFin à appeler une fois, quand la Manche se termine d'elle-même
  */
 public record ContexteDeManche(
@@ -19,6 +17,5 @@ public record ContexteDeManche(
 		UUID mancheId,
 		ReglagesDeManche reglages,
 		Horloge horloge,
-		DiffuseurTempsReel diffuseur,
 		Runnable signalerFin) {
 }

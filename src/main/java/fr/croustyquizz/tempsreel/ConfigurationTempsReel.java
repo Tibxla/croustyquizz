@@ -1,6 +1,7 @@
 package fr.croustyquizz.tempsreel;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.Message;
@@ -28,9 +29,11 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 	static final String PREFIXE_ACTIONS = "/app";
 	private final RegistreAbonnements abonnements;
 	private TaskScheduler ordonnanceur;
+	private final ObjectProvider<ControleAccesStomp> acces;
 
-	ConfigurationTempsReel(RegistreAbonnements abonnements) {
+	ConfigurationTempsReel(RegistreAbonnements abonnements, ObjectProvider<ControleAccesStomp> acces) {
 		this.abonnements = abonnements;
+		this.acces = acces;
 	}
 
 	@Override
@@ -44,6 +47,7 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 				return message;
 			}
 		});
+		acces.ifAvailable(controle -> canal.interceptors(controle));
 		canal.interceptors(abonnements);
 	}
 

@@ -35,6 +35,6 @@ class EtatSalleControleur {
 			probleme.setInstance(URI.create("/api/test/soirees/" + soireeId + "/etat/salle"));
 			return ResponseEntity.status(HttpStatus.CONFLICT).cacheControl(CacheControl.noStore()).body(probleme);
 		}
-		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(diffuseur.capturerSalle(soireeId, abonnementId));
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(diffuseur.capturerPrototype(soireeId, abonnementId));
 	}
 }

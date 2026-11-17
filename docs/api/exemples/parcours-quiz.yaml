@@ -336,8 +336,8 @@ http:
         etat: PREPARATION
         codeAcces: null
       mancheActive: null
-      quiz:
-        phase: ATTENTE
+      modeEnCours: null
+      quiz: null
       joueurs: []
       classement: []
       dernierBuzz: null
@@ -415,8 +415,8 @@ http:
         etat: OUVERTE
         codeAcces: QUIZ42
       mancheActive: null
-      quiz:
-        phase: ATTENTE
+      modeEnCours: null
+      quiz: null
       joueurs:
       - id: 00000003-0000-4000-8000-000000000000
         pseudo: Alpha
@@ -501,6 +501,7 @@ http:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -551,7 +552,38 @@ http:
       resultatPersonnel: null
   parametres:
     abonnementId: 000002bd-0000-4000-8000-000000000000
-- nom: Mettre la Question en pause
+- nom: Omettre l’étape du Quiz reste une erreur métier
+  operationId: piloterManche
+  acteur: animateur
+  statut: 409
+  requete:
+    action: METTRE_EN_PAUSE
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAPE_INACTIVE
+    detail: L’étape courante du Quiz doit être indiquée.
+    instance: /api/soirees/00000001-0000-4000-8000-000000000000/manches/00000002-0000-4000-8000-000000000000/commandes
+  parametres:
+    Idempotency-Key: 00000340-0000-4000-8000-000000000000
+- nom: Base indisponible avant la pause, réessayer le même envoi
+  operationId: piloterManche
+  acteur: animateur
+  statut: 503
+  requete:
+    action: METTRE_EN_PAUSE
+    etapeId: 0000012c-0000-4000-8000-000000000000
+  reponse:
+    type: about:blank
+    title: Service indisponible
+    status: 503
+    code: SERVICE_INDISPONIBLE
+    detail: La transaction est indisponible. Réessayez avec le même identifiant d’envoi.
+    instance: /api/soirees/00000001-0000-4000-8000-000000000000/manches/00000002-0000-4000-8000-000000000000/commandes
+  parametres:
+    Idempotency-Key: 00000339-0000-4000-8000-000000000000
+- nom: Mettre la Question en pause après réessai du même envoi
   operationId: piloterManche
   acteur: animateur
   statut: 200
@@ -656,6 +688,7 @@ http:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -760,6 +793,7 @@ http:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -868,6 +902,7 @@ http:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -976,6 +1011,7 @@ http:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -1100,6 +1136,7 @@ http:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: TERMINEE
       joueurs:
@@ -1154,8 +1191,8 @@ evenements:
         etat: OUVERTE
         codeAcces: QUIZ42
       mancheActive: null
-      quiz:
-        phase: ATTENTE
+      modeEnCours: null
+      quiz: null
       joueurs:
       - id: 00000003-0000-4000-8000-000000000000
         pseudo: Alpha
@@ -1193,8 +1230,8 @@ evenements:
         etat: OUVERTE
         codeAcces: QUIZ42
       mancheActive: null
-      quiz:
-        phase: ATTENTE
+      modeEnCours: null
+      quiz: null
       joueurs:
       - id: 00000003-0000-4000-8000-000000000000
         pseudo: Alpha
@@ -1244,6 +1281,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -1311,6 +1349,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -1386,6 +1425,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -1457,6 +1497,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: EN_PAUSE
         question:
@@ -1527,6 +1568,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -1598,6 +1640,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -1674,6 +1717,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -1750,6 +1794,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -1838,6 +1883,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -1905,6 +1951,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -1972,6 +2019,7 @@ evenements:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: TERMINEE
       joueurs:
@@ -1996,6 +2044,58 @@ evenements:
         tempsCumuleMs: 0
       dernierBuzz: null
 cases:
+- nom: Une commande périmée utilise le corps Probleme commun
+  schema: Probleme
+  valide: true
+  valeur:
+    type: about:blank
+    title: Commande périmée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: La cible a changé depuis la version utilisée pour décider la commande.
+    instance: /api/soirees/00000001-0000-4000-8000-000000000000/manches/00000002-0000-4000-8000-000000000000/commandes
+- nom: Un bloc Quiz non nul est refusé pour le Karaoké
+  schema: VueManette
+  valide: false
+  valeur:
+    soiree:
+      id: 00000001-0000-4000-8000-000000000000
+      titre: Soirée de démonstration
+      format: SOLO
+      pilotage: MANUEL
+      etat: EN_COURS
+      codeAcces: QUIZ42
+    mancheActive: null
+    modeEnCours: KARAOKE
+    quiz:
+      phase: ATTENTE
+    joueurs: []
+    classement: []
+    dernierBuzz: null
+    joueurId: 00000003-0000-4000-8000-000000000000
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+- nom: Une Manette sans bloc Quiz est valide hors Manche
+  schema: VueManette
+  valide: true
+  valeur:
+    soiree:
+      id: 00000001-0000-4000-8000-000000000000
+      titre: Soirée de démonstration
+      format: SOLO
+      pilotage: MANUEL
+      etat: OUVERTE
+      codeAcces: QUIZ42
+    mancheActive: null
+    modeEnCours: null
+    joueurs: []
+    classement: []
+    dernierBuzz: null
+    joueurId: 00000003-0000-4000-8000-000000000000
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
 - nom: Un Joueur arrivé en retard peut attendre la Manche suivante
   schema: VueManette
   valide: true
@@ -2015,6 +2115,7 @@ cases:
       reglages:
         nombreEtapes: 3
         tempsParEtapeSecondes: 20
+    modeEnCours: QUIZ
     quiz:
       phase: QUESTION_OUVERTE
       question:
@@ -2197,6 +2298,7 @@ cases:
       reglages:
         nombreEtapes: 3
         tempsParEtapeSecondes: 20
+    modeEnCours: QUIZ
     quiz:
       phase: QUESTION_OUVERTE
       question:
@@ -2282,6 +2384,7 @@ cases:
       reglages:
         nombreEtapes: 3
         tempsParEtapeSecondes: 20
+    modeEnCours: QUIZ
     quiz:
       phase: QUESTION_OUVERTE
       question:
@@ -2408,6 +2511,7 @@ cases:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -2454,6 +2558,9 @@ cases:
       dernierBuzz: null
     cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 resynchronisation:
+  destination: /topic/joueurs/00000003-0000-4000-8000-000000000000
+  routeEtat: /api/soirees/00000001-0000-4000-8000-000000000000/etat/manette
+  typeEvenementFinal: question-ouverte
   description: Abonnement 702 actif avant capture ; snapshot révision 9 retardé par le réseau. L’événement 10 arrive
     dans le tampon avant la réponse HTTP. Les événements 8 et 9 déjà couverts et le doublon 10 sont ignorés. La
     vue finale reste la Question 2, jamais un retour à la Question 1.
@@ -2477,6 +2584,7 @@ resynchronisation:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -2563,6 +2671,7 @@ resynchronisation:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -2636,6 +2745,7 @@ resynchronisation:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: CORRECTION
         question:
@@ -2721,6 +2831,7 @@ resynchronisation:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -2789,6 +2900,7 @@ resynchronisation:
         reglages:
           nombreEtapes: 3
           tempsParEtapeSecondes: 20
+      modeEnCours: QUIZ
       quiz:
         phase: QUESTION_OUVERTE
         question:
@@ -2854,6 +2966,7 @@ resynchronisation:
       reglages:
         nombreEtapes: 3
         tempsParEtapeSecondes: 20
+    modeEnCours: QUIZ
     quiz:
       phase: QUESTION_OUVERTE
       question:

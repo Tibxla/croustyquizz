@@ -105,3 +105,26 @@ jobs:
           files: target/*.jar
           fail_on_unmatched_files: true
           generate_release_notes: true
+
+  deployer-production:
+    name: Déployer la production
+    # Chaque livraison vX.Y.Z (tag vérifié présent sur main) part en production sur
+    # Render (docs/deploiement.md, « Recette et production sur Render et Neon »).
+    needs: publier-release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions: {}
+    concurrency:
+      group: deploiement-production
+      cancel-in-progress: false
+    steps:
+      - name: Demander à Render de construire la version livrée
+        env:
+          CROCHET: ${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION }}
+        run: |
+          if [ -z "$CROCHET" ]; then
+            echo "::warning::Secret RENDER_DEPLOY_HOOK_PRODUCTION absent : production non déployée."
+            exit 0
+          fi
+          curl -fsS -X POST "$CROCHET&ref=$GITHUB_SHA" -o /dev/null
+          echo "Déploiement de $GITHUB_REF_NAME demandé : https://croustyquizz-prod.onrender.com"

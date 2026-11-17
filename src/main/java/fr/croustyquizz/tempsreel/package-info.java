@@ -1,23 +1,19 @@
 /**
- * Temps réel : canaux WebSocket entre le serveur, les Manettes, l'Écran de salle
- * et la Console d'animation.
+ * Assemble les vues complètes et porte leur Révision, leur capture et leur diffusion STOMP.
  *
- * <p>Les pages se connectent en STOMP sur {@code /ws} et s'abonnent à :
- * <ul>
- * <li>{@code /topic/soirees/{soireeId}/salle} : toute la salle d'une Soirée ;</li>
- * <li>{@code /topic/soirees/{soireeId}/console} : la Console d'animation ;</li>
- * <li>{@code /topic/joueurs/{joueurId}} : la Manette d'un Joueur.</li>
- * </ul>
- * Chaque message est une {@link fr.croustyquizz.tempsreel.Enveloppe} JSON
- * {@code {type, soireeId, revision, emisLe, donnees}}. Côté page, {@code /js/tempsreel.js} expose le module ES de Vue synchronisée.
+ * <p>Le ServiceDeManche prend VerrousSoiree avant la transaction et le garde jusqu'à
+ * la publication après commit. AssembleurDeVues combine FournisseurPartieCommune
+ * et le FournisseurDeBloc du mode pour salle, Console et Manette. CaptureVueRepli
+ * suit ce même chemin avant le premier événement et après redémarrage.
  *
- * <p>Limite connue : n'importe quel client peut encore s'abonner à n'importe quel
- * canal. Le contrôle des abonnements arrive avec le jeton du Joueur (#10) et la
- * connexion de l'Animateur (#5).
- * Le Buzz de démonstration passe par HTTP sous {@code /api/test}, uniquement en
- * profils {@code dev} et {@code recette} (jamais en production). Son pseudo n'est pas une identité authentifiée. Ces routes
- * sont distinctes du contrat métier de {@code docs/api/openapi.yaml} ; elles
- * servent au scénario du socle et seront remplacées avec #5, #6 et #10.
+ * <p>Les destinations restent /topic/soirees/{id}/salle, /console et /topic/joueurs/{id}.
+ * Les commandes passent par HTTP ; chaque événement remplace la vue complète et
+ * porte type, soireeId, revision, emisLe et donnees. Le module /js/tempsreel.js
+ * assure la reprise après la barrière d'abonnement du même Acteur.
+ *
+ * <p>ResolveurDActeur refuse en production avant #5/#10. En dev/recette, ses jetons
+ * de démonstration sont décrits dans docs/api/README.md. Le Buzz anonyme /api/test
+ * conserve ses vues et son cache distincts du métier sur les mêmes canaux.
  *
  * <p>Propriétaire : Tibxla.
  */
