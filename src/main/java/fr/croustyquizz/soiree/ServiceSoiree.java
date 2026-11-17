@@ -5,8 +5,13 @@ import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Création et ouverture des Soirées, arrivée des Joueurs. Les contrôleurs HTTP
@@ -21,15 +26,24 @@ public class ServiceSoiree {
 	 */
 	static final int ESSAIS_DE_CODE = 20;
 
+	/** Index qui garantit qu'un code ne désigne qu'une Soirée qu'on peut rejoindre. */
+	static final String INDEX_CODE_ACTIF = "soiree_code_acces_actif";
+
 	private final DepotDeSoirees depotDeSoirees;
 	private final DepotDeJoueurs depotDeJoueurs;
 	private final Clock horloge;
+	private final TirageDeCode tirage;
+	private final TransactionTemplate nouvelleTransaction;
 	private final SecureRandom hasard = new SecureRandom();
 
-	ServiceSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs, Clock horloge) {
+	ServiceSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs, Clock horloge, TirageDeCode tirage,
+			PlatformTransactionManager transactions) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.horloge = horloge;
+		this.tirage = tirage;
+		this.nouvelleTransaction = new TransactionTemplate(transactions);
+		this.nouvelleTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 	}
 
 	/**
@@ -51,17 +65,50 @@ public class ServiceSoiree {
 	/**
 	 * Ouvre la Soirée avec un code d'accès libre. Répéter l'ouverture d'une Soirée
 	 * déjà ouverte la renvoie telle quelle, avec le même code.
+	 * <p>
+	 * L'index {@value #INDEX_CODE_ACTIF} est seul juge de l'unicité du code : un
+	 * code déjà pris par une autre Soirée, même ouverte au même instant, fait
+	 * échouer l'essai, et l'ouverture est retentée avec un nouveau tirage. Chaque
+	 * essai a sa propre transaction, car PostgreSQL abandonne une transaction
+	 * après une violation de contrainte : l'appeler hors de toute transaction.
 	 *
 	 * @throws SoireeIntrouvable si aucune Soirée ne porte cet identifiant
 	 * @throws SoireeDejaLancee  si la Soirée est en cours ou terminée
 	 */
-	@Transactional
 	public Soiree ouvrir(UUID soireeId) {
-		// Le verrou empêche deux ouvertures simultanées de tirer deux codes différents.
+		for (int essai = 1; essai <= ESSAIS_DE_CODE; essai++) {
+			try {
+				return nouvelleTransaction.execute(statut -> ouvrirAvecUnTirage(soireeId));
+			} catch (DataIntegrityViolationException refus) {
+				if (!violeIndexCodeActif(refus)) {
+					throw refus;
+				}
+			}
+		}
+		throw new IllegalStateException("Aucun code d'accès libre après " + ESSAIS_DE_CODE + " essais");
+	}
+
+	private Soiree ouvrirAvecUnTirage(UUID soireeId) {
+		// Le verrou sérialise les ouvertures d'une même Soirée : la seconde la trouve ouverte et garde son code.
 		Soiree soiree = depotDeSoirees.verrouiller(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
-		String code = soiree.getEtat() == EtatSoiree.PREPARATION ? codeLibre() : soiree.getCodeAcces();
-		soiree.ouvrir(code, horloge.instant());
+		if (soiree.getEtat() == EtatSoiree.PREPARATION) {
+			soiree.ouvrir(tirage.tirer(), horloge.instant());
+			// Écrit maintenant, pour qu'une collision lève ici une exception traduite par Spring.
+			depotDeSoirees.flush();
+		} else {
+			soiree.ouvrir(soiree.getCodeAcces(), horloge.instant());
+		}
 		return soiree;
+	}
+
+	private static boolean violeIndexCodeActif(Throwable refus) {
+		for (Throwable cause = refus; cause != null; cause = cause.getCause()) {
+			if (cause instanceof ConstraintViolationException violation
+					&& INDEX_CODE_ACTIF.equals(violation.getConstraintName())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -94,16 +141,6 @@ public class ServiceSoiree {
 		JetonDeReconnexion jeton = JetonDeReconnexion.generer(hasard);
 		Joueur joueur = depotDeJoueurs.save(new Joueur(soiree.getId(), pseudo, jeton, horloge.instant()));
 		return new ArriveeDeJoueur(joueur, jeton, soiree);
-	}
-
-	private String codeLibre() {
-		for (int essai = 0; essai < ESSAIS_DE_CODE; essai++) {
-			String code = CodeAcces.generer(hasard);
-			if (!depotDeSoirees.existsByCodeAccesAndEtatIn(code, EtatSoiree.AVEC_CODE_ACTIF)) {
-				return code;
-			}
-		}
-		throw new IllegalStateException("Aucun code d'accès libre après " + ESSAIS_DE_CODE + " essais");
 	}
 
 }

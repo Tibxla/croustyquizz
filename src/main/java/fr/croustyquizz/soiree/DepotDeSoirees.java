@@ -14,8 +14,6 @@ interface DepotDeSoirees extends JpaRepository<Soiree, UUID> {
 
 	Optional<Soiree> findByCodeAccesAndEtatIn(String codeAcces, Collection<EtatSoiree> etats);
 
-	boolean existsByCodeAccesAndEtatIn(String codeAcces, Collection<EtatSoiree> etats);
-
 	/** Charge la Soirée en bloquant les autres modifications jusqu'à la fin de la transaction. */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select s from Soiree s where s.id = :id")
