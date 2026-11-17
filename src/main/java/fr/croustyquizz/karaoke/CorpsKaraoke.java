@@ -14,13 +14,26 @@ public final class CorpsKaraoke {
         if (valeur == null || valeur < (zero ? 0 : 1) || valeur > 9007199254740991L) { invalide(); }
     }
     static void obligatoire(Object valeur) { if (valeur == null) { invalide(); } }
+    /**
+     * Bornes du contrat fixées par l'issue #96 : 20 Passages en attente au plus, chansonId de 128 caractères au plus.
+     * Le domaine porte la même limite (EtatFileAttente.LIMITE_PASSAGES_MAX, PR #97) ; la couche HTTP la refuse en 400.
+     */
+    static final long LIMITE_PASSAGES_MAX = 20;
+    static final int LONGUEUR_CHANSON_ID_MAX = 128;
+    static void limite(Long valeur) {
+        entier(valeur, false);
+        if (valeur > LIMITE_PASSAGES_MAX) { invalide(); }
+    }
+    static void identifiantChanson(String valeur) {
+        if (valeur == null || valeur.isEmpty() || valeur.codePointCount(0, valeur.length()) > LONGUEUR_CHANSON_ID_MAX) { invalide(); }
+    }
     public record Cible(UUID passageId, Long numeroModification) {
         public Cible { obligatoire(passageId); entier(numeroModification, true); }
         public CiblePassage cible() { return new CiblePassage(passageId, numeroModification); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
     public record InscriptionPassage(UUID envoiId, String chansonId) {
-        public InscriptionPassage { obligatoire(envoiId); if (chansonId == null || chansonId.isEmpty()) { invalide(); } }
+        public InscriptionPassage { obligatoire(envoiId); identifiantChanson(chansonId); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
     public record DesinscriptionPassage(UUID envoiId, Long numeroModification) {
@@ -40,7 +53,7 @@ public final class CorpsKaraoke {
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
     public record LimitePassages(Long limitePassagesEnAttente) {
-        public LimitePassages { entier(limitePassagesEnAttente, false); }
+        public LimitePassages { limite(limitePassagesEnAttente); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
 }
