@@ -1,0 +1,40 @@
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const roles = { manette: 'JOUEUR', console: 'ANIMATEUR', ecran: 'ECRAN' };
+
+export function lireAcces(ecran, recherche, jeton) {
+	const soireeId = new URLSearchParams(recherche).get('soiree');
+	if (!uuid.test(soireeId ?? '')) throw new Error('Lien incomplet : une Soirée valide est requise (?soiree=UUID).');
+	let acteur = { type: roles[ecran], soireeId };
+	if (jeton?.startsWith('demo:')) {
+		const [prefixe, type, portee, identifiant, surplus] = jeton.split(':');
+		if (prefixe !== 'demo' || surplus !== undefined || type !== roles[ecran] || !uuid.test(identifiant)) {
+			throw new Error('Cette identité ne correspond pas à cet écran. Choisis une identité de démonstration.');
+		}
+		if (portee !== soireeId) throw new Error('Cette identité appartient à une autre Soirée.');
+		acteur = { type, identifiant, soireeId };
+	} else if (ecran !== 'console') {
+		throw new Error('Une identité est requise. Ouvre la page d’identité de démonstration en dev ou recette.');
+	}
+	return {
+		acteur, soireeId,
+		destination: ecran === 'manette' ? `/topic/joueurs/${acteur.identifiant}` :
+			`/topic/soirees/${soireeId}/${ecran === 'ecran' ? 'salle' : 'console'}`,
+		routeEtat: `/api/soirees/${soireeId}/etat/${ecran === 'ecran' ? 'salle' : ecran}`,
+	};
+}
+
+export async function preparerIdentite(type, soireeId, acteurId, requete) {
+	if (!Object.values(roles).includes(type) || !uuid.test(soireeId) || !uuid.test(acteurId)) {
+		throw new Error('Choisis un rôle et un UUID de Soirée valide.');
+	}
+	// Le fournisseur commun est l'autorité pour l'UUID Java nameUUIDFromBytes du Joueur.
+	const reponse = await requete(`/api/soirees/${soireeId}/etat/salle`, {
+		headers: { Authorization: `Bearer demo:ECRAN:${soireeId}:${acteurId}` },
+		cache: 'no-store', credentials: 'same-origin',
+	});
+	const corps = await reponse.json();
+	if (!reponse.ok) throw new Error(corps.detail ?? `Identité refusée (HTTP ${reponse.status}).`);
+	const identifiant = type === 'JOUEUR' ? corps.vue?.joueurs?.[0]?.id : acteurId;
+	if (!uuid.test(identifiant ?? '')) throw new Error('Le serveur n’a pas fourni de Joueur de démonstration.');
+	return { jeton: `demo:${type}:${soireeId}:${identifiant}`, page: { JOUEUR: 'manette', ANIMATEUR: 'console', ECRAN: 'ecran' }[type] };
+}

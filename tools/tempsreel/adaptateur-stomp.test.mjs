@@ -45,17 +45,17 @@ test('l’adapter réel abonne STOMP avant HTTP avec le même UUID et arrête se
 	assert.equal(requetes[0].url.searchParams.get('autre'), 'valeur');
 	assert.equal(requetes[0].options.cache, 'no-store');
 	client.abonnement.recevoir({ body: JSON.stringify({ revision: 1, type: 'buzz-recu', donnees: { buzz: ['Alpha'] } }) });
-	requetes[0].resoudre({ status: 200, json: async () => ({ revision: 0, abonnementId: id,
+	requetes[0].resoudre({ status: 200, text: async () => JSON.stringify({ revision: 0, abonnementId: id,
 		heureServeur: '2026-11-10T20:00:35Z', vue: { buzz: [] },
 	}) });
 	await setImmediate();
 	assert.deepEqual(vues, [
-		{ vue: { buzz: [] }, type: 'capture' },
-		{ vue: { buzz: ['Alpha'] }, type: 'buzz-recu' },
+		{ vue: { buzz: [] }, source: 'capture', type: 'capture' },
+		{ vue: { buzz: ['Alpha'] }, source: 'evenement', type: 'buzz-recu' },
 	]);
 	assert.equal(etats.at(-1), 'synchronisee');
 	client.abonnement.recevoir({ body: 'JSON invalide' });
-	assert.equal(etats.at(-1), 'reconnexion');
+	assert.equal(etats.at(-1), 'coupure');
 	assert.equal(client.active, false);
 	assert.equal(requetes[0].options.signal.aborted, true);
 });
