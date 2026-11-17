@@ -10,6 +10,9 @@ public record EtatFileAttente(UUID soireeId, UUID mancheId,
         long prochainOrdreInscription, long prochaineCleOrdre,
         UUID passagePrioritaireId, List<Passage> passages,
         Map<UUID, Long> derniersToursConsommes) {
+    /** Borne de la limite par Interprète, identique à {@code LimitePassages} et {@code ReglagesKaraoke} du contrat. */
+    public static final long LIMITE_PASSAGES_MAX = 20;
+
     public EtatFileAttente {
         verifierLimite(limitePassagesEnAttente);
         passages = List.copyOf(passages);
@@ -17,8 +20,8 @@ public record EtatFileAttente(UUID soireeId, UUID mancheId,
     }
 
     public static void verifierLimite(long limite) {
-        if (limite <= 0 || limite > 9007199254740991L) {
-            throw new IllegalArgumentException("La limite doit être un entier positif représentable.");
+        if (limite <= 0 || limite > LIMITE_PASSAGES_MAX) {
+            throw new IllegalArgumentException("La limite doit être comprise entre 1 et " + LIMITE_PASSAGES_MAX + ".");
         }
     }
 }
