@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Console d’animation · CroustyQuizz</title>
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/console.css">
+	<style>
+		/* Les classes d'affichage (flex, grid) ne doivent pas l'emporter sur l'attribut hidden. */
+		[hidden] { display: none !important; }
+		.preparation { display: grid; gap: var(--espace-4); max-width: 36rem; }
+		.preparation label, .preparation legend { color: var(--texte-2); }
+		.preparation input[type="text"] { font: inherit; padding: var(--espace-3); border-radius: var(--rayon); border: 1px solid var(--fond-4); background: var(--fond-1); color: var(--texte); }
+		.preparation fieldset { display: flex; flex-wrap: wrap; gap: var(--espace-2) var(--espace-5); margin: 0; padding: 0; border: 0; }
+		.preparation fieldset legend { margin-bottom: var(--espace-2); }
+		.choix { display: inline-flex; align-items: center; gap: var(--espace-2); color: var(--texte); }
+		.erreur { margin: 0; padding: var(--espace-3) var(--espace-4); border-radius: var(--rayon); background: var(--refus-fond); color: var(--texte); }
+		.code { font: 800 2rem/1 var(--police-chiffres); letter-spacing: 0.15em; }
+	</style>
+</head>
+<body>
+	<div class="console">
+		<header class="pilotage">
+			<div class="pilotage__soiree">
+				<span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
+				<small id="resume">Nouvelle Soirée</small>
+			</div>
+			<div class="pilotage__manche">
+				<span id="etat" class="pilotage__mode"></span>
+				<span id="code" class="code chiffres"></span>
+			</div>
+			<div class="pilotage__commandes">
+				<button id="ouvrir" class="bouton bouton--action" hidden>Ouvrir aux Joueurs</button>
+				<button id="ecran" class="bouton" hidden><span class="icone icone--plein-ecran" aria-hidden="true"></span>Ouvrir l’Écran de salle</button>
+			</div>
+		</header>
+
+		<main class="plan">
+			<section class="panneau" aria-labelledby="titre-panneau">
+				<h2 id="titre-panneau">Préparer la Soirée</h2>
+				<p id="erreur" class="erreur" role="alert" hidden></p>
+
+				<form id="creation" class="preparation" novalidate>
+					<div class="preparation">
+						<label for="titre">Titre de la Soirée</label>
+						<input id="titre" type="text" maxlength="150" required placeholder="Quiz du jeudi">
+					</div>
+					<fieldset>
+						<legend>Format</legend>
+						<label class="choix"><input type="radio" name="format" value="SOLO" checked>Solo</label>
+						<label class="choix"><input type="radio" name="format" value="EQUIPE">Équipe</label>
+					</fieldset>
+					<fieldset>
+						<legend>Pilotage</legend>
+						<label class="choix"><input type="radio" name="pilotage" value="MANUEL" checked>Manuel</label>
+						<label class="choix"><input type="radio" name="pilotage" value="AUTOMATIQUE">Automatique</label>
+					</fieldset>
+					<button class="bouton bouton--action">Créer la Soirée</button>
+				</form>
+
+				<div id="soiree" class="preparation" hidden>
+					<p id="consigne" class="console__note"></p>
+				</div>
+			</section>
+		</main>
+	</div>
+
+	<script type="module">
+		import { appeler, nouvelleCle } from '/js/api.js';
+
+		const FORMATS = { SOLO: 'Solo', EQUIPE: 'Équipe' };
+		const PILOTAGES = { MANUEL: 'Pilotage manuel', AUTOMATIQUE: 'Pilotage automatique' };
+		const ETATS = { PREPARATION: 'En préparation', OUVERTE: 'Ouverte', EN_COURS: 'En cours', TERMINEE: 'Terminée' };
+		const MESSAGES = {
+			DONNEES_INVALIDES: 'Donne un titre de 1 à 150 caractères.',
+			ETAT_INCOMPATIBLE: 'La Soirée est déjà lancée ou terminée.',
+			RESSOURCE_INTROUVABLE: 'Cette Soirée n’existe pas. Crée-en une nouvelle.',
+			RESEAU_INDISPONIBLE: 'Pas de connexion au serveur. Réessaie dans un instant.',
+		};
+		const erreur = document.getElementById('erreur');
+		let soiree = null;
+
+		function signaler(resultat) {
+			erreur.textContent = MESSAGES[resultat.code] ?? 'L’action n’a pas abouti. Réessaie dans un instant.';
+			erreur.hidden = false;
+		}
+
+		function afficher(nouvelle) {
+			soiree = nouvelle;
+			erreur.hidden = true;
+			document.getElementById('creation').hidden = true;
+			document.getElementById('soiree').hidden = false;
+			document.getElementById('titre-panneau').textContent = soiree.titre;
+			document.getElementById('resume').textContent = `${soiree.titre} · ${FORMATS[soiree.format]} · ${PILOTAGES[soiree.pilotage]}`;
+			document.getElementById('etat').textContent = ETATS[soiree.etat];
+			document.getElementById('code').textContent = soiree.codeAcces ?? '';
+			document.getElementById('ouvrir').hidden = soiree.etat !== 'PREPARATION';
+			document.getElementById('ecran').hidden = soiree.etat === 'TERMINEE';
+			document.getElementById('consigne').textContent = soiree.etat === 'PREPARATION'
+				? 'Ouvre la Soirée pour obtenir son code d’accès, puis ouvre l’Écran de salle sur la télé.'
+				: 'Les Joueurs rejoignent avec le code ou le QR code affichés sur l’Écran de salle.';
+			const adresse = new URL(location.href);
+			adresse.searchParams.set('soiree', soiree.id);
+			history.replaceState(null, '', adresse);
+		}
+
+		document.getElementById('creation').addEventListener('submit', async (evenement) => {
+			evenement.preventDefault();
+			const donnees = new FormData(evenement.target);
+			const creation = await appeler('POST', '/api/soirees', { corps: {
+				titre: document.getElementById('titre').value,
+				format: donnees.get('format'),
+				pilotage: donnees.get('pilotage'),
+			} });
+			creation.ok ? afficher(creation.corps) : signaler(creation);
+		});
+
+		document.getElementById('ouvrir').addEventListener('click', async () => {
+			const ouverture = await appeler('POST', `/api/soirees/${encodeURIComponent(soiree.id)}/ouverture`,
+				{ entetes: { 'Idempotency-Key': nouvelleCle() } });
+			ouverture.ok ? afficher(ouverture.corps) : signaler(ouverture);
+		});
+
+		document.getElementById('ecran').addEventListener('click', async () => {
+			// La fenêtre s'ouvre pendant le clic, sinon le navigateur la bloquerait après l'appel.
+			const fenetre = window.open('', 'croustyquizz-ecran-de-salle');
+			const acces = await appeler('POST', `/api/soirees/${encodeURIComponent(soiree.id)}/acces-ecran`);
+			if (!acces.ok) {
+				fenetre?.close();
+				signaler(acces);
+				return;
+			}
+			// La clé passe par le fragment, que l'Écran retire dès sa lecture.
+			const fragment = new URLSearchParams({ soiree: acces.corps.soireeId, cle: acces.corps.cleEcran });
+			const adresse = `/ecran-de-salle.html#${fragment}`;
+			if (fenetre) fenetre.location.href = adresse; else location.href = adresse;
+		});
+
+		const existante = new URLSearchParams(location.search).get('soiree');
+		if (existante) {
+			const lecture = await appeler('GET', `/api/soirees/${encodeURIComponent(existante)}`);
+			lecture.ok ? afficher(lecture.corps) : signaler(lecture);
+		}
+	</script>
+</body>
+</html>

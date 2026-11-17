@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Écran de salle · CroustyQuizz</title>
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/ecran-de-salle.css">
+	<style>
+		/* Les classes d'affichage (flex, grid) ne doivent pas l'emporter sur l'attribut hidden. */
+		[hidden] { display: none !important; }
+		.accueil__titre { margin: 0; font: 800 clamp(2.5rem, 5vw, 5rem)/1 var(--police-chiffres); text-transform: uppercase; color: var(--texte); }
+		.accueil__aide { margin: 0; font-size: clamp(1.25rem, 2vw, 2rem); color: var(--texte-2); }
+		.arrivees { display: flex; flex-wrap: wrap; gap: var(--espace-3); margin: 0; padding: 0; list-style: none; }
+		.arrivees li { padding: var(--espace-2) var(--espace-4); border-radius: var(--rayon); background: var(--fond-3); font-size: clamp(1.25rem, 2vw, 2rem); color: var(--texte); }
+		.accueil__vide { margin: 0; font-size: clamp(1.25rem, 2vw, 2rem); color: var(--texte-3); }
+		.probleme { margin: auto; max-width: 40rem; font-size: 1.5rem; color: var(--texte); text-align: center; }
+	</style>
+</head>
+<body class="salle">
+	<p id="probleme" class="probleme" role="alert" hidden></p>
+	<main id="scene" class="salle__scene" hidden>
+		<section class="salle__principal" aria-labelledby="titre">
+			<h1 id="titre" class="accueil__titre"></h1>
+			<p class="accueil__aide">Scanne le QR code ou tape le code sur ton téléphone pour jouer.</p>
+			<h2 class="accueil__aide">Joueurs arrivés · <span id="nombre" class="chiffres">0</span></h2>
+			<ul id="joueurs" class="arrivees" aria-live="polite"></ul>
+			<p id="vide" class="accueil__vide">Personne pour l’instant. À toi de jouer !</p>
+			<footer class="salle__pied">
+				<span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
+				<span id="etat"></span>
+			</footer>
+		</section>
+		<aside class="salle__cote" aria-label="Rejoindre la Soirée">
+			<div class="talon">
+				<div class="talon__qr"><img id="qr" alt="QR code pour rejoindre la Soirée" hidden></div>
+				<div>
+					<span class="talon__aide">Rejoins la Soirée</span>
+					<span id="code" class="talon__code"></span>
+					<span id="adresse" class="talon__adresse"></span>
+				</div>
+			</div>
+		</aside>
+	</main>
+
+	<script type="module">
+		import { appeler, memoire } from '/js/api.js';
+
+		const CLE = 'croustyquizz.cleEcran';
+		const SOIREE = 'croustyquizz.soireeEcran';
+		// Le direct à chaque arrivée vient avec #8 : d'ici là, l'Écran relit sa vue régulièrement.
+		const RELECTURE_MS = 5000;
+		const ETATS = { PREPARATION: 'En préparation', OUVERTE: 'Ouverte aux Joueurs', EN_COURS: 'En cours', TERMINEE: 'Terminée' };
+
+		// La Console transmet la clé dans le fragment : jamais envoyé au serveur, retiré après lecture.
+		const fragment = new URLSearchParams(location.hash.slice(1));
+		if (fragment.has('cle') && fragment.has('soiree')) {
+			memoire.ecrire(CLE, fragment.get('cle'));
+			memoire.ecrire(SOIREE, fragment.get('soiree'));
+			history.replaceState(null, '', location.pathname);
+		}
+		const cle = memoire.lire(CLE);
+		const soireeId = memoire.lire(SOIREE);
+
+		function signaler(message) {
+			document.getElementById('scene').hidden = true;
+			const probleme = document.getElementById('probleme');
+			probleme.textContent = message;
+			probleme.hidden = false;
+		}
+
+		function afficher({ soiree, joueurs }) {
+			document.getElementById('probleme').hidden = true;
+			document.getElementById('scene').hidden = false;
+			document.title = `${soiree.titre} · Écran de salle`;
+			document.getElementById('titre').textContent = soiree.titre;
+			document.getElementById('etat').textContent = ETATS[soiree.etat] ?? '';
+			document.getElementById('code').textContent = soiree.codeAcces ?? '';
+			// Comme sur la maquette : l'adresse peut passer à la ligne entre l'hôte et la page.
+			const hote = document.createElement('span');
+			hote.textContent = location.host;
+			const page = document.createElement('span');
+			page.textContent = '/manette.html';
+			document.getElementById('adresse').replaceChildren(hote, document.createElement('wbr'), page);
+			const qr = document.getElementById('qr');
+			if (soiree.codeAcces && qr.hidden) {
+				qr.src = `/api/soirees/${encodeURIComponent(soiree.id)}/qrcode`;
+				qr.hidden = false;
+			}
+			const liste = document.getElementById('joueurs');
+			liste.replaceChildren(...joueurs.map((joueur) => {
+				const element = document.createElement('li');
+				element.textContent = joueur.pseudo;
+				return element;
+			}));
+			document.getElementById('nombre').textContent = joueurs.length;
+			document.getElementById('vide').hidden = joueurs.length > 0;
+		}
+
+		async function relire() {
+			const etat = await appeler('GET', `/api/soirees/${encodeURIComponent(soireeId)}/etat/salle`, { secret: cle });
+			if (etat.ok) {
+				afficher(etat.corps.vue);
+			} else if (etat.statut === 401 || etat.statut === 404) {
+				memoire.oublier(CLE);
+				signaler('Cet accès a expiré. Rouvre l’Écran de salle depuis la Console d’animation.');
+				return;
+			}
+			// Une coupure passagère garde l'affichage : on réessaie au prochain tour.
+			setTimeout(relire, RELECTURE_MS);
+		}
+
+		if (!cle || !soireeId) {
+			signaler('Ouvre l’Écran de salle depuis la Console d’animation.');
+		} else {
+			relire();
+		}
+	</script>
+</body>
+</html>

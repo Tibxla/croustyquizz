@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Manette · CroustyQuizz</title>
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/manette.css">
+	<style>
+		/* Les classes d'affichage (flex, grid) ne doivent pas l'emporter sur l'attribut hidden. */
+		[hidden] { display: none !important; }
+		.erreur { margin: 0; padding: var(--espace-3) var(--espace-4); border-radius: var(--rayon); background: var(--fond-3); color: var(--texte); }
+		/* Le formulaire et l'attente laissent leurs enfants dans la colonne de la Manette : seuls les boutons vont en bas. */
+		#arrivee, #attente { display: contents; }
+		.code-acces { font-family: var(--police-chiffres); letter-spacing: 0.2em; text-transform: uppercase; }
+	</style>
+</head>
+<body>
+	<div class="manette">
+		<header class="manette__entete"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
+
+		<form id="arrivee" novalidate>
+			<h1 class="manette__titre">Rejoins la Soirée</h1>
+			<p class="manette__aide">Le code s'affiche sur l'Écran de salle. Choisis un pseudo, c'est tout : pas de compte.</p>
+			<div class="champ">
+				<label for="code">Code de la Soirée</label>
+				<input id="code" name="code" class="code-acces" autocomplete="off" autocapitalize="characters"
+					spellcheck="false" maxlength="12" required>
+			</div>
+			<div class="champ">
+				<label for="pseudo">Ton pseudo</label>
+				<input id="pseudo" name="pseudo" autocomplete="nickname" maxlength="30" required>
+				<span class="champ__aide">Il s'affiche sur l'Écran de salle. 30 caractères au plus.</span>
+			</div>
+			<div class="manette__actions">
+				<p id="erreur" class="erreur" role="alert" hidden></p>
+				<button id="rejoindre" class="bouton bouton--action bouton--grand">Rejoindre</button>
+			</div>
+		</form>
+
+		<section id="attente" hidden aria-live="polite">
+			<h1 class="manette__titre" id="titre-soiree"></h1>
+			<p class="manette__aide">Tu es dans la Soirée sous le pseudo <strong id="mon-pseudo"></strong>.</p>
+			<p class="manette__aide">On attend le début. Garde cette page ouverte, ton téléphone suivra le jeu.</p>
+		</section>
+	</div>
+
+	<script type="module">
+		import { appeler, memoire } from '/js/api.js';
+
+		const JETON = 'croustyquizz.jeton';
+		const SOIREE = 'croustyquizz.soiree';
+		const formulaire = document.getElementById('arrivee');
+		const champCode = document.getElementById('code');
+		const champPseudo = document.getElementById('pseudo');
+		const bouton = document.getElementById('rejoindre');
+		const erreur = document.getElementById('erreur');
+
+		const MESSAGES = {
+			CODE_ACCES_INVALIDE: 'Ce code ne mène à aucune Soirée ouverte. Vérifie-le sur l’Écran de salle : la Soirée n’a peut-être pas encore commencé, ou elle est terminée.',
+			DONNEES_INVALIDES: 'Choisis un pseudo de 1 à 30 caractères.',
+			RESEAU_INDISPONIBLE: 'Pas de connexion pour l’instant. Vérifie ton réseau puis réessaie.',
+		};
+
+		function afficherErreur(message) {
+			erreur.textContent = message;
+			erreur.hidden = false;
+		}
+
+		function afficherAttente(titre, pseudo) {
+			document.getElementById('titre-soiree').textContent = titre;
+			document.getElementById('mon-pseudo').textContent = pseudo;
+			formulaire.hidden = true;
+			document.getElementById('attente').hidden = false;
+		}
+
+		// Le QR code met le code dans le fragment : jamais envoyé au serveur, retiré après lecture.
+		const fragment = new URLSearchParams(location.hash.slice(1));
+		if (fragment.has('code')) {
+			champCode.value = fragment.get('code');
+			history.replaceState(null, '', location.pathname);
+		}
+
+		async function reprendre() {
+			const jeton = memoire.lire(JETON);
+			const soiree = memoire.lire(SOIREE);
+			if (!jeton || !soiree) return false;
+			const etat = await appeler('GET', `/api/soirees/${encodeURIComponent(soiree)}/etat/manette`, { secret: jeton });
+			if (!etat.ok) {
+				memoire.oublier(JETON);
+				return false;
+			}
+			const { vue } = etat.corps;
+			const moi = vue.joueurs.find((joueur) => joueur.id === vue.joueurId);
+			afficherAttente(vue.soiree.titre, moi?.pseudo ?? '');
+			return true;
+		}
+
+		formulaire.addEventListener('submit', async (evenement) => {
+			evenement.preventDefault();
+			erreur.hidden = true;
+			const code = champCode.value.replace(/\s/g, '').toUpperCase();
+			if (code.length !== 6) {
+				afficherErreur('Le code de la Soirée fait 6 caractères.');
+				champCode.focus();
+				return;
+			}
+			if (!champPseudo.value.trim()) {
+				afficherErreur(MESSAGES.DONNEES_INVALIDES);
+				champPseudo.focus();
+				return;
+			}
+			bouton.disabled = true;
+			const arrivee = await appeler('POST', '/api/soirees/rejoindre', { corps: { codeAcces: code, pseudo: champPseudo.value } });
+			bouton.disabled = false;
+			if (!arrivee.ok) {
+				afficherErreur(MESSAGES[arrivee.code] ?? 'Impossible de rejoindre la Soirée pour l’instant. Réessaie dans un instant.');
+				return;
+			}
+			const { soireeId, joueur, jetonReconnexion } = arrivee.corps;
+			memoire.ecrire(JETON, jetonReconnexion);
+			memoire.ecrire(SOIREE, soireeId);
+			const etat = await appeler('GET', `/api/soirees/${encodeURIComponent(soireeId)}/etat/manette`, { secret: jetonReconnexion });
+			afficherAttente(etat.ok ? etat.corps.vue.soiree.titre : 'Tu es dans la Soirée', joueur.pseudo);
+		});
+
+		if (!(await reprendre())) {
+			(champCode.value ? champPseudo : champCode).focus();
+		}
+	</script>
+</body>
+</html>

@@ -207,6 +207,17 @@ class SoireeHttpTest {
 	}
 
 	@Test
+	void lesTroisEcransDuParcoursSontServis() {
+		for (String page : new String[] { "/console.html", "/ecran-de-salle.html", "/manette.html" }) {
+			var reponse = envoyer(HttpMethod.GET, page, null);
+			assertThat(reponse.getStatusCode().value()).as(page).isEqualTo(200);
+			assertThat(reponse.getHeaders().getContentType().isCompatibleWith(MediaType.TEXT_HTML)).as(page).isTrue();
+			assertThat(reponse.getBody()).as(page).contains("/js/api.js");
+		}
+		assertThat(envoyer(HttpMethod.GET, "/js/api.js", null).getBody()).contains("export async function appeler");
+	}
+
+	@Test
 	void uneSoireeAbsenteDeLaBaseResteCelleDeLaDemonstration() throws Exception {
 		UUID soiree = UUID.randomUUID();
 		String jetonDemo = "demo:ECRAN:" + soiree + ":" + UUID.randomUUID();
