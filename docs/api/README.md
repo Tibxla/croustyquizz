@@ -16,7 +16,7 @@ Les opérations HTTP sont identifiées par leur `operationId` : les exemples uti
 
 Le premier parcours est : inscription du premier Animateur d’un Lieu, connexion, création d’une Soirée **Solo / Manuel**, préparation d’une Manche de **Quiz**, ouverture aux Joueurs, lancement, trois Questions et Classement général final. Les Questions de ce parcours sont rédigées par l’Animateur ; la banque française et l’import relèvent des extensions du Quiz.
 
-Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions. Chaque Question a quatre propositions distinctes et une seule solution.
+Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions : `preparerQuestions` sur une telle Manche répond `409 ETAT_INCOMPATIBLE`, sans modification. Chaque Question a quatre propositions distinctes et une seule solution.
 
 La File d’attente du Karaoké étend ce parcours ci-dessous. Le Blind test, le Freestyle, le Format Équipe, le Pilotage Automatique, les invitations d’Animateurs, la modération et le serveur MCP étendront ce contrat. Le Buzz est inclus uniquement pour le scénario du socle #7/#8, avant le lancement d’une Manche ; il est refusé pendant le Quiz. Son arbitrage en Blind test relève de #17. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
 
@@ -104,7 +104,7 @@ Cette tranche fixe la recherche de Chansons, l’inscription personnelle et la g
 
 Le nouvel inscrit rejoint la fin du Tour ouvert s’il n’y a pas chanté, sinon le suivant. Son deuxième Passage vient après le premier de chacun des autres. L’Animateur place un Passage dans son Tour ; pour le faire passer juste après le courant, il pose une priorité unique, qui compte comme le Tour de l’Interprète. La priorité conserve l’ordre normal sous-jacent ; le retirer ou le remplacer restaure cet ordre. `true` remplace la priorité, `false` retire celle de la cible ou reste sans effet. Seuls les Passages affectés changent de compteur.
 
-La limite porte sur les Passages `EN_ATTENTE` de chaque Interprète. La baisser ne retire rien. Une désinscription suivie d’une réinscription rejoint la fin du Tour admissible. Pas de doublon de Chanson personnel en attente ; deux Joueurs peuvent choisir la même Chanson. Un retardataire présent peut s’inscrire : `eligiblePourMancheActive` n’est jamais une garde Karaoké.
+La limite, de 1 à 20, porte sur les Passages `EN_ATTENTE` de chaque Interprète. La baisser ne retire rien. Une désinscription suivie d’une réinscription rejoint la fin du Tour admissible. Pas de doublon de Chanson personnel en attente ; deux Joueurs peuvent choisir la même Chanson. Un retardataire présent peut s’inscrire : `eligiblePourMancheActive` n’est jamais une garde Karaoké.
 
 Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. La future extraction (#22) fera `EN_ATTENTE` → `APPELE`, avec le courant séparé de la File d’attente. Un appel sauté après 30 secondes sans « Je suis prêt » compte comme chanté. Aucun nombre de Passages n’est fixé. L’Animateur termine la Manche ; en Automatique, la fin naturelle sera raccordée par #22 quand la File d’attente est vide à la fin d’un Passage, jamais au seul retrait. File vide au démarrage ou après le dernier retrait : elle reste ouverte. Cette tranche n’ajoute aucun minuteur.
 
@@ -112,7 +112,7 @@ Recherche et gestion exigent une Soirée `EN_COURS` et sa Manche Karaoké active
 
 ### Recherche et inscription
 
-`chansonId` est une chaîne opaque stable attribuée par le serveur, sans identifiant ni préfixe de fournisseur public. Inconnu ou disparu : `404 RESSOURCE_INTROUVABLE`. Le détail de la Chanson est figé à l’inscription. Aucune source audio ni présence d’un fichier local sur l’Écran de salle n’est exigée pour s’inscrire ; seuls comptent les paroles synchronisées et une durée connue.
+`chansonId` est une chaîne opaque stable attribuée par le serveur, sans identifiant ni préfixe de fournisseur public, de 1 à 128 caractères ; en chemin comme dans `InscriptionPassage`, une valeur plus longue donne `400 REQUETE_INVALIDE`. Inconnu ou disparu : `404 RESSOURCE_INTROUVABLE`. Le détail de la Chanson est figé à l’inscription. Aucune source audio ni présence d’un fichier local sur l’Écran de salle n’est exigée pour s’inscrire ; seuls comptent les paroles synchronisées et une durée connue.
 
 La saisie brute de recherche est bornée par le schéma à 1..120 points de code. Le serveur applique NFC, regroupe les espaces Unicode, supprime ceux des extrémités, puis applique la limite configurée entre 1 et 120, qui ne peut que réduire la limite. Une recherche vide, sans lettre ou chiffre Unicode ou trop longue donne `REQUETE_INVALIDE`, sans troncature. `rechercheId` est un UUID client renvoyé tel quel, sans reçu ; la Manette ignore une réponse tardive qui ne correspond plus à sa recherche. Aucun résultat donne `200` avec `chansons:[]` ; une panne reste distincte.
 
@@ -134,11 +134,11 @@ Une transaction unique enregistre la mutation. Après validation de cette transa
 
 ### Routes et codes de refus
 
-`M` désigne `/api/soirees/{soireeId}/manches/{mancheId}`. UUID de chemin requis. A = Animateur du Lieu, J = Joueur présent de la Soirée (inscripteur pour la désinscription). Les codes de chaque groupe ci-dessous font partie de chaque ligne qui le cite ; OpenAPI conserve les réponses partagées `Erreur4xx` et `Erreur503`.
+`M` désigne `/api/soirees/{soireeId}/manches/{mancheId}`. UUID de chemin requis. A = Animateur du Lieu, J = Joueur présent de la Soirée (inscripteur pour la désinscription). Les codes de chaque groupe ci-dessous font partie de chaque ligne qui le cite ; OpenAPI conserve les réponses partagées `Erreur4xx` et `Erreur503`. Chaque opération OpenAPI nomme ses propres codes et renvoie à ce tableau pour leurs conditions.
 
 | Groupe | Statut, code et condition |
 |---|---|
-| N | 400 `REQUETE_INVALIDE` (saisie/schéma), 401 `AUTHENTIFICATION_REQUISE` (identité), 403 `ACCES_REFUSE` (rôle), 404 `RESSOURCE_INTROUVABLE` (inconnu/hors portée, attente d’autrui, Chanson disparue) |
+| N | 400 `REQUETE_INVALIDE` (saisie/schéma, dont `chansonId` de plus de 128 caractères et limite hors 1..20), 401 `AUTHENTIFICATION_REQUISE` (identité), 403 `ACCES_REFUSE` (rôle), 404 `RESSOURCE_INTROUVABLE` (inconnu/hors portée, attente d’autrui, Chanson disparue) |
 | V | 409 `ETAPE_INACTIVE` : hors portée active, sauf Manche terminée pour une mutation |
 | X | 409 `ETAT_INCOMPATIBLE` : Manche connue terminée, après reçu et avant garde du Passage |
 | D | 409 `ENVOI_REUTILISE` : même clé avec empreinte différente |
@@ -149,21 +149,21 @@ Une transaction unique enregistre la mutation. Après validation de cette transa
 
 | Méthode et route | operationId | Acteur et entrée | Succès | Refus |
 |---|---|---|---|---|
-| POST `/api/soirees/{soireeId}/manches` | `ajouterManche` | A, `CreationManche` accepte KARAOKE | 201 `Manche` | Inchangés ; aucun Idempotency-Key ajouté |
+| POST `/api/soirees/{soireeId}/manches` | `ajouterManche` | A, `CreationManche` accepte KARAOKE | 201 `Manche` | Inchangés ; limite hors 1..20 : 400 `REQUETE_INVALIDE` ; aucun Idempotency-Key ajouté |
 | GET `M/chansons` | `rechercherChansons` | A/J, query `recherche` et `rechercheId` requis | 200 `ResultatsChansons` | N,V,T,S ; aucun 422 |
-| GET `M/chansons/{chansonId}` | `consulterChanson` | A/J, `chansonId` opaque, sans corps | 200 `FicheChanson` | N,V,T,S ; aucun 422 |
+| GET `M/chansons/{chansonId}` | `consulterChanson` | A/J, `chansonId` opaque de 1 à 128 caractères, sans corps | 200 `FicheChanson` | N,V,T,S ; aucun 422 |
 | POST `M/passages` | `inscrirePassage` | J, `InscriptionPassage` | 201 `AccusePassage` | N,V,X,D,T,S ; 409 `PASSAGE_DEJA_INSCRIT`/`LIMITE_ATTEINTE` ; 422 `CHANSON_INDISPONIBLE` |
 | POST `M/passages/{passageId}/desinscription` | `desinscrirePassage` | J, `DesinscriptionPassage` | 200 `AccusePassage` | N,V,X,D,T,P |
 | POST `M/passages/{passageId}/retrait` | `retirerPassage` | A, `RetraitPassage` | 200 `AccusePassage` | N,V,X,D,T,P,C |
 | PUT `M/passages/{passageId}/placement` | `deplacerPassage` | A, `PlacementPassage` | 200 `AccusePassage` | N,V,X,D,T,P,C ; 409 `ROTATION_PROTEGEE` ; 422 `DONNEES_INVALIDES` |
 | PUT `M/file-attente/priorite` | `definirPrioritePassage` | A, `PrioritePassage` | 200 `AccuseFileAttente` | N,V,X,D,T,P,C |
-| PUT `M/file-attente/limite` | `reglerLimitePassages` | A, `LimitePassages` | 200 `AccuseFileAttente` | N,V,X,D,T,C ; aucune garde P |
+| PUT `M/file-attente/limite` | `reglerLimitePassages` | A, `LimitePassages` (1 à 20) | 200 `AccuseFileAttente` | N,V,X,D,T,C ; aucune garde P |
 
-Les paramètres de chemin et de requête sont des schémas en ligne dans OpenAPI pour être compilés seuls par le vérificateur ; `RechercheChanson` sert aussi dans `ResultatsChansons`. Les autres opérations Soirée/Quiz gardent leur contrat du socle #78, exercé sans extension.
+Les paramètres de chemin et de requête sont des schémas en ligne dans OpenAPI pour être compilés seuls par le vérificateur ; `RechercheChanson` sert aussi dans `ResultatsChansons`. Les autres opérations Soirée/Quiz gardent leur contrat du socle #78, exercé sans extension, sauf `preparerQuestions` : sur une Manche de Karaoké, `409 ETAT_INCOMPATIBLE`.
 
 ### Projections et interfaces
 
-Les nombres de la tranche sont des entiers sûrs JavaScript, de 0 à 9007199254740991 (dès 1 pour limites, Tours, numéros, positions et durées de Chanson). Les dates sont UTC. Les objets sont fermés ; les extensions par `allOf` utilisent `unevaluatedProperties:false`, et `KaraokeCommun` reste ouvert pour les composer. Les tableaux vides sont permis, sauf les Interprètes (1 à 4). Les schémas ne calculent pas la rotation.
+Les nombres de la tranche sont des entiers sûrs JavaScript, de 0 à 9007199254740991 (dès 1 pour Tours, numéros, positions et durées de Chanson). La limite de Passages en attente va de 1 à 20, à la création comme au réglage. Les dates sont UTC. Les objets sont fermés ; les extensions par `allOf` utilisent `unevaluatedProperties:false`, et `KaraokeCommun` reste ouvert pour les composer. Les tableaux vides sont permis, sauf les Interprètes (1 à 4). Les schémas ne calculent pas la rotation.
 
 Les compteurs excluent le courant, les positions couvrent 1..N, et `nombreAutresPassages = nombreEnAttente - prochainsPassages.length`. `numero` est immuable, commence à 1, continue entre les Manches de la Soirée et n’est jamais réutilisé. La teinte se calcule dans l’interface par `numero mod 4` : orange (0), eau (1), bleu (2), rose (3) ; aucune teinte dans le JSON. Dans cette tranche, `courant` reste nul ; `CourantPourFile` réserve les états `APPELE/EN_COURS/EN_PAUSE/VOTE` aux #22/#23.
 
@@ -179,7 +179,7 @@ La Manette propose recherche, fiche, inscription/retrait personnels et tickets ;
 
 | Clé | Valeur |
 |---|---|
-| `croustyquizz.passage.limitePassagesEnAttente` | 1 |
+| `croustyquizz.passage.limitePassagesEnAttente` | 1 (de 1 à 20) |
 | `croustyquizz.passage.delaiAppelSecondes` | 30 |
 | `croustyquizz.karaoke.longueurRechercheMax` | 120 points de code, réduction seule |
 | `croustyquizz.karaoke.delaiConsultationNavigateurMs` | 8000 |
@@ -196,7 +196,7 @@ npm ci --prefix tools/api --ignore-scripts --no-fund --no-audit
 npm test --prefix tools/api
 ```
 
-Le job `contrats-api` de GitHub Actions exécute les mêmes commandes. Les versions des validateurs et leurs dépendances sont verrouillées dans `tools/api/package-lock.json`. Les vérifications portent sur la structure OpenAPI/AsyncAPI, les références locales, la compilation de tous les schémas, les requêtes et réponses des deux parcours, les événements, les cas de refus de données sensibles et leur raccordement entre capture et tampon via le vrai `suivreVue`. Chaque YAML paramètre `destination`, `routeEtat` et `typeEvenementFinal`, avec ses captures, événements couverts et doublon final. Projections, chronologies et reçus sont isolés par parcours ; la couverture des `operationId` porte sur leur union. Les reçus 200/201 sont comparés par acteur, route concrète et envoiId, statut et corps compris. Les cas couvrent les trois blocs Karaoké, la confidentialité du Quiz, les motifs, limites de recherche et de configuration, commandes fermées, fin et réessais transitoires. Les exemples utilisent des UUID, secrets et adresses fictifs.
+Le job `contrats-api` de GitHub Actions exécute les mêmes commandes. Les versions des validateurs et leurs dépendances sont verrouillées dans `tools/api/package-lock.json`. Les vérifications portent sur la structure OpenAPI/AsyncAPI, les références locales, la compilation de tous les schémas, les requêtes et réponses des deux parcours, les événements, les cas de refus de données sensibles et leur raccordement entre capture et tampon via le vrai `suivreVue`. Chaque YAML paramètre `destination`, `routeEtat` et `typeEvenementFinal`, avec ses captures, événements couverts et doublon final. Projections, chronologies et reçus sont isolés par parcours ; la couverture des `operationId` porte sur leur union. Les reçus 200/201 sont comparés par acteur, route concrète et envoiId, statut et corps compris. Les cas couvrent les trois blocs Karaoké, la confidentialité du Quiz, les motifs, limites de recherche et de configuration, bornes de la limite de Passages et de `chansonId`, commandes fermées, fin et réessais transitoires. Les exemples utilisent des UUID, secrets et adresses fictifs.
 
 Ces contrôles **ne prouvent pas la conformité d’un serveur non implémenté**. Les futures tâches #5, #6, #7, #8, #10, #12 et #14 devront vérifier les mêmes échanges contre Spring Boot : isolement entre Lieux et Joueurs, abonnements non autorisés, CSRF, autorité temporelle, pause/reprise, perte de confirmation, répétition après clôture, modification refusée et événement survenant pendant la reconnexion. Les tests utiliseront PostgreSQL via Testcontainers, une Horloge factice, des commandes HTTP et des clients STOMP ; la charge de soixante Joueurs reste à mesurer sur ce parcours réel.
 

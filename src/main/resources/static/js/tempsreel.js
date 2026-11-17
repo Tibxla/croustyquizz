@@ -1,3 +1,6 @@
+import { transportStomp } from './transport.mjs';
+export { creerTransport, transportStomp } from './transport.mjs';
+
 // Module ES sans dépendance. Le client STOMP réel est chargé par la page.
 // Les pages ne manipulent que des vues complètes, jamais les Révisions.
 export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }, adaptations = {}) {
@@ -34,7 +37,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 	function recommencer(suivi) {
 		if (!actif(suivi)) return;
 		nettoyer();
-		surEtat('reconnexion');
+		surEtat('coupure');
 		if (!arrete) minuterie = programmer(ouvrir, delaiReconnexion);
 	}
 
@@ -45,7 +48,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 	function appliquer(suivi, message) {
 		if (message.revision <= suivi.revision) return;
 		if (message.revision !== suivi.revision + 1) throw new Error('Révision manquante');
-		surVue(message.donnees, { type: message.type });
+		surVue(message.donnees, { source: 'evenement', type: message.type });
 		suivi.revision = message.revision;
 	}
 
@@ -81,7 +84,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 			if (!Number.isFinite(heure) || !corps.vue) throw new Error('Capture invalide');
 			heureCapture = heure;
 			instantCapture = maintenant();
-			surVue(corps.vue, { type: 'capture' });
+			surVue(corps.vue, { source: 'capture', type: 'capture' });
 			suivi.revision = corps.revision;
 			for (const message of suivi.tampon.sort((a, b) => a.revision - b.revision)) {
 				if (!actif(suivi)) return;
@@ -96,30 +99,39 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 
 	function ouvrir() {
 		if (arrete) return;
+		surEtat('synchronisation');
 		const suivi = { id: nouvelIdentifiant(), tampon: [], annulation: new AbortController() };
 		courant = suivi;
-		suivi.connexion = transport.ouvrir({
-			surConnexion() {
-				if (!actif(suivi)) return;
-				try {
-					suivi.connexion.abonner(destination, suivi.id);
-					if (actif(suivi)) void capturer(suivi);
-				} catch {
-					recommencer(suivi);
-				}
-			},
-			surMessage: (message) => recevoir(suivi, message),
-			surDeconnexion: () => recommencer(suivi),
-			surErreur: () => recommencer(suivi),
-		});
+		try {
+			suivi.connexion = transport.ouvrir({
+				surConnexion() {
+					if (!actif(suivi)) return;
+					try {
+						suivi.connexion.abonner(destination, suivi.id);
+						if (actif(suivi)) void capturer(suivi);
+					} catch {
+						recommencer(suivi);
+					}
+				},
+				surMessage: (message) => recevoir(suivi, message),
+				surDeconnexion: () => recommencer(suivi),
+				surErreur: () => recommencer(suivi),
+			});
+		} catch {
+			recommencer(suivi);
+		}
 	}
 
-	surEtat('synchronisation');
 	ouvrir();
 	return {
 		arreter() {
 			arrete = true;
 			nettoyer();
+		},
+		resynchroniser() {
+			if (arrete) return;
+			nettoyer();
+			ouvrir();
 		},
 		maintenantServeur: () => heureCapture === undefined ? null : heureCapture + maintenant() - instantCapture,
 	};
@@ -131,35 +143,3 @@ function creerUuid() {
 	return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (chiffre) =>
 		(chiffre ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (chiffre / 4)))).toString(16));
 }
-
-const transportStomp = {
-	ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur }) {
-		const protocole = location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const client = new globalThis.StompJs.Client({
-			brokerURL: `${protocole}//${location.host}/ws`,
-			reconnectDelay: 0, // Une reprise appartient toujours à un nouvel abonnement.
-			connectionTimeout: 10000,
-			heartbeatIncoming: 10000,
-			heartbeatOutgoing: 10000,
-			onConnect: surConnexion,
-			onWebSocketClose: surDeconnexion,
-			onStompError: surErreur,
-			onWebSocketError: surErreur,
-		});
-		client.activate();
-		return {
-			abonner(destination, id) {
-				client.subscribe(destination, (trame) => {
-					try { surMessage(JSON.parse(trame.body)); } catch { surErreur(); }
-				}, { id });
-			},
-			fermer() { void client.deactivate(); },
-		};
-	},
-	async capturer(route, abonnementId, signal) {
-		const url = new URL(route, location.href);
-		url.searchParams.set('abonnementId', abonnementId);
-		const reponse = await fetch(url, { signal, cache: 'no-store' });
-		return { statut: reponse.status, corps: await reponse.json() };
-	},
-};

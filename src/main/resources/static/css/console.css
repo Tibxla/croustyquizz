@@ -96,6 +96,8 @@
     gap: var(--espace-4);
     padding: var(--espace-4);
   }
+  .console .panneau { padding: var(--espace-4); }
+  .console .panneau h2 small { display: none; }
   .panneau { padding: var(--espace-4); }
   .panneau h2 small { display: none; }
   /* Sur tablette, les commandes secondaires gardent leur icône et leur nom accessible. */

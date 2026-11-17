@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Identité de démonstration · CroustyQuizz</title>
+  <link rel="stylesheet" href="/css/croustyquizz.css">
+  <script type="module" src="/js/page-identite.mjs"></script>
+</head>
+<body>
+<main class="identite">
+  <span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
+  <h1>Identité de démonstration</h1>
+  <p>Choisis ton écran pour essayer les pages de la Soirée. Cet accès temporaire est disponible en développement et en recette.</p>
+  <form>
+    <div class="champ">
+      <label for="soiree">UUID de la Soirée</label>
+      <input id="soiree" name="soiree" required autocomplete="off" spellcheck="false" aria-describedby="aide-soiree erreur-identite">
+      <p class="champ__aide" id="aide-soiree">Utilise le même UUID sur les trois écrans.</p>
+    </div>
+    <div class="champ">
+      <label for="role">Ton rôle</label>
+      <select id="role" name="role"><option value="JOUEUR">Joueur · Manette</option><option value="ANIMATEUR">Animateur · Console d’animation</option><option value="ECRAN">Écran de salle</option></select>
+    </div>
+    <label class="identite__option"><input type="checkbox" name="factice" checked>Afficher le module factice pour la Manche en cours</label>
+    <p class="champ--erreur" id="erreur-identite" role="alert" hidden></p>
+    <p class="envoi" role="status" data-envoi hidden></p>
+    <button class="bouton bouton--action bouton--grand" type="submit">Ouvrir cet écran</button>
+  </form>
+  <p class="coquille__note">L’identité reste dans cet onglet. Pour regarder les trois écrans, ouvre cette page dans trois onglets et choisis un rôle dans chacun.</p>
+</main>
+</body>
+</html>

@@ -366,7 +366,7 @@
       {
         "name": "ombre",
         "value": "0 10px 24px rgb(0 0 0 / 0.45)",
-        "purpose": "Ombre de détachement : le corps d'un ticket détaché, et lui seul."
+        "purpose": "Ombre de détachement : le corps d'un ticket détaché et le dialogue modal."
       },
       {
         "name": "ombre-douce",
@@ -497,6 +497,22 @@
       "description": "Le mot-symbole tel qu'il ouvre la barre de pilotage de la Console.",
       "html": "<header class=\"ds-pilotage\"><span class=\"ds-marque\">Crousty<span class=\"ds-marque__accent\">Quizz</span></span><span class=\"ds-pilotage__mode\">Karaoké</span><button class=\"ds-pilotage__action\">Appeler le Passage suivant</button></header>",
       "css": ".ds-pilotage { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--fond-2); border-bottom: 1px solid var(--fond-3); box-shadow: 0 4px 12px rgb(0 0 0 / 0.35); color: var(--texte); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-marque { display: inline-flex; align-items: baseline; gap: 0.15em; font: 800 1.5rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); letter-spacing: 0.02em; text-transform: uppercase; } .ds-marque__accent { padding: 0.05em 0.25em 0.1em; border-radius: 4px; background: var(--orange); color: var(--encre); } .ds-pilotage__mode { font: 800 1.5rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); letter-spacing: 0.04em; text-transform: uppercase; } .ds-pilotage__action { margin-left: auto; min-height: 44px; padding: 8px 16px; border: 2px solid var(--citron); border-radius: var(--rayon); background: var(--citron); color: var(--encre); font: 700 1rem/1.1 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); cursor: pointer; } .ds-pilotage__action:hover { background: var(--citron-appuye); border-color: var(--citron-appuye); } .ds-pilotage__action:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }"
+    },
+    {
+      "name": "Message d'erreur de champ",
+      "kind": "input",
+      "refersTo": "champ-erreur",
+      "description": "Message sous le champ, relié par aria-describedby ; aria-invalid signale le refus sans dépendre de la couleur.",
+      "html": "<div class=\"ds-champ-erreur\"><label for=\"ds-pseudo-erreur\">Ton pseudo</label><input id=\"ds-pseudo-erreur\" aria-invalid=\"true\" aria-describedby=\"ds-pseudo-message\"><p class=\"ds-champ-erreur__message\" id=\"ds-pseudo-message\">Renseigne ton pseudo.</p></div>",
+      "css": ".ds-champ-erreur { display: flex; flex-direction: column; gap: var(--espace-2); max-width: 360px; color: var(--texte); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-champ-erreur label { font-weight: 700; } .ds-champ-erreur input { min-width: 0; max-width: 100%; min-height: 56px; padding: var(--espace-3) var(--espace-4); border: 2px solid var(--fond-4); border-radius: var(--rayon); background: var(--fond-1); color: var(--texte); font: 400 1.25rem/1.2 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); caret-color: var(--citron); } .ds-champ-erreur input:focus-visible { border-color: var(--citron); outline: 3px solid var(--citron); outline-offset: 2px; } .ds-champ-erreur__message { margin: 0; padding: var(--espace-2) var(--espace-3); border-radius: var(--rayon); background: var(--refus-fond); color: var(--refus); }"
+    },
+    {
+      "name": "Dialogue modal",
+      "kind": "custom",
+      "refersTo": "dialogue",
+      "description": "Aperçu statique ouvert du dialogue natif. Dans l’application, ouvrirDialogue utilise showModal(), place le focus et le rend au déclencheur à la fermeture.",
+      "html": "<dialog open class=\"ds-dialogue\" aria-labelledby=\"ds-dialogue-titre\"><h2 id=\"ds-dialogue-titre\">Confirmer l’action</h2><p>Vérifie ton choix avant de continuer.</p><form method=\"dialog\"><button class=\"ds-dialogue__bouton\" autofocus>Fermer</button></form></dialog>",
+      "css": ".ds-dialogue { position: relative; margin: 0; width: min(36rem, calc(100% - 32px)); max-height: calc(100svh - 48px); padding: var(--espace-5); border: 0; border-radius: var(--rayon-grand); background: var(--fond-2); color: var(--texte); box-shadow: var(--ombre); font: 400 1rem/1.45 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-dialogue::backdrop { background: rgb(28 20 16 / 0.8); } .ds-dialogue > * { margin: 0; } .ds-dialogue > * + * { margin-top: var(--espace-4); } .ds-dialogue h2 { font-size: 1.5rem; line-height: 1.35; } .ds-dialogue__bouton { min-height: 44px; padding: var(--espace-2) var(--espace-4); border: 2px solid var(--fond-4); border-radius: var(--rayon); background: transparent; color: var(--texte); font: 700 1rem/1.1 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); cursor: pointer; transition: background-color 120ms var(--sortie), border-color 120ms var(--sortie), transform 120ms var(--sortie); } .ds-dialogue__bouton:hover { border-color: var(--texte-3); background: var(--fond-2); } .ds-dialogue__bouton:active { transform: translateY(1px); } .ds-dialogue:focus-visible, .ds-dialogue__bouton:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }"
     }
   ],
   "narrative": {
@@ -553,7 +569,7 @@
       },
       {
         "name": "La règle de l'Ombre du détachement",
-        "body": "Une ombre portée signifie qu'un ticket a quitté le rouleau. Hors du ticket détaché et de la barre de pilotage, rien ne flotte.",
+        "body": "Une ombre portée signifie qu'un ticket a quitté le rouleau ou qu'un dialogue exige une décision. Hors du ticket détaché, du dialogue modal et de la barre de pilotage, rien ne flotte.",
         "section": "elevation"
       },
       {
@@ -583,7 +599,7 @@
       "**Don't** laisser une couleur porter seule une information.",
       "**Don't** poser un dégradé de couleur sur un ticket.",
       "**Don't** ajouter d'ornement autre que la perforation et ses encoches.",
-      "**Don't** faire flotter une surface avec une ombre hors du ticket détaché et de la barre de pilotage.",
+      "**Don't** faire flotter une surface avec une ombre hors du ticket détaché, du dialogue modal et de la barre de pilotage.",
       "**Don't** couper l'adresse d'accès sur un trait d'union.",
       "**Don't** charger une police, une icône ou un script depuis une ressource externe.",
       "**Don't** glisser vers la boîte de nuit violette à néons ni vers le tableau de bord blanc de logiciel en ligne."
