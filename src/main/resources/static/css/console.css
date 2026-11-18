@@ -1,0 +1,243 @@
+/*
+ * Console d'animation : l'Animateur pilote entre deux commandes au comptoir.
+ * La barre de pilotage reste toujours visible ; « En cours » et « À venir »
+ * sont séparés ; chercher ou préparer ne cache jamais le pilotage.
+ */
+
+.console {
+  --arrache-x: 6px;
+  --arrache-y: 4px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  --fond-encoche: var(--fond-1);
+}
+
+.pilotage {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-3) var(--espace-6);
+  padding: var(--espace-3) var(--espace-5);
+  background: var(--fond-2);
+  border-bottom: 1px solid var(--fond-3);
+  box-shadow: var(--ombre-douce);
+}
+.pilotage__soiree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pilotage__soiree small {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
+.pilotage__manche {
+  display: flex;
+  flex: 1 1 240px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-1) var(--espace-4);
+  min-width: 0;
+}
+.pilotage__mode {
+  font: 800 1.5rem/1 var(--police-chiffres);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pilotage__progression {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+  white-space: nowrap;
+}
+.pilotage__commandes {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--espace-2);
+}
+
+.indicateurs {
+  display: flex;
+  gap: var(--espace-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+.indicateurs li {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--espace-2);
+}
+.indicateurs .ok::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--eau);
+}
+
+.plan {
+  display: grid;
+  grid-template-columns: minmax(360px, 440px) 1fr;
+  gap: var(--espace-6);
+  padding: var(--espace-5);
+  align-items: start;
+}
+@media (max-width: 1200px) {
+  .plan {
+    grid-template-columns: minmax(300px, 360px) 1fr;
+    gap: var(--espace-4);
+    padding: var(--espace-4);
+  }
+  .console .panneau { padding: var(--espace-4); }
+  .console .panneau h2 small { display: none; }
+  .panneau { padding: var(--espace-4); }
+  .panneau h2 small { display: none; }
+  /* Sur tablette, les commandes secondaires gardent leur icône et leur nom accessible. */
+  .pilotage { gap: var(--espace-3) var(--espace-4); }
+  .pilotage__commandes .bouton--icone-tablette .bouton__libelle,
+  .pilotage .libelle-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .indicateurs { gap: var(--espace-3); }
+  .resultats .actions { flex-direction: column; align-items: stretch; }
+}
+@media (max-width: 860px) {
+  .plan { grid-template-columns: 1fr; }
+}
+
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-4);
+  padding: var(--espace-5);
+  border-radius: var(--rayon-grand);
+  background: var(--fond-1);
+}
+.panneau h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.375rem;
+}
+.panneau h2 small {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+  font-weight: 400;
+}
+
+.en-cours {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-4);
+  padding-bottom: var(--espace-5);
+  border-bottom: 1px solid var(--fond-3);
+}
+.en-cours__temps {
+  display: flex;
+  justify-content: space-between;
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+.en-cours__temps .chiffres {
+  color: var(--texte);
+  font-size: 1.375rem;
+}
+
+/* Une ligne d'À venir : le ticket et ses actions, sans tout encombrer. */
+.a-venir > li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--espace-2);
+}
+.a-venir .bouton {
+  min-height: 40px;
+  padding: var(--espace-2);
+}
+
+.recherche {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--espace-3);
+  padding: 0 var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-0);
+}
+.recherche:focus-within {
+  border-color: var(--citron);
+}
+.recherche input {
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--texte);
+  font: 400 1.125rem var(--police-texte);
+  caret-color: var(--citron);
+}
+.recherche input:focus-visible {
+  outline: none;
+}
+.recherche .icone {
+  color: var(--texte-2);
+}
+
+.resultats {
+  width: 100%;
+  border-collapse: collapse;
+}
+.resultats th {
+  padding: var(--espace-2) var(--espace-3);
+  border-bottom: 1px solid var(--fond-3);
+  color: var(--texte-2);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: left;
+}
+.resultats td {
+  padding: var(--espace-3);
+  border-bottom: 1px solid var(--fond-2);
+  vertical-align: middle;
+}
+.resultats tr:hover td {
+  background: var(--fond-2);
+}
+.resultats .duree {
+  font-variant-numeric: tabular-nums;
+  color: var(--texte-2);
+}
+.resultats .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--espace-2);
+}
+.resultats .titre {
+  display: block;
+  font-weight: 700;
+}
+.resultats .artiste {
+  display: block;
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+.resultats td:last-child {
+  width: 1%;
+}
+
+.console__note {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}

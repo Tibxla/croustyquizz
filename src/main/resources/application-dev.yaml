@@ -1,0 +1,6 @@
+spring:
+  flyway:
+    # Deux branches créent des migrations en parallèle : après une fusion,
+    # une migration plus ancienne que la dernière appliquée sur la base locale
+    # doit quand même passer (voir CONTRIBUTING.md, « Base de données »).
+    out-of-order: true

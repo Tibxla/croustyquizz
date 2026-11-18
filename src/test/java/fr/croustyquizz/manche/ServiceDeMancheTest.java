@@ -1,0 +1,313 @@
+package fr.croustyquizz.manche;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
+import java.util.concurrent.atomic.AtomicReference;
+import java.time.Duration;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+import org.springframework.transaction.TransactionSystemException;
+
+/** Garanties observables du service : reçus, pause durable, annulation et concurrence. */
+class ServiceDeMancheTest {
+	private final BancDuSocle banc = new BancDuSocle();
+	private final UUID soiree = UUID.randomUUID();
+
+	@Test
+	void repeterUnPilotageRendLeRecuInitialSansRepublierMemeApresRestauration() {
+		UUID manche = demarrer();
+		var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
+		var envoi = banc.envoi(soiree, "/commandes", pause);
+		var initial = banc.service.piloter(manche, envoi, pause);
+		int publications = banc.diffuseur.envois().size();
+		banc.registre.retirer(manche);
+		banc.horloge.avancer(Duration.ofHours(1));
+		var repetition = banc.service.piloter(manche, envoi, pause);
+		assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(repetition, envoi.route())))
+				.isEqualTo(banc.json.writeValueAsString(ReponsesDeCommande.corps(initial, envoi.route())));
+		assertThat(banc.diffuseur.envois()).hasSize(publications);
+		var etat = (DeroulementFactice.Etat) banc.service.instantane(soiree, manche);
+		assertThat(etat.pause()).isTrue();
+		assertThat(etat.etape()).isEqualTo(1);
+		assertThat(banc.horloge.minuteursEnAttente()).isZero();
+		var reprise = new InterventionDeManche(InterventionDeManche.Action.REPRENDRE, null);
+		assertThat(banc.service.piloter(manche, banc.envoi(soiree, "/commandes", reprise), reprise)).isInstanceOf(Accepte.class);
+		banc.horloge.avancer(Duration.ofSeconds(20));
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+	}
+
+	@Test
+	void reutiliserUnEnvoiAvecUnAutreCorpsEstRefuse() {
+		UUID manche = demarrer();
+		var envoi = banc.envoi(soiree, "/commande-mode", Map.of("titre", "initial"));
+		AtomicInteger appels = new AtomicInteger();
+		var resultat = banc.service.executer(manche, envoi, () -> PreparationDeCommande.prete(d -> {
+			appels.incrementAndGet(); return new Refuse(409, "ETAT_INCOMPATIBLE", "Refus de test.");
+		}));
+		assertThat(resultat).isInstanceOf(Refuse.class);
+		assertThat(banc.service.executer(manche, new EnvoiDeCommande(envoi.acteur(), envoi.route(), envoi.envoiId(), Map.of("titre", "autre")),
+				() -> { throw new AssertionError("Pas de nouvelle préparation"); }))
+				.isEqualTo(new Refuse(409, "ENVOI_REUTILISE", "Cet identifiant d'envoi a déjà été utilisé avec un autre contenu."));
+		assertThat(appels).hasValue(1);
+	}
+
+	@Test
+	void unRefusPrepareEstEnregistreSansAppelerLeDeroulement() {
+		UUID manche = demarrer();
+		var envoi = banc.envoi(soiree, "/externe", Map.of());
+		var refus = new Refuse(404, "RESSOURCE_INTROUVABLE", "Contenu externe introuvable.");
+		int avant = banc.diffuseur.envois().size();
+		assertThat(banc.service.executer(manche, envoi, () -> PreparationDeCommande.refusee(refus))).isEqualTo(refus);
+		assertThat(banc.service.executer(manche, envoi, () -> { throw new AssertionError("Nouvel appel externe"); })).isEqualTo(refus);
+		assertThat(banc.diffuseur.envois()).hasSize(avant);
+	}
+
+	@Test
+	void uneExceptionDePreparationConserveLesMinuteursDuDeroulement() {
+		UUID manche = demarrer();
+		int publications = banc.diffuseur.envois().size();
+		var panne = new IllegalStateException("Préparation externe indisponible.");
+		assertThatThrownBy(() -> banc.service.executer(manche, banc.envoi(soiree, "/externe", Map.of()),
+				() -> { throw panne; })).isSameAs(panne);
+		assertThat(banc.diffuseur.envois()).hasSize(publications);
+		banc.horloge.avancer(Duration.ofSeconds(20));
+		// Vérifier le rappel avant toute lecture qui pourrait restaurer et réarmer le déroulement.
+		assertThat(banc.diffuseur.envois()).hasSize(publications + 3);
+		assertThat(banc.horloge.minuteursEnAttente()).isEqualTo(1);
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+	}
+
+	@Test
+	void unCommitAnnuleNePubliePasEtLeProchainAppelRestaureLaBase() {
+		UUID manche = demarrer();
+		Object avant = banc.service.instantane(soiree, manche);
+		int publications = banc.diffuseur.envois().size();
+		var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
+		var envoi = banc.envoi(soiree, "/commandes", pause);
+		// L'échec vise la transaction de mutation, après la préparation et le premier contrôle d'envoi.
+		assertThatThrownBy(() -> banc.service.executer(manche, envoi, () -> {
+			banc.stockage.echouerCommit = true;
+			return PreparationDeCommande.prete(d -> d.mettreEnPause(new CommandePilotage(envoi.acteur(), envoi.envoiId(), banc.horloge.maintenant())));
+		})).isInstanceOf(TransactionSystemException.class);
+		assertThat(banc.diffuseur.envois()).hasSize(publications);
+		assertThat(banc.service.instantane(soiree, manche)).isEqualTo(avant);
+		assertThat(banc.service.piloter(manche, envoi, pause)).isInstanceOf(Accepte.class);
+	}
+
+	@Test
+	void exceptionDuDomaineAnnuleEtLibereLeVerrou() {
+		UUID manche = demarrer();
+		int avant = banc.diffuseur.envois().size();
+		assertThatThrownBy(() -> banc.service.executer(manche, banc.envoi(soiree, "/casse", Map.of()),
+				() -> PreparationDeCommande.prete(d -> { throw new IllegalStateException("panne"); })))
+				.isInstanceOf(IllegalStateException.class);
+		assertThat(banc.diffuseur.envois()).hasSize(avant);
+		assertThat(banc.service.instantane(soiree, manche)).isNotNull();
+	}
+
+	@Test
+	void commandesEtMinuteursDuneSoireeSontSerialises() throws Exception {
+		UUID manche = demarrer();
+		CountDownLatch entree = new CountDownLatch(1);
+		CountDownLatch sortir = new CountDownLatch(1);
+		AtomicInteger simultanes = new AtomicInteger();
+		AtomicInteger maximum = new AtomicInteger();
+		try (var fils = Executors.newFixedThreadPool(2)) {
+			try {
+				var premier = fils.submit(() -> banc.service.executer(manche, banc.envoi(soiree, "/lent", Map.of()),
+						() -> PreparationDeCommande.prete(d -> {
+							maximum.accumulateAndGet(simultanes.incrementAndGet(), Math::max); entree.countDown();
+							attendre(sortir); simultanes.decrementAndGet();
+							return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet.");
+						})));
+				assertThat(entree.await(2, TimeUnit.SECONDS)).isTrue();
+				var filMinuteur = new AtomicReference<Thread>();
+				var minuteur = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); banc.horloge.avancer(Duration.ofSeconds(20)); });
+				await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null && filMinuteur.get().getState() == Thread.State.WAITING);
+				assertThat(minuteur.isDone()).isFalse();
+				sortir.countDown(); premier.get(2, TimeUnit.SECONDS); minuteur.get(2, TimeUnit.SECONDS);
+				assertThat(maximum).hasValue(1);
+				assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+			} finally { sortir.countDown(); }
+		}
+	}
+
+	@Test
+	void passerEtapeAnnuleAussiLeMinuteurQuiAttendDejaLeVerrou() throws Exception {
+		UUID manche = demarrer();
+		int publications = banc.diffuseur.envois().size();
+		var filMinuteur = new AtomicReference<Thread>();
+		try (var fils = Executors.newSingleThreadExecutor()) {
+			var minuteur = banc.verrous.executer(soiree, () -> {
+				var rappel = fils.submit(() -> {
+					filMinuteur.set(Thread.currentThread());
+					banc.horloge.avancer(Duration.ofSeconds(20));
+				});
+				await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null
+						&& filMinuteur.get().getState() == Thread.State.WAITING);
+				var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, null);
+				assertThat(banc.service.piloter(manche, banc.envoi(soiree, "/commandes", passer), passer)).isInstanceOf(Accepte.class);
+				return rappel;
+			});
+			minuteur.get(2, TimeUnit.SECONDS);
+		}
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+		assertThat(banc.diffuseur.envois()).hasSize(publications + 3);
+		banc.registre.retirer(manche);
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+		banc.horloge.avancer(Duration.ofSeconds(20));
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(3);
+	}
+
+	@Test
+	void restaurerUneEcheanceDepasseeNePerdPasLeRappelLanceAvantLAttachement() throws Exception {
+		var temps = new HorlogeFactice();
+		var filMinuteur = new AtomicReference<Thread>();
+		var expiration = new AtomicReference<java.util.concurrent.Future<?>>();
+		try (var fils = Executors.newSingleThreadExecutor()) {
+			Horloge immediate = new Horloge() {
+				@Override
+				public java.time.Instant maintenant() { return temps.maintenant(); }
+				@Override
+				public Minuteur programmer(Duration delai, Runnable action) {
+					if (!delai.isZero()) { return temps.programmer(delai, action); }
+					var rappel = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); action.run(); });
+					expiration.set(rappel);
+					// L'ordonnanceur a lancé le rappel avant que programmer ne rende la main à restaurer.
+					await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null
+							&& filMinuteur.get().getState() == Thread.State.WAITING);
+					return () -> rappel.cancel(false);
+				}
+			};
+			var restauration = new BancDuSocle(immediate);
+			UUID manche = restauration.creer(soiree);
+			restauration.service.demarrer(manche, restauration.envoi(soiree, "/demarrer", Map.of()));
+			restauration.registre.retirer(manche);
+			temps.avancer(Duration.ofSeconds(21));
+			int publications = restauration.diffuseur.envois().size();
+			restauration.service.instantane(soiree, manche);
+			assertThat(expiration.get()).isNotNull();
+			expiration.get().get(2, TimeUnit.SECONDS);
+			assertThat(((DeroulementFactice.Etat) restauration.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+			assertThat(restauration.diffuseur.envois()).hasSize(publications + 3);
+			restauration.registre.retirer(manche);
+			assertThat(((DeroulementFactice.Etat) restauration.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+		}
+	}
+
+	@Test
+	void deuxCommandesConcurrentesDuneSoireePassentDansLOrdre() throws Exception {
+		UUID manche = demarrer();
+		var entree = new CountDownLatch(1); var sortir = new CountDownLatch(1);
+		var ordre = new java.util.concurrent.CopyOnWriteArrayList<Integer>();
+		var secondFil = new AtomicReference<Thread>();
+		try (var fils = Executors.newFixedThreadPool(2)) {
+			try {
+				var premiere = fils.submit(() -> banc.service.executer(manche, banc.envoi(soiree, "/premiere", Map.of()),
+						() -> PreparationDeCommande.prete(d -> {
+							ordre.add(1); entree.countDown(); attendre(sortir);
+							return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet.");
+						})));
+				assertThat(entree.await(2, TimeUnit.SECONDS)).isTrue();
+				var seconde = fils.submit(() -> {
+					secondFil.set(Thread.currentThread());
+					return banc.service.executer(manche, banc.envoi(soiree, "/seconde", Map.of()),
+							() -> PreparationDeCommande.prete(d -> { ordre.add(2); return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet."); }));
+				});
+				await().atMost(Duration.ofSeconds(2)).until(() -> secondFil.get() != null && secondFil.get().getState() == Thread.State.WAITING);
+				assertThat(ordre).containsExactly(1);
+				sortir.countDown(); premiere.get(2, TimeUnit.SECONDS); seconde.get(2, TimeUnit.SECONDS);
+				assertThat(ordre).containsExactly(1, 2);
+			} finally { sortir.countDown(); }
+		}
+	}
+
+	@Test
+	void preparerUnAppelExterneNeRetientPasLeVerrou() throws Exception {
+		UUID manche = demarrer();
+		var preparation = new CountDownLatch(1); var finir = new CountDownLatch(1);
+		try (var fils = Executors.newFixedThreadPool(2)) {
+			try {
+				var externe = fils.submit(() -> banc.service.executer(manche, banc.envoi(soiree, "/externe", Map.of()), () -> {
+					preparation.countDown(); attendre(finir);
+					return PreparationDeCommande.refusee(new Refuse(404, "RESSOURCE_INTROUVABLE", "Contenu absent."));
+				}));
+				assertThat(preparation.await(2, TimeUnit.SECONDS)).isTrue();
+				var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
+				var autre = fils.submit(() -> banc.service.piloter(manche, banc.envoi(soiree, "/commandes", pause), pause));
+				assertThat(autre.get(2, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
+				finir.countDown(); assertThat(externe.get(2, TimeUnit.SECONDS)).isInstanceOf(Refuse.class);
+			} finally { finir.countDown(); }
+		}
+	}
+
+	@Test
+	void conserveLeStatut201EtLeCorpsDuRecu() {
+		UUID manche = demarrer();
+		var envoi = banc.envoi(soiree, "/creation", Map.of());
+		var initial = banc.service.executer(manche, envoi, () -> PreparationDeCommande.prete(d ->
+				new Accepte(Map.of("id", "cree"), java.util.Set.of(), "file-attente-modifiee", 201)));
+		assertThat(ReponsesDeCommande.statut(initial)).isEqualTo(201);
+		var rejeu = banc.service.executer(manche, envoi, () -> { throw new AssertionError("Rejeu préparé"); });
+		assertThat(ReponsesDeCommande.statut(rejeu)).isEqualTo(201);
+		assertThat(banc.json.writeValueAsString(((Accepte) rejeu).accuse())).isEqualTo("{\"id\":\"cree\"}");
+	}
+
+	@Test
+	void lesPointsProtegesPermettentUnRefusAvantPreparationSansRecu() {
+		var socle = new SocleDeManche(banc.verrous, banc.stockage, banc.stockage, banc.registre,
+				new RegistreDesEnvois(banc.stockage, banc.json),
+				new fr.croustyquizz.tempsreel.PublicationDeVues(banc.assembleur, banc.commun,
+						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur), banc.horloge, banc.json);
+		class ServiceAvecGarde extends ServiceDeManche<ModeFacticeDuSocle.Reglages, DeroulementFactice.Etat> {
+			ServiceAvecGarde() { super(banc.mode, banc.mode, socle); }
+			@Override protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {
+				return new Refuse(409, "ETAPE_INACTIVE", "Sans étape.");
+			}
+			@Override protected boolean doitConserverRecu(ResultatDeCommande resultat) { return false; }
+		}
+		var service = new ServiceAvecGarde();
+		UUID manche = banc.creer(soiree);
+		var envoi = banc.envoi(soiree, "/avant", Map.of());
+		assertThatThrownBy(() -> service.executer(manche, envoi, () -> { throw new AssertionError("Source appelée"); }))
+				.isInstanceOf(RefusDeCommande.class);
+		assertThat(banc.stockage.retrouverEnvoi(EnvoiDeManche.cle(envoi.acteur(), envoi.route(), envoi.envoiId()))).isNull();
+	}
+
+	@Test
+	void leRefusPreparePrecedeLEtatAvecLesGardesParDefaut() {
+		UUID manche = banc.creer(soiree);
+		Refuse refus = new Refuse(404, "RESSOURCE_INTROUVABLE", "Contenu absent.");
+		assertThat(banc.service.executer(manche, banc.envoi(soiree, "/prepare", Map.of()),
+				() -> PreparationDeCommande.refusee(refus))).isEqualTo(refus);
+	}
+
+	@Test
+	void rejoueUnSucces204SansCorpsNiPublication() {
+		UUID manche = demarrer();
+		var envoi = banc.envoi(soiree, "/sans-corps", Map.of());
+		int avant = banc.diffuseur.envois().size();
+		banc.service.executer(manche, envoi, () -> PreparationDeCommande.prete(d -> new Accepte(null, java.util.Set.of(), "file-attente-modifiee")));
+		var rejeu = banc.service.executer(manche, envoi, () -> { throw new AssertionError("Rejeu préparé"); });
+		assertThat(ReponsesDeCommande.statut(rejeu)).isEqualTo(204);
+		assertThat(((Accepte) rejeu).accuse()).isNull();
+		assertThat(banc.diffuseur.envois()).hasSize(avant);
+	}
+
+	private UUID demarrer() {
+		UUID manche = banc.creer(soiree);
+		assertThat(banc.service.demarrer(manche, banc.envoi(soiree, "/demarrer", Map.of()))).isInstanceOf(Accepte.class);
+		assertThat(banc.diffuseur.envois()).hasSize(3);
+		return manche;
+	}
+	private static void attendre(CountDownLatch verrou) {
+		try { assertThat(verrou.await(3, TimeUnit.SECONDS)).isTrue(); }
+		catch (InterruptedException interruption) { Thread.currentThread().interrupt(); throw new IllegalStateException(interruption); }
+	}
+}

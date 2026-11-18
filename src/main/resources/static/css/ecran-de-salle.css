@@ -1,0 +1,269 @@
+/*
+ * Écran de salle : vu à 5 m, dans une salle sombre, sans aucune commande.
+ * Les tailles suivent la largeur de l'écran (vw) pour rester lisibles quelle
+ * que soit la télé ; une seule échelle porte la hiérarchie.
+ */
+
+.salle {
+  height: 100vh;
+  overflow: hidden;
+  font-size: 1.15vw;
+}
+
+.salle__scene {
+  display: grid;
+  grid-template-columns: 1fr 30vw;
+  height: 100%;
+}
+
+.salle__principal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2.2vw;
+  padding: 4vw 5vw;
+  min-width: 0;
+}
+
+.salle__cote {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vw;
+  padding: 2.4vw 2.2vw;
+  background: var(--fond-1);
+  --fond-encoche: var(--fond-1);
+  --perforation: 6vw;
+}
+
+.salle__cote h2 {
+  font: 800 1.5vw/1 var(--police-chiffres);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--texte-2);
+}
+
+.salle__principal > .salle__pied {
+  position: absolute;
+  left: 5vw;
+  right: 5vw;
+  bottom: 2.4vw;
+}
+.salle__pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--texte-2);
+  font-size: 1.5vw;
+}
+.salle__pied .marque {
+  font-size: 1.6vw;
+}
+
+/* Tickets à l'échelle de la salle */
+.salle .ticket {
+  --perforation: 6vw;
+  --encoche: 1vw;
+  --arrache-x: 0.7vw;
+  --arrache-y: 0.15vw;
+  --arrache-angle: 1.6deg;
+  min-height: 6vw;
+}
+.salle .ticket__numero {
+  font-size: 3.6vw;
+}
+.salle .ticket__corps {
+  padding: 0.9vw 1.2vw;
+}
+.salle .ticket__qui {
+  font-size: 1.8vw;
+}
+.salle .ticket__quoi {
+  font-size: 1.6vw;
+}
+.salle .ticket__etat {
+  top: 0.8vw;
+  right: 1vw;
+  font-size: 1.2vw;
+}
+
+.salle .talon {
+  margin-top: auto;
+  gap: 1.2vw;
+  padding: 1vw;
+}
+.salle .talon__qr {
+  width: 7vw;
+  padding: 0.4vw;
+}
+.salle .talon__code {
+  font-size: 3.4vw;
+}
+.salle .talon__aide {
+  font-size: 1.5vw;
+}
+.salle .talon__adresse {
+  display: block;
+  font-size: 1.5vw;
+  font-weight: 700;
+}
+/* L'adresse ne se coupe jamais sur son trait d'union : seulement avant un point. */
+.talon__adresse > span {
+  white-space: nowrap;
+}
+
+/* ---------- Karaoké : paroles ---------- */
+
+.paroles__titre {
+  display: flex;
+  align-items: baseline;
+  gap: 1vw;
+  color: var(--texte-2);
+  font-weight: 700;
+  font-size: 1.6vw;
+}
+.paroles__titre .chiffres {
+  color: var(--orange);
+  font-size: 2.3vw;
+}
+.paroles__ligne {
+  max-width: 28ch;
+  color: var(--texte-3);
+  font-size: 2.6vw;
+  line-height: 1.25;
+}
+.paroles__ligne--en-cours {
+  color: var(--texte);
+  font-weight: 700;
+  font-size: 4.4vw;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+/* La partie déjà chantée de la ligne en cours. */
+.paroles__chante {
+  color: var(--teinte-passage, var(--orange));
+}
+
+/* ---------- Quiz : Question et propositions ---------- */
+
+.question__entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--texte-2);
+  font-size: 1.5vw;
+  font-weight: 700;
+}
+.question__entete .chiffres {
+  font-size: 2.3vw;
+  color: var(--texte);
+}
+.question__enonce {
+  max-width: 30ch;
+  font-size: 3.6vw;
+  line-height: 1.15;
+  font-weight: 700;
+  text-wrap: balance;
+}
+.salle .reponses {
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2vw;
+}
+.salle .reponse {
+  --encoche: 1vw;
+  grid-template-columns: 6vw 1fr;
+  min-height: 7vw;
+  padding: 0 1.6vw 0 0;
+  border-radius: 0.8vw;
+  font-size: 2.1vw;
+  cursor: default;
+}
+.salle .reponse::before,
+.salle .reponse::after {
+  left: 6vw;
+}
+.salle .reponse__lettre {
+  margin-right: 1.4vw;
+  border-right-width: 0.25vw;
+  font-size: 3.4vw;
+}
+
+/* Temps restant : la barre se vide, le nombre de secondes reste lisible. */
+.minuteur {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1.4vw;
+}
+.minuteur__barre {
+  height: 1vw;
+  border-radius: 1vw;
+  background: var(--fond-3);
+  overflow: hidden;
+}
+.minuteur__reste {
+  height: 100%;
+  width: var(--reste, 60%);
+  border-radius: inherit;
+  background: var(--orange);
+}
+.minuteur__secondes {
+  font: 800 3.4vw/1 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+}
+
+.ont-repondu {
+  display: flex;
+  flex-direction: column;
+  gap: 1vw;
+}
+.ont-repondu h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.ont-repondu h2 .chiffres {
+  color: var(--texte);
+  font-size: 3.4vw;
+  letter-spacing: 0;
+}
+/* Une souche par Joueur qui a répondu : on voit la salle se remplir. */
+.souches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6vw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.souche {
+  padding: 0.5vw 0.9vw;
+  border-radius: 0.5vw;
+  border-left: 0.25vw dotted var(--encre-perforation);
+  background: var(--teinte, var(--eau));
+  color: var(--encre);
+  font-size: 1.4vw;
+  font-weight: 700;
+}
+.souche:nth-child(4n + 2) { --teinte: var(--bleu); }
+.souche:nth-child(4n + 3) { --teinte: var(--rose); }
+.souche:nth-child(4n) { --teinte: var(--orange); }
+.souche--reste {
+  background: var(--fond-3);
+  color: var(--texte);
+  border-left-color: var(--fond-4);
+}
+
+/* La coquille garde le pied et le talon hors des zones confiées au mode. */
+.salle--coquille .salle__principal { justify-content: flex-start; gap: 1.2vw; padding-bottom: 6vw; }
+.salle--coquille .coquille__commun h1 { font-size: 2.4vw; }
+.salle--coquille .commun__resume { font-size: 1.5vw; }
+.salle--coquille .coupure { font-size: 1.3vw; padding: 0.7vw 1vw; }
+.salle--coquille .commun, .salle--coquille .coquille__mode { gap: 1vw; }
+.salle--coquille .commun__liste { padding-left: 0; }
+.salle--coquille .mode__titre { font-size: 2.4vw; }
+.salle--coquille .mode__contenu { font-size: 1.5vw; max-height: 48vh; overflow: auto; }
+.salle--coquille .coquille__note { font-size: 1.2vw; }
+.salle--coquille .salle__pied { gap: 1vw; }

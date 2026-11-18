@@ -1,0 +1,1936 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$defs:
+  Csrf:
+    type: object
+    additionalProperties: false
+    properties:
+      headerName:
+        type: string
+        const: X-CSRF-TOKEN
+      token:
+        type: string
+        minLength: 16
+    required:
+    - headerName
+    - token
+  Heure:
+    type: object
+    additionalProperties: false
+    properties:
+      maintenant:
+        type: string
+        format: date-time
+    required:
+    - maintenant
+  InscriptionAnimateur:
+    type: object
+    additionalProperties: false
+    properties:
+      lieu:
+        type: object
+        additionalProperties: false
+        properties:
+          nom:
+            type: string
+            minLength: 1
+            maxLength: 120
+          ville:
+            type: string
+            minLength: 1
+            maxLength: 120
+        required:
+        - nom
+        - ville
+      nom:
+        type: string
+        minLength: 1
+        maxLength: 120
+      email:
+        type: string
+        format: email
+        maxLength: 254
+      motDePasse:
+        type: string
+        minLength: 12
+        maxLength: 128
+    required:
+    - lieu
+    - nom
+    - email
+    - motDePasse
+  ConnexionAnimateur:
+    type: object
+    additionalProperties: false
+    properties:
+      email:
+        type: string
+        format: email
+        maxLength: 254
+      motDePasse:
+        type: string
+        minLength: 1
+        maxLength: 128
+    required:
+    - email
+    - motDePasse
+  Animateur:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      nom:
+        type: string
+        minLength: 1
+      lieuId:
+        type: string
+        format: uuid
+    required:
+    - id
+    - nom
+    - lieuId
+  Lieu:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      nom:
+        type: string
+        minLength: 1
+      ville:
+        type: string
+        minLength: 1
+    required:
+    - id
+    - nom
+    - ville
+  CompteCree:
+    type: object
+    additionalProperties: false
+    properties:
+      animateur:
+        $ref: '#/$defs/Animateur'
+      lieu:
+        $ref: '#/$defs/Lieu'
+    required:
+    - animateur
+    - lieu
+  CreationSoiree:
+    type: object
+    additionalProperties: false
+    properties:
+      titre:
+        type: string
+        minLength: 1
+        maxLength: 150
+      format:
+        type: string
+        enum:
+        - SOLO
+      pilotage:
+        type: string
+        enum:
+        - MANUEL
+    required:
+    - titre
+    - format
+    - pilotage
+  ModificationSoiree:
+    type: object
+    additionalProperties: false
+    properties:
+      titre:
+        type: string
+        minLength: 1
+        maxLength: 150
+    required:
+    - titre
+  Soiree:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      titre:
+        type: string
+        minLength: 1
+      format:
+        type: string
+        enum:
+        - SOLO
+      pilotage:
+        type: string
+        enum:
+        - MANUEL
+      etat:
+        type: string
+        enum:
+        - PREPARATION
+        - OUVERTE
+        - EN_COURS
+        - TERMINEE
+      codeAcces:
+        oneOf:
+        - type: string
+          pattern: ^[A-Z0-9]{6}$
+        - type: 'null'
+    required:
+    - id
+    - titre
+    - format
+    - pilotage
+    - etat
+    - codeAcces
+  ListeSoirees:
+    type: object
+    additionalProperties: false
+    properties:
+      soirees:
+        type: array
+        items:
+          $ref: '#/$defs/Soiree'
+    required:
+    - soirees
+  Rejoindre:
+    type: object
+    additionalProperties: false
+    properties:
+      codeAcces:
+        type: string
+        pattern: ^[A-Z0-9]{6}$
+      pseudo:
+        type: string
+        minLength: 1
+        maxLength: 30
+    required:
+    - codeAcces
+    - pseudo
+  JoueurPublic:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+      connecte:
+        type: boolean
+    required:
+    - id
+    - pseudo
+    - connecte
+  AccesJoueur:
+    type: object
+    additionalProperties: false
+    properties:
+      soireeId:
+        type: string
+        format: uuid
+      joueur:
+        $ref: '#/$defs/JoueurPublic'
+      jetonReconnexion:
+        type: string
+        minLength: 43
+        maxLength: 128
+        pattern: ^[A-Za-z0-9_-]+$
+    required:
+    - soireeId
+    - joueur
+    - jetonReconnexion
+    description: Le jeton opaque identifie le Joueur pour HTTP et STOMP. Ne jamais le publier sur un canal ou dans
+      une URL.
+  AccesEcran:
+    type: object
+    additionalProperties: false
+    properties:
+      soireeId:
+        type: string
+        format: uuid
+      cleEcran:
+        type: string
+        minLength: 43
+        maxLength: 128
+        pattern: ^[A-Za-z0-9_-]+$
+      expireLe:
+        type: string
+        format: date-time
+    required:
+    - soireeId
+    - cleEcran
+    - expireLe
+    description: Capacité de lecture seule pour l'Écran de salle, limitée à cette Soirée. Transport dans Authorization/CONNECT,
+      jamais dans une chaîne de requête. La durée est donnée par expireLe.
+  ModeDeJeu:
+    type: string
+    enum:
+    - QUIZ
+    - BLIND_TEST
+    - KARAOKE
+    - FREESTYLE
+  ReglagesQuiz:
+    type: object
+    additionalProperties: false
+    properties:
+      nombreEtapes:
+        type: integer
+        minimum: 1
+        maximum: 100
+      tempsParEtapeSecondes:
+        type: integer
+        minimum: 1
+        maximum: 3600
+    required:
+    - nombreEtapes
+    - tempsParEtapeSecondes
+  CreationManche:
+    type: object
+    additionalProperties: false
+    properties:
+      mode:
+        type: string
+        enum:
+        - QUIZ
+        - KARAOKE
+      reglages:
+        oneOf:
+        - $ref: '#/$defs/ReglagesQuiz'
+        - $ref: '#/$defs/ReglagesKaraoke'
+    required:
+    - mode
+    - reglages
+    allOf:
+    - if:
+        properties:
+          mode:
+            const: QUIZ
+      then:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesQuiz'
+      else:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesKaraoke'
+  Manche:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      ordre:
+        type: integer
+        minimum: 0
+      mode:
+        type: string
+        enum:
+        - QUIZ
+        - KARAOKE
+      etat:
+        type: string
+        enum:
+        - EN_ATTENTE
+        - EN_COURS
+        - EN_PAUSE
+        - TERMINEE
+      reglages:
+        oneOf:
+        - $ref: '#/$defs/ReglagesQuiz'
+        - $ref: '#/$defs/ReglagesKaraoke'
+    required:
+    - id
+    - ordre
+    - mode
+    - etat
+    - reglages
+    allOf:
+    - if:
+        properties:
+          mode:
+            const: QUIZ
+      then:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesQuiz'
+      else:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesKaraoke'
+            required:
+            - limitePassagesEnAttente
+  OrdreManches:
+    type: object
+    additionalProperties: false
+    properties:
+      mancheIds:
+        type: array
+        items:
+          type: string
+          format: uuid
+        minItems: 1
+        uniqueItems: true
+    required:
+    - mancheIds
+    description: Permutation exacte des Manches existantes de la Soirée, sans omission ni identifiant étranger.
+  QuestionSaisie:
+    type: object
+    additionalProperties: false
+    properties:
+      enonce:
+        type: string
+        minLength: 1
+        maxLength: 1000
+      categorie:
+        type: string
+        minLength: 1
+        maxLength: 120
+      difficulte:
+        type: string
+        enum:
+        - FACILE
+        - MOYENNE
+        - DIFFICILE
+      propositions:
+        type: array
+        items:
+          type: string
+          minLength: 1
+          maxLength: 300
+        minItems: 4
+        maxItems: 4
+        uniqueItems: true
+      indexPropositionJuste:
+        type: integer
+        minimum: 0
+        maximum: 3
+    required:
+    - enonce
+    - categorie
+    - difficulte
+    - propositions
+    - indexPropositionJuste
+  QuestionsSaisies:
+    type: object
+    additionalProperties: false
+    properties:
+      questions:
+        type: array
+        items:
+          $ref: '#/$defs/QuestionSaisie'
+        minItems: 1
+        maxItems: 100
+    required:
+    - questions
+    description: Liste ordonnée de Questions rédigées par l’Animateur. Le serveur affecte leurs identifiants et
+      la source ANIMATEUR. Le nombre doit correspondre à nombreEtapes avant lancement.
+  PropositionPublique:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      texte:
+        type: string
+        minLength: 1
+      position:
+        type: integer
+        minimum: 0
+        maximum: 3
+    required:
+    - id
+    - texte
+    - position
+  QuestionPreparee:
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      enonce:
+        type: string
+        minLength: 1
+      categorie:
+        type: string
+        minLength: 1
+      difficulte:
+        type: string
+        enum:
+        - FACILE
+        - MOYENNE
+        - DIFFICILE
+      source:
+        type: string
+        enum:
+        - ANIMATEUR
+      propositions:
+        type: array
+        items:
+          $ref: '#/$defs/PropositionPublique'
+        minItems: 4
+        maxItems: 4
+      propositionJusteId:
+        type: string
+        format: uuid
+    required:
+    - id
+    - enonce
+    - categorie
+    - difficulte
+    - source
+    - propositions
+    - propositionJusteId
+    description: Vue privée de préparation, réservée à un Animateur du Lieu.
+  QuestionsPreparees:
+    type: object
+    additionalProperties: false
+    properties:
+      questions:
+        type: array
+        items:
+          $ref: '#/$defs/QuestionPreparee'
+    required:
+    - questions
+  QuestionPublique:
+    type: object
+    additionalProperties: false
+    properties:
+      etapeId:
+        type: string
+        format: uuid
+      questionId:
+        type: string
+        format: uuid
+      numero:
+        type: integer
+        minimum: 1
+      total:
+        type: integer
+        minimum: 1
+      enonce:
+        type: string
+        minLength: 1
+      propositions:
+        type: array
+        items:
+          $ref: '#/$defs/PropositionPublique'
+        minItems: 4
+        maxItems: 4
+    required:
+    - etapeId
+    - questionId
+    - numero
+    - total
+    - enonce
+    - propositions
+  Correction:
+    type: object
+    additionalProperties: false
+    properties:
+      propositionJusteId:
+        type: string
+        format: uuid
+      repartition:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          properties:
+            propositionId:
+              type: string
+              format: uuid
+            nombreReponses:
+              type: integer
+              minimum: 0
+          required:
+          - propositionId
+          - nombreReponses
+        minItems: 4
+        maxItems: 4
+    required:
+    - propositionJusteId
+    - repartition
+  QuizAttente:
+    type: object
+    additionalProperties: false
+    properties:
+      phase:
+        type: string
+        enum:
+        - ATTENTE
+        - TERMINEE
+    required:
+    - phase
+  QuizOuvert:
+    type: object
+    additionalProperties: false
+    properties:
+      phase:
+        type: string
+        const: QUESTION_OUVERTE
+      question:
+        $ref: '#/$defs/QuestionPublique'
+      ouverteLe:
+        type: string
+        format: date-time
+      echeanceLe:
+        type: string
+        format: date-time
+    required:
+    - phase
+    - question
+    - ouverteLe
+    - echeanceLe
+  QuizPause:
+    type: object
+    additionalProperties: false
+    properties:
+      phase:
+        type: string
+        const: EN_PAUSE
+      question:
+        $ref: '#/$defs/QuestionPublique'
+      tempsRestantMs:
+        type: integer
+        minimum: 0
+    required:
+    - phase
+    - question
+    - tempsRestantMs
+  QuizCorrection:
+    type: object
+    additionalProperties: false
+    properties:
+      phase:
+        type: string
+        const: CORRECTION
+      question:
+        $ref: '#/$defs/QuestionPublique'
+      correction:
+        $ref: '#/$defs/Correction'
+    required:
+    - phase
+    - question
+    - correction
+  EtatQuiz:
+    oneOf:
+    - $ref: '#/$defs/QuizAttente'
+    - $ref: '#/$defs/QuizOuvert'
+    - $ref: '#/$defs/QuizPause'
+    - $ref: '#/$defs/QuizCorrection'
+  LigneClassement:
+    type: object
+    additionalProperties: false
+    properties:
+      concurrentId:
+        type: string
+        format: uuid
+      nom:
+        type: string
+        minLength: 1
+      rang:
+        type: integer
+        minimum: 1
+      points:
+        type: integer
+        minimum: 0
+      bonnesReponses:
+        type: integer
+        minimum: 0
+      tempsCumuleMs:
+        type: integer
+        minimum: 0
+    required:
+    - concurrentId
+    - nom
+    - rang
+    - points
+    - bonnesReponses
+    - tempsCumuleMs
+    description: Seules les Questions corrigées contribuent aux valeurs visibles. Rang trié par points, bonnes réponses,
+      puis rapidité ; des ex aequo persistants partagent le même rang.
+  Classement:
+    type: object
+    additionalProperties: false
+    properties:
+      soireeId:
+        type: string
+        format: uuid
+      classement:
+        type: array
+        items:
+          $ref: '#/$defs/LigneClassement'
+    required:
+    - soireeId
+    - classement
+  CommandeSoiree:
+    type: object
+    additionalProperties: false
+    properties:
+      action:
+        type: string
+        enum:
+        - LANCER
+        - MANCHE_SUIVANTE
+        - TERMINER
+    required:
+    - action
+  CommandeManche:
+    type: object
+    additionalProperties: false
+    properties:
+      action:
+        type: string
+        enum:
+        - METTRE_EN_PAUSE
+        - REPRENDRE
+        - PASSER_ETAPE
+        - TERMINER
+      etapeId:
+        type: string
+        format: uuid
+    required:
+    - action
+    description: etapeId est facultatif pour une Manche sans étape courante (Karaoké, Freestyle). Pour le Quiz,
+      il doit être présent et correspondre à l’étape courante, sinon 409 ETAPE_INACTIVE. La correction reste
+      attachée au même etapeId jusqu’à l’étape suivante.
+  AccuseCommande:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      recueLe:
+        type: string
+        format: date-time
+      soireeId:
+        type: string
+        format: uuid
+    required:
+    - envoiId
+    - recueLe
+    - soireeId
+  ReponseSaisie:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      propositionId:
+        type: string
+        format: uuid
+    required:
+    - envoiId
+    - propositionId
+    description: Aucune identité, date, durée ou valeur de points fournie par le navigateur n’est acceptée.
+  AccuseReponse:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      reponseId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      propositionId:
+        type: string
+        format: uuid
+      recueLe:
+        type: string
+        format: date-time
+    required:
+    - envoiId
+    - reponseId
+    - etapeId
+    - propositionId
+    - recueLe
+    description: Accusé immuable sans justesse ni points avant correction. Le même envoi retrouve exactement cet
+      accusé.
+  ResultatPersonnel:
+    type: object
+    additionalProperties: false
+    properties:
+      etapeId:
+        type: string
+        format: uuid
+      juste:
+        type: boolean
+      pointsGagnes:
+        type: integer
+        minimum: 0
+    required:
+    - etapeId
+    - juste
+    - pointsGagnes
+  BuzzSaisi:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+    required:
+    - envoiId
+  Buzz:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      joueurId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+      recuLe:
+        type: string
+        format: date-time
+      rang:
+        type: integer
+        minimum: 1
+    required:
+    - envoiId
+    - joueurId
+    - pseudo
+    - recuLe
+    - rang
+  BlocsDeMode:
+    type: object
+    description: Un bloc non nul appartient au modeEnCours ; hors Manche, tous les blocs sont nuls ou absents.
+    allOf:
+    - if:
+        required:
+        - quiz
+        properties:
+          quiz:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: QUIZ
+    - if:
+        required:
+        - blindtest
+        properties:
+          blindtest:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: BLIND_TEST
+    - if:
+        required:
+        - karaoke
+        properties:
+          karaoke:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: KARAOKE
+    - if:
+        required:
+        - freestyle
+        properties:
+          freestyle:
+            not:
+              type: 'null'
+      then:
+        properties:
+          modeEnCours:
+            const: FREESTYLE
+    - if:
+        required:
+        - karaoke
+        properties:
+          karaoke:
+            not:
+              type: 'null'
+      then:
+        properties:
+          mancheActive:
+            type: object
+            properties:
+              mode:
+                const: KARAOKE
+              etat:
+                type: string
+                enum:
+                - EN_COURS
+                - EN_PAUSE
+  VueSalle:
+    allOf:
+    - $ref: '#/$defs/BlocsDeMode'
+    type: object
+    additionalProperties: false
+    properties:
+      soiree:
+        $ref: '#/$defs/Soiree'
+      mancheActive:
+        oneOf:
+        - $ref: '#/$defs/Manche'
+        - type: 'null'
+      modeEnCours:
+        oneOf:
+        - $ref: '#/$defs/ModeDeJeu'
+        - type: 'null'
+      quiz:
+        oneOf:
+        - $ref: '#/$defs/EtatQuiz'
+        - type: 'null'
+      blindtest:
+        type: 'null'
+      karaoke:
+        oneOf:
+        - $ref: '#/$defs/BlocKaraokeSalle'
+        - type: 'null'
+      freestyle:
+        type: 'null'
+      joueurs:
+        type: array
+        items:
+          $ref: '#/$defs/JoueurPublic'
+      classement:
+        type: array
+        items:
+          $ref: '#/$defs/LigneClassement'
+      dernierBuzz:
+        oneOf:
+        - $ref: '#/$defs/Buzz'
+        - type: 'null'
+    required:
+    - soiree
+    - mancheActive
+    - modeEnCours
+    - joueurs
+    - classement
+    - dernierBuzz
+  VueConsole:
+    allOf:
+    - $ref: '#/$defs/BlocsDeMode'
+    type: object
+    additionalProperties: false
+    properties:
+      soiree:
+        $ref: '#/$defs/Soiree'
+      mancheActive:
+        oneOf:
+        - $ref: '#/$defs/Manche'
+        - type: 'null'
+      modeEnCours:
+        oneOf:
+        - $ref: '#/$defs/ModeDeJeu'
+        - type: 'null'
+      quiz:
+        oneOf:
+        - $ref: '#/$defs/EtatQuiz'
+        - type: 'null'
+      blindtest:
+        type: 'null'
+      karaoke:
+        oneOf:
+        - $ref: '#/$defs/BlocKaraokeConsole'
+        - type: 'null'
+      freestyle:
+        type: 'null'
+      joueurs:
+        type: array
+        items:
+          $ref: '#/$defs/JoueurPublic'
+      classement:
+        type: array
+        items:
+          $ref: '#/$defs/LigneClassement'
+      dernierBuzz:
+        oneOf:
+        - $ref: '#/$defs/Buzz'
+        - type: 'null'
+      programme:
+        type: array
+        items:
+          $ref: '#/$defs/Manche'
+    required:
+    - soiree
+    - mancheActive
+    - modeEnCours
+    - joueurs
+    - classement
+    - dernierBuzz
+    - programme
+  VueManette:
+    type: object
+    additionalProperties: false
+    properties:
+      soiree:
+        $ref: '#/$defs/Soiree'
+      mancheActive:
+        oneOf:
+        - $ref: '#/$defs/Manche'
+        - type: 'null'
+      modeEnCours:
+        oneOf:
+        - $ref: '#/$defs/ModeDeJeu'
+        - type: 'null'
+      quiz:
+        oneOf:
+        - $ref: '#/$defs/EtatQuiz'
+        - type: 'null'
+      blindtest:
+        type: 'null'
+      karaoke:
+        oneOf:
+        - $ref: '#/$defs/BlocKaraokeManette'
+        - type: 'null'
+      freestyle:
+        type: 'null'
+      joueurs:
+        type: array
+        items:
+          $ref: '#/$defs/JoueurPublic'
+      classement:
+        type: array
+        items:
+          $ref: '#/$defs/LigneClassement'
+      dernierBuzz:
+        oneOf:
+        - $ref: '#/$defs/Buzz'
+        - type: 'null'
+      joueurId:
+        type: string
+        format: uuid
+      eligiblePourMancheActive:
+        type: boolean
+        description: Éligibilité au Quiz pour une arrivée après le début de la Manche ; jamais une garde du
+          Karaoké, où la présence suffit.
+      derniereReponse:
+        oneOf:
+        - $ref: '#/$defs/AccuseReponse'
+        - type: 'null'
+      resultatPersonnel:
+        oneOf:
+        - $ref: '#/$defs/ResultatPersonnel'
+        - type: 'null'
+    required:
+    - soiree
+    - mancheActive
+    - modeEnCours
+    - joueurs
+    - classement
+    - dernierBuzz
+    - joueurId
+    - eligiblePourMancheActive
+    - derniereReponse
+    - resultatPersonnel
+    allOf:
+    - $ref: '#/$defs/BlocsDeMode'
+    - if:
+        required:
+        - quiz
+        properties:
+          quiz:
+            type: object
+            properties:
+              phase:
+                enum:
+                - QUESTION_OUVERTE
+                - EN_PAUSE
+                - ATTENTE
+      then:
+        properties:
+          resultatPersonnel:
+            type: 'null'
+    - if:
+        required:
+        - modeEnCours
+        properties:
+          modeEnCours:
+            const: KARAOKE
+      then:
+        properties:
+          derniereReponse:
+            type: 'null'
+          resultatPersonnel:
+            type: 'null'
+  EtatSalle:
+    type: object
+    additionalProperties: false
+    properties:
+      revision:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      heureServeur:
+        type: string
+        format: date-time
+      abonnementId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      vue:
+        $ref: '#/$defs/VueSalle'
+    required:
+    - revision
+    - heureServeur
+    - abonnementId
+    - vue
+  EtatConsole:
+    type: object
+    additionalProperties: false
+    properties:
+      revision:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      heureServeur:
+        type: string
+        format: date-time
+      abonnementId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      vue:
+        $ref: '#/$defs/VueConsole'
+    required:
+    - revision
+    - heureServeur
+    - abonnementId
+    - vue
+  EtatManette:
+    type: object
+    additionalProperties: false
+    properties:
+      revision:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      heureServeur:
+        type: string
+        format: date-time
+      abonnementId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      vue:
+        $ref: '#/$defs/VueManette'
+    required:
+    - revision
+    - heureServeur
+    - abonnementId
+    - vue
+  EvenementSalle:
+    type: object
+    additionalProperties: false
+    properties:
+      type:
+        type: string
+        enum:
+        - soiree-ouverte
+        - programme-modifie
+        - joueurs-modifies
+        - manche-demarree
+        - question-ouverte
+        - manche-en-pause
+        - manche-reprise
+        - question-corrigee
+        - manche-terminee
+        - classement-modifie
+        - soiree-terminee
+        - buzz-recu
+        - file-attente-modifiee
+        - limite-passages-modifiee
+      soireeId:
+        type: string
+        format: uuid
+      revision:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      emisLe:
+        type: string
+        format: date-time
+      donnees:
+        $ref: '#/$defs/VueSalle'
+    required:
+    - type
+    - soireeId
+    - revision
+    - emisLe
+    - donnees
+    description: Projection complète après mutation ; remplacement atomique de la vue, pas un delta.
+      Révision strictement croissante par destination, indépendante des autres canaux.
+  EvenementConsole:
+    type: object
+    additionalProperties: false
+    properties:
+      type:
+        type: string
+        enum:
+        - soiree-ouverte
+        - programme-modifie
+        - joueurs-modifies
+        - manche-demarree
+        - question-ouverte
+        - manche-en-pause
+        - manche-reprise
+        - question-corrigee
+        - manche-terminee
+        - classement-modifie
+        - soiree-terminee
+        - buzz-recu
+        - file-attente-modifiee
+        - limite-passages-modifiee
+      soireeId:
+        type: string
+        format: uuid
+      revision:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      emisLe:
+        type: string
+        format: date-time
+      donnees:
+        $ref: '#/$defs/VueConsole'
+    required:
+    - type
+    - soireeId
+    - revision
+    - emisLe
+    - donnees
+    description: Projection complète après mutation ; remplacement atomique de la vue, pas un delta.
+      Révision strictement croissante par destination, indépendante des autres canaux.
+  EvenementJoueur:
+    type: object
+    additionalProperties: false
+    properties:
+      type:
+        type: string
+        enum:
+        - soiree-ouverte
+        - programme-modifie
+        - joueurs-modifies
+        - manche-demarree
+        - question-ouverte
+        - manche-en-pause
+        - manche-reprise
+        - question-corrigee
+        - manche-terminee
+        - classement-modifie
+        - soiree-terminee
+        - buzz-recu
+        - reponse-enregistree
+        - resultat-personnel
+        - file-attente-modifiee
+        - limite-passages-modifiee
+      soireeId:
+        type: string
+        format: uuid
+      revision:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      emisLe:
+        type: string
+        format: date-time
+      donnees:
+        $ref: '#/$defs/VueManette'
+    required:
+    - type
+    - soireeId
+    - revision
+    - emisLe
+    - donnees
+    description: Projection complète après mutation ; remplacement atomique de la vue, pas un delta.
+      Révision strictement croissante par destination, indépendante des autres canaux.
+  Probleme:
+    type: object
+    additionalProperties: false
+    properties:
+      type:
+        type: string
+        format: uri-reference
+      title:
+        type: string
+        minLength: 1
+      status:
+        type: integer
+        minimum: 400
+        maximum: 599
+      code:
+        type: string
+        enum:
+        - REQUETE_INVALIDE
+        - IDENTIFIANTS_INVALIDES
+        - AUTHENTIFICATION_REQUISE
+        - ACCES_REFUSE
+        - CSRF_INVALIDE
+        - RESSOURCE_INTROUVABLE
+        - CODE_ACCES_INVALIDE
+        - SOIREE_NON_OUVERTE
+        - PSEUDO_REFUSE
+        - PSEUDO_DEJA_PRIS
+        - ETAT_INCOMPATIBLE
+        - ETAPE_INACTIVE
+        - COMMANDE_PERIMEE
+        - PROGRAMME_INCOMPLET
+        - REPONSE_DEJA_ENREGISTREE
+        - ENVOI_REUTILISE
+        - HORS_DELAI
+        - ABONNEMENT_INACTIF
+        - BUZZ_NON_AUTORISE
+        - DONNEES_INVALIDES
+        - EMAIL_DEJA_UTILISE
+        - SERVICE_INDISPONIBLE
+        - PASSAGE_DEJA_INSCRIT
+        - LIMITE_ATTEINTE
+        - ROTATION_PROTEGEE
+        - CHANSON_INDISPONIBLE
+        - SOURCE_PAROLES_INDISPONIBLE
+      detail:
+        type: string
+        minLength: 1
+      instance:
+        type: string
+        format: uri-reference
+    required:
+    - type
+    - title
+    - status
+    - code
+    - detail
+    - instance
+    description: Erreur JSON Problem Details. Ne contient ni secret, ni solution de Question, ni
+      information sur un autre Lieu.
+  ReglagesKaraoke:
+    type: object
+    additionalProperties: false
+    properties:
+      limitePassagesEnAttente:
+        type: integer
+        minimum: 1
+        maximum: 20
+    required: []
+  RechercheChanson:
+    type: string
+    minLength: 1
+    maxLength: 120
+  CiblePassage:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - passageId
+    - numeroModification
+  InscriptionPassage:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      chansonId:
+        type: string
+        minLength: 1
+        maxLength: 128
+    required:
+    - envoiId
+    - chansonId
+  DesinscriptionPassage:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - envoiId
+    - numeroModification
+  RetraitPassage:
+    type: object
+    additionalProperties: false
+    properties:
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - numeroModification
+  PlacementPassage:
+    type: object
+    additionalProperties: false
+    properties:
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      tour:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      avant:
+        oneOf:
+        - $ref: '#/$defs/CiblePassage'
+        - type: 'null'
+    required:
+    - numeroModification
+    - tour
+    - avant
+  PrioritePassage:
+    type: object
+    additionalProperties: false
+    properties:
+      passage:
+        $ref: '#/$defs/CiblePassage'
+      prioritaire:
+        type: boolean
+    required:
+    - passage
+    - prioritaire
+  LimitePassages:
+    type: object
+    additionalProperties: false
+    properties:
+      limitePassagesEnAttente:
+        type: integer
+        minimum: 1
+        maximum: 20
+    required:
+    - limitePassagesEnAttente
+  ResumeChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      chansonId:
+        type: string
+        minLength: 1
+      titre:
+        type: string
+        minLength: 1
+      artiste:
+        type: string
+        minLength: 1
+      album:
+        oneOf:
+        - type: string
+          minLength: 1
+        - type: 'null'
+      dureeMs:
+        oneOf:
+        - type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        - type: 'null'
+      etatParoles:
+        type: string
+        enum:
+        - SYNCHRONISEES
+        - NON_SYNCHRONISEES
+        - ABSENTES
+        - SANS_VOIX
+        - INCONNU
+    required:
+    - chansonId
+    - titre
+    - artiste
+    - album
+    - dureeMs
+    - etatParoles
+  ResultatsChansons:
+    type: object
+    additionalProperties: false
+    properties:
+      rechercheId:
+        type: string
+        format: uuid
+      recherche:
+        $ref: '#/$defs/RechercheChanson'
+      chansons:
+        type: array
+        items:
+          $ref: '#/$defs/ResumeChanson'
+    required:
+    - rechercheId
+    - recherche
+    - chansons
+  MotifIndisponibilite:
+    type: string
+    enum:
+    - ANIMATEUR
+    - SANS_VOIX
+    - PAROLES_NON_SYNCHRONISEES
+    - DUREE_INCONNUE
+    - PASSAGE_DEJA_INSCRIT
+    - LIMITE_ATTEINTE
+  FicheChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      chanson:
+        $ref: '#/$defs/ResumeChanson'
+      inscriptionPossible:
+        type: boolean
+      motifIndisponibilite:
+        oneOf:
+        - $ref: '#/$defs/MotifIndisponibilite'
+        - type: 'null'
+    required:
+    - chanson
+    - inscriptionPossible
+    - motifIndisponibilite
+    if:
+      properties:
+        inscriptionPossible:
+          const: true
+    then:
+      properties:
+        motifIndisponibilite:
+          type: 'null'
+        chanson:
+          properties:
+            dureeMs:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            etatParoles:
+              const: SYNCHRONISEES
+    else:
+      properties:
+        motifIndisponibilite:
+          $ref: '#/$defs/MotifIndisponibilite'
+  AccusePassage:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      passageId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      action:
+        type: string
+        enum:
+        - INSCRIRE
+        - DESINSCRIRE
+        - RETIRER
+        - DEPLACER
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      etatApres:
+        type: string
+        enum:
+        - EN_ATTENTE
+        - RETIRE
+    required:
+    - envoiId
+    - soireeId
+    - mancheId
+    - passageId
+    - numeroModification
+    - action
+    - recueLe
+    - etatApres
+  AccuseFileAttente:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      action:
+        type: string
+        enum:
+        - DEFINIR_PRIORITE
+        - REGLER_LIMITE
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      passage:
+        oneOf:
+        - $ref: '#/$defs/CiblePassage'
+        - type: 'null'
+    required:
+    - envoiId
+    - soireeId
+    - mancheId
+    - action
+    - recueLe
+    - passage
+    if:
+      properties:
+        action:
+          const: DEFINIR_PRIORITE
+    then:
+      properties:
+        passage:
+          $ref: '#/$defs/CiblePassage'
+    else:
+      properties:
+        passage:
+          type: 'null'
+  InterpretePublic:
+    type: object
+    additionalProperties: false
+    properties:
+      joueurId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+    required:
+    - joueurId
+    - pseudo
+  AttenteEstimee:
+    type: object
+    additionalProperties: false
+    properties:
+      calculeeLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      etat:
+        type: string
+        enum:
+        - ESTIMEE
+        - SUSPENDUE
+        - INCONNUE
+      dureeMs:
+        oneOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+    required:
+    - calculeeLe
+    - etat
+    - dureeMs
+    if:
+      properties:
+        etat:
+          const: ESTIMEE
+    then:
+      properties:
+        dureeMs:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+    else:
+      properties:
+        dureeMs:
+          type: 'null'
+  ConfigurationInterfaceKaraoke:
+    type: object
+    additionalProperties: false
+    properties:
+      longueurRechercheMax:
+        type: integer
+        minimum: 1
+        maximum: 120
+      delaiConsultationNavigateurMs:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      delaiConfirmationNavigateurMs:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+    required:
+    - longueurRechercheMax
+    - delaiConsultationNavigateurMs
+    - delaiConfirmationNavigateurMs
+  PassageEnAttentePublic:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      chanson:
+        allOf:
+        - $ref: '#/$defs/ResumeChanson'
+        - properties:
+            dureeMs:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            etatParoles:
+              const: SYNCHRONISEES
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 4
+      position:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      tour:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      prioritaire:
+        type: boolean
+      attente:
+        $ref: '#/$defs/AttenteEstimee'
+    required:
+    - passageId
+    - numeroModification
+    - numero
+    - chanson
+    - interpretes
+    - position
+    - tour
+    - prioritaire
+    - attente
+  CourantPourFile:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      chanson:
+        allOf:
+        - $ref: '#/$defs/ResumeChanson'
+        - properties:
+            dureeMs:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            etatParoles:
+              const: SYNCHRONISEES
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 4
+      etapeId:
+        type: string
+        format: uuid
+      etat:
+        type: string
+        enum:
+        - APPELE
+        - EN_COURS
+        - EN_PAUSE
+        - VOTE
+      prochainAppelPrevuLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: 'null'
+    required:
+    - passageId
+    - numeroModification
+    - numero
+    - chanson
+    - interpretes
+    - etapeId
+    - etat
+    - prochainAppelPrevuLe
+  KaraokeCommun:
+    type: object
+    properties:
+      mancheId:
+        type: string
+        format: uuid
+      etat:
+        type: string
+        enum:
+        - EN_COURS
+        - EN_PAUSE
+      limitePassagesEnAttente:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      nombreEnAttente:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      tourOuvert:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      passagePrioritaireId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      courant:
+        oneOf:
+        - $ref: '#/$defs/CourantPourFile'
+        - type: 'null'
+      configurationInterface:
+        $ref: '#/$defs/ConfigurationInterfaceKaraoke'
+    required:
+    - mancheId
+    - etat
+    - limitePassagesEnAttente
+    - nombreEnAttente
+    - tourOuvert
+    - passagePrioritaireId
+    - courant
+    - configurationInterface
+  BlocKaraokeSalle:
+    allOf:
+    - $ref: '#/$defs/KaraokeCommun'
+    - type: object
+      properties:
+        prochainsPassages:
+          type: array
+          items:
+            $ref: '#/$defs/PassageEnAttentePublic'
+          maxItems: 3
+        nombreAutresPassages:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+      - prochainsPassages
+      - nombreAutresPassages
+    unevaluatedProperties: false
+  BlocKaraokeConsole:
+    allOf:
+    - $ref: '#/$defs/KaraokeCommun'
+    - type: object
+      properties:
+        passagesEnAttente:
+          type: array
+          items:
+            $ref: '#/$defs/PassageEnAttentePublic'
+        peutGererFile:
+          type: boolean
+        peutReglerLimite:
+          type: boolean
+        peutRechercher:
+          type: boolean
+      required:
+      - passagesEnAttente
+      - peutGererFile
+      - peutReglerLimite
+      - peutRechercher
+    unevaluatedProperties: false
+  BlocKaraokeManette:
+    allOf:
+    - $ref: '#/$defs/KaraokeCommun'
+    - type: object
+      properties:
+        prochainsPassages:
+          type: array
+          items:
+            $ref: '#/$defs/PassageEnAttentePublic'
+          maxItems: 3
+        nombreAutresPassages:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        mesPassagesEnAttente:
+          type: array
+          items:
+            $ref: '#/$defs/PassageEnAttentePublic'
+        nombrePersonnelEnAttente:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        peutRechercher:
+          type: boolean
+        peutInscrire:
+          type: boolean
+        motifInscriptionRefusee:
+          oneOf:
+          - const: LIMITE_ATTEINTE
+          - type: 'null'
+      required:
+      - prochainsPassages
+      - nombreAutresPassages
+      - mesPassagesEnAttente
+      - nombrePersonnelEnAttente
+      - peutRechercher
+      - peutInscrire
+      - motifInscriptionRefusee
+    - if:
+        properties:
+          peutInscrire:
+            const: true
+        required:
+        - peutInscrire
+      then:
+        properties:
+          motifInscriptionRefusee:
+            type: 'null'
+      else:
+        properties:
+          motifInscriptionRefusee:
+            const: LIMITE_ATTEINTE
+    unevaluatedProperties: false

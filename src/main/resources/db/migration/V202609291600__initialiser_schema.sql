@@ -1,0 +1,3 @@
+-- Point de départ du schéma CroustyQuizz.
+-- Chaque package ajoute ses tables dans ses propres migrations, nommées
+-- V<AAAAMMJJhhmm>__<package>_<objet>.sql (voir CONTRIBUTING.md).

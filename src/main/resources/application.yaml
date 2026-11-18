@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: croustyquizz
+  profiles:
+    # Sans profil explicite, on est en développement. La production
+    # s'active avec SPRING_PROFILES_ACTIVE=prod.
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Le schéma appartient à Flyway : Hibernate vérifie, il ne crée rien.
+      ddl-auto: validate
+
+croustyquizz:
+  passage:
+    limitePassagesEnAttente: 1
+    delaiAppelSecondes: 30
+  karaoke:
+    delaiConsultationNavigateurMs: 8000
+    delaiConfirmationNavigateurMs: 10000
+    urlLrclib: https://lrclib.net
+    userAgentLrclib: CroustyQuizz/1.0 (https://github.com/Tibxla/croustyquizz)
+    delaiSourceMs: 5000
+    tailleReponseSourceMaxOctets: 2097152
+    longueurRechercheMax: 120

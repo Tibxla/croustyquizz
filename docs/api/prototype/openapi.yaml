@@ -1,0 +1,225 @@
+openapi: 3.1.0
+info:
+  title: Socle technique de démonstration CroustyQuizz
+  version: 0.2.0
+  description: >-
+    Routes de test actives en profils dev et recette (sauf heure).
+    Le Buzz reste anonyme ; les Manches exigent un Acteur de démonstration.
+    Le contrat métier authentifié reste dans ../openapi.yaml.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/heure:
+    get:
+      operationId: consulterHeure
+      responses:
+        '200':
+          description: Heure du serveur, sans garantie d'installation d'un abonnement.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [maintenant]
+                properties:
+                  maintenant: {type: string, format: date-time}
+  /api/test/soirees/{soireeId}/canaux:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    get:
+      operationId: consulterCanauxDeTest
+      responses:
+        '200':
+          description: Destinations dérivées des constantes du serveur.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connexion, salle, console, buzz]
+                properties:
+                  connexion: {type: string, const: /ws}
+                  salle: {type: string}
+                  console: {type: string}
+                  buzz: {type: string}
+        '400':
+          $ref: '#/components/responses/Erreur400'
+  /api/test/soirees/{soireeId}/etat/salle:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    get:
+      operationId: retrouverSalleDuPrototype
+      description: >-
+        Capture cohérente de la dernière Vue synchronisée et de sa Révision.
+        Sans abonnementId, lecture ponctuelle sans garantie de raccordement.
+        Avec abonnementId, attend un abonnement installé sur cette destination.
+        UUID neuf par abonnement, rattaché à une seule connexion STOMP vivante.
+        Le prototype est anonyme : cet UUID n'est pas une preuve d'identité HTTP.
+      parameters:
+        - name: abonnementId
+          in: query
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Dernière vue publiée, ou vue vide de repli à la Révision zéro.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/$defs/EtatSalle'
+        '409':
+          description: Abonnement absent, ambigu, désabonné, déconnecté ou sur une autre destination.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../schemas.yaml#/$defs/Probleme'
+              example:
+                type: about:blank
+                title: Abonnement inactif
+                status: 409
+                code: ABONNEMENT_INACTIF
+                detail: L'abonnement n'est pas installé sur cette destination.
+                instance: /api/test/soirees/00000001-0000-4000-8000-000000000000/etat/salle
+        '400':
+          $ref: '#/components/responses/Erreur400'
+  /api/test/soirees/{soireeId}/buzz:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    post:
+      operationId: buzzerDansLePrototype
+      description: >-
+        Pseudo fourni par la page, sans identité authentifiée. Espaces retirés aux
+        extrémités, puis limite à 30 points de code Unicode sans couper un caractère.
+        Horodatage et diffusion sérialisés par Soirée dans cette instance du serveur.
+        Pas de déduplication ni de classement métier.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pseudo]
+              properties:
+                pseudo: {type: string, minLength: 1}
+      responses:
+        '200':
+          description: Buzz diffusé ; un seul événement par appel accepté.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuzzRecu'
+        '400':
+          $ref: '#/components/responses/Erreur400'
+  /api/test/soirees/{soireeId}/manches:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    post:
+      operationId: creerMancheDeTest
+      description: Crée une Manche PRETE du mode installé, avec ses réglages. Acteur Animateur de démonstration requis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [mode, reglages]
+              properties:
+                mode: {$ref: '../schemas.yaml#/$defs/ModeDeJeu'}
+                reglages: {type: object}
+      responses:
+        '201':
+          description: Manche créée, sans la démarrer.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [mancheId, etat]
+                properties:
+                  mancheId: {type: string, format: uuid}
+                  etat: {const: PRETE}
+        '400': {$ref: '#/components/responses/Erreur400'}
+        '401': {$ref: '#/components/responses/Erreur401'}
+        '403': {$ref: '#/components/responses/Erreur403'}
+        '404': {$ref: '#/components/responses/Erreur404'}
+        '409': {$ref: '#/components/responses/Erreur409'}
+        '422': {$ref: '#/components/responses/Erreur422'}
+        '503': {$ref: '#/components/responses/Erreur503'}
+  /api/test/soirees/{soireeId}/manches/{mancheId}/demarrer:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+      - name: mancheId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      operationId: demarrerMancheDeTest
+      description: Démarre une Manche PRETE ; Acteur Animateur de démonstration requis. Reçu idempotent.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Manche démarrée.
+          content:
+            application/json:
+              schema: {$ref: '../schemas.yaml#/$defs/AccuseCommande'}
+        '400': {$ref: '#/components/responses/Erreur400'}
+        '401': {$ref: '#/components/responses/Erreur401'}
+        '403': {$ref: '#/components/responses/Erreur403'}
+        '404': {$ref: '#/components/responses/Erreur404'}
+        '409': {$ref: '#/components/responses/Erreur409'}
+        '503': {$ref: '#/components/responses/Erreur503'}
+
+components:
+  responses:
+    Erreur400:
+      description: Requête invalide.
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
+    Erreur401:
+      description: Refus HTTP 401.
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
+    Erreur403:
+      description: Refus HTTP 403.
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
+    Erreur404:
+      description: Refus HTTP 404.
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
+    Erreur409:
+      description: Refus HTTP 409.
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
+    Erreur422:
+      description: Refus HTTP 422.
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
+    Erreur503:
+      description: Refus HTTP 503.
+      content:
+        application/problem+json:
+          schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
+  parameters:
+    SoireeId:
+      name: soireeId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    BuzzRecu:
+      $ref: './schemas.yaml#/$defs/BuzzRecu'

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manette · CroustyQuizz</title>
+  <link rel="stylesheet" href="/css/croustyquizz.css">
+  <link rel="stylesheet" href="/css/manette.css">
+  <script defer src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
+  <script type="module" src="/js/page.mjs"></script>
+</head>
+<body data-ecran="manette">
+<main class="manette">
+  <header class="coquille__entete"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span><span>Manette</span></header>
+  <p class="coupure" role="status" data-connexion>Synchronisation…</p>
+  <div class="coquille__commun">
+      <h1 data-titre>Soirée</h1><p class="commun__resume" data-resume></p>
+      <p data-manche>En attente de la prochaine Manche</p>
+    </div>
+  <p class="commun__personnel" data-personnel></p>
+  <section class="coquille__mode" data-principale aria-label="Mode de jeu"></section>
+  <p class="manette__aide" data-attente>La prochaine Manche s’affichera ici.</p>
+  <p class="envoi envoi--refuse" role="alert" data-erreur hidden></p>
+  <section class="commun" aria-label="La Soirée"><details><summary data-nombre-joueurs>Joueurs</summary><ul class="commun__liste" data-joueurs></ul></details>
+      <details><summary>Classement général</summary><ol class="commun__liste" data-classement></ol></details>
+      <p data-buzz>Aucun Buzz reçu</p></section>
+  <div class="manette__actions"><p class="envoi" role="status" data-envoi hidden></p><button type="button" class="bouton" data-reprise disabled>Resynchroniser</button></div>
+  <noscript>Active JavaScript pour recevoir la Vue synchronisée.</noscript>
+</main>
+</body>
+</html>

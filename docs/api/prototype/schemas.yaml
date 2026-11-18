@@ -1,0 +1,45 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$defs:
+  BuzzRecu:
+    type: object
+    required: [pseudo, recuLe]
+    additionalProperties: false
+    properties:
+      pseudo: {type: string, minLength: 1, maxLength: 30}
+      recuLe: {type: string, format: date-time}
+  VueSalle:
+    type: object
+    required: [buzz]
+    additionalProperties: false
+    properties:
+      buzz:
+        description: Les 64 derniers Buzz, du plus ancien au plus récent.
+        type: array
+        maxItems: 64
+        items:
+          $ref: '#/$defs/BuzzRecu'
+  EtatSalle:
+    type: object
+    required: [revision, heureServeur, abonnementId, vue]
+    additionalProperties: false
+    properties:
+      revision: {type: integer, minimum: 0, maximum: 9007199254740991}
+      heureServeur: {type: string, format: date-time}
+      abonnementId:
+        oneOf:
+          - {type: string, format: uuid}
+          - {type: 'null'}
+      vue:
+        $ref: '#/$defs/VueSalle'
+  EvenementSalle:
+    type: object
+    required: [type, soireeId, revision, emisLe, donnees]
+    additionalProperties: false
+    properties:
+      type: {type: string, const: buzz-recu}
+      soireeId: {type: string, format: uuid}
+      revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+      emisLe: {type: string, format: date-time}
+      donnees:
+        $ref: '#/$defs/VueSalle'
+    description: Vue complète ; Révisions contiguës et indépendantes par destination.

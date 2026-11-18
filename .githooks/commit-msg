@@ -1,0 +1,20 @@
+#!/bin/sh
+# Refuse un message de commit qui ne suit pas CONTRIBUTING.md.
+# Activation, une fois par clone : git config core.hooksPath .githooks
+# La même expression est vérifiée par la CI (.github/workflows/ci.yml).
+
+FORMAT='^(feat|fix|test|refactor|docs|chore|ci|build)(\([a-z0-9-]+\))?!?: .+'
+
+premiere_ligne=$(head -n 1 "$1")
+
+case "$premiere_ligne" in
+	Merge*|Revert*|fixup!*|squash!*) exit 0 ;;
+esac
+
+if ! printf '%s\n' "$premiere_ligne" | grep -Eq "$FORMAT"; then
+	echo "Message refusé : « $premiere_ligne »" >&2
+	echo "Format attendu : type(scope): description, par exemple" >&2
+	echo "  feat(karaoke): ajouter la file d'attente des chanteurs" >&2
+	echo "Types : feat, fix, test, refactor, docs, chore, ci, build. Voir CONTRIBUTING.md." >&2
+	exit 1
+fi

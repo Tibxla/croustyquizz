@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette · Console d'animation, Karaoké · CroustyQuizz</title>
+<link rel="stylesheet" href="../css/croustyquizz.css">
+<link rel="stylesheet" href="../css/console.css">
+</head>
+<body>
+<!-- Maquette de référence : pseudos, titres et durées fictifs. -->
+<div class="console">
+  <header class="pilotage">
+    <div class="pilotage__soiree">
+      <span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
+      <small>Au Zinc · Soirée du jeudi · K7Q2</small>
+    </div>
+    <div class="pilotage__manche">
+      <span class="pilotage__mode">Karaoké</span>
+      <span class="pilotage__progression">Manche 3 sur 5 · Pilotage manuel</span>
+      <ul class="indicateurs">
+        <li><span class="icone icone--joueurs" aria-hidden="true"></span>31 Joueurs</li>
+        <li class="ok"><span>Écran<span class="libelle-long"> de salle</span> connecté</span></li>
+      </ul>
+    </div>
+    <div class="pilotage__commandes">
+      <button class="bouton bouton--icone-tablette"><span class="icone icone--pause" aria-hidden="true"></span><span class="bouton__libelle">Pause</span></button>
+      <button class="bouton"><span class="icone icone--passer" aria-hidden="true"></span><span class="bouton__libelle">Passer<span class="libelle-long"> ce Passage</span></span></button>
+      <button class="bouton bouton--action">Appeler le Passage suivant</button>
+    </div>
+  </header>
+
+  <main class="plan">
+    <section class="panneau" aria-labelledby="titre-file">
+      <h2 id="titre-file">File d'attente <small>4 Passages · rotation par tours</small></h2>
+      <div class="en-cours">
+        <div class="ticket ticket--orange ticket--detache"><span class="ticket__numero">12</span><span class="ticket__corps"><span class="ticket__qui">Léa et Sam</span><span class="ticket__quoi">Le Dernier Métro · Les Néons</span><span class="ticket__etat">Sur scène</span></span></div>
+        <p class="en-cours__temps"><span>Fin prévue dans</span><span class="chiffres">2:41</span></p>
+      </div>
+      <h3 class="visuellement-cache">À venir</h3>
+      <ol class="rouleau a-venir">
+        <li><div class="ticket ticket--eau"><span class="ticket__numero">13</span><span class="ticket__corps"><span class="ticket__qui">Karim</span><span class="ticket__quoi">Juste avant l'orage</span></span></div>
+          <button class="bouton" aria-label="Retirer le Passage 13"><span class="icone icone--fermer" aria-hidden="true"></span></button></li>
+        <li><div class="ticket ticket--bleu"><span class="ticket__numero">14</span><span class="ticket__corps"><span class="ticket__qui">Inès</span><span class="ticket__quoi">Freestyle · Pluie fine</span></span></div>
+          <button class="bouton" aria-label="Retirer le Passage 14"><span class="icone icone--fermer" aria-hidden="true"></span></button></li>
+        <li><div class="ticket ticket--rose"><span class="ticket__numero">15</span><span class="ticket__corps"><span class="ticket__qui">Tom, Jade et Max</span><span class="ticket__quoi">Les Grandes Vacances</span></span></div>
+          <button class="bouton" aria-label="Retirer le Passage 15"><span class="icone icone--fermer" aria-hidden="true"></span></button></li>
+      </ol>
+    </section>
+
+    <section class="panneau" aria-labelledby="titre-catalogue">
+      <h2 id="titre-catalogue">Catalogue <small>Inscrire un Joueur sans qu'il passe par sa Manette</small></h2>
+      <label class="recherche"><span class="icone icone--chercher" aria-hidden="true"></span><span class="visuellement-cache">Chercher une Chanson</span><input type="search" value="metro" placeholder="Titre ou artiste"></label>
+      <table class="resultats">
+        <thead><tr><th scope="col">Chanson</th><th scope="col">Durée</th><th scope="col"><span class="visuellement-cache">Actions</span></th></tr></thead>
+        <tbody>
+          <tr><td><span class="titre">Le Dernier Métro</span><span class="artiste">Les Néons</span></td><td class="duree">3:28</td>
+            <td><div class="actions"><button class="bouton"><span class="icone icone--ajouter" aria-hidden="true"></span>Ajouter à la File d'attente</button><button class="bouton bouton--lien">Lancer maintenant</button></div></td></tr>
+          <tr><td><span class="titre">Métropolitaine</span><span class="artiste">Clémence et les Quais</span></td><td class="duree">4:02</td>
+            <td><div class="actions"><button class="bouton"><span class="icone icone--ajouter" aria-hidden="true"></span>Ajouter à la File d'attente</button><button class="bouton bouton--lien">Lancer maintenant</button></div></td></tr>
+          <tr><td><span class="titre">Dernier Métro pour Pantin</span><span class="artiste">Ourcq Fanfare</span></td><td class="duree">2:51</td>
+            <td><div class="actions"><button class="bouton"><span class="icone icone--ajouter" aria-hidden="true"></span>Ajouter à la File d'attente</button><button class="bouton bouton--lien">Lancer maintenant</button></div></td></tr>
+        </tbody>
+      </table>
+      <p class="console__note">« Lancer maintenant » interrompt le Passage en cours : une confirmation le rappelle avant d'agir.</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

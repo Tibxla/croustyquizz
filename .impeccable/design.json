@@ -1,0 +1,608 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T21:16:11+00:00",
+  "title": "Design System: CroustyQuizz",
+  "extensions": {
+    "colorMeta": {
+      "fond-0": {
+        "role": "neutral",
+        "displayName": "Brun tabac",
+        "canonical": "#1c1410",
+        "oklch": "oklch(20.0% 0.015 47.9)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "fond-1": {
+        "role": "neutral",
+        "displayName": "Brun comptoir",
+        "canonical": "#241a15",
+        "oklch": "oklch(22.8% 0.019 47.9)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "fond-2": {
+        "role": "neutral",
+        "displayName": "Brun banquette",
+        "canonical": "#2e221b",
+        "oklch": "oklch(26.4% 0.022 51.7)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "fond-3": {
+        "role": "neutral",
+        "displayName": "Brun bois",
+        "canonical": "#3a2c24",
+        "oklch": "oklch(30.7% 0.025 51.2)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "fond-4": {
+        "role": "neutral",
+        "displayName": "Brun bouchon",
+        "canonical": "#54443a",
+        "oklch": "oklch(40.0% 0.027 53.7)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "texte": {
+        "role": "neutral",
+        "displayName": "Crème",
+        "canonical": "#f6ede4",
+        "oklch": "oklch(95.1% 0.015 67.6)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "texte-2": {
+        "role": "neutral",
+        "displayName": "Crème fanée",
+        "canonical": "#cdbfb2",
+        "oklch": "oklch(81.3% 0.024 65.4)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "texte-3": {
+        "role": "neutral",
+        "displayName": "Crème usée",
+        "canonical": "#9c8c7f",
+        "oklch": "oklch(65.1% 0.027 61.4)",
+        "tonalRamp": [
+          "#1c1410",
+          "#241a15",
+          "#2e221b",
+          "#3a2c24",
+          "#54443a",
+          "#9c8c7f",
+          "#cdbfb2",
+          "#f6ede4"
+        ]
+      },
+      "encre": {
+        "role": "neutral",
+        "displayName": "Encre brune",
+        "canonical": "#1c1410",
+        "oklch": "oklch(20.0% 0.015 47.9)",
+        "tonalRamp": [
+          "#0d0b0a",
+          "#282422",
+          "#47413e",
+          "#685f5b",
+          "#8a807b",
+          "#aca39f",
+          "#cfc7c4",
+          "#f2edeb"
+        ]
+      },
+      "encre-2": {
+        "role": "neutral",
+        "displayName": "Encre délavée",
+        "canonical": "#3d2c22",
+        "oklch": "oklch(31.0% 0.031 51.7)",
+        "tonalRamp": [
+          "#0e0a08",
+          "#2b231f",
+          "#4b3f39",
+          "#6d5e54",
+          "#927e72",
+          "#b2a197",
+          "#d4c6be",
+          "#f6ece7"
+        ]
+      },
+      "encre-perforation": {
+        "role": "neutral",
+        "displayName": "Encre de perforation",
+        "canonical": "rgb(28 20 16 / 0.55)",
+        "tonalRamp": [
+          "#0d0b0a",
+          "#282422",
+          "#47413e",
+          "#685f5b",
+          "#8a807b",
+          "#aca39f",
+          "#cfc7c4",
+          "#f2edeb"
+        ]
+      },
+      "orange": {
+        "role": "secondary",
+        "displayName": "Orange ticket",
+        "canonical": "#ff7a2f",
+        "oklch": "oklch(72.5% 0.182 46.0)",
+        "tonalRamp": [
+          "#1a0400",
+          "#431400",
+          "#702800",
+          "#a23d00",
+          "#d55500",
+          "#ee8550",
+          "#ffb28b",
+          "#ffe0c4"
+        ]
+      },
+      "eau": {
+        "role": "secondary",
+        "displayName": "Vert d'eau",
+        "canonical": "#7ed8be",
+        "oklch": "oklch(81.8% 0.095 173.3)",
+        "tonalRamp": [
+          "#020e0a",
+          "#0a2c23",
+          "#184c3f",
+          "#26705d",
+          "#39957d",
+          "#71b5a1",
+          "#a3d6c6",
+          "#d5f8ec"
+        ]
+      },
+      "bleu": {
+        "role": "secondary",
+        "displayName": "Bleu ticket",
+        "canonical": "#5aa7ee",
+        "oklch": "oklch(70.9% 0.130 248.4)",
+        "tonalRamp": [
+          "#020c18",
+          "#0b273f",
+          "#19456b",
+          "#28659a",
+          "#3a87cb",
+          "#6faae3",
+          "#a1cefb",
+          "#d3f3ff"
+        ]
+      },
+      "rose": {
+        "role": "secondary",
+        "displayName": "Rose ticket",
+        "canonical": "#ff9aa8",
+        "oklch": "oklch(79.4% 0.121 11.3)",
+        "tonalRamp": [
+          "#160608",
+          "#3b191e",
+          "#642f38",
+          "#904753",
+          "#be6170",
+          "#da8b96",
+          "#f5b6bd",
+          "#ffe1e6"
+        ]
+      },
+      "citron": {
+        "role": "primary",
+        "displayName": "Jaune citron",
+        "canonical": "#f7df4a",
+        "oklch": "oklch(89.8% 0.163 99.9)",
+        "tonalRamp": [
+          "#0f0b00",
+          "#2e2500",
+          "#4f4200",
+          "#746100",
+          "#9a8200",
+          "#b8a636",
+          "#d8cb7e",
+          "#f9f0bc"
+        ]
+      },
+      "citron-appuye": {
+        "role": "primary",
+        "displayName": "Citron appuyé",
+        "canonical": "#e5cb2c",
+        "oklch": "oklch(83.9% 0.164 99.2)",
+        "tonalRamp": [
+          "#100b00",
+          "#2e2500",
+          "#504100",
+          "#756000",
+          "#9b8100",
+          "#b9a635",
+          "#d9cb7d",
+          "#f9f0bc"
+        ]
+      },
+      "refus": {
+        "role": "tertiary",
+        "displayName": "Refus",
+        "canonical": "#ff8a7a",
+        "oklch": "oklch(75.8% 0.145 29.0)",
+        "tonalRamp": [
+          "#180504",
+          "#3f1712",
+          "#6a2c24",
+          "#994238",
+          "#ca5c4e",
+          "#e4887b",
+          "#fdb4a8",
+          "#ffe0d8"
+        ]
+      },
+      "refus-fond": {
+        "role": "tertiary",
+        "displayName": "Fond de refus",
+        "canonical": "#4a1f1a",
+        "oklch": "oklch(30.0% 0.067 28.4)",
+        "tonalRamp": [
+          "#120907",
+          "#32201d",
+          "#563935",
+          "#7e5550",
+          "#a6736c",
+          "#c49992",
+          "#e3c0ba",
+          "#ffe8e4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "chiffre-geant": {
+        "displayName": "Chiffre géant",
+        "purpose": "Numéro du ticket du Joueur sur la Manette."
+      },
+      "gain": {
+        "displayName": "Gain",
+        "purpose": "Points validés d'une Question."
+      },
+      "code-acces": {
+        "displayName": "Code d'accès",
+        "purpose": "Code du talon d'accès."
+      },
+      "numero": {
+        "displayName": "Numéro",
+        "purpose": "Souche d'un ticket ; lettre d'une Réponse à 2rem."
+      },
+      "imprime": {
+        "displayName": "Imprimé",
+        "purpose": "Libellé des boutons grand format, en capitales."
+      },
+      "marque": {
+        "displayName": "Mot-symbole",
+        "purpose": "Mot-symbole et Mode de jeu de la barre de pilotage, en capitales."
+      },
+      "etiquette": {
+        "displayName": "Étiquette",
+        "purpose": "État imprimé sur un ticket, en capitales espacées."
+      },
+      "salle-ligne": {
+        "displayName": "Ligne chantée",
+        "purpose": "Ligne en cours des paroles sur l'Écran de salle."
+      },
+      "salle-enonce": {
+        "displayName": "Énoncé de salle",
+        "purpose": "Énoncé d'une Question sur l'Écran de salle."
+      },
+      "titre": {
+        "displayName": "Titre",
+        "purpose": "Titre d'un écran de Manette."
+      },
+      "reponse": {
+        "displayName": "Réponse",
+        "purpose": "Texte d'une Réponse sur la Manette."
+      },
+      "corps": {
+        "displayName": "Corps",
+        "purpose": "Texte courant."
+      },
+      "libelle": {
+        "displayName": "Libellé",
+        "purpose": "Libellé des boutons ordinaires."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ombre",
+        "value": "0 10px 24px rgb(0 0 0 / 0.45)",
+        "purpose": "Ombre de détachement : le corps d'un ticket détaché et le dialogue modal."
+      },
+      {
+        "name": "ombre-douce",
+        "value": "0 4px 12px rgb(0 0 0 / 0.35)",
+        "purpose": "Barre de pilotage collée en haut de la Console."
+      },
+      {
+        "name": "anneau-choisi",
+        "value": "0 0 0 3px var(--fond-0), 0 0 0 6px var(--citron)",
+        "purpose": "Anneau citron de la Réponse choisie sur la Manette."
+      }
+    ],
+    "motion": [
+      {
+        "name": "sortie",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Courbe unique des transitions et du détachement."
+      },
+      {
+        "name": "transition-commande",
+        "value": "120ms",
+        "purpose": "Fond, bordure et enfoncement des boutons."
+      },
+      {
+        "name": "detacher",
+        "value": "900ms",
+        "purpose": "Détachement du corps d'un ticket le long de la perforation."
+      },
+      {
+        "name": "tourner",
+        "value": "800ms linear infinite",
+        "purpose": "Roue de l'envoi en cours."
+      },
+      {
+        "name": "mouvement-reduit",
+        "value": "1ms",
+        "purpose": "Toutes les animations et transitions sous prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "tablette",
+        "value": "1200px"
+      },
+      {
+        "name": "colonne-unique",
+        "value": "860px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bouton ordinaire",
+      "kind": "button",
+      "refersTo": "bouton",
+      "description": "Commande secondaire : bordure épaisse brun bouchon, fond transparent.",
+      "html": "<button class=\"ds-bouton\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"14\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\"/><rect x=\"6\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\"/></svg>Pause</button>",
+      "css": ".ds-bouton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 2px solid var(--fond-4); border-radius: var(--rayon); background: transparent; color: var(--texte); font: 700 1rem/1.1 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); cursor: pointer; transition: background-color 120ms var(--sortie), border-color 120ms var(--sortie), transform 120ms var(--sortie); } .ds-bouton:hover { border-color: var(--texte-3); background: var(--fond-2); } .ds-bouton:active { transform: translateY(1px); } .ds-bouton:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }"
+    },
+    {
+      "name": "Bouton d'action",
+      "kind": "button",
+      "refersTo": "bouton-action",
+      "description": "La seule couleur d'action : ce qui fait avancer la Soirée ou l'action du Joueur.",
+      "html": "<button class=\"ds-bouton-action\">Appeler le Passage suivant</button>",
+      "css": ".ds-bouton-action { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border: 2px solid var(--citron); border-radius: var(--rayon); background: var(--citron); color: var(--encre); font: 700 1rem/1.1 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); cursor: pointer; transition: background-color 120ms var(--sortie), border-color 120ms var(--sortie), transform 120ms var(--sortie); } .ds-bouton-action:hover { border-color: var(--citron-appuye); background: var(--citron-appuye); } .ds-bouton-action:active { transform: translateY(1px); } .ds-bouton-action:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }"
+    },
+    {
+      "name": "Bouton grand format",
+      "kind": "button",
+      "refersTo": "bouton-grand",
+      "description": "L'action unique de la Manette, pleine largeur, libellé imprimé.",
+      "html": "<button class=\"ds-bouton-grand\">Je suis prêt</button>",
+      "css": ".ds-bouton-grand { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 64px; padding: 16px 24px; border: 2px solid var(--citron); border-radius: var(--rayon-grand); background: var(--citron); color: var(--encre); font: 800 1.75rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; transition: background-color 120ms var(--sortie), transform 120ms var(--sortie); } .ds-bouton-grand:hover { background: var(--citron-appuye); border-color: var(--citron-appuye); } .ds-bouton-grand:active { transform: translateY(1px); } .ds-bouton-grand:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; } .ds-bouton-grand:disabled { background: var(--fond-3); border-color: var(--fond-3); color: var(--texte-3); cursor: not-allowed; transform: none; }"
+    },
+    {
+      "name": "Ticket",
+      "kind": "custom",
+      "refersTo": "ticket-corps",
+      "description": "Souche numérotée et corps séparés par la perforation et ses deux encoches.",
+      "html": "<div class=\"ds-ticket\"><span class=\"ds-ticket__numero\">13</span><span class=\"ds-ticket__corps\"><span class=\"ds-ticket__qui\">Karim</span><span class=\"ds-ticket__quoi\">Juste avant l'orage</span></span></div>",
+      "css": ".ds-ticket { --teinte: var(--eau); --encoche: 14px; position: relative; display: grid; grid-template-columns: 4.5rem 1fr; max-width: 320px; color: var(--encre); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-ticket::before, .ds-ticket::after { content: \"\"; position: absolute; z-index: 1; left: 4.5rem; width: var(--encoche); height: var(--encoche); margin-left: calc(var(--encoche) / -2); border-radius: 50%; background: var(--fond-encoche, var(--fond-0)); } .ds-ticket::before { top: calc(var(--encoche) / -2); } .ds-ticket::after { bottom: calc(var(--encoche) / -2); } .ds-ticket__numero { display: grid; place-items: center; padding: 8px; border-radius: var(--rayon) 0 0 var(--rayon); background: var(--teinte); font: 800 2.25rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); font-variant-numeric: tabular-nums; } .ds-ticket__corps { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-left: 3px dotted rgb(28 20 16 / 0.55); border-radius: 0 var(--rayon) var(--rayon) 0; background: var(--teinte); } .ds-ticket__qui { font-weight: 700; font-size: 1.125rem; line-height: 1.15; } .ds-ticket__quoi { color: var(--encre-2); font-size: 0.9375rem; }"
+    },
+    {
+      "name": "Ticket détaché",
+      "kind": "custom",
+      "refersTo": "ticket-corps",
+      "description": "Le geste signature : le corps se détache le long de la perforation, la souche reste.",
+      "html": "<div class=\"ds-ticket-detache\"><span class=\"ds-ticket-detache__numero\">12</span><span class=\"ds-ticket-detache__corps\"><span class=\"ds-ticket-detache__qui\">Léa et Sam</span><span>Le Dernier Métro</span><span class=\"ds-ticket-detache__etat\">Sur scène</span></span></div>",
+      "css": ".ds-ticket-detache { --teinte: var(--orange); --encoche: 14px; position: relative; display: grid; grid-template-columns: 4.5rem 1fr; max-width: 320px; color: var(--encre); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-ticket-detache::before, .ds-ticket-detache::after { content: \"\"; position: absolute; z-index: 1; left: 4.5rem; width: var(--encoche); height: var(--encoche); margin-left: calc(var(--encoche) / -2); border-radius: 50%; background: var(--fond-encoche, var(--fond-0)); } .ds-ticket-detache::before { top: calc(var(--encoche) / -2); } .ds-ticket-detache::after { bottom: calc(var(--encoche) / -2); } .ds-ticket-detache__numero { display: grid; place-items: center; padding: 8px; border-radius: var(--rayon) 0 0 var(--rayon); background: linear-gradient(90deg, transparent calc(100% - 3px), rgb(28 20 16 / 0.35) 0), var(--teinte); font: 800 2.25rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); } .ds-ticket-detache__corps { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-radius: 0 var(--rayon) var(--rayon) 0; background: var(--teinte); transform-origin: 0 0; transform: translate(10px, 6px) rotate(2.5deg); box-shadow: 0 10px 24px rgb(0 0 0 / 0.45); transition: transform 900ms var(--sortie); } .ds-ticket-detache:hover .ds-ticket-detache__corps { transform: translate(14px, 8px) rotate(3.5deg); } .ds-ticket-detache__qui { font-weight: 700; font-size: 1.125rem; } .ds-ticket-detache__etat { position: absolute; top: 8px; right: 12px; font: 800 0.8125rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); letter-spacing: 0.12em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Réponse",
+      "kind": "button",
+      "refersTo": "reponse",
+      "description": "Une Réponse du Quiz : la lettre dans la souche, toujours un texte.",
+      "html": "<button class=\"ds-reponse\" aria-pressed=\"true\"><span class=\"ds-reponse__lettre\">B</span><span>Paris</span></button>",
+      "css": ".ds-reponse { --encoche: 14px; position: relative; display: grid; grid-template-columns: 3.5rem 1fr; align-items: center; width: 100%; max-width: 360px; min-height: 68px; padding: 0 16px 0 0; border: 0; border-radius: var(--rayon); background: var(--eau); color: var(--encre); font: 700 1.1875rem/1.35 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); text-align: left; cursor: pointer; } .ds-reponse::before, .ds-reponse::after { content: \"\"; position: absolute; left: 3.5rem; width: var(--encoche); height: var(--encoche); margin-left: calc(var(--encoche) / -2); border-radius: 50%; background: var(--fond-encoche, var(--fond-0)); } .ds-reponse::before { top: calc(var(--encoche) / -2); } .ds-reponse::after { bottom: calc(var(--encoche) / -2); } .ds-reponse__lettre { display: grid; place-items: center; align-self: stretch; margin-right: 16px; border-right: 3px dotted rgb(28 20 16 / 0.55); font: 800 2rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); } .ds-reponse[aria-pressed=\"true\"] { box-shadow: 0 0 0 3px var(--fond-0), 0 0 0 6px var(--citron); } .ds-reponse:hover { filter: brightness(1.04); } .ds-reponse:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }"
+    },
+    {
+      "name": "Talon d'accès",
+      "kind": "card",
+      "refersTo": "talon",
+      "description": "Le seul aplat citron de l'Écran de salle : QR, invitation, code, adresse insécable.",
+      "html": "<div class=\"ds-talon\"><div class=\"ds-talon__qr\"></div><div><span class=\"ds-talon__aide\">Rejoins la Soirée</span><span class=\"ds-talon__code\">K7Q2</span><span class=\"ds-talon__adresse\"><span>croustyquizz-recette</span><wbr><span>.onrender.com</span></span></div></div>",
+      "css": ".ds-talon { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px; max-width: 380px; padding: 12px; border-radius: var(--rayon); background: var(--citron); color: var(--encre); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-talon__qr { width: 6rem; aspect-ratio: 1; border-radius: 6px; background: #fff repeating-linear-gradient(90deg, var(--encre) 0 6px, transparent 6px 12px); background-clip: content-box; padding: 6px; } .ds-talon__aide { display: block; font-weight: 700; font-size: 0.9375rem; } .ds-talon__code { display: block; font: 800 3rem/0.95 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); letter-spacing: 0.06em; } .ds-talon__adresse { display: block; font-weight: 700; } .ds-talon__adresse > span { white-space: nowrap; }"
+    },
+    {
+      "name": "Champ de saisie",
+      "kind": "input",
+      "refersTo": "champ",
+      "description": "Champ de la Manette : grand, contrasté, aide sous le champ, curseur citron.",
+      "html": "<label class=\"ds-champ\"><span class=\"ds-champ__label\">Ton pseudo</span><input class=\"ds-champ__input\" value=\"Inès\" maxlength=\"20\"><span class=\"ds-champ__aide\">Il s'affiche sur la télé. 20 caractères au plus.</span></label>",
+      "css": ".ds-champ { display: flex; flex-direction: column; gap: 8px; max-width: 360px; color: var(--texte); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-champ__label { font-weight: 700; } .ds-champ__input { min-height: 56px; padding: 12px 16px; border: 2px solid var(--fond-4); border-radius: var(--rayon); background: var(--fond-1); color: var(--texte); font: 400 1.25rem/1.2 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); caret-color: var(--citron); } .ds-champ__input:hover { border-color: var(--texte-3); } .ds-champ__input:focus-visible { border-color: var(--citron); outline: 3px solid var(--citron); outline-offset: 2px; } .ds-champ__aide { color: var(--texte-2); font-size: 0.9375rem; }"
+    },
+    {
+      "name": "État d'envoi",
+      "kind": "chip",
+      "refersTo": "envoi-accepte",
+      "description": "Envoi en cours, accepté ou refusé : rien n'est annoncé réussi sans le serveur.",
+      "html": "<div class=\"ds-envois\"><p class=\"ds-envoi ds-envoi--en-cours\">Envoi de ta Réponse B…</p><p class=\"ds-envoi ds-envoi--accepte\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>Réponse B enregistrée.</p><p class=\"ds-envoi ds-envoi--refuse\">La Question est close, ta Réponse n'a pas été prise.</p></div>",
+      "css": ".ds-envois { display: flex; flex-direction: column; gap: 8px; max-width: 360px; font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-envoi { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 8px 12px; border-radius: var(--rayon); font-weight: 700; } .ds-envoi--en-cours { background: var(--fond-2); color: var(--texte-2); } .ds-envoi--en-cours::before { content: \"\"; width: 1.1em; height: 1.1em; border: 3px solid var(--fond-4); border-top-color: var(--texte); border-radius: 50%; animation: ds-tourner 800ms linear infinite; } .ds-envoi--accepte { background: var(--eau); color: var(--encre); } .ds-envoi--refuse { background: var(--refus-fond); color: var(--refus); } @keyframes ds-tourner { to { transform: rotate(360deg); } }"
+    },
+    {
+      "name": "Mot-symbole",
+      "kind": "nav",
+      "refersTo": "pilotage",
+      "description": "Le mot-symbole tel qu'il ouvre la barre de pilotage de la Console.",
+      "html": "<header class=\"ds-pilotage\"><span class=\"ds-marque\">Crousty<span class=\"ds-marque__accent\">Quizz</span></span><span class=\"ds-pilotage__mode\">Karaoké</span><button class=\"ds-pilotage__action\">Appeler le Passage suivant</button></header>",
+      "css": ".ds-pilotage { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--fond-2); border-bottom: 1px solid var(--fond-3); box-shadow: 0 4px 12px rgb(0 0 0 / 0.35); color: var(--texte); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-marque { display: inline-flex; align-items: baseline; gap: 0.15em; font: 800 1.5rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); letter-spacing: 0.02em; text-transform: uppercase; } .ds-marque__accent { padding: 0.05em 0.25em 0.1em; border-radius: 4px; background: var(--orange); color: var(--encre); } .ds-pilotage__mode { font: 800 1.5rem/1 var(--police-chiffres, \"Barlow Condensed\", \"Atkinson Hyperlegible\", sans-serif); letter-spacing: 0.04em; text-transform: uppercase; } .ds-pilotage__action { margin-left: auto; min-height: 44px; padding: 8px 16px; border: 2px solid var(--citron); border-radius: var(--rayon); background: var(--citron); color: var(--encre); font: 700 1rem/1.1 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); cursor: pointer; } .ds-pilotage__action:hover { background: var(--citron-appuye); border-color: var(--citron-appuye); } .ds-pilotage__action:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }"
+    },
+    {
+      "name": "Message d'erreur de champ",
+      "kind": "input",
+      "refersTo": "champ-erreur",
+      "description": "Message sous le champ, relié par aria-describedby ; aria-invalid signale le refus sans dépendre de la couleur.",
+      "html": "<div class=\"ds-champ-erreur\"><label for=\"ds-pseudo-erreur\">Ton pseudo</label><input id=\"ds-pseudo-erreur\" aria-invalid=\"true\" aria-describedby=\"ds-pseudo-message\"><p class=\"ds-champ-erreur__message\" id=\"ds-pseudo-message\">Renseigne ton pseudo.</p></div>",
+      "css": ".ds-champ-erreur { display: flex; flex-direction: column; gap: var(--espace-2); max-width: 360px; color: var(--texte); font-family: var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-champ-erreur label { font-weight: 700; } .ds-champ-erreur input { min-width: 0; max-width: 100%; min-height: 56px; padding: var(--espace-3) var(--espace-4); border: 2px solid var(--fond-4); border-radius: var(--rayon); background: var(--fond-1); color: var(--texte); font: 400 1.25rem/1.2 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); caret-color: var(--citron); } .ds-champ-erreur input:focus-visible { border-color: var(--citron); outline: 3px solid var(--citron); outline-offset: 2px; } .ds-champ-erreur__message { margin: 0; padding: var(--espace-2) var(--espace-3); border-radius: var(--rayon); background: var(--refus-fond); color: var(--refus); }"
+    },
+    {
+      "name": "Dialogue modal",
+      "kind": "custom",
+      "refersTo": "dialogue",
+      "description": "Aperçu statique ouvert du dialogue natif. Dans l’application, ouvrirDialogue utilise showModal(), place le focus et le rend au déclencheur à la fermeture.",
+      "html": "<dialog open class=\"ds-dialogue\" aria-labelledby=\"ds-dialogue-titre\"><h2 id=\"ds-dialogue-titre\">Confirmer l’action</h2><p>Vérifie ton choix avant de continuer.</p><form method=\"dialog\"><button class=\"ds-dialogue__bouton\" autofocus>Fermer</button></form></dialog>",
+      "css": ".ds-dialogue { position: relative; margin: 0; width: min(36rem, calc(100% - 32px)); max-height: calc(100svh - 48px); padding: var(--espace-5); border: 0; border-radius: var(--rayon-grand); background: var(--fond-2); color: var(--texte); box-shadow: var(--ombre); font: 400 1rem/1.45 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); } .ds-dialogue::backdrop { background: rgb(28 20 16 / 0.8); } .ds-dialogue > * { margin: 0; } .ds-dialogue > * + * { margin-top: var(--espace-4); } .ds-dialogue h2 { font-size: 1.5rem; line-height: 1.35; } .ds-dialogue__bouton { min-height: 44px; padding: var(--espace-2) var(--espace-4); border: 2px solid var(--fond-4); border-radius: var(--rayon); background: transparent; color: var(--texte); font: 700 1rem/1.1 var(--police-texte, \"Atkinson Hyperlegible\", system-ui, sans-serif); cursor: pointer; transition: background-color 120ms var(--sortie), border-color 120ms var(--sortie), transform 120ms var(--sortie); } .ds-dialogue__bouton:hover { border-color: var(--texte-3); background: var(--fond-2); } .ds-dialogue__bouton:active { transform: translateY(1px); } .ds-dialogue:focus-visible, .ds-dialogue__bouton:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le rouleau de tickets",
+    "overview": "Une Soirée CroustyQuizz est un rouleau de tickets numérotés. Chaque Joueur reçoit le sien en entrant, chaque Passage se détache du rouleau quand son tour vient, et les trois interfaces (Console d'animation, Manette, Écran de salle) montrent le même rouleau à trois distances : le comptoir, la main, cinq mètres. Tout le système découle de cet objet : des aplats de couleur francs portant de l'encre brune, une perforation pointillée avec ses deux encoches rondes, un chiffre condensé très gras qui se lit d'un coup d'œil.\n\nLe fond est un brun tabac profond, pensé pour ne pas éblouir une salle sombre ni un téléphone à luminosité basse ; cinq paliers de brun sont les seuls neutres du produit. Sur ce fond, les tickets prennent quatre teintes (orange, vert d'eau, bleu, rose) qui servent à distinguer, jamais à signifier seules. Le jaune citron est mis de côté pour ce qu'on touche et pour le talon d'accès : il désigne l'action, il ne décore pas. La densité suit l'interface : large et vue de loin sur l'Écran de salle (échelle en largeur d'écran), une seule action en bas de la Manette, une Console dense mais dont la barre de pilotage ne quitte jamais l'écran.\n\nLe monde refuse explicitement la boîte de nuit violette à néons et le tableau de bord blanc de logiciel en ligne. Les perforations sont le seul ornement ; il n'y a ni photo, ni illustration, ni dégradé de couleur.",
+    "keyCharacteristics": [
+      "Fond brun tabac, cinq paliers de brun comme seuls neutres.",
+      "Tickets en aplats orange, eau, bleu, rose, toujours en encre brune.",
+      "Jaune citron réservé à ce qu'on touche, au focus et au talon d'accès.",
+      "Perforation pointillée et encoches rondes comme seul ornement.",
+      "Chiffres et libellés imprimés en Barlow Condensed 800, texte en Atkinson Hyperlegible.",
+      "Un geste signature commun aux trois interfaces : le ticket qui se détache."
+    ],
+    "rules": [
+      {
+        "name": "La règle du Citron",
+        "body": "Le jaune citron ne marque que ce qu'on touche (bouton d'action, Réponse choisie, champ actif) et le focus, plus le talon d'accès. Sur l'Écran de salle, il n'apparaît nulle part ailleurs que sur le talon.",
+        "section": "colors"
+      },
+      {
+        "name": "La règle des Aplats",
+        "body": "Un ticket est un aplat franc portant de l'encre brune : jamais de dégradé de couleur, jamais de texte clair sur une teinte de ticket.",
+        "section": "colors"
+      },
+      {
+        "name": "La règle de la Couleur jamais seule",
+        "body": "Une teinte ne porte jamais seule une information : chaque Réponse a sa lettre et son texte, chaque état d'envoi a son libellé, la bonne Réponse est dite en toutes lettres.",
+        "section": "colors"
+      },
+      {
+        "name": "La règle de la Teinte du Passage",
+        "body": "La partie déjà chantée de la ligne en cours prend la teinte du ticket du Passage en cours, transmise par la variable `--teinte-passage` (repli : orange).",
+        "section": "colors"
+      },
+      {
+        "name": "La règle du Ticket imprimé",
+        "body": "Barlow Condensed 800 sert aux chiffres et aux libellés courts imprimés comme sur un ticket : boutons grand format, Mode de jeu, titres de colonne de l'Écran de salle, état d'un ticket, lettres des Réponses, mot-symbole. Jamais au texte courant, jamais à une phrase, jamais à un surtitre posé au-dessus d'un titre.",
+        "section": "typography"
+      },
+      {
+        "name": "La règle des Chiffres tabulaires",
+        "body": "Tout nombre qui change sous les yeux (numéro, score, temps restant, durée) s'affiche en chiffres tabulaires.",
+        "section": "typography"
+      },
+      {
+        "name": "La règle de la Barre sur une ligne",
+        "body": "À la largeur tablette (1200 px et moins), la barre de pilotage reste sur une ligne : Pause en icône seule, « Passer » en libellé court, et chaque commande garde son nom accessible.",
+        "section": "layout"
+      },
+      {
+        "name": "La règle de l'Adresse insécable",
+        "body": "L'adresse d'accès ne se coupe jamais sur un trait d'union : chaque segment est insécable et la seule coupure permise tombe avant le point.",
+        "section": "layout"
+      },
+      {
+        "name": "La règle de l'Ombre du détachement",
+        "body": "Une ombre portée signifie qu'un ticket a quitté le rouleau ou qu'un dialogue exige une décision. Hors du ticket détaché, du dialogue modal et de la barre de pilotage, rien ne flotte.",
+        "section": "elevation"
+      },
+      {
+        "name": "La règle du Détachement",
+        "body": "Le geste signature : quand son tour vient, le corps du ticket se détache le long de la perforation, s'incline et prend l'ombre de détachement, pendant que la souche reste sur le rouleau. Même mécanique sur les trois interfaces (900 ms sur la courbe de sortie), réduite à un instant si le mouvement réduit est demandé.",
+        "section": "components"
+      },
+      {
+        "name": "La règle du Serveur d'abord",
+        "body": "Aucun succès n'est annoncé sans réponse du serveur, et la valeur validée d'un score s'affiche telle quelle avant toute animation, qui part de cette valeur.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** poser toute teinte de ticket ou tout citron sous de l'encre brune (encre ou encre-2), jamais sous du crème.",
+      "**Do** réserver le citron au bouton d'action, à la Réponse choisie, au champ actif, au focus et au talon d'accès.",
+      "**Do** donner à chaque Réponse sa lettre et son texte, et à chaque état son libellé.",
+      "**Do** composer en Barlow Condensed 800 les chiffres et les libellés courts imprimés sur un ticket, et tout le reste en Atkinson Hyperlegible.",
+      "**Do** régler `--fond-encoche` sur le fond de la surface qui porte un ticket.",
+      "**Do** attendre la réponse du serveur avant d'annoncer un envoi réussi, et afficher la valeur validée d'un score avant de l'animer.",
+      "**Do** garder la barre de pilotage sur une ligne à 1200 px et moins, avec Pause en icône seule et « Passer » en libellé court.",
+      "**Do** n'utiliser que des données de démonstration fictives et des ressources auto-hébergées."
+    ],
+    "donts": [
+      "**Don't** mettre du citron sur l'Écran de salle ailleurs que sur le talon d'accès.",
+      "**Don't** composer du texte courant, une phrase ou un surtitre en Barlow Condensed.",
+      "**Don't** laisser une couleur porter seule une information.",
+      "**Don't** poser un dégradé de couleur sur un ticket.",
+      "**Don't** ajouter d'ornement autre que la perforation et ses encoches.",
+      "**Don't** faire flotter une surface avec une ombre hors du ticket détaché, du dialogue modal et de la barre de pilotage.",
+      "**Don't** couper l'adresse d'accès sur un trait d'union.",
+      "**Don't** charger une police, une icône ou un script depuis une ressource externe.",
+      "**Don't** glisser vers la boîte de nuit violette à néons ni vers le tableau de bord blanc de logiciel en ligne."
+    ]
+  }
+}
