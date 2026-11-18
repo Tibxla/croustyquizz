@@ -75,3 +75,23 @@ export async function reprendreAcces(accesManette, { codeAcces, consulter }) {
 	}
 	return { resultat: 'aucune' };
 }
+
+/**
+ * Au démarrage de la Manette, vérifie que le serveur reconnaît encore le jeton : sinon la coquille tournerait en
+ * reconnexion sans fin, refusée au CONNECT STOMP comme à la capture. envoyer est le transport authentifié.
+ * Rend 'valide', 'refuse' (401, 404) ou 'indetermine' (panne réseau, serveur indisponible : le suivi s'en charge).
+ */
+export async function controlerJeton(envoyer, soireeId) {
+	try {
+		const { statut } = await envoyer('GET', `/api/soirees/${encodeURIComponent(soireeId)}/etat/manette`);
+		if (statut === 200) return 'valide';
+		return statut === 401 || statut === 404 ? 'refuse' : 'indetermine';
+	} catch {
+		return 'indetermine';
+	}
+}
+
+/** Retour à la page d'arrivée après un accès refusé, avec le code de la Soirée s'il est connu. */
+export function adresseRetourArrivee(codeAcces) {
+	return `/rejoindre.html#${new URLSearchParams({ ...(codeAcces ? { code: codeAcces } : {}), acces: 'refuse' })}`;
+}

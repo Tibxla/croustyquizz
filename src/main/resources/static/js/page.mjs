@@ -2,7 +2,7 @@ import { suivreVue, creerTransport } from './tempsreel.js';
 import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
-import { creerAccesManette } from './acces-manette.mjs';
+import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { decrireVue } from './vue-commune.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -57,6 +57,12 @@ async function demarrer() {
 		csrf = reponse.corps.token;
 	}
 	const transport = creerTransport({ jeton, csrf });
+	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
+	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
+		creerAccesManette().oublier(acces.soireeId);
+		location.replace(adresseRetourArrivee(accesManette.codeAcces));
+		return;
+	}
 	let suivi;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
