@@ -241,9 +241,10 @@ paths:
           $ref: '#/components/responses/Erreur401'
     post:
       operationId: creerSoiree
-      summary: Créer une Soirée Solo en Pilotage Manuel
-      description: Le serveur affecte id, Lieu et état PREPARATION ; codeAcces est null jusqu’à ouverture. Les autres
-        Formats et Pilotages seront ajoutés ultérieurement.
+      summary: Créer une Soirée avec son Format et son Pilotage
+      description: Le serveur affecte id, Lieu et état PREPARATION ; codeAcces est null jusqu’à ouverture. Format
+        SOLO ou EQUIPE, Pilotage MANUEL ou AUTOMATIQUE ; les deux sont enregistrés tels quels, le déroulement en Équipe
+        (#26) et l’enchaînement automatique (#25) viennent ensuite. Un titre vide ou trop long donne 422 DONNEES_INVALIDES.
       tags:
       - Soirée
       security:
@@ -393,7 +394,10 @@ paths:
       summary: Rejoindre une Soirée avec un code et un pseudo
       description: Autorisé en OUVERTE ou EN_COURS. Pseudo nettoyé, filtré et unique dans la Soirée ; le serveur
         attribue l’identité et un jeton opaque. Un Joueur qui arrive pendant une Manche y joue aussitôt (#10). Stocker le jeton
-        pour la reconnexion. Sans identité ni heure fournies par la Manette.
+        pour la reconnexion. Sans identité ni heure fournies par la Manette. La Manette met le code au format du schéma
+        (majuscules, sans blancs) avant l’envoi. Un code inconnu, ou celui d’une Soirée en PREPARATION ou TERMINEE, donne 404 CODE_ACCES_INVALIDE, sans
+        distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; filtre et unicité du pseudo
+        (PSEUDO_REFUSE, PSEUDO_DEJA_PRIS) relèvent de #10.
       tags:
       - Soirée
       security: []
@@ -479,6 +483,51 @@ paths:
         schema:
           type: string
           minLength: 16
+  /api/soirees/{soireeId}/qrcode:
+    get:
+      operationId: consulterQrCodeSoiree
+      summary: QR code qui mène à la Manette de la Soirée
+      description: Image SVG générée par le serveur (sans bibliothèque JavaScript, ADR 0001), affichée par l’Écran de
+        salle. Elle encode l’adresse de la Manette avec le code d’accès dans un fragment, /rejoindre.html#code=K7PQ2M ;
+        le code d’accès n’est pas un secret. L’adresse reprend le schéma et l’hôte publics vus par le relais HTTPS. Une
+        Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409 SOIREE_NON_OUVERTE. Sans clé, 401
+        AUTHENTIFICATION_REQUISE ; la clé d’une autre Soirée donne 404 RESSOURCE_INTROUVABLE ; un jeton de Joueur, 403
+        ACCES_REFUSE. L’image se charge avec la clé dans Authorization, jamais dans l’URL.
+      tags:
+      - Soirée
+      security:
+      - cleEcran: []
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            image/svg+xml:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ImageSvg
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
   /api/soirees/{soireeId}/manches:
     post:
       operationId: ajouterManche
@@ -756,7 +805,8 @@ paths:
       summary: Ouvrir la Soirée aux Joueurs
       description: PREPARATION vers OUVERTE ; le serveur génère un code de 6 caractères unique parmi les Soirées
         accessibles (OUVERTE et EN_COURS). Le programme peut être complété pendant l’accueil. La clé d’envoi garantit
-        qu’une répétition ne régénère pas le code.
+        qu’une répétition ne régénère pas le code ; rouvrir une Soirée déjà OUVERTE la rend aussi inchangée. Soirée
+        EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE.
       tags:
       - Soirée
       security:

@@ -11,8 +11,10 @@
  * porte type, soireeId, revision, emisLe et donnees. Le module /js/tempsreel.js
  * assure la reprise après la barrière d'abonnement du même Acteur.
  *
- * <p>ResolveurDActeur refuse en production avant #5/#10. En dev/recette, ses jetons
- * de démonstration sont décrits dans docs/api/README.md. Le Buzz anonyme /api/test
+ * <p>Le package soiree fournit la partie commune réelle (FournisseurCommunSoiree) et
+ * reconnaît Joueurs et Écrans de salle (ResolveurDActeurSoiree) ; les autres identités
+ * vont au ResolveurDActeur du profil, qui refuse en production avant #5. En dev/recette,
+ * ses jetons de démonstration sont décrits dans docs/api/README.md. Le Buzz anonyme /api/test
  * conserve ses vues et son cache distincts du métier sur les mêmes canaux.
  *
  * <p>Propriétaire : Tibxla.
