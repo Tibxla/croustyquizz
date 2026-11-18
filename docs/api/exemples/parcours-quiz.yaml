@@ -2129,7 +2129,7 @@ cases:
     eligiblePourMancheActive: false
     derniereReponse: null
     resultatPersonnel: null
-- nom: Un Joueur arrivé en retard peut attendre la Manche suivante
+- nom: Un Joueur arrivé pendant une Question de Quiz y prend part aussitôt
   schema: VueManette
   valide: true
   valeur:
@@ -2194,7 +2194,7 @@ cases:
       tempsCumuleMs: 0
     dernierBuzz: null
     joueurId: 00000003-0000-4000-8000-000000000000
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
 - nom: L’accusé initial ne révèle pas la justesse
