@@ -45,12 +45,11 @@
 	</div>
 
 	<script type="module">
-		import { appeler, memoire } from '/js/api.js';
+		import { appeler } from '/js/api.js';
+		import { creerAccesManette, reprendreAcces } from '/js/acces-manette.mjs';
 
-		// Clés lues par la coquille de la Manette (page.mjs) : le jeton, et l'UUID du Joueur qu'il ne contient pas.
-		const JETON = 'croustyquizz.jeton';
-		const JOUEUR = 'croustyquizz.joueur';
-		const SOIREE = 'croustyquizz.soiree';
+		// Jeton et UUID du Joueur, rangés par Soirée jusqu'au vidage du navigateur ; la coquille (page.mjs) les relit.
+		const accesManette = creerAccesManette();
 		const formulaire = document.getElementById('arrivee');
 		const champCode = document.getElementById('code');
 		const champPseudo = document.getElementById('pseudo');
@@ -64,6 +63,7 @@
 			PSEUDO_REFUSE: 'Ce pseudo n’est pas accepté. Choisis-en un autre.',
 			PSEUDO_DEJA_PRIS: 'Ce pseudo est déjà pris dans la Soirée. Ajoute une initiale ou choisis-en un autre.',
 			RESEAU_INDISPONIBLE: 'Pas de connexion pour l’instant. Vérifie ton réseau puis réessaie.',
+			ACCES_REFUSE: 'Ton accès à cette Soirée n’est plus valable. Rejoins-la à nouveau avec un pseudo.',
 		};
 
 		function afficherErreur(message) {
@@ -76,33 +76,21 @@
 			location.replace(`/manette.html?soiree=${encodeURIComponent(soireeId)}`);
 		}
 
-		// Le QR code met le code dans le fragment : jamais envoyé au serveur, retiré après lecture.
+		// Le QR code met le code dans le fragment : jamais envoyé au serveur, retiré après lecture. La coquille de la
+		// Manette y ajoute acces=refuse quand le serveur ne reconnaît plus le jeton.
 		const fragment = new URLSearchParams(location.hash.slice(1));
-		const codeScanne = fragment.has('code');
-		if (codeScanne) {
-			champCode.value = fragment.get('code');
+		const codeScanne = (fragment.get('code') ?? '').replace(/\s/g, '').toUpperCase();
+		const accesRefuse = fragment.get('acces') === 'refuse';
+		if (location.hash) {
+			champCode.value = codeScanne;
 			history.replaceState(null, '', location.pathname);
 		}
 
-		// Une Manette qui a déjà rejoint retrouve son Joueur sans repasser par le pseudo, si son jeton vaut encore.
-		// Rend 'reprise', 'aucune' (pas de jeton, ou jeton refusé et oublié) ou 'coupure'.
-		async function reprendre() {
-			const jeton = memoire.lire(JETON);
-			const soiree = memoire.lire(SOIREE);
-			if (!jeton || !soiree || !memoire.lire(JOUEUR)) return 'aucune';
-			const etat = await appeler('GET', `/api/soirees/${encodeURIComponent(soiree)}/etat/manette`, { secret: jeton });
-			if (etat.ok) {
-				allerALaManette(soiree);
-				return 'reprise';
-			}
-			// Seul un refus du jeton (inconnu, Joueur exclu, autre Soirée) l'invalide. Une coupure réseau ou
-			// un serveur indisponible le garde : rejoindre à nouveau créerait un second Joueur.
-			if (etat.statut === 401 || etat.statut === 404) {
-				memoire.oublier(JETON);
-				memoire.oublier(JOUEUR);
-				return 'aucune';
-			}
-			return 'coupure';
+		// Une Manette qui a déjà rejoint retrouve son Joueur sans repasser par le pseudo, si son jeton vaut encore :
+		// celui de la Soirée du code scanné, sinon celui de la dernière Soirée rejointe.
+		async function consulter(soireeId, jeton) {
+			const etat = await appeler('GET', `/api/soirees/${encodeURIComponent(soireeId)}/etat/manette`, { secret: jeton });
+			return { statut: etat.statut, corps: etat.corps };
 		}
 
 		function afficherFormulaire() {
@@ -112,10 +100,12 @@
 		}
 
 		async function demarrer() {
-			const resultat = await reprendre();
-			if (resultat === 'aucune') {
+			const { resultat, soireeId } = await reprendreAcces(accesManette, { codeAcces: codeScanne || null, consulter });
+			if (resultat === 'reprise') {
+				allerALaManette(soireeId);
+			} else if (resultat === 'aucune') {
 				afficherFormulaire();
-			} else if (resultat === 'coupure') {
+			} else {
 				formulaire.hidden = true;
 				document.getElementById('reconnexion').hidden = false;
 				setTimeout(demarrer, RECONNEXION_MS);
@@ -147,14 +137,13 @@
 				return;
 			}
 			const { soireeId, joueur, jetonReconnexion } = arrivee.corps;
-			memoire.ecrire(JETON, jetonReconnexion);
-			memoire.ecrire(JOUEUR, joueur.id);
-			memoire.ecrire(SOIREE, soireeId);
+			accesManette.ranger(soireeId, { jeton: jetonReconnexion, joueurId: joueur.id, codeAcces: code });
 			allerALaManette(soireeId);
 		});
 
-		// Un QR code scanné vise une Soirée précise : on ne renvoie pas vers une Soirée rejointe auparavant.
-		if (codeScanne) {
+		// Un QR code scanné reprend le Joueur de cette Soirée s'il l'a déjà rejointe, jamais celui d'une autre Soirée.
+		if (accesRefuse) {
+			afficherErreur(MESSAGES.ACCES_REFUSE);
 			afficherFormulaire();
 		} else {
 			demarrer();
