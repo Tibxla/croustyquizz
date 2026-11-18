@@ -95,6 +95,12 @@ for (const [chemin, element] of Object.entries(ouvert.paths)) {
     }
   }
 }
+// chansonId est borné deux fois, en chemin et dans InscriptionPassage : les bornes restent identiques.
+const chansonIdChemin = operations.get('consulterChanson').parameters.find((p) => p.name === 'chansonId').schema;
+const chansonIdCorps = schemas.$defs.InscriptionPassage.properties.chansonId;
+assert.deepEqual([chansonIdChemin.minLength, chansonIdChemin.maxLength],
+  [chansonIdCorps.minLength, chansonIdCorps.maxLength], 'chansonId : bornes différentes entre chemin et corps');
+assert.equal(chansonIdCorps.maxLength, 128, 'chansonId : 128 caractères au plus');
 assert.equal(ouvert.components.securitySchemes.jetonJoueur.scheme, 'bearer');
 assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),

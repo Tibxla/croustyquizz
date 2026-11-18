@@ -39,7 +39,7 @@ Docker doit tourner pour lancer l'application et pour les tests.
 | `./mvnw verify` | build, tests (PostgreSQL jetable par Testcontainers), couverture JaCoCo et alertes PMD bloquantes |
 | `./mvnw test -Dtest=NomDuTest` | un seul test |
 | `npm ci --prefix tools/api` puis `npm test --prefix tools/api` | valide les contrats, les exemples et les cas de confidentialité de `docs/api/` (Node 24) |
-| `python3 tools/generer-dossier.py` | régénère le PDF du dossier de rendu depuis `doc/rendu-1/` (Pandoc et Chrome) ; vérifier qu'il fait toujours quatre pages |
+| `python3 tools/generer-dossier.py [rendu-2]` | régénère le PDF d'un dossier de rendu depuis `doc/rendu-1/` (par défaut, quatre pages à vérifier) ou `doc/rendu-2/` (Pandoc et Chrome) |
 | `tools/demo.sh demarrer` / `arreter` | démo sur le serveur, le temps d'une séance : jamais en développement, procédure dans `docs/deploiement.md` |
 
 La recette de `develop` est sur https://croustyquizz-recette.onrender.com : la CI la redéploie après chaque fusion verte. La production (https://croustyquizz-prod.onrender.com, à partir de `v0.1.0`) reçoit chaque livraison taguée. Chacune a sa base Neon (`docs/deploiement.md`, « Recette et production sur Render et Neon »).
