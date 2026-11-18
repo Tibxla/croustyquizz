@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { creerAccesManette, reprendreAcces } from '../../src/main/resources/static/js/acces-manette.mjs';
+import { adresseRetourArrivee, controlerJeton, creerAccesManette, reprendreAcces } from '../../src/main/resources/static/js/acces-manette.mjs';
 
 const soiree = '00000001-0000-4000-8000-000000000001';
 const autre = '00000001-0000-4000-8000-000000000002';
@@ -97,4 +97,18 @@ test('un code réutilisé après la fin d’une Soirée passe à l’accès suiv
 
 	assert.deepEqual(await reprendreAcces(acces, { codeAcces: 'K7PQ2M', consulter }), { resultat: 'reprise', soireeId: soiree });
 	assert.equal(acces.lire(autre), null);
+});
+
+test('au démarrage, seul un jeton refusé renvoie à l’arrivée ; une panne laisse le suivi reprendre', async () => {
+	const routes = [];
+	const envoyer = (statut) => async (methode, chemin) => { routes.push([methode, chemin]); return { statut, corps: null }; };
+	assert.equal(await controlerJeton(envoyer(200), soiree), 'valide');
+	assert.deepEqual(routes[0], ['GET', `/api/soirees/${soiree}/etat/manette`]);
+	assert.equal(await controlerJeton(envoyer(401), soiree), 'refuse');
+	assert.equal(await controlerJeton(envoyer(404), soiree), 'refuse');
+	assert.equal(await controlerJeton(envoyer(503), soiree), 'indetermine');
+	assert.equal(await controlerJeton(async () => { throw new TypeError('Failed to fetch'); }, soiree), 'indetermine');
+
+	assert.equal(adresseRetourArrivee('K7PQ2M'), '/rejoindre.html#code=K7PQ2M&acces=refuse');
+	assert.equal(adresseRetourArrivee(null), '/rejoindre.html#acces=refuse');
 });
