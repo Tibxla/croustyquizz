@@ -1,12 +1,12 @@
 # CroustyQuizz
 
 **Rendu 2 · Version intermédiaire v0.1.0 · M1 MIAGE, Université Paris Nanterre**\
-Année 2026-2027 · Révision du 18 novembre 2026 <!-- À COMPLÉTER : date et heure exactes du tag v0.1.0 -->
+Année 2026-2027 · Révision du 18 novembre 2026
 
 <div class="encadre">
 
 **Version livrée :** tag `v0.1.0`, release <https://github.com/Tibxla/croustyquizz/releases/tag/v0.1.0>\
-**Commit figé :** le commit tagué est celui qu’indique la page de la release. <!-- À COMPLÉTER : SHA complet du commit tagué sur main -->\
+**Commit figé :** le commit tagué sur `main` est celui qu’indique la page de la release.\
 **Dépôt unique, front, API et back :** <https://github.com/Tibxla/croustyquizz>\
 **Recette de `develop` :** <https://croustyquizz-recette.onrender.com>\
 **Dossier précédent :** `doc/rendu-1/dossier-lancement.md` (Rendu 1, 10 novembre 2026)
@@ -15,7 +15,7 @@ Année 2026-2027 · Révision du 18 novembre 2026 <!-- À COMPLÉTER : date et h
 
 Ce dossier fait évoluer le dossier de lancement du Rendu 1. Il en garde l’ossature. Chaque section dit ce qui a changé depuis le 10 novembre et ce qui est réellement livré. Deux sections s’ajoutent : l’état de la feature majeure de chaque étudiant, et le contenu de la version `v0.1.0`.
 
-Sauf mention contraire, les chiffres sont mesurés le 17 novembre 2026 sur `develop`, au commit `e8bb108`. Le tag est posé le 18 novembre, après les dernières fusions : une PR qui n’est pas fusionnée à ce moment reste « en cours » et son code n’est pas dans la version. <!-- À COMPLÉTER : remesurer les chiffres sur le commit tagué si des PR sont fusionnées d'ici là -->
+Sauf mention contraire, les chiffres sont mesurés le 18 novembre 2026 sur `develop`, au commit `6ae1740`. Le tag est posé le 18 novembre, après les dernières fusions : une PR qui n’est pas fusionnée à ce moment reste « en cours » et son code n’est pas dans la version.
 
 ## Équipe, comptes développeurs et fonctionnalités majeures
 
@@ -41,31 +41,31 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 # Feature majeure de chaque étudiant : état au 18/11
 
-État relevé sur GitHub le 17 novembre au soir. <!-- À COMPLÉTER : mettre à jour les colonnes « PR fusionnées » et « PR en cours » après les fusions du 18/11 (14 h) -->
+État relevé sur GitHub le 18 novembre à 14 h.
 
 <div class="tableau-large">
 
 | Étudiant | Feature | Issues | PR fusionnées | PR en cours | Ce qui reste |
 |---|---|---|---|---|---|
-| Tibxla | Karaoké : File d’attente, puis Passage | #21, en tranches #82, #86, #89, #91, #93, #96 ; #22, en tranches #98 à #100 | #88 (contrat) et #87 (domaine) le 17/11 ; socle des Modes de jeu #81, #83, #84 | #90, #92, #94 et #97, en relecture ; #104 en brouillon | fusionner les tranches 3a, 3b et 4 ; Passage (#22) : contrat en cours (#98), domaine, service, interface ; Vote et Palmarès (#23) |
+| Tibxla | Karaoké : File d’attente, puis Passage | #21, en tranches #82, #86, #89, #91, #93, #96 ; #22, en tranches #98 à #100 | #88 (contrat) et #87 (domaine) le 17/11, #97 (corrections du contrat) le 18/11 ; socle des Modes de jeu #81, #83, #84 | #90, #92 et #94, en relecture ; #104 en brouillon | fusionner les tranches 3a, 3b et 4 ; Passage (#22) : contrat en cours (#98), domaine, service, interface ; Vote et Palmarès (#23) |
 | nRayen | Soirée : créer et rejoindre par code | #6 ; suite dans #10 | aucune pour l’instant | #38 : changements demandés le 17/11 ; branche `feature/10-rejoindre-sans-accroc`, sans PR | traiter les quatre points de relecture et fusionner #38 ; ouvrir la PR de #10 ; déroulement manuel (#12), puis Blind test (#17) |
-| Piyakabib | Quiz : première Manche jouable | #14, bloquée par #12 et #13 | aucune pour le Quiz | aucune au 17/11 au soir <!-- À COMPLÉTER : branche ou PR brouillon de #14 si ouverte avant le tag --> | source des Questions en français (#13) ; `DeroulementQuiz`, routes et écrans de la Manche |
+| Piyakabib | Quiz : première Manche jouable | #14, bloquée par #12 et #13 | aucune pour le Quiz | #105 : ADR 0008, choix de la source des Questions en français (#13), ouverte le 17/11, en relecture | faire valider l’ADR et importer un premier lot de Questions (#13) ; `DeroulementQuiz`, routes et écrans de la Manche (#14) |
 
 </div>
 
 ## Tibxla : Karaoké, File d’attente puis Passage
 
-**Fusionné dans `develop`.** La File d’attente (#21) est découpée en tranches qui suivent l’ADR 0006 : contrat, domaine en Java pur, service et routes, interface. Les deux premières sont fusionnées le 17/11 :
+**Fusionné dans `develop`.** La File d’attente (#21) est découpée en tranches qui suivent l’ADR 0006 : contrat, domaine en Java pur, service et routes, interface. Les deux premières sont fusionnées le 17/11, suivies le 18/11 d’une PR de corrections du contrat :
 
 - le **contrat** (#82, PR #88) : huit opérations HTTP de la File d’attente et le bloc `karaoke` des trois écrans dans `docs/api/`. Le vérificateur des contrats contrôle 75 échanges HTTP, 72 événements et 120 cas de schéma pour ce parcours ;
+- les **corrections du contrat** demandées par nRayen à la relecture de #88 (#96, PR #97), fusionnées le 18/11 ;
 - le **domaine** (#86, PR #87) : `FileAttente` et `Passage` dans `passage`, `DeroulementKaraoke` dans `karaoke`, avec les règles validées le 16/11 dans #21. Les tests du domaine couvrent la rotation par tours, la priorité unique, la limite de Passages en attente par Joueur, le refus d’une même Chanson deux fois en attente et l’accueil d’un retardataire.
 
 **En relecture.**
 
 - **#90** (tranche 3a) : la source de paroles derrière un port (`SourceDeParoles`), son adaptateur LRCLIB et la recherche de Chansons. Les tests n’appellent jamais Internet.
 - **#92** (tranche 3b) : le service, les huit routes et deux migrations. La File d’attente devient utilisable par HTTP et les vues des trois écrans reçoivent leur bloc `karaoke`.
-- **#94** (tranche 4) : l’interface de la File d’attente sur la Manette, la Console d’animation et l’Écran de salle.
-- **#97** : corrections du contrat demandées par nRayen à la relecture de #88.
+- **#94** (tranche 4) : l’interface de la File d’attente sur la Manette, la Console d’animation et l’Écran de salle. nRayen l’a relue trois fois, du 17 au 18/11 ; chaque point demandé est corrigé avec un test, et la recette sert cette version.
 
 **Suite : le Passage (#22).** L’ADR 0007 a tranché la source audio. La tranche 1, le contrat de l’appel, de la lecture et du calage (#98), est écrite : PR #104 en brouillon (dix opérations, parcours d’exemple vérifié), qui sera proposée à la relecture après le Rendu 2. Le domaine (#99) et le service (#100) suivent.
 
@@ -91,26 +91,27 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 ## Piyakabib : Quiz, première Manche jouable
 
-**État.** L’issue #14 lui est assignée. Au 17/11 au soir, aucune branche ni PR ne la porte. Elle est bloquée par #12 (déroulement manuel, nRayen) et par #13 (choix de la source des Questions en français, Piyakabib).
+**État.** L’issue #14 lui est assignée. Elle est bloquée par #12 (déroulement manuel, nRayen) et par #13 (choix de la source des Questions en français, Piyakabib). Piyakabib a commencé par #13 : la **PR #105**, ouverte le 17/11 au soir, propose l’ADR 0008. Quatre sources y sont comparées (langue, licence, volume, catégories, niveaux, quatre propositions par Question). OpenQuizzDB est retenu pour ses questions en français natif, importées dans la base par une migration Flyway, sans dépendance à un service extérieur pendant une Soirée. À la relecture du 18/11, Tibxla a demandé un chargement réel de dix Questions de la source retenue et une mention de la licence CC BY-SA 4.0 des Questions, distincte de la licence MIT du code.
 
 **Ce qui est prêt pour démarrer.** Le contrat du premier parcours de Quiz est dans `docs/api/` depuis le 10/11 (#34, PR #37) ; le vérificateur y contrôle 47 échanges HTTP, 13 événements et 16 cas de schéma. Le socle fusionné le 17/11 fournit `DeroulementDeManche`, le service de Manche sérialisé par Soirée, la classe de test commune `ContratDeroulementDeManche` et un mode factice qui sert de modèle.
 
 **Relectures.** Piyakabib est le relecteur des PR de Tibxla dans le tourniquet de `CONTRIBUTING.md`. Il a approuvé 24 PR et en a fusionné 17, dont le socle des Modes de jeu et les deux premières tranches du Karaoké. D’après le fil de l’issue #14, il a tranché le 17/11 la règle du Quiz pour un Joueur qui arrive en cours de Manche : il joue aussitôt, Question en cours comprise s’il reste du temps.
 
-**Reste** : la source des Questions (#13), puis `DeroulementQuiz`, ses routes et ses écrans (#14). Ses autres issues (#5, #9, #15, #16, #24, #31, #32) ne sont pas commencées.
+**Reste** : faire valider l’ADR 0008 et importer un premier lot de Questions (#13), puis `DeroulementQuiz`, ses routes et ses écrans (#14). Ses autres issues (#5, #9, #15, #16, #24, #31, #32) ne sont pas commencées.
 
 
 # Ce que contient la version v0.1.0
 
-Le Rendu 1 annonçait `v0.1.0` comme le jalon du **socle**. C’est ce que livre cette version : le socle des Modes de jeu, le temps réel, les contrats réseau, les pages communes des trois écrans, le domaine du Karaoké, l’intégration continue et la livraison. **Aucun Mode de jeu n’est jouable de bout en bout** au 17/11 : les packages `soiree`, `quiz`, `blindtest`, `animateur` et `classement` ne contiennent encore que leur description (`package-info.java`).
+Le Rendu 1 annonçait `v0.1.0` comme le jalon du **socle**. C’est ce que livre cette version : le socle des Modes de jeu, le temps réel, les contrats réseau, les pages communes des trois écrans, le domaine du Karaoké, l’intégration continue et la livraison. **Aucun Mode de jeu n’est jouable de bout en bout** au 18/11 : les packages `soiree`, `quiz`, `blindtest`, `animateur` et `classement` ne contiennent encore que leur description (`package-info.java`).
 
-## Fusionné dans `develop` au 17/11
+## Fusionné dans `develop` au 18/11
 
 - **Socle des Modes de jeu** (ADR 0006, #78 à #80) : `DeroulementDeManche` reçoit les actions des Joueurs et les commandes de pilotage. Le `ServiceDeManche` prend le verrou de la Soirée, appelle le déroulement, enregistre l’état dans une seule transaction, puis publie les vues après validation. Une commande devenue sans objet est refusée (`COMMANDE_PERIMEE`) ; un envoi répété rend son résultat initial ; tout refus suit le format `Probleme`. Le temps passe par l’`Horloge` et ses minuteurs.
 - **Temps réel** (ADR 0004) : canal WebSocket et STOMP, Révisions par destination, dernière Vue synchronisée gardée par `tempsreel`, assemblage de chaque vue en une partie commune plus un bloc par Mode de jeu, contrôle d’accès aux abonnements.
 - **Pages communes des trois écrans** (#80) : `console.html`, `manette.html` et `ecran.html` chargent le module du Mode de jeu en cours et tiennent leur Vue synchronisée à jour, avec reprise après coupure. Un module factice et des identités de démonstration permettent de les essayer en développement et en recette.
 - **Domaine du Karaoké** : File d’attente et Passages (`passage`), déroulement du Karaoké (`karaoke`), en Java pur.
-- **Contrats réseau** (`docs/api/`) : premier parcours de Quiz et File d’attente du Karaoké. Le vérificateur contrôle 77 schémas, 34 opérations, 122 échanges HTTP, 85 événements et 136 cas de schéma.
+- **Version** : `pom.xml` passe en `0.1.0` (PR #103) ; le README renvoie vers la release et vers les dossiers de rendu.
+- **Contrats réseau** (`docs/api/`) : premier parcours de Quiz et File d’attente du Karaoké. Le contrat de la File d’attente intègre les corrections de #97. Le vérificateur contrôle 77 schémas, 34 opérations, 123 échanges HTTP, 85 événements et 143 cas de schéma.
 - **Base** : deux migrations Flyway, le point de départ du schéma et le cycle des Manches avec les reçus des envois.
 - **Décisions et conception** : ADR 0004, 0006 et 0007 ; direction visuelle (`DESIGN.md`, `PRODUCT.md`, polices et icônes sous licence libre) ; procédure de déploiement (`docs/deploiement.md`).
 - **Intégration continue et livraison** : voir la section « Livraisons, intégration continue et qualité ».
@@ -122,11 +123,9 @@ Le Rendu 1 annonçait `v0.1.0` comme le jalon du **socle**. C’est ce que livre
 | #90 | Source de paroles LRCLIB et recherche de Chansons | Tibxla |
 | #92 | Service, routes et persistance de la File d’attente | Tibxla |
 | #94 | Interface de la File d’attente sur les trois écrans | Tibxla |
-| #97 | Corrections du contrat de la File d’attente | Tibxla |
 | #38 | Créer une Soirée et la rejoindre par code | nRayen |
 | #64 | Étude de l’existant intégrée au glossaire, ADR 0005 | Tibxla |
-
-<!-- À COMPLÉTER : après les fusions du 18/11, déplacer dans la liste « Fusionné » les PR fusionnées avant le tag et laisser ici les autres -->
+| #105 | Choix de la source des Questions en français, ADR 0008 | Piyakabib |
 
 ## Ce que la v0.1.0 ne contient pas
 
@@ -151,15 +150,15 @@ L’innovation d’usage reste la continuité de la Soirée : **un seul accès p
 
 **Dépôt unique :** <https://github.com/Tibxla/croustyquizz>\
 **Spécification de référence :** [PRD, issue nº 2](https://github.com/Tibxla/croustyquizz/issues/2), mise à jour le 15/11 avec l’étude de l’existant.\
-**Version de ce rendu :** [doc/rendu-2](https://github.com/Tibxla/croustyquizz/tree/develop/doc/rendu-2), suivie par l’issue nº 101. <!-- À COMPLÉTER : numéro de la PR qui fusionne ce dossier -->
+**Version de ce rendu :** [doc/rendu-2](https://github.com/Tibxla/croustyquizz/tree/develop/doc/rendu-2), suivie par l’issue nº 101 et fusionnée par la PR nº 102.
 
 Le dossier est maintenu dans **`doc/rendu-2/dossier-v0.1.0.md`** et compilé en **`doc/rendu-2/dossier-v0.1.0.pdf`** par `python3 tools/generer-dossier.py rendu-2`. Le dossier du Rendu 1 reste dans `doc/rendu-1/`.
 
-## Le suivi en chiffres, au 17/11
+## Le suivi en chiffres, au 18/11
 
-- **65 issues**, dont 21 fermées.
-- **35 PR**, dont 29 fusionnées (2 de Dependabot) et 6 ouvertes. 25 PR ont été fusionnées depuis celle du Rendu 1 (#36).
-- **Relectures** : Piyakabib a approuvé 24 PR, nRayen 5, Tibxla 2. Des changements ont été demandés sur 4 PR (#30, #38, #88, #94).
+- **66 issues**, dont 22 fermées.
+- **39 PR**, dont 31 fusionnées (2 de Dependabot) et 8 ouvertes. 27 PR ont été fusionnées depuis celle du Rendu 1 (#36).
+- **Relectures** : Piyakabib a approuvé 24 PR, nRayen 9, Tibxla 2. Des changements ont été demandés sur 4 PR (#30, #38, #88, #94).
 
 ## Ce qui a changé dans la façon de travailler
 
@@ -244,7 +243,7 @@ En base, `manche_deroulement` garde l’état de chaque Manche et `manche_envoi`
 | Prestataire SMS | à choisir | à choisir (#33) |
 | Assistant (serveur MCP) | Spring AI envisagé | inchangé, non commencé (#28) |
 
-Décisions d’architecture sur `develop` : ADR 0001 à 0004, 0006 et 0007. L’ADR 0005, sur l’Enregistrement d’un Passage, est dans la PR #64.
+Décisions d’architecture sur `develop` : ADR 0001 à 0004, 0006 et 0007. L’ADR 0005, sur l’Enregistrement d’un Passage, est dans la PR #64, et l’ADR 0008, sur la source des Questions du Quiz, dans la PR #105.
 
 
 # Protocole d’IA, livraisons et qualité
@@ -280,7 +279,7 @@ Les jalons n’ont pas changé : **`v0.1.0` pour le socle**, **`v0.2.0` pour les
 
 S’y ajoutent l’analyse CodeQL de GitHub, Dependabot (mises à jour groupées chaque mois, #45) et l’épinglage par commit des actions tierces de la livraison (#52).
 
-**Livraison** (`livraison.yml`, au tag `vX.Y.Z`) : vérification du format du tag et de sa présence sur `main`, `./mvnw -B verify` ; publication de l’image Docker sur GHCR (`ghcr.io/tibxla/croustyquizz`) ; GitHub Release avec le JAR exécutable et les notes de version ; déploiement de la production sur Render (<https://croustyquizz-prod.onrender.com>). Le 17/11, une exécution manuelle sur `develop` a réussi l’étape de vérification ; le tag `v0.1.0` est la première livraison complète. <!-- À COMPLÉTER : résultat des quatre jobs du workflow Livraison sur le tag v0.1.0, et adresse de production vérifiée -->
+**Livraison** (`livraison.yml`, au tag `vX.Y.Z`) : vérification du format du tag et de sa présence sur `main`, `./mvnw -B verify` ; publication de l’image Docker sur GHCR (`ghcr.io/tibxla/croustyquizz`) ; GitHub Release avec le JAR exécutable et les notes de version ; déploiement de la production sur Render (<https://croustyquizz-prod.onrender.com>). Le 17/11, une exécution manuelle sur `develop` a réussi l’étape de vérification. Le tag `v0.1.0` déclenche la première livraison complète : le résultat de ses jobs est visible dans l’onglet Actions du dépôt, et le JAR sur la page de la release.
 
 | Environnement | Où | Version |
 |---|---|---|
@@ -289,7 +288,7 @@ S’y ajoutent l’analyse CodeQL de GitHub, Dependabot (mises à jour groupées
 | Production | Render et Neon, <https://croustyquizz-prod.onrender.com>, créée au jalon `v0.1.0` | chaque livraison taguée, à partir de `v0.1.0` |
 | Démo de secours | serveur de Tibxla, `tools/demo.sh`, à la demande | `main` ou un tag |
 
-**Tests.** Au 17/11 sur `e8bb108`, `./mvnw verify` exécute **142 tests JUnit** dans 22 classes, sans échec. `npm test --prefix tools/api` exécute **36 tests** Node, après la vérification des contrats. Les tests couvrent :
+**Tests.** Au 18/11 sur `6ae1740`, `./mvnw verify` exécute **142 tests JUnit** dans 22 classes, sans échec. `npm test --prefix tools/api` exécute **36 tests** Node, après la vérification des contrats. Les tests couvrent :
 
 - les déroulements en Java pur avec une `Horloge` factice, par la classe commune `ContratDeroulementDeManche` ;
 - le service de Manche : verrou, transaction, publication après validation, envois répétés ;
@@ -301,15 +300,15 @@ Restent à mesurer : une salle de **60 Joueurs simultanés** et l’usage sur de
 
 ## README, licence et indicateurs
 
-| Indicateur, au 17/11 sur `e8bb108` | Valeur |
+| Indicateur, au 18/11 sur `6ae1740` | Valeur |
 |---|---|
 | Couverture des lignes (JaCoCo) | **95,4 %** (880 lignes sur 922) |
 | Couverture des branches (JaCoCo) | **87,0 %** (456 sur 524) |
 | Alertes PMD (Error Prone et Best Practices) | **0** |
 | Tests JUnit et tests Node | **142** et **36**, sans échec |
-| Version du `pom.xml` | `0.0.1-SNAPSHOT` <!-- À COMPLÉTER : version du pom sur le commit tagué --> |
+| Version du `pom.xml` | `0.1.0` |
 | Licence | **MIT**, fichier `LICENSE` |
 
 Ces mesures portent sur le code existant, c’est-à-dire le socle et le domaine du Karaoké. Elles ne disent rien des packages encore vides. Zéro alerte PMD signifie qu’aucun problème n’est détecté par les règles configurées, pas l’absence de bug. Le README présente l’installation, le déploiement et les badges de version, de licence, de couverture, d’alertes PMD et de CI ; les badges de couverture et de PMD reflètent le dernier build réussi de `develop`.
 
-<p class="references">Références : consignes du Rendu 2 (issue nº 101) ; dossier du Rendu 1 ; PRD nº 2 ; GLOSSARY.md ; AGENTS.md ; CONTRIBUTING.md ; PRODUCT.md ; DESIGN.md ; pom.xml ; workflows ci.yml et livraison.yml ; docs/deploiement.md ; docs/ecrans.md ; ADR 0001 à 0004, 0006 et 0007 ; issues et PR citées, consultées le 17/11/2026.</p>
+<p class="references">Références : consignes du Rendu 2 (issue nº 101) ; dossier du Rendu 1 ; PRD nº 2 ; GLOSSARY.md ; AGENTS.md ; CONTRIBUTING.md ; PRODUCT.md ; DESIGN.md ; pom.xml ; workflows ci.yml et livraison.yml ; docs/deploiement.md ; docs/ecrans.md ; ADR 0001 à 0004, 0006 et 0007 ; issues et PR citées, consultées le 18/11/2026.</p>
