@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,9 +24,10 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>
  * Une Soirée absente de la base est confiée à l'autre fournisseur du profil,
  * s'il y en a un : la démonstration du prototype en dev et recette (#80).
+ * Celle-ci est {@code @Fallback} : ce fournisseur l'emporte sans être {@code @Primary},
+ * ce qui laisse une configuration de test imposer le sien.
  */
 @Component
-@Primary
 class FournisseurCommunSoiree implements FournisseurPartieCommune {
 
 	private final DepotDeSoirees depotDeSoirees;

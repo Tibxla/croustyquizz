@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.annotation.Fallback;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import fr.croustyquizz.manche.DepotDeManches;
@@ -13,9 +14,14 @@ import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Soirée et Joueurs fictifs pour #80, avec programme issu du socle en dev/recette seulement. */
+/**
+ * Soirée et Joueurs fictifs pour #80, avec programme issu du socle en dev/recette seulement.
+ * {@code @Fallback} : il ne sert directement que s'il est seul ; sinon le fournisseur de
+ * {@code soiree} l'emporte et lui confie les Soirées absentes de la base.
+ */
 @Component
 @Profile({"dev", "recette"})
+@Fallback
 public final class FournisseurCommunDemonstration implements FournisseurPartieCommune {
 	private final DepotDeManches depot;
 	private final JsonMapper json;
