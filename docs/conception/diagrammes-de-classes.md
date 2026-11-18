@@ -451,7 +451,41 @@ classDiagram
     }
     class AdaptateurLrclib
     class ServiceKaraoke {
-        <<futur>>
+        +rechercherChansons(Acteur, UUID, UUID, String, UUID) ResultatsChansons
+        +consulterChanson(Acteur, UUID, UUID, String) FicheChanson
+        +inscrirePassage(UUID, EnvoiDeCommande, InscriptionPassage) ResultatDeCommande
+        +desinscrirePassage(UUID, UUID, EnvoiDeCommande, DesinscriptionPassage) ResultatDeCommande
+        +retirerPassage(UUID, UUID, EnvoiDeCommande, RetraitPassage) ResultatDeCommande
+        +deplacerPassage(UUID, UUID, EnvoiDeCommande, PlacementPassage) ResultatDeCommande
+        +definirPrioritePassage(UUID, EnvoiDeCommande, PrioritePassage) ResultatDeCommande
+        +reglerLimitePassages(UUID, EnvoiDeCommande, LimitePassages) ResultatDeCommande
+    }
+    class KaraokeControleur
+    class ConvertisseurCorpsKaraoke
+    class FournisseurDeBlocKaraoke
+    class VuesKaraoke
+    class PersistanceKaraokeJpa
+    class PersistancePassageJpa {
+        +charger(UUID mancheId) EtatFileAttente
+        +enregistrer(UUID mancheId, EtatFileAttente)
+        +numeroPropose(UUID soireeId) long
+        +incrementerNumero(UUID soireeId, long numeroAccepte)
+    }
+    class ContenuPassagePersistant
+    class FileAttentePersistante
+    class PassagePersistant
+    class InterpretePersistant
+    class TourConsommePersistant
+    class NumeroSoireePersistant
+    class PorteeDePassage {
+        <<interface>>
+        +verifier(Acteur, UUID soireeId, UUID mancheId)
+        +estActive(UUID soireeId, UUID mancheId) boolean
+    }
+    class ParticipantsDePassage {
+        <<interface>>
+        +estPresent(UUID soireeId, UUID joueurId) boolean
+        +pseudo(UUID soireeId, UUID joueurId) String
     }
     class CorrecteurTolerant {
         +Verdict juger(String saisie, Morceau)
@@ -535,7 +569,26 @@ classDiagram
     DeroulementBlindTest --> CatalogueMusical
     DeroulementBlindTest --> CorrecteurTolerant
     DeroulementKaraoke --> FileAttente
+    ServiceDeManche <|-- ServiceKaraoke
+    KaraokeControleur --> ServiceKaraoke
+    KaraokeControleur ..> ConvertisseurCorpsKaraoke : liaison avant identité
+    ServiceKaraoke --> PorteeDePassage
+    ServiceKaraoke --> ParticipantsDePassage
+    ServiceKaraoke --> PersistancePassageJpa : numéro sous verrou
     ServiceKaraoke --> SourceDeParoles : consulte hors verrou
+    ServiceKaraoke --> PersistanceKaraokeJpa : transaction commune
+    PersistanceKaraokeJpa --> PersistancePassageJpa
+    PersistanceKaraokeJpa --> ContenuPassagePersistant
+    PersistancePassageJpa --> FileAttentePersistante
+    PersistancePassageJpa --> PassagePersistant
+    PersistancePassageJpa --> InterpretePersistant
+    PersistancePassageJpa --> TourConsommePersistant
+    PersistancePassageJpa --> NumeroSoireePersistant
+    FournisseurDeBloc <|.. FournisseurDeBlocKaraoke
+    FournisseurDeBlocKaraoke --> ServiceKaraoke : instantané
+    FournisseurDeBlocKaraoke --> VuesKaraoke
+    VuesKaraoke --> ParticipantsDePassage : pseudos publics
+    VuesKaraoke --> FileAttente : ordre et estimations
     SourceDeParoles <|.. AdaptateurLrclib
     SourceDeParoles ..> Chanson
     SourceDeParoles ..> ContenuKaraoke

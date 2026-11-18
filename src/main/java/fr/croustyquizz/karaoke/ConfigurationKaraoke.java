@@ -1,0 +1,26 @@
+package fr.croustyquizz.karaoke;
+
+import fr.croustyquizz.manche.*;
+import fr.croustyquizz.passage.*;
+import java.time.Duration;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.*;
+
+/** Assemblage du mode, distinct de la configuration MVC pour les contextes partiels. */
+@Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(ProprietesKaraoke.class)
+public class ConfigurationKaraoke {
+    @Bean FabriqueKaraoke fabriqueKaraoke(ProprietesKaraoke proprietes) {
+        return new FabriqueKaraoke(Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()));
+    }
+    @Bean ServiceKaraoke serviceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance, SocleDeManche socle,
+            PorteeDePassage portee, ParticipantsDePassage participants, PersistancePassageJpa passages,
+            SourceDeParoles source, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource) {
+        return new ServiceKaraoke(fabrique, persistance, socle, portee, participants, passages, source, proprietes, proprietesSource);
+    }
+    @Bean FournisseurDeBlocKaraoke fournisseurDeBlocKaraoke(DepotDeManches depot, ObjectProvider<ServiceKaraoke> service,
+            ParticipantsDePassage participants, Horloge horloge, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource) {
+        return new FournisseurDeBlocKaraoke(depot, service, participants, horloge, proprietes, proprietesSource);
+    }
+}

@@ -28,7 +28,7 @@ public final class RegistreDesEnvois {
 		if (precedent.getStatut() >= PREMIER_STATUT_ERREUR) {
 			return new Refuse(precedent.getStatut(), corps.path("code").asString(), corps.path("detail").asString());
 		}
-		return new Accepte(precedent.getStatut() == 204 ? null : corps, java.util.Set.of(), "manche-demarree");
+		return new Accepte(precedent.getStatut() == 204 ? null : corps, java.util.Set.of(), "manche-demarree", precedent.getStatut());
 	}
 	public void enregistrer(EnvoiDeCommande envoi, ResultatDeCommande resultat, Instant maintenant) {
 		depot.enregistrerEnvoi(new EnvoiDeManche(envoi.acteur(), envoi.route(), envoi.envoiId(), empreinte(envoi.corps()),

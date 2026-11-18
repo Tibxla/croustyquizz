@@ -69,6 +69,21 @@ class ServiceDeMancheTest {
 	}
 
 	@Test
+	void uneExceptionDePreparationConserveLesMinuteursDuDeroulement() {
+		UUID manche = demarrer();
+		int publications = banc.diffuseur.envois().size();
+		var panne = new IllegalStateException("Préparation externe indisponible.");
+		assertThatThrownBy(() -> banc.service.executer(manche, banc.envoi(soiree, "/externe", Map.of()),
+				() -> { throw panne; })).isSameAs(panne);
+		assertThat(banc.diffuseur.envois()).hasSize(publications);
+		banc.horloge.avancer(Duration.ofSeconds(20));
+		// Vérifier le rappel avant toute lecture qui pourrait restaurer et réarmer le déroulement.
+		assertThat(banc.diffuseur.envois()).hasSize(publications + 3);
+		assertThat(banc.horloge.minuteursEnAttente()).isEqualTo(1);
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+	}
+
+	@Test
 	void unCommitAnnuleNePubliePasEtLeProchainAppelRestaureLaBase() {
 		UUID manche = demarrer();
 		Object avant = banc.service.instantane(soiree, manche);
@@ -230,6 +245,59 @@ class ServiceDeMancheTest {
 				finir.countDown(); assertThat(externe.get(2, TimeUnit.SECONDS)).isInstanceOf(Refuse.class);
 			} finally { finir.countDown(); }
 		}
+	}
+
+	@Test
+	void conserveLeStatut201EtLeCorpsDuRecu() {
+		UUID manche = demarrer();
+		var envoi = banc.envoi(soiree, "/creation", Map.of());
+		var initial = banc.service.executer(manche, envoi, () -> PreparationDeCommande.prete(d ->
+				new Accepte(Map.of("id", "cree"), java.util.Set.of(), "file-attente-modifiee", 201)));
+		assertThat(ReponsesDeCommande.statut(initial)).isEqualTo(201);
+		var rejeu = banc.service.executer(manche, envoi, () -> { throw new AssertionError("Rejeu préparé"); });
+		assertThat(ReponsesDeCommande.statut(rejeu)).isEqualTo(201);
+		assertThat(banc.json.writeValueAsString(((Accepte) rejeu).accuse())).isEqualTo("{\"id\":\"cree\"}");
+	}
+
+	@Test
+	void lesPointsProtegesPermettentUnRefusAvantPreparationSansRecu() {
+		var socle = new SocleDeManche(banc.verrous, banc.stockage, banc.stockage, banc.registre,
+				new RegistreDesEnvois(banc.stockage, banc.json),
+				new fr.croustyquizz.tempsreel.PublicationDeVues(banc.assembleur, banc.commun,
+						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur), banc.horloge, banc.json);
+		class ServiceAvecGarde extends ServiceDeManche<ModeFacticeDuSocle.Reglages, DeroulementFactice.Etat> {
+			ServiceAvecGarde() { super(banc.mode, banc.mode, socle); }
+			@Override protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {
+				return new Refuse(409, "ETAPE_INACTIVE", "Sans étape.");
+			}
+			@Override protected boolean doitConserverRecu(ResultatDeCommande resultat) { return false; }
+		}
+		var service = new ServiceAvecGarde();
+		UUID manche = banc.creer(soiree);
+		var envoi = banc.envoi(soiree, "/avant", Map.of());
+		assertThatThrownBy(() -> service.executer(manche, envoi, () -> { throw new AssertionError("Source appelée"); }))
+				.isInstanceOf(RefusDeCommande.class);
+		assertThat(banc.stockage.retrouverEnvoi(EnvoiDeManche.cle(envoi.acteur(), envoi.route(), envoi.envoiId()))).isNull();
+	}
+
+	@Test
+	void leRefusPreparePrecedeLEtatAvecLesGardesParDefaut() {
+		UUID manche = banc.creer(soiree);
+		Refuse refus = new Refuse(404, "RESSOURCE_INTROUVABLE", "Contenu absent.");
+		assertThat(banc.service.executer(manche, banc.envoi(soiree, "/prepare", Map.of()),
+				() -> PreparationDeCommande.refusee(refus))).isEqualTo(refus);
+	}
+
+	@Test
+	void rejoueUnSucces204SansCorpsNiPublication() {
+		UUID manche = demarrer();
+		var envoi = banc.envoi(soiree, "/sans-corps", Map.of());
+		int avant = banc.diffuseur.envois().size();
+		banc.service.executer(manche, envoi, () -> PreparationDeCommande.prete(d -> new Accepte(null, java.util.Set.of(), "file-attente-modifiee")));
+		var rejeu = banc.service.executer(manche, envoi, () -> { throw new AssertionError("Rejeu préparé"); });
+		assertThat(ReponsesDeCommande.statut(rejeu)).isEqualTo(204);
+		assertThat(((Accepte) rejeu).accuse()).isNull();
+		assertThat(banc.diffuseur.envois()).hasSize(avant);
 	}
 
 	private UUID demarrer() {
