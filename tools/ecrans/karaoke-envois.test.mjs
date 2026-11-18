@@ -107,3 +107,15 @@ test('une erreur 5xx sans code du contrat (page d’erreur d’un relais) reste 
 	assert.equal(autre.etats.at(-1).etat, 'refuse');
 	b.machine.detruire(); autre.machine.detruire();
 });
+
+test('une inscription acceptée par 2xx n’est oubliée qu’après avoir été vue dans la vue', async () => {
+	const b = banc(); const { cle } = b.machine.envoyerCommande(commande);
+	b.appels[0].resolve({ statut: 201, corps: { passageId: 'p' } }); await vider();
+	assert.equal(b.etats.at(-1).etat, 'accepte');
+	// Une vue plus ancienne, sans le Passage, arrive après la réponse : l'inscription reste connue.
+	assert.deepEqual(b.machine.reconcilier([]), { acceptees: [], oubliees: [] });
+	assert.equal(b.machine.retrouverInscription('m', 'c'), cle);
+	assert.deepEqual(b.machine.reconcilier([cle]), { acceptees: [], oubliees: [] });
+	assert.deepEqual(b.machine.reconcilier([]), { acceptees: [], oubliees: [cle] });
+	b.machine.detruire();
+});

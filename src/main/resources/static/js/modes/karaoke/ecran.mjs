@@ -1,4 +1,4 @@
-import { creerInterface, creerTicket } from './commun.mjs';
+import { creerInterface, creerTicket, texteAutresPassages } from './commun.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e } = ui;
@@ -12,10 +12,12 @@ export function monter(zones, contexte) {
 		invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
 		prochain.hidden = !passages.length;
 		prochain.replaceChildren(...(passages.length ? [creerTicket(ui, passages[0])] : []));
-		file.hidden = !passages.length; titre.hidden = !passages.length;
-		file.replaceChildren(...passages.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }));
+		// Le premier Passage est déjà en grand : « Ensuite » montre seulement les suivants.
+		const suivants = passages.slice(1);
+		file.hidden = !suivants.length; titre.hidden = !suivants.length && !ui.bloc.nombreAutresPassages;
+		file.replaceChildren(...suivants.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }));
 		autres.hidden = !ui.bloc.nombreAutresPassages;
-		autres.textContent = ui.bloc.nombreAutresPassages ? `et ${ui.bloc.nombreAutresPassages} autres` : '';
+		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
 	};
 	return { afficher: ui.afficher, demonter: ui.demonter };
 }

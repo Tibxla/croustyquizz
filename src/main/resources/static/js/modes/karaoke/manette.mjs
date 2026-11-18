@@ -1,4 +1,4 @@
-import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
+import { creerInterface, creerTicket, creerCatalogue, texteEnvoi, texteAutresPassages } from './commun.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton } = ui;
@@ -42,7 +42,7 @@ export function monter(zones, contexte) {
 		ui.remplacerListe(personnels, tickets.length ? tickets : [e('p', '', "Tu n'attends aucun Passage.")], titre);
 		ui.remplacerListe(file, ui.bloc.prochainsPassages.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }), ensuite);
 		file.hidden = !ui.bloc.prochainsPassages.length;
-		autres.textContent = ui.bloc.nombreAutresPassages ? `et ${ui.bloc.nombreAutresPassages} autres` : '';
+		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
 		autres.hidden = !ui.bloc.nombreAutresPassages;
 		catalogue.rendre();
 		for (const dialogue of ui.principale.querySelectorAll('dialog')) {

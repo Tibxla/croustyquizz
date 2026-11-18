@@ -102,9 +102,12 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			const visibles = new Set(clesVisibles), acceptees = [], oubliees = [];
 			for (const e of envois.values()) {
 				if (!inscription(e)) continue;
-				if (visibles.has(e.cle) && ['en-cours', 'inconnu', 'indisponible'].includes(e.etat.etat)) {
+				const visible = visibles.has(e.cle);
+				if (visible && ['en-cours', 'inconnu', 'indisponible'].includes(e.etat.etat)) {
 					transition(e, { etat: 'accepte' }); acceptees.push(e.cle);
-				} else if (!visibles.has(e.cle) && e.etat.etat === 'accepte') { oublier(e.cle); oubliees.push(e.cle); }
+				// Le 2xx peut précéder l'événement qui ajoute le Passage : on n'oublie qu'un Passage déjà vu puis disparu.
+				} else if (!visible && e.etat.etat === 'accepte' && e.vu) { oublier(e.cle); oubliees.push(e.cle); }
+				if (visible) e.vu = true;
 			}
 			return { acceptees, oubliees };
 		},

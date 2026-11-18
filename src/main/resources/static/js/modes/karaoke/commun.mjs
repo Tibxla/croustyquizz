@@ -3,6 +3,8 @@ import { creerMachineEnvoi, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
 import { teintePassage, formaterDuree, formaterAttente, etatInscription } from './presentation.mjs';
 
+export const texteAutresPassages = n => (n ? `et ${n} ${n > 1 ? 'autres' : 'autre'}` : '');
+
 export function creerUuid(cryptoDisponible = globalThis.crypto) {
 	if (cryptoDisponible.randomUUID) return cryptoDisponible.randomUUID();
 	const octets = cryptoDisponible.getRandomValues(new Uint8Array(16));
@@ -133,22 +135,24 @@ export function creerInterface(zones, contexte) {
 			if (detruite) return;
 			if (!vue.karaoke) { ui.demonter(); return; }
 			suspendre = true;
-			if (vue.karaoke.mancheId !== bloc?.mancheId) {
-				const confirmationInvalidee = [...dialogues].some(d => d.valide);
-				machine?.detruire(); envois.clear(); attendCapture = false;
-				for (const d of [...dialogues]) d.fermer();
-				bloc = vue.karaoke; machine = creerMachine(); ui.surManche();
-				if (confirmationInvalidee) ui.messageInvalidation();
-			} else bloc = vue.karaoke;
-			rendue = true;
-			if (origine.source === 'capture') { captures++; attendCapture = false; }
-			const personnels = bloc.mesPassagesEnAttente ?? [];
-			const visibles = [...envois.values()].filter(e => e.commande.acteurType === 'JOUEUR' && e.commande.chansonId &&
-				personnels.some(p => p.chanson.chansonId === e.commande.chansonId)).map(e => e.cle);
-			for (const cle of machine.reconcilier(visibles).oubliees) envois.delete(cle);
-			for (const [cle, e] of envois) if (e.commande.acteurType === 'JOUEUR' && e.commande.passageId &&
-				!personnels.some(p => p.passageId === e.commande.passageId)) { machine.oublier(cle); envois.delete(cle); }
-			suspendre = false; rendre();
+			try {
+				if (vue.karaoke.mancheId !== bloc?.mancheId) {
+					const confirmationInvalidee = [...dialogues].some(d => d.valide);
+					machine?.detruire(); envois.clear(); attendCapture = false;
+					for (const d of [...dialogues]) d.fermer();
+					bloc = vue.karaoke; machine = creerMachine(); ui.surManche();
+					if (confirmationInvalidee) ui.messageInvalidation();
+				} else bloc = vue.karaoke;
+				rendue = true;
+				if (origine.source === 'capture') { captures++; attendCapture = false; }
+				const personnels = bloc.mesPassagesEnAttente ?? [];
+				const visibles = [...envois.values()].filter(e => e.commande.acteurType === 'JOUEUR' && e.commande.chansonId &&
+					personnels.some(p => p.chanson.chansonId === e.commande.chansonId)).map(e => e.cle);
+				for (const cle of machine.reconcilier(visibles).oubliees) envois.delete(cle);
+				for (const [cle, e] of envois) if (e.commande.acteurType === 'JOUEUR' && e.commande.passageId &&
+					!personnels.some(p => p.passageId === e.commande.passageId)) { machine.oublier(cle); envois.delete(cle); }
+			} finally { suspendre = false; }
+			rendre();
 		},
 		demonter() {
 			if (detruite) return;
@@ -199,6 +203,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	const chercher = bouton('Chercher', () => {}); chercher.type = 'submit';
 	formulaire.append(label, champ, chercher, aide, erreur);
 	const etatLecture = e('p'); etatLecture.setAttribute('role', 'status');
+	const CONSULTATION = 'Consultation en cours…';
 	const resultats = e(inscrire ? 'ul' : 'table', `karaoke__resultats${inscrire ? '' : ' resultats'}`);
 	parent.append(titre, formulaire, etatLecture, resultats);
 	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur;
@@ -209,7 +214,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			else {
 				fiche = etat;
 				if (etat.etat !== 'chargement') { etatLecture.textContent = ''; ouvrirFiche(); }
-				else etatLecture.textContent = 'Consultation en cours…';
+				else etatLecture.textContent = CONSULTATION;
 			}
 			if (etat.origineErreur === 'reseau' || etat.statut === 503) ui.contexte.resynchroniser();
 			rendre();
@@ -245,7 +250,11 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		if (dialogue) dialogue.fermer();
 		// fermer() invalide seulement l'ancienne lecture, pas le résultat reçu.
 		dialogue = ui.dialogue({ titre: courante.donnees?.chanson.titre ?? 'Chanson indisponible', declencheur,
-			fermer() { machine.fermerFiche(); dialogue = null; fiche = null; } });
+			fermer() {
+				// fermerFiche annule la lecture sans émettre d'état : on retire nous-mêmes « Consultation en cours… ».
+				machine.fermerFiche(); dialogue = null; fiche = null;
+				if (etatLecture.textContent === CONSULTATION) etatLecture.textContent = '';
+			} });
 		fiche = courante;
 		const contenu = dialogue.contenu;
 		if (fiche.donnees) {

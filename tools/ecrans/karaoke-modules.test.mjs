@@ -78,7 +78,7 @@ test('Console : limite sous focus, valeur soumise conservée pendant l’envoi e
 	formulaire.dispatchEvent({ type: 'submit' }); assert.equal(b.appels[0].args[2].limitePassagesEnAttente, 5);
 	b.document.body.focus(); b.module.afficher(vue({ limitePassagesEnAttente: 4 }), capture);
 	assert.match(b.principale.textContent, /Limite envoyée : 5/); assert.equal(champ.value, '5');
-	for (const valeur of ['0', '1.5', '9007199254740992', '']) { champ.value = valeur; formulaire.dispatchEvent({ type: 'submit' }); assert.equal(champ.getAttribute('aria-invalid'), 'true'); }
+	for (const valeur of ['0', '1.5', '21', '9007199254740992', '']) { champ.value = valeur; formulaire.dispatchEvent({ type: 'submit' }); assert.equal(champ.getAttribute('aria-invalid'), 'true'); }
 	assert.equal(b.appels.length, 1); b.module.demonter();
 });
 
@@ -214,10 +214,14 @@ test('la Manette conserve la recherche au quota, consulte par GET puis attend le
 	b.module.demonter();
 });
 
-test('salle : le premier ticket se répète dans la liste, pas de commande ni de détachement', () => {
-	const b = creerBanc(ecran, 'ECRAN'); b.module.afficher(vue({ prochainsPassages: [passage()], nombreAutresPassages: 2 }), capture);
+test('salle : le premier Passage en grand, seulement les suivants dans « Ensuite », pas de commande ni de détachement', () => {
+	const b = creerBanc(ecran, 'ECRAN');
+	b.module.afficher(vue({ prochainsPassages: [passage(), passage({ passageId: 'p2', numero: 2 })], nombreAutresPassages: 1 }), capture);
 	assert.match(b.principale.textContent, /Prépare-toi/); assert.equal(b.principale.querySelectorAll('.ticket').length, 1);
-	assert.equal(b.laterale.querySelectorAll('.ticket').length, 1); assert.match(b.laterale.textContent, /et 2 autres/);
+	assert.equal(b.laterale.querySelectorAll('.ticket').length, 1, 'le premier Passage n’est pas répété');
+	assert.match(b.laterale.textContent, /et 1 autre$/);
+	b.module.afficher(vue({ prochainsPassages: [passage()], nombreAutresPassages: 2 }), capture);
+	assert.equal(b.laterale.querySelectorAll('.ticket').length, 0); assert.match(b.laterale.textContent, /et 2 autres/);
 	assert.equal(b.document.body.querySelectorAll('button').length, 0);
 	assert.equal(b.document.body.querySelectorAll('.ticket--detache').length, 0);
 	b.module.afficher({ karaoke: null }, capture); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
@@ -258,4 +262,27 @@ test('les mutations Karaoké se taisent dans le bandeau de la coquille : un seul
 	bouton(manetteBanc.principale, 'Me désinscrire').click(); bouton(manetteBanc.principale, 'Confirmer la désinscription').click();
 	assert.notEqual(manetteBanc.appels[0].args[0], 'GET'); assert.equal(manetteBanc.appels[0].args[3].annoncer, false);
 	manetteBanc.module.demonter();
+});
+
+test('Console : la limite se borne à 20 comme le contrat, et le message donne l’intervalle', () => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue(), capture); b.connecter('synchronisee');
+	const champ = b.principale.querySelector('#karaoke-limite'), formulaire = b.principale.querySelector('form');
+	assert.equal(champ.max, '20');
+	champ.value = '25'; formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 0); assert.match(b.principale.textContent, /entre 1 et 20/);
+	champ.value = '20'; formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels[0].args[2].limitePassagesEnAttente, 20); b.module.demonter();
+});
+
+test('Manette : fermer la fiche pendant une consultation retire « Consultation en cours… »', async () => {
+	const b = creerBanc(manette); b.module.afficher(vue(), capture);
+	const champ = b.principale.querySelector('input'), formulaire = b.principale.querySelector('form');
+	champ.value = 'titre'; formulaire.dispatchEvent({ type: 'submit' });
+	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson, { ...chanson, chansonId: 'autre', titre: 'Autre' }] } }); await terminerMicrotaches();
+	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, paroles: null } }); await terminerMicrotaches();
+	assert.ok(b.principale.querySelector('dialog'));
+	bouton(b.principale, 'Autre').click(); await terminerMicrotaches();
+	assert.match(b.principale.textContent, /Consultation en cours…/);
+	bouton(b.principale.querySelector('dialog'), 'Fermer').click(); await terminerMicrotaches();
+	assert.doesNotMatch(b.principale.textContent, /Consultation en cours…/); b.module.demonter();
 });

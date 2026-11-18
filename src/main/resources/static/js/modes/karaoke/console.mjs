@@ -1,11 +1,14 @@
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
 import { preparerPlacement } from './placement.mjs';
 
+// Bornes du contrat : limitePassagesEnAttente vaut de 1 à 20 (docs/api/README.md, File d'attente).
+const LIMITE_PASSAGES_MAX = 20;
+
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton, ecouter } = ui;
 	const titre = e('h2', '', "File d'attente"); titre.tabIndex = -1;
 	const limite = e('form', 'karaoke__limite champ'), label = e('label', '', 'Passages en attente par Interprète');
-	const champ = e('input'); champ.id = 'karaoke-limite'; champ.type = 'number'; champ.min = '1'; champ.max = '9007199254740991'; champ.step = '1';
+	const champ = e('input'); champ.id = 'karaoke-limite'; champ.type = 'number'; champ.min = '1'; champ.max = String(LIMITE_PASSAGES_MAX); champ.step = '1';
 	label.setAttribute('for', champ.id);
 	const erreur = e('p', 'champ--erreur'); erreur.id = 'karaoke-limite-erreur'; erreur.hidden = true; champ.setAttribute('aria-describedby', erreur.id);
 	const appliquer = bouton('Appliquer', () => {}); appliquer.type = 'submit';
@@ -43,8 +46,8 @@ export function monter(zones, contexte) {
 	ecouter(limite, 'submit', evenement => {
 		evenement.preventDefault();
 		const valeur = Number(champ.value);
-		const valide = /^\d+$/.test(champ.value) && Number.isSafeInteger(valeur) && valeur >= 1;
-		erreur.hidden = valide; erreur.textContent = valide ? '' : 'Saisis un entier positif.';
+		const valide = /^\d+$/.test(champ.value) && Number.isSafeInteger(valeur) && valeur >= 1 && valeur <= LIMITE_PASSAGES_MAX;
+		erreur.hidden = valide; erreur.textContent = valide ? '' : `Saisis un entier entre 1 et ${LIMITE_PASSAGES_MAX}.`;
 		if (!valide) { champ.setAttribute('aria-invalid', 'true'); return; }
 		champ.removeAttribute('aria-invalid');
 		ui.commande(commande('PUT', '/file-attente/limite', { limitePassagesEnAttente: valeur }));
