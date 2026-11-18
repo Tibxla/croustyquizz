@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>fr.croustyquizz</groupId>
 	<artifactId>croustyquizz</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1.0</version>
 	<name>CroustyQuizz</name>
 	<description>Plateforme de soirées Quiz, Blind test et Karaoké</description>
 	<url>https://github.com/Tibxla/croustyquizz</url>
