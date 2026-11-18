@@ -1,0 +1,34 @@
+/* Dossiers sans limite de pages (Rendu 2 et suivants), ajoutés après dossier-lancement.css.
+   Le texte s'écoule de page en page ; l'en-tête, le pied et la numérotation sont dans les
+   marges de @page, leur texte est ajouté par tools/generer-dossier.py. */
+@page {
+  size: A4;
+  margin: 19mm 17mm 18mm;
+  @top-left { font-family: "Liberation Sans", Arial, sans-serif; font-size: 8pt; color: #444; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: .2mm solid #999; }
+  @top-right { font-family: "Liberation Sans", Arial, sans-serif; font-size: 8pt; color: #444; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: .2mm solid #999; }
+  @bottom-left { font-family: "Liberation Sans", Arial, sans-serif; font-size: 8pt; color: #444; vertical-align: top; padding-top: 2.5mm; border-top: .2mm solid #999; }
+  @bottom-right { font-family: "Liberation Sans", Arial, sans-serif; font-size: 8pt; color: #444; vertical-align: top; padding-top: 2.5mm; border-top: .2mm solid #999; }
+}
+body { background: white; }
+.continu { max-width: 176mm; margin: 0 auto; }
+.partie { break-before: page; }
+.partie:first-child { break-before: auto; }
+h1 { font-size: 18pt; margin: 7mm 0 3mm; break-after: avoid; }
+.partie > h1:first-child { font-size: 23pt; margin-top: 0; }
+.architecture, .encadre { break-inside: avoid; }
+h2 { margin-top: 5mm; }
+h3 { font-size: 11pt; line-height: 1.2; margin: 3.5mm 0 1.5mm; break-after: avoid; }
+ul { padding-left: 5mm; margin: 1.5mm 0 3mm; }
+ul li { margin-bottom: 1.2mm; }
+table { break-inside: avoid; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+td:first-child, td:nth-child(2) { width: auto; }
+.encadre { border: .2mm solid #999; background: #f6f6f6; padding: 3mm 4mm 1mm; margin: 2mm 0 4mm; }
+.tableau-large table { font-size: 8.6pt; }
+.tableau-large th, .tableau-large td { padding: 1.5mm; }
+.tableau-large td:first-child { width: 11%; }
+.tableau-large td:nth-child(2) { width: 15%; }
+.tableau-large td:nth-child(3) { width: 15%; }
+.tableau-large td:nth-child(4) { width: 18%; }
+.tableau-large td:nth-child(5) { width: 16%; }
