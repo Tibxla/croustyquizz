@@ -6,7 +6,7 @@
 [![Alertes de qualité — PMD](https://raw.githubusercontent.com/Tibxla/croustyquizz/mesures-qualite/develop/qualite.svg)](https://github.com/Tibxla/croustyquizz/actions/workflows/ci.yml?query=branch%3Adevelop)
 [![CI](https://github.com/Tibxla/croustyquizz/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Tibxla/croustyquizz/actions/workflows/ci.yml)
 
-Plateforme de soirées Quiz, Blind test et Karaoké pour les bars et les lieux qui accueillent du public. L'Animateur pilote la Soirée depuis une Console, la salle suit sur la télé, et chaque client joue depuis son téléphone en scannant un QR code, sans rien installer.
+Plateforme de soirées Quiz, Blind test, Karaoké et Freestyle pour les bars et les lieux qui accueillent du public. L'Animateur pilote la Soirée depuis une Console, la salle suit sur la télé, et chaque client joue depuis son téléphone en scannant un QR code, sans rien installer.
 
 Projet de groupe du M1 MIAGE, Université Paris Nanterre.
 

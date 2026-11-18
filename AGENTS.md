@@ -1,6 +1,6 @@
 # CroustyQuizz
 
-Plateforme de soirées Quiz, Blind test et Karaoké pour les lieux qui accueillent du public : l'Animateur pilote depuis la Console d'animation, les Joueurs jouent depuis leur Manette (page web sur téléphone, ouverte par QR code), et la salle suit sur l'Écran de salle. Projet de groupe du M1 MIAGE (Université Paris Nanterre), noté individuellement : chaque contribution doit rester attribuable à son auteur.
+Plateforme de soirées Quiz, Blind test, Karaoké et Freestyle pour les lieux qui accueillent du public : l'Animateur pilote depuis la Console d'animation, les Joueurs jouent depuis leur Manette (page web sur téléphone, ouverte par QR code), et la salle suit sur l'Écran de salle. Projet de groupe du M1 MIAGE (Université Paris Nanterre), noté individuellement : chaque contribution doit rester attribuable à son auteur.
 
 ## À lire avant de coder
 
@@ -73,7 +73,7 @@ Chaque package a un propriétaire, qui écrit et relit en premier ce qui s'y pas
 
 | Package | Propriétaire |
 |---|---|
-| `manche` (contrat commun), `tempsreel`, `passage` (code commun du Karaoké et du Freestyle), `karaoke`, pilotage automatique | Tibxla |
+| `manche` (contrat commun), `tempsreel`, `karaoke`, `freestyle`, pilotage automatique | Tibxla |
 | `quiz`, `animateur`, classement général | Piyakabib |
 | `soiree`, `blindtest`, déroulement manuel des Manches, format Équipe, `assistant` (serveur MCP) | nRayen |
 

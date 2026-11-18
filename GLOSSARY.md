@@ -17,7 +17,7 @@ Séquence d'un seul Mode de jeu à l'intérieur d'une Soirée.
 _Éviter_ : partie, round, jeu
 
 **Animateur** :
-Personne du Lieu qui crée et pilote les Soirées. C'est le seul rôle qui a un compte.
+Personne du Lieu qui crée et pilote les Soirées. C'est le seul rôle qui a un compte. Pendant une Soirée, il peut confier une partie de ses pouvoirs par Délégation.
 _Éviter_ : admin, gérant, organisateur, MC
 
 **Joueur** :
@@ -57,17 +57,25 @@ Retrait définitif d'un Joueur d'une Soirée, décidé par l'Animateur. Elle vau
 _Éviter_ : ban, kick, bannissement
 
 **Classement général** :
-Cumul des points des Joueurs, ou des Équipes en Format Équipe, sur les Manches de Quiz et de Blind test d'une Soirée. Le Karaoké n'y compte pas.
+Cumul des points des Joueurs, ou des Équipes en Format Équipe, sur les Manches de Quiz et de Blind test d'une Soirée. Le Karaoké et le Freestyle n'y comptent pas.
 _Éviter_ : score, leaderboard
 
 **Palmarès du Karaoké** :
-Classement des passages de Karaoké d'une Soirée selon le Vote du public, séparé du Classement général.
+Classement des Passages de Karaoké d'une Soirée selon le Vote du public, séparé du Classement général.
 _Éviter_ : classement karaoké, score de chant
+
+**Palmarès du Freestyle** :
+Classement du Freestyle d'une Soirée selon le Vote du public, séparé du Classement général : les Interprètes selon leurs victoires dans les Passages à plusieurs, et les Passages à un seul Interprète selon leur note.
+_Éviter_ : classement freestyle, score de rap
+
+**Délégation** :
+Pouvoirs limités que l'Animateur confie, le temps d'une Soirée, à la Manette d'un Joueur, par exemple gérer la File d'attente, et qu'il retire quand il veut. Elle ne crée pas de compte et ne permet ni l'Exclusion ni la fin de la Soirée.
+_Éviter_ : co-animateur, modérateur, admin
 
 ## Modes de jeu
 
 **Mode de jeu** :
-Type d'animation jouable pendant une soirée. Il en existe trois : Quiz, Blind test, Karaoké.
+Type d'animation jouable pendant une Soirée. Il en existe quatre : Quiz, Blind test, Karaoké, Freestyle.
 _Éviter_ : jeu, module, activité
 
 **Quiz** :
@@ -79,8 +87,12 @@ Mode de jeu où les joueurs reconnaissent un morceau à partir d'un extrait audi
 _Éviter_ : quiz musical, devinette musicale
 
 **Karaoké** :
-Mode de jeu où des volontaires chantent seuls à tour de rôle sur des paroles synchronisées, puis le public vote pour eux. Le chant n'est pas analysé. Il reste individuel même en Format Équipe.
+Mode de jeu où des volontaires chantent à tour de rôle, seuls ou à plusieurs, sur des paroles synchronisées, puis le public vote pour eux. Le chant n'est pas analysé. Même en Format Équipe, il ne fait marquer de points à personne.
 _Éviter_ : chant, scène ouverte
+
+**Freestyle** :
+Mode de jeu où des volontaires improvisent des rimes en rythme sur une Instrumentale, seuls ou à plusieurs, guidés par une Grille de rimes affichée sur l'Écran de salle, puis le public vote pour eux. L'improvisation n'est pas analysée. Même en Format Équipe, il ne fait marquer de points à personne.
+_Éviter_ : rap, battle, impro
 
 **Question** :
 Énoncé de Quiz accompagné de quatre propositions, dont une seule est juste.
@@ -99,29 +111,53 @@ Signal envoyé depuis une Manette pour réclamer la parole pendant un Blind test
 _Éviter_ : clic, main levée
 
 **Chanson** :
-Titre musical choisi par un Joueur pour le chanter au Karaoké, avec ses paroles synchronisées.
+Titre musical chanté pendant un Passage de Karaoké, avec ses paroles synchronisées.
 _Éviter_ : morceau, piste
 
+**Instrumentale** :
+Morceau sans voix, au tempo connu, sur lequel les Interprètes improvisent pendant un Passage de Freestyle.
+_Éviter_ : beat, prod, piste
+
+**Grille de rimes** :
+Suite de mesures affichée pendant un Passage de Freestyle, qui place sur les temps des mots qui riment entre eux, montrés ou à trouver selon la difficulté choisie.
+_Éviter_ : pattern, partition
+
+**Couplet** :
+Suite de mesures qu'un seul Interprète rappe avant de laisser la place au suivant, dans un Passage de Freestyle à plusieurs.
+_Éviter_ : tour, round, relais
+
 **Passage** :
-Tour d'un Joueur au Karaoké : une Chanson chantée, puis notée par le Vote du public.
+Moment où un à quatre Joueurs passent au micro, au Karaoké sur une Chanson ou au Freestyle sur une Instrumentale, noté ensuite par le Vote du public.
 _Éviter_ : prestation, performance, tour de chant
 
+**Interprète** :
+Joueur qui fait partie d'un Passage, qu'il l'ait inscrit ou qu'il y ait été invité et ait accepté.
+_Éviter_ : chanteur, rappeur, artiste
+
 **File d'attente** :
-Liste ordonnée des Passages à venir d'une Manche de Karaoké.
+Liste ordonnée des Passages à venir d'une Manche de Karaoké ou de Freestyle. Elle avance par Tours : le deuxième Passage d'un Interprète vient après le premier de chacun des autres.
 _Éviter_ : playlist, queue
 
+**Tour** :
+Cycle de la File d'attente au cours duquel chaque Interprète a au plus un Passage. Un Passage placé en priorité compte comme le Passage de son Interprète pour le Tour.
+_Éviter_ : round, rotation (pour le cycle), tour de chant
+
 **Vote du public** :
-Note donnée par un Joueur à un Passage qui n'est pas le sien.
+Avis donné par un Joueur sur un Passage dont il n'est pas Interprète : une note, ou, dans un Passage de Freestyle à plusieurs, le choix du meilleur Interprète.
 _Éviter_ : score de chant, évaluation
+
+**Enregistrement** :
+Captation sonore d'un Passage par la Manette d'un Interprète qui l'a demandée. Elle reste sur son téléphone.
+_Éviter_ : record, captation, replay
 
 ## Interfaces
 
 **Manette** :
-Page web ouverte sur le téléphone d'un joueur en scannant un QR code, sans installation. Elle sert à buzzer, répondre, s'inscrire au Karaoké et voter.
+Page web ouverte sur le téléphone d'un joueur en scannant un QR code, sans installation. Elle sert à buzzer, répondre, s'inscrire à un Passage et voter.
 _Éviter_ : extension, appli mobile, client mobile
 
 **Écran de salle** :
-Page affichée sur la télévision ou le projecteur du lieu, visible par toute la salle : questions, paroles, scores.
+Page affichée sur la télévision ou le projecteur du lieu, visible par toute la salle : Questions, paroles, Grilles de rimes, scores.
 _Éviter_ : écran principal, TV, affichage
 
 **Console d'animation** :
