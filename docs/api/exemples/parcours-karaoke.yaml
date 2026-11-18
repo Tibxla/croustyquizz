@@ -178,7 +178,7 @@ http:
       classement: *a5
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke: &a176
@@ -544,7 +544,7 @@ http:
       classement: &a83 []
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke: &a174
@@ -1067,7 +1067,7 @@ http:
       classement: *a27
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -1369,7 +1369,7 @@ http:
       classement: *a39
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke: null
@@ -1660,7 +1660,7 @@ evenements:
       classement: *a47
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -1792,7 +1792,7 @@ evenements:
       classement: *a52
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -1938,7 +1938,7 @@ evenements:
       classement: *a57
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -2085,7 +2085,7 @@ evenements:
       classement: *a63
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -2245,7 +2245,7 @@ evenements:
       classement: *a69
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -2405,7 +2405,7 @@ evenements:
       classement: *a76
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -2640,7 +2640,7 @@ evenements:
       classement: *a90
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -2800,7 +2800,7 @@ evenements:
       classement: *a96
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -2960,7 +2960,7 @@ evenements:
       classement: *a103
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -3120,7 +3120,7 @@ evenements:
       classement: *a110
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -3280,7 +3280,7 @@ evenements:
       classement: *a117
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -3427,7 +3427,7 @@ evenements:
       classement: *a124
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -3589,7 +3589,7 @@ evenements:
       classement: *a130
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -3736,7 +3736,7 @@ evenements:
       classement: *a137
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -3907,7 +3907,7 @@ evenements:
       classement: *a146
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -4040,7 +4040,7 @@ evenements:
       classement: *a152
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -4109,7 +4109,7 @@ evenements:
       classement: *a157
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -4191,7 +4191,7 @@ evenements:
       classement: *a163
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -4314,7 +4314,7 @@ evenements:
       classement: *a5
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -4421,7 +4421,7 @@ evenements:
       classement: *a5
       dernierBuzz: null
       joueurId: 82000000-0000-4000-8000-000000000003
-      eligiblePourMancheActive: false
+      eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
       karaoke:
@@ -4761,7 +4761,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke: *a174
@@ -4776,7 +4776,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke: *a174
@@ -4798,7 +4798,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke: *a174
@@ -4813,7 +4813,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke: *a174
@@ -4832,7 +4832,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke: null
@@ -4847,7 +4847,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke:
@@ -4878,7 +4878,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke:
@@ -4909,7 +4909,7 @@ cases:
     classement: *a83
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
     karaoke:
@@ -4944,7 +4944,7 @@ cases:
     classement: *a5
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse:
       envoiId: 82000000-0000-4000-8000-000000000900
       reponseId: 82000000-0000-4000-8000-000000000901
@@ -4964,7 +4964,7 @@ cases:
     classement: *a5
     dernierBuzz: null
     joueurId: 82000000-0000-4000-8000-000000000003
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel:
       etapeId: 82000000-0000-4000-8000-000000000902

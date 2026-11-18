@@ -59,6 +59,8 @@ async function demarrer() {
 		resynchroniser: () => suivi?.resynchroniser(),
 		surEnvoi(etat, detail) {
 			const envoi = element('envoi');
+			// Envoi annulé : plus rien n'est en cours, le bandeau disparaît.
+			if (etat === null) { envoi.hidden = true; envoi.className = 'envoi'; envoi.textContent = ''; return; }
 			envoi.hidden = false;
 			envoi.className = `envoi envoi--${etat}`;
 			envoi.textContent = detail;

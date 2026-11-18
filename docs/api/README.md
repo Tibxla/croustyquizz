@@ -54,6 +54,8 @@ La Manche en cours remplit le seul bloc de son Mode de jeu (`quiz`, `blindtest`,
 
 `quiz` est facultatif, de type `EtatQuiz` ou `null`. `karaoke` est facultatif, de type `BlocKaraokeSalle`, `BlocKaraokeConsole` ou `BlocKaraokeManette` selon la destination, ou `null`. Un bloc Karaoké non nul exige une Manche active de Karaoké en `EN_COURS` ou `EN_PAUSE`. Les blocs facultatifs `blindtest` et `freestyle` n’acceptent encore que `null`. La création et la description des Manches acceptent `QUIZ` et `KARAOKE`, avec les réglages propres à chaque mode. La confidentialité du Quiz reste inchangée : si le bloc `quiz` est présent et non nul, aucun résultat personnel n’est révélé en `ATTENTE`, `QUESTION_OUVERTE` ou `EN_PAUSE`. En `KARAOKE`, `derniereReponse` et `resultatPersonnel` restent obligatoires et nuls, même sans bloc fourni.
 
+Dans la partie commune de la Manette, `eligiblePourMancheActive` dit si le Joueur prend part à la Manche active. Pour un Joueur arrivé pendant une Manche, le serveur le met à `true` quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Karaoké ; Freestyle), à `false` sinon. Le Blind test tranchera dans #17. Les pages n’en déduisent rien d’autre : le message « Tu participeras à la prochaine Manche » s’appuie sur ce seul champ, sans regarder `modeEnCours`. La règle de jeu reste au serveur, et un futur Mode de jeu n’a rien à ajouter côté navigateur.
+
 Les captures HTTP et les messages STOMP utilisent les mêmes schémas de vue. Les trois canaux restent inchangés et chaque message remplace toujours la vue complète, partie commune et blocs compris.
 
 ## Reconnexion sans fenêtre de perte
@@ -69,7 +71,7 @@ Un simple « lire l’état puis s’abonner » peut perdre un événement entre
 
 L’ordre « abonnement effectivement installé avant capture » empêche la fenêtre de perte, y compris lorsque la réponse HTTP est retardée et qu’un événement plus récent arrive avant elle. Les détails de registre d’abonnement appartiennent à l’adaptateur temps réel ; l’interface promise aux écrans est la vérification de l’UUID et la capture cohérente. Sans paramètre `abonnementId`, les routes d’état restent des lectures ponctuelles, sans garantie de raccordement à un flux.
 
-La Manette retrouve ainsi ses points et sa Réponse déjà enregistrée. Les Questions manquées ne sont pas rejouées ; pour le Quiz, un Joueur arrivé au milieu d’une Manche voit `eligiblePourMancheActive: false` et attend la suivante. Au Karaoké, sa présence suffit pour s’inscrire, même avec ce champ à `false`. Les actions périmées ne sont jamais rejouées automatiquement.
+La Manette retrouve ainsi ses points et sa Réponse déjà enregistrée. Les Questions manquées ne sont pas rejouées ; un Joueur arrivé au milieu d’une Manche de Quiz voit `eligiblePourMancheActive: true` et joue aussitôt, y compris la Question en cours s’il reste du temps. Au Karaoké, le serveur met ce champ à `true` pour le retardataire, qui s’inscrit dès son arrivée (voir « Vues par blocs »). Les actions périmées ne sont jamais rejouées automatiquement.
 
 ## Réponses, délais et envois répétés
 
@@ -104,7 +106,7 @@ Cette tranche fixe la recherche de Chansons, l’inscription personnelle et la g
 
 Le nouvel inscrit rejoint la fin du Tour ouvert s’il n’y a pas chanté, sinon le suivant. Son deuxième Passage vient après le premier de chacun des autres. L’Animateur place un Passage dans son Tour ; pour le faire passer juste après le courant, il pose une priorité unique, qui compte comme le Tour de l’Interprète. La priorité conserve l’ordre normal sous-jacent ; le retirer ou le remplacer restaure cet ordre. `true` remplace la priorité, `false` retire celle de la cible ou reste sans effet. Seuls les Passages affectés changent de compteur.
 
-La limite, de 1 à 20, porte sur les Passages `EN_ATTENTE` de chaque Interprète. La baisser ne retire rien. Une désinscription suivie d’une réinscription rejoint la fin du Tour admissible. Pas de doublon de Chanson personnel en attente ; deux Joueurs peuvent choisir la même Chanson. Un retardataire présent peut s’inscrire : `eligiblePourMancheActive` n’est jamais une garde Karaoké.
+La limite, de 1 à 20, porte sur les Passages `EN_ATTENTE` de chaque Interprète. La baisser ne retire rien. Une désinscription suivie d’une réinscription rejoint la fin du Tour admissible. Pas de doublon de Chanson personnel en attente ; deux Joueurs peuvent choisir la même Chanson. Un retardataire présent peut s’inscrire ; sa vue porte `eligiblePourMancheActive: true`, mais ce champ n’est jamais une garde de l’inscription.
 
 Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. La future extraction (#22) fera `EN_ATTENTE` → `APPELE`, avec le courant séparé de la File d’attente. Un appel sauté après 30 secondes sans « Je suis prêt » compte comme chanté. Aucun nombre de Passages n’est fixé. L’Animateur termine la Manche ; en Automatique, la fin naturelle sera raccordée par #22 quand la File d’attente est vide à la fin d’un Passage, jamais au seul retrait. File vide au démarrage ou après le dernier retrait : elle reste ouverte. Cette tranche n’ajoute aucun minuteur.
 

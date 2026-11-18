@@ -45,7 +45,8 @@ test('l’adapter réel abonne STOMP avant HTTP avec le même UUID et arrête se
 	assert.equal(requetes[0].url.searchParams.get('autre'), 'valeur');
 	assert.equal(requetes[0].options.cache, 'no-store');
 	client.abonnement.recevoir({ body: JSON.stringify({ revision: 1, type: 'buzz-recu', donnees: { buzz: ['Alpha'] } }) });
-	requetes[0].resoudre({ status: 200, text: async () => JSON.stringify({ revision: 0, abonnementId: id,
+	// Comme le vrai serveur, la capture annonce son JSON : le transport n'analyse que ce type de corps.
+	requetes[0].resoudre({ status: 200, headers: new Headers({ 'Content-Type': 'application/json' }), text: async () => JSON.stringify({ revision: 0, abonnementId: id,
 		heureServeur: '2026-11-10T20:00:35Z', vue: { buzz: [] },
 	}) });
 	await setImmediate();

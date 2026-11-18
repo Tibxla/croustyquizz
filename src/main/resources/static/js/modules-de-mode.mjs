@@ -28,6 +28,15 @@ export function creerGestionnaireDeMode({ ecran, zones, contexte, charger = chem
 		afficher(vue, origine) {
 			if (arrete) return Promise.resolve();
 			derniere = { vue, origine };
+			// Bloc du mode absent ou nul (facultatif dans le contrat : sans fournisseur, Manche terminée) :
+			// aucun module n'est monté, et le mode est oublié pour que la Manche suivante en remonte un neuf.
+			// Un module ne reçoit donc jamais de bloc absent ou nul. Un mode inconnu passe par surErreur.
+			if (Object.hasOwn(dossiers, vue.modeEnCours ?? '') && vue[blocDuMode(vue.modeEnCours)] == null) {
+				if (mode !== undefined) { generation++; vider(); }
+				mode = undefined;
+				chargement = undefined;
+				return Promise.resolve();
+			}
 			if (mode === vue.modeEnCours) {
 				if (instance) {
 					try { instance.afficher(vue, origine); } catch (erreur) { surErreur(erreur); }
