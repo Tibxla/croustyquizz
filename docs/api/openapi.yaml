@@ -396,8 +396,10 @@ paths:
         attribue l’identité et un jeton opaque. Un Joueur qui arrive pendant une Manche y joue aussitôt (#10). Stocker le jeton
         pour la reconnexion. Sans identité ni heure fournies par la Manette. La Manette met le code au format du schéma
         (majuscules, sans blancs) avant l’envoi. Un code inconnu, ou celui d’une Soirée en PREPARATION ou TERMINEE, donne 404 CODE_ACCES_INVALIDE, sans
-        distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; filtre et unicité du pseudo
-        (PSEUDO_REFUSE, PSEUDO_DEJA_PRIS) relèvent de #10.
+        distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; un pseudo
+        injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
+        pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
+        409 PSEUDO_DEJA_PRIS.
       tags:
       - Soirée
       security: []

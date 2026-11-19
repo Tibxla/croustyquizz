@@ -43,6 +43,16 @@ class ErreursSoiree {
 		return refus(422, "DONNEES_INVALIDES", erreur.getMessage() + ".", requete);
 	}
 
+	@ExceptionHandler(PseudoRefuse.class)
+	ResponseEntity<?> pseudoRefuse(HttpServletRequest requete) {
+		return refus(422, "PSEUDO_REFUSE", "Ce pseudo n'est pas accepté. Choisis-en un autre.", requete);
+	}
+
+	@ExceptionHandler(PseudoDejaPris.class)
+	ResponseEntity<?> pseudoDejaPris(HttpServletRequest requete) {
+		return refus(409, "PSEUDO_DEJA_PRIS", "Ce pseudo est déjà pris dans la Soirée.", requete);
+	}
+
 	private static ResponseEntity<?> refus(int statut, String code, String detail, HttpServletRequest requete) {
 		return ReponsesDeCommande.http(new Refuse(statut, code, detail), requete.getRequestURI());
 	}
