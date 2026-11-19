@@ -56,17 +56,19 @@ class PorteeDePassageSoiree implements PorteeDePassage {
 	}
 
 	/**
-	 * La Soirée accepte des Joueurs (ouverte ou en cours) et la Manche est en cours ou en pause.
-	 * Tant que #12 ne lance pas les Soirées, une Soirée ouverte suffit.
+	 * La Soirée est {@code EN_COURS} et la Manche en cours ou en pause, comme l'exige le contrat
+	 * (« Recherche et gestion exigent une Soirée EN_COURS ») : une Soirée seulement ouverte ne
+	 * fait tourner aucune File d'attente. Le lancement des Soirées arrive avec #12.
 	 */
 	@Override
 	@Transactional(readOnly = true)
 	public boolean estActive(UUID soireeId, UUID mancheId) {
 		Soiree soiree = soirees.findById(soireeId).orElse(null);
 		if (soiree == null) {
-			return autreOuNull() != null && autreOuNull().estActive(soireeId, mancheId);
+			PorteeDePassage autre = autreOuNull();
+			return autre != null && autre.estActive(soireeId, mancheId);
 		}
-		return soiree.accepteLesArrivees() && manches.deLaSoiree(soireeId).stream()
+		return soiree.getEtat() == EtatSoiree.EN_COURS && manches.deLaSoiree(soireeId).stream()
 				.anyMatch(manche -> manche.getMancheId().equals(mancheId)
 						&& (manche.getEtat() == EtatManche.EN_COURS || manche.getEtat() == EtatManche.EN_PAUSE));
 	}
@@ -79,6 +81,7 @@ class PorteeDePassageSoiree implements PorteeDePassage {
 		return autre;
 	}
 
+	/** Le filtre {@code instanceof} suppose des proxys CGLIB, le réglage par défaut de Spring Boot. */
 	private PorteeDePassage autreOuNull() {
 		return portees.orderedStream().filter(portee -> !(portee instanceof PorteeDePassageSoiree)).findFirst().orElse(null);
 	}

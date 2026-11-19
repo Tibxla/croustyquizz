@@ -2,7 +2,11 @@ package fr.croustyquizz.karaoke;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
+import fr.croustyquizz.manche.EtatDeSoiree;
+import fr.croustyquizz.passage.ParticipantsDePassage;
+import fr.croustyquizz.tempsreel.FournisseurCommunDemonstration;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +25,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Karaoké sur une Soirée enregistrée (#111) : les ports de {@code passage} lisent la
  * Soirée et ses Joueurs en base, pas la forme JSON de la vue. Seule la source de
- * paroles est factice ; Soirée, Joueurs, portée et pseudos sont les vrais.
+ * paroles est factice ; Soirée, Joueurs, portée et pseudos sont les vrais. Une Soirée de
+ * démonstration, absente de la base, passe toujours par le repli {@code @Fallback}.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("recette")
@@ -30,6 +35,7 @@ class KaraokeSurSoireeEnregistreeHttpTest {
     @LocalServerPort int port;
     @Autowired JsonMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired EtatDeSoiree etatDeSoiree;
 
     @TestConfiguration(proxyBeanMethods = false)
     static class SourceLocale {
@@ -49,8 +55,8 @@ class KaraokeSurSoireeEnregistreeHttpTest {
 
     @Test void unJoueurArriveParCodeSInscritEtSonPseudoApparait() throws Exception {
         String soiree = soireeOuverte();
-        JsonNode lea = rejoindre(soiree, "Léa");
-        String jeton = lea.path("jetonReconnexion").asString();
+        String jeton = rejoindre(soiree, "Léa").path("jetonReconnexion").asString();
+        lancer(soiree);
         String manche = demarrerKaraoke(soiree);
 
         var inscription = envoyer(HttpMethod.POST, "/api/soirees/" + soiree + "/manches/" + manche + "/passages", jeton,
@@ -58,28 +64,39 @@ class KaraokeSurSoireeEnregistreeHttpTest {
         KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
 
         var manette = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/manette", jeton, null, null);
+        ContratApi.verifier("docs/api/openapi.yaml", "retrouverEtatManette", manette);
         assertThat(manette.getStatusCode().value()).isEqualTo(200);
         JsonNode karaoke = json.readTree(manette.getBody()).path("vue").path("karaoke");
         assertThat(karaoke.path("mesPassagesEnAttente")).hasSize(1);
-        assertThat(karaoke.toString()).contains("\"pseudo\":\"Léa\"").doesNotContain("Joueur parti");
+        assertThat(karaoke.toString()).contains("\"pseudo\":\"Léa\"").doesNotContain(ParticipantsDePassage.JOUEUR_PARTI);
     }
 
-    @Test void unJoueurDUneAutreSoireeNEntrePasDansLaManche() throws Exception {
-        String soiree = soireeOuverte(), autre = soireeOuverte();
-        String jetonAutre = rejoindre(autre, "Tom").path("jetonReconnexion").asString();
-        String manche = demarrerKaraoke(soiree);
-        var refus = envoyer(HttpMethod.POST, "/api/soirees/" + soiree + "/manches/" + manche + "/passages", jetonAutre,
-                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
-        KaraokeHttpTest.verifier("inscrirePassage", refus, 404);
-    }
-
-    @Test void uneMancheDUneAutreSoireeResteIntrouvable() throws Exception {
-        String soiree = soireeOuverte(), autre = soireeOuverte();
+    @Test void uneSoireeSeulementOuverteNeFaitPasTournerLaFile() throws Exception {
+        String soiree = soireeOuverte();
         String jeton = rejoindre(soiree, "Léa").path("jetonReconnexion").asString();
-        String mancheAutre = demarrerKaraoke(autre);
-        var refus = envoyer(HttpMethod.POST, "/api/soirees/" + soiree + "/manches/" + mancheAutre + "/passages", jeton,
+        String manche = demarrerKaraoke(soiree);
+        var refus = envoyer(HttpMethod.POST, "/api/soirees/" + soiree + "/manches/" + manche + "/passages", jeton,
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
-        KaraokeHttpTest.verifier("inscrirePassage", refus, 404);
+        KaraokeHttpTest.verifier("inscrirePassage", refus, 409);
+        assertThat(json.readTree(refus.getBody()).path("code").asString()).isEqualTo("ETAPE_INACTIVE");
+    }
+
+    @Test void uneSoireeDeDemonstrationPasseParLeRepliCommeAvant() throws Exception {
+        UUID demonstration = UUID.randomUUID();
+        String joueur = "demo:JOUEUR:" + demonstration + ":" + FournisseurCommunDemonstration.joueurId(demonstration);
+        String manche = demarrerKaraoke(demonstration.toString());
+        var inscription = envoyer(HttpMethod.POST, "/api/soirees/" + demonstration + "/manches/" + manche + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        var manette = envoyer(HttpMethod.GET, "/api/soirees/" + demonstration + "/etat/manette", joueur, null, null);
+        assertThat(json.readTree(manette.getBody()).path("vue").path("karaoke").toString()).contains("Joueur de démonstration");
+        assertThat(etatDeSoiree.estEnCours(demonstration)).isTrue();
+        assertThat(etatDeSoiree.estTerminee(demonstration)).isFalse();
+    }
+
+    /** Le lancement d'une Soirée arrive avec #12 : on le simule en base. */
+    void lancer(String soiree) {
+        jdbc.update("update soiree set etat = 'EN_COURS', debutee_le = now() where id = ?::uuid", soiree);
     }
 
     String soireeOuverte() {

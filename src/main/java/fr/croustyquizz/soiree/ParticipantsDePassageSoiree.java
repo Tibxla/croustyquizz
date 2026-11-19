@@ -1,5 +1,6 @@
 package fr.croustyquizz.soiree;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -17,8 +18,6 @@ import fr.croustyquizz.passage.ParticipantsDePassage;
 @Component
 class ParticipantsDePassageSoiree implements ParticipantsDePassage {
 
-	static final String JOUEUR_PARTI = "Joueur parti";
-
 	private final DepotDeSoirees soirees;
 	private final DepotDeJoueurs joueurs;
 	private final ObjectProvider<ParticipantsDePassage> participants;
@@ -33,30 +32,30 @@ class ParticipantsDePassageSoiree implements ParticipantsDePassage {
 	@Override
 	@Transactional(readOnly = true)
 	public boolean estPresent(UUID soireeId, UUID joueurId) {
-		if (!soirees.existsById(soireeId)) {
-			ParticipantsDePassage autre = autre();
-			return autre != null && autre.estPresent(soireeId, joueurId);
+		Optional<Joueur> joueur = joueurs.findById(joueurId).filter(j -> soireeId.equals(j.getSoireeId()));
+		if (joueur.isPresent()) {
+			return !joueur.get().isExclu();
 		}
-		return present(joueurs, soireeId, joueurId);
+		ParticipantsDePassage autre = soirees.existsById(soireeId) ? null : autre();
+		return autre != null && autre.estPresent(soireeId, joueurId);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public String pseudo(UUID soireeId, UUID joueurId) {
-		if (!soirees.existsById(soireeId)) {
-			ParticipantsDePassage autre = autre();
-			return autre == null ? JOUEUR_PARTI : autre.pseudo(soireeId, joueurId);
+		Optional<Joueur> joueur = joueurs.findById(joueurId).filter(j -> soireeId.equals(j.getSoireeId()));
+		if (joueur.isPresent()) {
+			return joueur.get().isExclu() ? JOUEUR_PARTI : joueur.get().getPseudo();
 		}
-		return joueurs.findById(joueurId)
-				.filter(joueur -> soireeId.equals(joueur.getSoireeId()) && !joueur.isExclu())
-				.map(Joueur::getPseudo)
-				.orElse(JOUEUR_PARTI);
+		ParticipantsDePassage autre = soirees.existsById(soireeId) ? null : autre();
+		return autre == null ? JOUEUR_PARTI : autre.pseudo(soireeId, joueurId);
 	}
 
 	static boolean present(DepotDeJoueurs joueurs, UUID soireeId, UUID joueurId) {
 		return joueurs.findById(joueurId).filter(joueur -> soireeId.equals(joueur.getSoireeId()) && !joueur.isExclu()).isPresent();
 	}
 
+	/** Le filtre {@code instanceof} suppose des proxys CGLIB, le réglage par défaut de Spring Boot. */
 	private ParticipantsDePassage autre() {
 		return participants.orderedStream().filter(p -> !(p instanceof ParticipantsDePassageSoiree)).findFirst().orElse(null);
 	}

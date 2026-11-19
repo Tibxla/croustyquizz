@@ -47,6 +47,7 @@ class EtatDeSoireeEnregistree implements EtatDeSoiree {
 		return soiree.get().getEtat() == EtatSoiree.TERMINEE;
 	}
 
+	/** Le filtre {@code instanceof} suppose des proxys CGLIB, le réglage par défaut de Spring Boot. */
 	private EtatDeSoiree autre() {
 		return etats.orderedStream().filter(etat -> !(etat instanceof EtatDeSoireeEnregistree)).findFirst().orElse(null);
 	}

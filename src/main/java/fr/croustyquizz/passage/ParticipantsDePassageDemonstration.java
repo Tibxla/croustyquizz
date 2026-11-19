@@ -28,6 +28,6 @@ public final class ParticipantsDePassageDemonstration implements ParticipantsDeP
                 }
             }
         }
-        return "Joueur parti";
+        return JOUEUR_PARTI;
     }
 }
