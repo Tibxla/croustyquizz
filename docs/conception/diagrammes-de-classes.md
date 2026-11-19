@@ -487,6 +487,14 @@ classDiagram
         +estPresent(UUID soireeId, UUID joueurId) boolean
         +pseudo(UUID soireeId, UUID joueurId) String
     }
+    class PorteeDePassageSoiree
+    class ParticipantsDePassageSoiree
+    class EtatDeSoiree {
+        <<interface>>
+        +estEnCours(UUID soireeId) boolean
+        +estTerminee(UUID soireeId) boolean
+    }
+    class EtatDeSoireeEnregistree
     class CorrecteurTolerant {
         +Verdict juger(String saisie, Morceau)
     }
@@ -588,6 +596,9 @@ classDiagram
     FournisseurDeBlocKaraoke --> ServiceKaraoke : instantané
     FournisseurDeBlocKaraoke --> VuesKaraoke
     VuesKaraoke --> ParticipantsDePassage : pseudos publics
+    PorteeDePassage <|.. PorteeDePassageSoiree : soiree, Soirée en base
+    ParticipantsDePassage <|.. ParticipantsDePassageSoiree : soiree, Joueurs en base
+    EtatDeSoiree <|.. EtatDeSoireeEnregistree : soiree
     VuesKaraoke --> FileAttente : ordre et estimations
     SourceDeParoles <|.. AdaptateurLrclib
     SourceDeParoles ..> Chanson
