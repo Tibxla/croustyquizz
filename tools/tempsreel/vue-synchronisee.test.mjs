@@ -35,6 +35,11 @@ test('rejouer la capture retardée, les Révisions déjà couvertes et le doublo
 	await rejouerReconnexion(karaoke.resynchronisation);
 });
 
+test('rejouer la capture retardée, les Révisions déjà couvertes et le doublon du parcours du Passage', async () => {
+	const passage = parse(await readFile(new URL('../../docs/api/exemples/parcours-passage-karaoke.yaml', import.meta.url), 'utf8'), { maxAliasCount: 1000 });
+	await rejouerReconnexion(passage.resynchronisation);
+});
+
 function demarrer(options = {}, adaptations = {}) {
 	const pilote = creerAdaptateurPilotable();
 	const vues = [];

@@ -88,6 +88,38 @@ class FournisseurDeBlocKaraokeTest {
         assertThat(salle.prochainsPassages().get(1).attente().calculeeLe()).isEqualTo(banc.horloge.maintenant());
     }
 
+    @Test void passageAuReposSansCourantNiLectureEtAppelSelonLaFileEtLaPause() throws Exception {
+        UUID manche = parcours.demarrer();
+        var vide = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
+        assertThat(vide.peutAppeler()).isFalse();
+        assertThat(vide.peutReprendre()).isFalse();
+        assertThat(vide.configurationInterface().delaiAppelMs()).isEqualTo(30000);
+        parcours.inscrire(manche, 1);
+        var console = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
+        assertThat(console.peutAppeler()).isTrue();
+        assertThat(console.peutReprendre()).isFalse();
+        assertThat(console.lecteurDesigne() || console.peutPasser() || console.peutCaler()
+                || console.peutReprendreEnParolesSeules()).isFalse();
+        assertThat(console.courant()).isNull();
+        assertThat(console.lecture()).isNull();
+        assertThat(console.fichierLocal()).isNull();
+        var salle = (VuesKaraoke.BlocKaraokeSalle) banc.bloc.fournir(parcours.soiree, Destination.SALLE);
+        assertThat(salle.courant()).isNull();
+        assertThat(salle.lecteurDesigneId()).isNull();
+        assertThat(salle.lecture()).isNull();
+        assertThat(salle.paroles()).isNull();
+        var manette = (VuesKaraoke.BlocKaraokeManette) banc.bloc.fournir(parcours.soiree, Destination.joueur(parcours.joueur.identifiant()));
+        assertThat(manette.peutConfirmerPresence()).isFalse();
+        assertThat(manette.courant()).isNull();
+        parcours.piloter(manche, InterventionDeManche.Action.METTRE_EN_PAUSE);
+        var pause = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
+        assertThat(pause.peutAppeler()).isFalse();
+        assertThat(pause.peutReprendre()).isTrue();
+        verifierCapture(Destination.SALLE, "retrouverEtatSalle");
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+        verifierCapture(Destination.joueur(parcours.joueur.identifiant()), "retrouverEtatManette");
+    }
+
     void verifierCapture(Destination destination, String operation) throws Exception {
         var evenement = banc.assembleur.assembler(parcours.soiree, destination, "file-attente-modifiee");
         var valeur = new java.util.LinkedHashMap<String, Object>();
