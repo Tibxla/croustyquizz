@@ -162,6 +162,30 @@ class CanalTempsReelTest {
 	}
 
 	@Test
+	void deuxManettesDeDemonstrationDeLaMemeSoireeOntChacuneLeurCanalEtLeursRevisions() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		UUID joueur2 = FournisseurCommunDemonstration.joueurId(soiree, 2);
+		UUID joueur3 = FournisseurCommunDemonstration.joueurId(soiree, 3);
+		var manette2 = abonner(connecter(new Acteur(Acteur.Type.JOUEUR, joueur2, soiree)), "/topic/joueurs/" + joueur2);
+		var manette3 = abonner(connecter(new Acteur(Acteur.Type.JOUEUR, joueur3, soiree)), "/topic/joueurs/" + joueur3);
+
+		diffuseur.envoyerJoueur(soiree, joueur2, new EvenementDeTest("pour le Joueur 2"));
+		var premier = manette2.poll(1, TimeUnit.SECONDS);
+		assertThat(premier).isNotNull().containsEntry("revision", 1);
+		assertThat(donnees(premier)).containsEntry("texte", "pour le Joueur 2");
+
+		diffuseur.envoyerJoueur(soiree, joueur3, new EvenementDeTest("pour le Joueur 3"));
+		var autre = manette3.poll(1, TimeUnit.SECONDS);
+		assertThat(autre).isNotNull().containsEntry("revision", 1);
+		assertThat(donnees(autre)).containsEntry("texte", "pour le Joueur 3");
+
+		diffuseur.envoyerJoueur(soiree, joueur2, new EvenementDeTest("encore pour le Joueur 2"));
+		var suivant = manette2.poll(1, TimeUnit.SECONDS);
+		assertThat(suivant).isNotNull().containsEntry("revision", 2);
+		assertThat(donnees(suivant)).containsEntry("texte", "encore pour le Joueur 2");
+	}
+
+	@Test
 	void leDiffuseurJointLaConsoleSansPasserParLaSalle() throws Exception {
 		StompSession session = connecter(new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), SOIREE));
 		BlockingQueue<Map<String, Object>> console = abonner(session, Canaux.console(SOIREE));
