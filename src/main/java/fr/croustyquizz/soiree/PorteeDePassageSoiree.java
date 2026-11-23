@@ -68,9 +68,9 @@ class PorteeDePassageSoiree implements PorteeDePassage {
 			PorteeDePassage autre = autreOuNull();
 			return autre != null && autre.estActive(soireeId, mancheId);
 		}
-		return soiree.getEtat() == EtatSoiree.EN_COURS && manches.deLaSoiree(soireeId).stream()
-				.anyMatch(manche -> manche.getMancheId().equals(mancheId)
-						&& (manche.getEtat() == EtatManche.EN_COURS || manche.getEtat() == EtatManche.EN_PAUSE));
+		ManchePersistante manche = manches.charger(mancheId);
+		return soiree.getEtat() == EtatSoiree.EN_COURS && manche != null && soireeId.equals(manche.getSoireeId())
+				&& (manche.getEtat() == EtatManche.EN_COURS || manche.getEtat() == EtatManche.EN_PAUSE);
 	}
 
 	private PorteeDePassage autre() {

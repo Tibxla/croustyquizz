@@ -89,6 +89,7 @@ class KaraokeSurSoireeEnregistreeHttpTest {
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
         KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
         var manette = envoyer(HttpMethod.GET, "/api/soirees/" + demonstration + "/etat/manette", joueur, null, null);
+        ContratApi.verifier("docs/api/openapi.yaml", "retrouverEtatManette", manette);
         assertThat(json.readTree(manette.getBody()).path("vue").path("karaoke").toString()).contains("Joueur de démonstration");
         assertThat(etatDeSoiree.estEnCours(demonstration)).isTrue();
         assertThat(etatDeSoiree.estTerminee(demonstration)).isFalse();
