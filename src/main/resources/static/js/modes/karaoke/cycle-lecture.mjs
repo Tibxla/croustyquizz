@@ -4,6 +4,7 @@ import { passageActif } from './presentation.mjs';
 
 const estPreparation = etat => etat === 'preparation' || etat === 'preparee';
 const joueOuEstEnPause = etat => etat === 'lecture' || etat === 'pause';
+const fichierIllisible = { fichier: null, motif: 'FICHIER_ILLISIBLE' };
 
 export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEtat, setTimeout, clearTimeout }) {
 	let phase = 'sans-dossier', phaseInterrompue, sonDebloque = false, aEteLectrice = false, autreLecteur = false;
@@ -60,11 +61,16 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		return preparation === cible && cible.version === versionDossier && courant?.etat === 'APPELE'
 			&& courant.passageId === cible.passageId && courant.numeroModification === cible.numeroModification;
 	}
+	function resteAvantEcheance(courant) {
+		if (courant.echeanceAppelLe == null) return null;
+		return delaiAppelRestant({ ...courant, maintenant: horloge.maintenantServeur(), enPause: false });
+	}
 	function declarer(cible) {
 		if (phase !== 'preparation' || !estToujoursEnPreparation(cible) || cible.declaree || !cible.resultat) return;
 		cible.declaree = true;
 		annulerDelai();
-		const { fichier, motif } = cible.resultat;
+		// Les métadonnées peuvent arriver avant le rappel du minuteur, même après l'échéance.
+		const { fichier, motif } = resteAvantEcheance(vue.courant) === 0 ? fichierIllisible : cible.resultat;
 		cible.fichier = fichier;
 		if (motif && cible.charge) {
 			cible.charge = false;
@@ -83,11 +89,11 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 
 	function recalerDelai(cible) {
 		annulerDelai();
-		const { courant } = vue;
-		if (!estToujoursEnPreparation(cible) || cible.declaree || courant.echeanceAppelLe == null) return;
-		const restant = delaiAppelRestant({ ...courant, maintenant: horloge.maintenantServeur(), enPause: false });
+		if (!estToujoursEnPreparation(cible) || cible.declaree) return;
+		const restant = resteAvantEcheance(vue.courant);
+		if (restant === null) return;
 		const expirer = () => {
-			cible.resultat = { fichier: null, motif: 'FICHIER_ILLISIBLE' };
+			cible.resultat = fichierIllisible;
 			declarer(cible);
 		};
 		if (restant === 0) expirer();

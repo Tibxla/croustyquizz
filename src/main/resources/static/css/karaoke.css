@@ -72,6 +72,11 @@
 .karaoke__scene-manette { display: grid; gap: var(--espace-3); }
 .karaoke__scene-manette .mon-ticket--appele { margin-bottom: var(--espace-5); }
 .karaoke__scene-manette .mon-ticket__etiquette { max-width: 24ch; line-height: 1.15; text-align: right; }
+.karaoke__scene-manette .mon-ticket__etiquette--texte {
+  font: 700 0.95rem/1.15 var(--police-texte);
+  letter-spacing: normal;
+  text-transform: none;
+}
 .karaoke .mon-ticket--appele .bouton--action {
   align-self: start;
   margin-block: var(--espace-2);

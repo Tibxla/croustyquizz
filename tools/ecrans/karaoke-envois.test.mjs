@@ -76,6 +76,30 @@ test('un ancien envoi expiré ne bloque pas un nouveau réessai après échec du
 	b.machine.detruire();
 });
 
+test('la confirmation de présence reste distincte de la désinscription et oublie un refus définitif', async () => {
+	for (const code of ['ETAT_INCOMPATIBLE', 'COMMANDE_PERIMEE']) {
+		const b = banc(), cmd = {
+			type: 'CONFIRMER_PRESENCE', acteurType: 'JOUEUR', mancheId: 'm', passageId: 'p',
+			methode: 'POST', chemin: '/passages/p/presence', corps: { etapeId: 'e', numeroModification: 4 },
+		};
+		const { cle } = b.machine.envoyerCommande(cmd);
+		assert.deepEqual(b.appels[0].args[2], { envoiId: cle, etapeId: 'e', numeroModification: 4 });
+		assert.deepEqual(b.machine.reconcilier([cle]), []);
+		assert.equal(b.etats.at(-1).etat, 'en-cours');
+		// Un refus définitif d'une tentative annule aussi le réessai encore en vol.
+		[...b.delais.values()][0]();
+		await vider();
+		b.machine.reessayer(cle);
+		b.appels[0].resolve({ statut: 409, corps: { code } });
+		await vider();
+		assert.equal(b.appels[1].args[3].signal.aborted, true);
+		assert.equal(b.machine.reessayer(cle), null);
+		assert.equal(b.etats.at(-1).code, code);
+		assert.notEqual(b.machine.envoyerCommande(cmd).cle, cle);
+		b.machine.detruire();
+	}
+});
+
 test('les refus transitoires sont réessayables, les refus définitifs libèrent l’inscription', async () => {
 	for (const [statut, code, capture, reessai] of [[409, 'ETAPE_INACTIVE', true, true], [401, 'AUTHENTIFICATION_REQUISE', true, true], [403, 'ACCES_REFUSE', true, true], [409, 'COMMANDE_PERIMEE', true, false], [409, 'ETAT_INCOMPATIBLE', true, false], [403, 'CSRF_INVALIDE', false, false], [422, 'DONNEES_INVALIDES', false, false], [400, 'REQUETE_INVALIDE', false, false]]) {
 		const b = banc(); const { cle } = b.machine.envoyerCommande(commande);

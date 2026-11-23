@@ -36,6 +36,7 @@ export function monter(zones, contexte) {
 		const enPause = ui.bloc.etat === 'EN_PAUSE';
 		const restant = delaiAppelRestant({ ...p, maintenant: contexte.maintenantServeur(), enPause });
 		minuterie.textContent = formaterTempsRestant(restant);
+		etiquette.classList.toggle('mon-ticket__etiquette--texte', enPause || restant === 0);
 		etiquette.textContent = enPause ? 'Pause : attends la reprise.'
 			: restant === 0 ? 'Le temps est écoulé, tu peux encore confirmer.' : "C'est ton tour";
 	}
@@ -72,6 +73,7 @@ export function monter(zones, contexte) {
 						reessai = bouton('Réessayer le même envoi', () => ui.reessayer(envoiPresence()?.cle));
 						bas.append(minuterie, confirmerPresence, reessai);
 					} else {
+						etiquette.classList.toggle('mon-ticket__etiquette--texte', ['EN_COURS', 'EN_PAUSE'].includes(p.etat));
 						etiquette.textContent = {
 							EN_COURS: 'À toi de chanter !', EN_PAUSE: 'Pause : attends la reprise.',
 							TERMINE: 'Passage terminé', SAUTE: 'Passage sauté',

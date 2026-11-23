@@ -145,6 +145,16 @@ test('une désignation après l’échéance renonce aux métadonnées immédiat
 	assert.equal(b.commandes.at(-1).corps.motifParolesSeules, 'FICHIER_ILLISIBLE');
 });
 
+test('des métadonnées arrivées après l’échéance n’envoient aucun fichier même si la minuterie attend encore', async () => {
+	const b = await preparer();
+	b.avancer(5001);
+	b.chargements[0].resolve({ dureeMs: 20000 });
+	await terminerMicrotaches();
+	assert.equal(b.commandes[1].corps.motifParolesSeules, 'FICHIER_ILLISIBLE');
+	assert.equal(b.commandes[1].corps.fichier, null);
+	assert.equal(b.delais.size, 0);
+});
+
 for (const [nom, fichiers, motif] of [
 	['absent', [], 'FICHIER_ABSENT'],
 	['ambigu', [fichier, { ...fichier, webkitRelativePath: 'autre/Halo.WAV' }], 'FICHIER_AMBIGU'],
@@ -303,6 +313,30 @@ for (const phase of ['preparation', 'preparee']) {
 		assert.equal(b.commandes.at(-1).corps.motifParolesSeules, 'FICHIER_ABSENT');
 	});
 }
+
+test('les métadonnées de la version en cours restent valides pendant un choix de dossier différé', async () => {
+	const b = await preparer();
+	b.cycle.choisirDossier([{ ...fichier, size: 300 }]);
+	b.chargements[0].resolve({ dureeMs: 20000 });
+	await terminerMicrotaches();
+	assert.equal(b.commandes[1].corps.fichier.tailleOctets, 196);
+	b.commandes[1].resolve({ statut: 200, corps: { lectureId: 'l' } });
+	await terminerMicrotaches();
+	b.cycle.surVue(bloc(appel('p', { etat: 'SAUTE' })), capture);
+	assert.equal(b.etat(), 'pret');
+	assert.deepEqual(b.commandes.map(c => c.chemin), ['/lecteur', '/passages/p/lecture', '/lecteur']);
+});
+
+test('le choix après une fin ou une erreur se désigne aussitôt et garde l’état courant', async () => {
+	for (const etat of ['fin', 'erreur']) {
+		const b = await fichierEnLecture();
+		b[etat]();
+		b.cycle.choisirDossier([]);
+		assert.equal(b.etat(), etat);
+		assert.equal(b.commandes.at(-1).chemin, '/lecteur');
+		assert.equal(b.chargements.length, 1);
+	}
+});
 
 test('le refus de déblocage ne coupe pas un fichier en lecture ou en pause', async () => {
 	const b = await fichierEnLecture();
