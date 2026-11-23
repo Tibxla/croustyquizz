@@ -419,8 +419,10 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	assert.deepEqual(b.appels[1].args[2], { action: 'METTRE_EN_PAUSE', etapeId: 'etape' });
 	bouton(b.principale, 'ça commence').click();
 	assert.deepEqual(b.appels[2].args[2], { etapeId: 'etape', lectureId: 'lecture' });
-	for (const [libelle, sens] of [['−0,1 s', 'AVANCER'], ['+0,1 s', 'RETARDER']]) {
-		bouton(b.principale, libelle).click();
+	for (const [libelle, sens, nom] of [['−0,1 s', 'AVANCER', 'Avancer'], ['+0,1 s', 'RETARDER', 'Retarder']]) {
+		const action = bouton(b.principale, libelle);
+		assert.equal(action.getAttribute('aria-label'), nom + ' les paroles de 0,1 s');
+		action.click();
 		assert.deepEqual(b.appels.at(-1).args[2], { etapeId: 'etape', lectureId: 'lecture', numeroModificationCalage: 3, sens });
 	}
 	b.appels.at(-1).resolve({ statut: 200, corps: { decalageMs: 1500 } });
@@ -438,6 +440,54 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	assert.deepEqual(b.appels.at(-1).args[2], { action: 'TERMINER', etapeId: 'etape' });
 });
 
+test('Console : le focus suit le prochain bouton de pilotage actif ou revient au titre', t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	b.connecter('synchronisee');
+	const file = [{ ...passage('premier'), position: 1 }];
+	b.module.afficher(vue({ courant: courant('EN_COURS'), peutPasser: true, passagesEnAttente: file }), capture);
+	bouton(b.principale, 'Passer').focus();
+	b.module.afficher(vue({ courant: courant('TERMINE'), peutAppeler: true, passagesEnAttente: file }), evenement);
+	assert.ok(b.document.activeElement === bouton(b.principale, 'Terminer la Manche'), 'Terminer est le prochain bouton actif');
+	bouton(b.principale, 'Appeler le suivant').focus();
+	b.module.afficher(vue({ courant: courant(), peutPasser: true }), evenement);
+	const titre = b.principale.querySelector('.karaoke__passage-courant').querySelector('h2');
+	assert.ok(b.document.activeElement === titre, 'le dernier bouton devenu inactif renvoie au titre');
+	assert.equal(titre.tabIndex, -1);
+});
+
+test('Console : une étape inactive bloque le bouton jusqu’à la capture, puis produit une nouvelle commande', async t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	b.connecter('synchronisee');
+	b.module.afficher(vue({ courant: courant('EN_COURS') }), capture);
+	const pause = bouton(b.principale, 'Pause');
+	pause.click();
+	b.appels[0].resolve({ statut: 409, corps: { code: 'ETAPE_INACTIVE' } });
+	await terminerMicrotaches();
+	assert.equal(b.captures(), 1);
+	assert.equal(pause.disabled, true);
+	assert.ok(!bouton(b.principale, 'Réessayer le même envoi'), 'aucun réessai avant la capture');
+	b.module.afficher(vue({ courant: courant('EN_COURS', { etapeId: 'nouvelle-etape' }) }), capture);
+	assert.equal(pause.disabled, false);
+	assert.ok(!bouton(b.principale, 'Réessayer le même envoi'), 'aucun réessai de l’ancienne étape après la capture');
+	pause.click();
+	assert.equal(b.appels[1].args[2].etapeId, 'nouvelle-etape');
+	assert.notEqual(b.appels[0].args[3].entetes['Idempotency-Key'], b.appels[1].args[3].entetes['Idempotency-Key']);
+});
+
+test('Manette : le ticket public du courant indique son état sans bouton', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const interpretes = [{ joueurId: 'autre', pseudo: 'Alizé' }];
+	for (const [etat, libelle] of [['APPELE', 'Sur scène'], ['TERMINE', 'Terminé'], ['SAUTE', 'Sauté']]) {
+		b.module.afficher(vue({ courant: courant(etat, { interpretes }) }), capture);
+		const ticket = b.principale.querySelector('.ticket');
+		assert.equal(ticket.querySelector('.karaoke__etat-ticket')?.textContent, libelle);
+		assert.equal(ticket.querySelectorAll('button').length, 0);
+	}
+});
+
 test('salle : tickets actifs, animation unique, calage des lignes et reprise de la boucle', t => {
 	reinitialiserEtatEcranPourTests();
 	const lecteur = bancLecteur();
@@ -452,9 +502,12 @@ test('salle : tickets actifs, animation unique, calage des lignes et reprise de 
 	assert.equal(principaux().childElementCount, 0);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 4);
 	assert.match(b.laterale.textContent, /Sur scène.*et 2 autres/);
-	assert.equal(b.laterale.querySelector('.ticket--immobile'), null);
-	afficher(courant(), evenement);
-	assert.ok(b.laterale.querySelector('.ticket--immobile'));
+	const ticket = b.laterale.querySelector('.ticket--detache');
+	assert.ok(!ticket.classList.contains('ticket--immobile'));
+	afficher(courant(), { source: 'evenement', type: 'lecture-chanson-modifiee' }, { nombreAutresPassages: 1 });
+	assert.ok(b.laterale.querySelector('.ticket--detache') === ticket, 'le même élément poursuit son animation');
+	assert.ok(ticket.classList.contains('ticket--detache') && !ticket.classList.contains('ticket--immobile'));
+	assert.match(b.laterale.textContent, /et 1 autre$/);
 	const lignes = ['Prélude', ' ', '<Chant>', 'Suivante', 'Dernière', 'Hors cadre'].map((texte, i) => ({ texte, positionMs: i * 1000 }));
 	const paroles = { parolesId: 'v1', dureeMs: 6000, lignes };
 	const lecture = { lectureId: 'l', source: 'PAROLES_SEULES', decalageMs: 0 };
@@ -473,9 +526,35 @@ test('salle : tickets actifs, animation unique, calage des lignes et reprise de 
 	assert.ok(!principaux().hidden);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 3);
 	assert.match(b.laterale.textContent, /Terminé/);
-	assert.ok(b.laterale.querySelector('.ticket--immobile'));
+	assert.ok(b.laterale.querySelector('.ticket--detache') === ticket, 'la clôture actualise l’étiquette du même élément');
+	afficher(courant('SAUTE', { chanson: { ...courant().chanson, titre: 'Titre corrigé' } }), capture);
+	assert.ok(b.laterale.querySelector('.ticket--detache') !== ticket, 'une nouvelle description renouvelle le ticket');
+	assert.match(b.laterale.querySelector('.ticket--immobile').textContent, /Titre corrigé.*Sauté/);
 	b.module.demonter();
 	assert.equal(lecteur.trames.size, 0);
+});
+
+test('salle : zéro fichier au singulier et activation sonore locale pendant une coupure', async t => {
+	reinitialiserEtatEcranPourTests();
+	const audio = bancLecteur();
+	etatEcranKaraoke.dossier = 'Dossier vide';
+	const b = creerBanc((z, c) => creerEcranKaraoke(z, c, { ...audio.dependances, document: z.principale.ownerDocument }), 'ECRAN');
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => heureAppel;
+	const appel = vue({ courant: courant(), lecteurDesigneId: etatEcranKaraoke.lecteurId });
+	b.module.afficher(appel, capture);
+	b.connecter('coupure');
+	assert.match(b.principale.textContent, /0 fichier audio/);
+	const activer = bouton(b.principale, 'Activer le son');
+	assert.ok(!activer.hidden && !activer.disabled);
+	activer.focus();
+	activer.click();
+	await terminerMicrotaches();
+	assert.deepEqual(audio.appels, ['son']);
+	assert.equal(b.appels.length, 0);
+	assert.ok(activer.hidden && b.document.activeElement === activer.parentNode);
+	b.module.afficher(appel, capture);
+	assert.equal(b.appels[0].args[2].motifParolesSeules, 'FICHIER_ABSENT');
 });
 
 test('salle : dossier et lecteur vivent entre les Manches, les commandes restent silencieuses et uniques', async t => {

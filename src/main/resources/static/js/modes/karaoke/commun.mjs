@@ -1,7 +1,7 @@
 import { ouvrirDialogue } from '../../dialogue.mjs';
 import { creerMachineEnvoi, exigeCapture, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
-import { teintePassage, formaterDuree, formaterAttente, etatInscription } from './presentation.mjs';
+import { teintePassage, formaterDuree, formaterAttente, etatInscription, libelleEtatTicketPublic } from './presentation.mjs';
 
 export const texteAutresPassages = n => (n ? `et ${n} ${n > 1 ? 'autres' : 'autre'}` : '');
 
@@ -218,6 +218,7 @@ export function creerTicket(ui, passage, { personnel = false, courant = false, s
 	if (details) bas.append(e('p', 'chiffres', formaterDuree(passage.chanson.dureeMs)));
 	if (estimation) bas.append(e('p', personnel ? 'mon-ticket__place' : 'karaoke__attente', formaterAttente(passage.attente, personnel)));
 	if (passage.prioritaire && !personnel) bas.append(e('p', 'karaoke__priorite', 'Prioritaire'));
+	if (courant && !personnel) bas.append(e('p', 'karaoke__etat-ticket', libelleEtatTicketPublic(passage)));
 	ticket.append(haut, bas);
 	if (selectionner) { ticket.type = 'button'; ticket.setAttribute('aria-pressed', 'false'); ui.ecouter(ticket, 'click', () => selectionner(passage.passageId)); }
 	return ticket;

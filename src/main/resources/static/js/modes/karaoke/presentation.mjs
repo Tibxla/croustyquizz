@@ -43,3 +43,5 @@ export function etatInscription(fiche, bloc, synchronisee) {
 }
 
 export const passageActif = courant => courant && ['APPELE', 'EN_COURS', 'EN_PAUSE'].includes(courant.etat) ? courant : null;
+
+export const libelleEtatTicketPublic = courant => passageActif(courant) ? 'Sur scène' : courant.etat === 'TERMINE' ? 'Terminé' : 'Sauté';

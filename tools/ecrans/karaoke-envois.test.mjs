@@ -110,6 +110,23 @@ test('les refus transitoires sont réessayables, les refus définitifs libèrent
 	}
 });
 
+test('ETAPE_INACTIVE libère la clé d’une étape explicite et annule son réessai en vol', async () => {
+	const b = banc();
+	const cmd = { acteurType: 'ANIMATEUR', mancheId: 'm', methode: 'POST', chemin: '/commandes',
+		corps: { action: 'METTRE_EN_PAUSE', etapeId: 'e' } };
+	const { cle } = b.machine.envoyerCommande(cmd);
+	[...b.delais.values()][0]();
+	await vider();
+	b.machine.reessayer(cle);
+	b.appels[0].resolve({ statut: 409, corps: { code: 'ETAPE_INACTIVE' } });
+	await vider();
+	assert.equal(b.appels[1].args[3].signal.aborted, true);
+	assert.equal(b.machine.reessayer(cle), null);
+	assert.equal(b.captures(), 2);
+	assert.notEqual(b.machine.envoyerCommande(cmd).cle, cle);
+	b.machine.detruire();
+});
+
 test('une désinscription ne se réconcilie pas ; oubli et démontage ignorent les réponses tardives', async () => {
 	const b = banc(); const { cle } = b.machine.envoyerCommande({ ...commande, chansonId: undefined, passageId: 'p' });
 	assert.deepEqual(b.machine.reconcilier([cle]), []);

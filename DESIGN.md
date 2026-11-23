@@ -353,7 +353,7 @@ Des boutons francs, à bordure épaisse, qui se laissent viser debout et d'une m
 - **Action:** fond et bordure citron, texte encre. Un seul par écran, pour ce qui fait avancer la Soirée ou l'action du Joueur.
 - **Grand format:** pleine largeur, 64 px de haut, coins de 18 px, libellé Barlow 800 en capitales à 1.75rem. Sur la Manette, quand l'écran a une action unique, le bouton grand format la porte.
 - **Lien:** sans bordure, texte crème fanée souligné, pour l'action de repli (« Me désinscrire », « Lancer maintenant »).
-- **Hover / Focus:** survol en brun banquette avec une bordure crème usée ; l'action passe en citron appuyé ; enfoncement de 1 px à l'appui ; transitions de 120 ms sur la courbe de sortie. Le focus est un contour citron de 3 px décalé de 3 px, sur tout élément.
+- **Hover / Focus:** le bouton ordinaire prend un fond brun banquette et une bordure crème usée au survol. L'action passe en citron appuyé. L'appui enfonce le bouton de 1 px, avec une transition de 120 ms sur la courbe de sortie. Le focus est un contour citron de 3 px décalé de 3 px. Sur le ticket appelé, « Je suis prêt » utilise l'encre brune pour rendre ce contour visible sur les quatre teintes.
 - **Désactivé:** texte crème usée et bordure brun bois ; l'action désactivée passe sur brun bois.
 - **Icône:** icônes Lucide à trait de 2 px, 1.25em, dans la couleur du texte ; un bouton qui n'a que son icône porte un nom accessible.
 

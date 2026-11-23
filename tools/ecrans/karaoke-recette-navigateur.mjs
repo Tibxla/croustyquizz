@@ -395,7 +395,7 @@ async page => {
 		!document.querySelector('.karaoke__passage-courant').textContent.includes('Décalage : 0,0 s'));
 	const decalageMesure = lecture.decalageMs;
 	verifier(signaux.filter(s => s.operation === 'position').length === 1, 'Relevé local unique depuis une autre Console');
-	await action(animateur2.onglet, '+0,1 s').click();
+	await action(animateur2.onglet, 'Retarder les paroles de 0,1 s').click();
 	await page.waitForFunction(() => !document.querySelector('.karaoke__barre-passage').textContent.includes('Envoi en cours'));
 	verifier(lecture.decalageMs === decalageMesure + 100, 'Correction appliquée par la vue');
 	await attendreTexte(ongletSalle, 'La ville écoute encore');

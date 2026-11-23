@@ -51,7 +51,8 @@ function installerPassage(ui, commande) {
 		if (p) ui.commande(commande('POST', `/passages/${encodeURIComponent(p.passageId)}/appel`,
 			{ numeroModification: p.numeroModification }, { type: 'APPELER', passageId: p.passageId }));
 	}, 'bouton bouton--action');
-	pilotage.append(basculer, passer, terminer, appeler);
+	const boutonsPilotage = [basculer, passer, terminer, appeler];
+	pilotage.append(...boutonsPilotage);
 	function actionLecture(libelle, type, suffixe, sens) {
 		const action = bouton(libelle, () => {
 			const { courant, lecture } = ui.bloc;
@@ -60,6 +61,7 @@ function installerPassage(ui, commande) {
 			if (sens) Object.assign(corps, { numeroModificationCalage: lecture.numeroModificationCalage, sens });
 			ui.commande(commande('POST', `/passages/${encodeURIComponent(courant.passageId)}/${suffixe}`, corps, { type }));
 		});
+		if (sens) action.setAttribute('aria-label', `${sens === 'AVANCER' ? 'Avancer' : 'Retarder'} les paroles de 0,1 s`);
 		calage.append(action);
 		return action;
 	}
@@ -85,11 +87,16 @@ function installerPassage(ui, commande) {
 		rendre() {
 			const bloc = ui.bloc, permis = ui.mutationsPermises, p = bloc.courant, lecture = bloc.lecture;
 			const enPause = bloc.etat === 'EN_PAUSE';
+			const focusPilotage = boutonsPilotage.indexOf(ui.document.activeElement);
 			basculer.textContent = enPause ? 'Reprendre' : 'Pause';
 			basculer.disabled = !permis || !(enPause ? bloc.peutReprendre : bloc.etat === 'EN_COURS');
 			passer.disabled = !permis || !bloc.peutPasser;
 			terminer.disabled = !permis;
 			appeler.disabled = !permis || !bloc.peutAppeler || !prochain();
+			if (focusPilotage !== -1 && boutonsPilotage[focusPilotage].disabled) {
+				const suivant = boutonsPilotage.slice(focusPilotage + 1).find(action => !action.disabled);
+				(suivant ?? titre).focus();
+			}
 			const focusCalage = ui.document.activeElement;
 			const avaitFocusCalage = calage.contains(focusCalage);
 			calage.hidden = !bloc.peutCaler && !bloc.peutReprendreEnParolesSeules;

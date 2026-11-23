@@ -3,7 +3,7 @@ import { creerCycleLecture } from './cycle-lecture.mjs';
 import { estFichierAudio } from './fichiers.mjs';
 import { creerLecteurLocal } from './lecteur-local.mjs';
 import { delaiAppelRestant, determinerLignes, positionChronologique } from './paroles.mjs';
-import { formaterTempsRestant, passageActif, teintePassage } from './presentation.mjs';
+import { formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
 
 export const etatEcranKaraoke = {
 	dossier: null, fichiers: [], lecteur: null, lecteurId: null, aEteLectrice: false, sonDebloque: false,
@@ -43,11 +43,12 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	const choix = e('input');
 	choix.type = 'file'; choix.setAttribute('webkitdirectory', ''); choix.multiple = true; choix.hidden = true;
 	const commandesLecteur = e('div', 'karaoke__lecteur');
+	commandesLecteur.tabIndex = -1;
 	const choisir = bouton('Choisir le dossier de musique', () => {
 		void cycle.debloquer();
 		choix.click();
 	});
-	const activer = bouton('Activer le son', () => { void cycle.debloquer(); });
+	const activer = bouton('Activer le son', () => { void cycle.debloquer({ attendreVue: () => !ui.synchronisee }); });
 	const aide = e('p'), alerteSon = e('p', '', 'Son bloqué');
 	commandesLecteur.append(choisir, choix, aide, alerteSon, activer);
 	ui.principale.append(commandesLecteur);
@@ -59,16 +60,15 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		cycle.choisirDossier(page.fichiers);
 		rendreLecteur(cycle.etat());
 	});
-	let cycle, requetes, dernierCourant, blocAffiche, trame, versionParoles, lignes = [], indexAffiche;
+	let cycle, requetes, ticketCourant, descriptionCourant, etiquetteCourant, blocAffiche, trame, versionParoles, lignes = [], indexAffiche;
 	function rendreLecteur(etat) {
 		const avaitFocus = document.activeElement === activer;
 		choisir.disabled = !ui.synchronisee;
-		alerteSon.hidden = activer.hidden = etat.etat !== 'son-bloque';
-		activer.disabled = !ui.synchronisee;
-		if (avaitFocus && activer.hidden) choisir.focus();
+		alerteSon.hidden = activer.hidden = etat.etat !== 'son-bloque' || etat.sonDebloque;
+		if (avaitFocus && activer.hidden) (choisir.disabled ? commandesLecteur : choisir).focus();
 		const nombre = page.fichiers.length;
 		aide.textContent = etat.autreLecteur ? 'Cet écran affiche seulement.'
-			: page.dossier === null ? '' : `${nombre} fichier${nombre === 1 ? '' : 's'} audio`;
+			: page.dossier === null ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
 	}
 	function monterCycle() {
 		requetes = new AbortController();
@@ -94,8 +94,31 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		if (!precedent) return;
 		detruireCycle();
 		monterCycle();
-		dernierCourant = undefined;
+		ticketCourant = descriptionCourant = etiquetteCourant = undefined;
 	};
+	function rendreCourant(courant, origine) {
+		const description = courant ? JSON.stringify([courant.passageId, courant.numero, courant.chanson.titre,
+			courant.chanson.artiste, courant.interpretes.map(i => i.pseudo), Boolean(courant.prioritaire)]) : null;
+		if (description !== descriptionCourant) {
+			descriptionCourant = description;
+			courantAffiche.hidden = !courant;
+			if (!courant) {
+				courantAffiche.replaceChildren();
+				ticketCourant = etiquetteCourant = undefined;
+				return;
+			}
+			const memePassage = ticketCourant?.getAttribute('data-passage-id') === courant.passageId;
+			ticketCourant = creerTicket(ui, courant, { courant: true });
+			ticketCourant.classList.add('ticket--detache');
+			if (memePassage || origine?.source !== 'evenement') ticketCourant.classList.add('ticket--immobile');
+			etiquetteCourant = ticketCourant.querySelector('.karaoke__etat-ticket');
+			courantAffiche.replaceChildren(ticketCourant);
+		}
+		if (etiquetteCourant) {
+			const libelle = libelleEtatTicketPublic(courant);
+			if (etiquetteCourant.textContent !== libelle) etiquetteCourant.textContent = libelle;
+		}
+	}
 	function rendreParoles(bloc) {
 		const { courant, lecture } = bloc;
 		if (!bloc.paroles || paroles.hidden) return;
@@ -167,17 +190,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 			versionParoles = indexAffiche = undefined;
 		}
 
-		courantAffiche.replaceChildren();
-		courantAffiche.hidden = !courant;
-		if (courant) {
-			const ticket = creerTicket(ui, courant);
-			ticket.classList.add('ticket--detache');
-			if (dernierCourant === courant.passageId || origine?.source !== 'evenement') ticket.classList.add('ticket--immobile');
-			const libelle = actif ? 'Sur scène' : courant.etat === 'TERMINE' ? 'Terminé' : 'Sauté';
-			ticket.querySelector('.ticket__corps').append(e('p', 'karaoke__etat-ticket', libelle));
-			courantAffiche.append(ticket);
-		}
-		dernierCourant = courant?.passageId;
+		rendreCourant(courant, origine);
 		const suivants = actif ? passages : passages.slice(1);
 		file.hidden = !suivants.length; titre.hidden = !suivants.length && !bloc.nombreAutresPassages;
 		file.replaceChildren(...suivants.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }));
