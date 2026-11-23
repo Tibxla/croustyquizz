@@ -42,6 +42,18 @@ class CycleDePassageTest {
     }
 
     @Test
+    void refuseLesDureesIncompatiblesAvecUnPassageEnCours() {
+        for (Duration reference : List.of(Duration.ZERO, Duration.ofMillis(-1))) {
+            assertThatIllegalArgumentException().isThrownBy(() ->
+                    new EtatCyclePassage(PASSAGE, ETAPE, debut, debut, debut, reference, Duration.ZERO, null, null));
+        }
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                new EtatCyclePassage(PASSAGE, ETAPE, debut, debut, debut, APPEL, Duration.ofMillis(-1), null, null));
+        assertThat(new EtatCyclePassage(PASSAGE, ETAPE, debut, debut, debut, APPEL, Duration.ZERO, null, null)
+                .dureeReference()).isEqualTo(APPEL);
+    }
+
+    @Test
     void appelleUneSeuleFoisSansMinuterLEcheance() {
         var cycle = creer(horloge);
         assertThat(projection(cycle, false)).isEqualTo(

@@ -187,6 +187,17 @@ class FabriqueKaraokeTest {
         assertThatThrownBy(() -> instantane.lectures().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
 
+    @Test
+    void traiteUnCycleAbsentCommeUneCaptureHistorique() {
+        var etat = etatPersiste();
+        var instantane = new InstantaneKaraoke(EtatManche.EN_COURS, etat.file(), etat.contenus(), null, Map.of(), null);
+        var persiste = new EtatKaraokePersiste(etat.file(), etat.contenus(), null, Map.of(), null);
+        assertThat(instantane).isEqualTo(new InstantaneKaraoke(EtatManche.EN_COURS, etat.file(), etat.contenus()));
+        assertThat(persiste).isEqualTo(etat);
+        assertThat(fabrique.restaurer(contexte, reglages, persiste, EtatManche.EN_COURS).instantane()).isEqualTo(instantane);
+        assertThat(horloge.minuteursEnAttente()).isZero();
+    }
+
     private EtatKaraokePersiste etatAvecCourant(EtatPassage etatPassage, EtatManche etatManche, EtatLecture etatLecture) {
         var debut = horloge.maintenant();
         var contenu = contenu();

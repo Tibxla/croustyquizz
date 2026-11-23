@@ -15,17 +15,31 @@ public record LecturePassage(UUID lectureId, UUID passageId, UUID lecteurId, Eta
         Objects.requireNonNull(lectureId);
         Objects.requireNonNull(passageId);
         Objects.requireNonNull(etat);
-        Objects.requireNonNull(origineParoles);
         Objects.requireNonNull(paroles);
-        LecturePreparee.verifierSource(source, fichier, motifParolesSeules);
-        boolean departEnParolesSeules = source == SourceLecture.PAROLES_SEULES
-                && motifParolesSeules != MotifParolesSeules.ERREUR_LECTURE;
+        verifierSourceEtOrigine(source, fichier, motifParolesSeules, origineParoles);
+        verifierDecalage(decalageMs);
         if ((demandeId == null) != (demandeeLe == null)
                 || (source == SourceLecture.PAROLES_SEULES && (etat == EtatLecture.EN_ERREUR || demandeId != null))
-                || departEnParolesSeules != (origineParoles == OrigineParoles.INSCRIPTION)
-                || decalageMs < -ENTIER_MAX || decalageMs > ENTIER_MAX
                 || numeroModificationCalage < 0 || numeroModificationCalage > ENTIER_MAX) {
             throw new IllegalArgumentException("L’état de la lecture est incompatible avec sa source ou son calage.");
+        }
+    }
+
+    static void verifierSourceEtOrigine(SourceLecture source, FichierAudioLocal fichier,
+            MotifParolesSeules motif, OrigineParoles origine) {
+        boolean local = source == SourceLecture.FICHIER_LOCAL;
+        if (source == null || local != (fichier != null) || local == (motif != null)) {
+            throw new IllegalArgumentException("La source de lecture exige soit un fichier local, soit un motif de paroles seules.");
+        }
+        boolean departEnParolesSeules = source == SourceLecture.PAROLES_SEULES && motif != MotifParolesSeules.ERREUR_LECTURE;
+        if (origine == null || departEnParolesSeules != (origine == OrigineParoles.INSCRIPTION)) {
+            throw new IllegalArgumentException("L’origine des paroles est incompatible avec la source de lecture.");
+        }
+    }
+
+    static void verifierDecalage(long decalage) {
+        if (decalage < -ENTIER_MAX || decalage > ENTIER_MAX) {
+            throw new IllegalArgumentException("Le décalage dépasse les bornes du contrat.");
         }
     }
 

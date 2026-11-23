@@ -8,11 +8,12 @@ import java.util.UUID;
 public record EtatCyclePassage(UUID passageId, UUID etapeId, Instant appeleLe, Instant echeanceAppelLe,
         Instant demarreLe, Duration dureeReference, Duration tempsPause, Instant pauseDepuis, Instant clotureLe) {
     public EtatCyclePassage {
-        if (tempsPause == null
+        if (tempsPause == null || tempsPause.isNegative()
                 || (passageId == null && (etapeId != null || appeleLe != null || echeanceAppelLe != null
                         || demarreLe != null || pauseDepuis != null || clotureLe != null || !tempsPause.isZero()))
                 || (passageId != null && (etapeId == null || appeleLe == null || echeanceAppelLe == null))
                 || ((demarreLe == null) != (dureeReference == null))
+                || (dureeReference != null && !dureeReference.isPositive())
                 || (clotureLe != null && pauseDepuis != null)) {
             throw new IllegalArgumentException("La chronologie du Passage est incohérente.");
         }

@@ -9,6 +9,10 @@ public record ParolesDuPassage(UUID parolesId, long dureeMs, List<LigneParoles> 
     public ParolesDuPassage {
         Objects.requireNonNull(parolesId);
         lignes = lignes.stream().filter(ligne -> ligne.positionMs() >= 0).toList();
+        verifierContenu(dureeMs, lignes);
+    }
+
+    static void verifierContenu(long dureeMs, List<LigneParoles> lignes) {
         if (dureeMs <= 0 || lignes.stream().noneMatch(ParolesDuPassage::contientDuTexte)) {
             throw new IllegalArgumentException("Les paroles exigent une durée positive et une ligne de texte.");
         }

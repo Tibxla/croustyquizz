@@ -56,6 +56,43 @@ class LecturePassageTest {
                 OrigineParoles.INSCRIPTION, 290_000, LIGNES, 42, 0).fichier()).isNull();
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = MotifParolesSeules.class,
+            names = {"ECRAN_NON_PRET", "ERREUR_LECTURE"})
+    void uneDeclarationRefuseLesMotifsReservesAuDeroulement(MotifParolesSeules motif) {
+        var origine = motif == MotifParolesSeules.ERREUR_LECTURE
+                ? OrigineParoles.REPLI_INSCRIPTION : OrigineParoles.INSCRIPTION;
+        assertThatIllegalArgumentException().isThrownBy(() -> new LecturePreparee(SourceLecture.PAROLES_SEULES, null,
+                motif, origine, 290_000, LIGNES, 42, 0));
+    }
+
+    @Test
+    void preparationControleLOriginePourChaqueSource() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new LecturePreparee(SourceLecture.FICHIER_LOCAL, FICHIER,
+                null, OrigineParoles.INSCRIPTION, 290_000, LIGNES, 42, 0));
+        for (var origine : List.of(OrigineParoles.VERSION_ADAPTEE, OrigineParoles.REPLI_INSCRIPTION)) {
+            assertThatIllegalArgumentException().isThrownBy(() -> new LecturePreparee(SourceLecture.PAROLES_SEULES,
+                    null, MotifParolesSeules.FICHIER_ABSENT, origine, 290_000, LIGNES, 42, 0));
+        }
+    }
+
+    @Test
+    void preparationControleLaDureeLeTexteExploitableEtLeDecalage() {
+        for (long duree : List.of(0L, -1L)) {
+            assertThatIllegalArgumentException().isThrownBy(() -> preparationLocale(duree, LIGNES, 0));
+        }
+        assertThatIllegalArgumentException().isThrownBy(() -> preparationLocale(290_000,
+                List.of(new LigneParoles(-1, "Ignorée"), new LigneParoles(0, " ")), 0));
+        assertThatIllegalArgumentException().isThrownBy(() -> preparationLocale(290_000, LIGNES, 9_007_199_254_740_992L));
+        assertThatIllegalArgumentException().isThrownBy(() -> preparationLocale(290_000, LIGNES, -9_007_199_254_740_992L));
+        assertThat(preparationLocale(290_000, LIGNES, 9_007_199_254_740_991L).dureeParolesMs()).isEqualTo(290_000L);
+    }
+
+    private static LecturePreparee preparationLocale(long duree, List<LigneParoles> lignes, long decalage) {
+        return new LecturePreparee(SourceLecture.FICHIER_LOCAL, FICHIER, null,
+                OrigineParoles.VERSION_ADAPTEE, duree, lignes, 42, decalage);
+    }
+
     @Test
     void lectureAppliqueLesInvariantsDuContrat() {
         assertThatIllegalArgumentException().isThrownBy(() -> lecture(EtatLecture.EN_ERREUR,
