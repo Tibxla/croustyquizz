@@ -55,6 +55,13 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		if (prochainDossier) appliquerDossier(prochainDossier);
 		changerPhase('pret');
 	}
+	function reprendreApresDeblocage() {
+		const interrompue = phaseInterrompue;
+		phaseInterrompue = undefined;
+		if (estPreparation(interrompue) && preparation?.version === versionDossier) changerPhase(interrompue);
+		else if (fichiers) redevenirPret();
+		else changerPhase('sans-dossier');
+	}
 
 	function estToujoursEnPreparation(cible) {
 		const { courant } = vue;
@@ -81,7 +88,6 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 			source: fichier ? 'FICHIER_LOCAL' : 'PAROLES_SEULES', fichier, motifParolesSeules: motif,
 		}).then(reponse => {
 			if (!estToujoursEnPreparation(cible) || !reponse || reponse.statut < 200 || reponse.statut >= 300) return;
-			cible.lectureId = reponse.corps?.lectureId;
 			if (phase === 'preparation') changerPhase('preparee');
 			else if (phase === 'son-bloque' && phaseInterrompue === 'preparation') phaseInterrompue = 'preparee';
 		});
@@ -113,12 +119,17 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		const resultat = trouverFichierDeChanson(fichiers, chanson);
 		let fichier = null, motif = 'FICHIER_' + resultat.etat.toUpperCase();
 		if (resultat.etat === 'unique') {
-			cible.charge = true;
-			try {
-				const { dureeMs } = await lecteur.charger(resultat.fichier);
-				fichier = { nom: resultat.fichier.name, tailleOctets: resultat.fichier.size, dureeMs };
-				motif = null;
-			} catch { motif = 'FICHIER_ILLISIBLE'; }
+			const { name: nom, size: tailleOctets } = resultat.fichier;
+			motif = 'FICHIER_ILLISIBLE';
+			// FichierAudioLocal.nom accepte un nom seul, sans séparateur de chemin.
+			if (/^[^/\\]+$/.test(nom)) {
+				cible.charge = true;
+				try {
+					const { dureeMs } = await lecteur.charger(resultat.fichier);
+					fichier = { nom, tailleOctets, dureeMs };
+					motif = null;
+				} catch { /* Le fichier reste illisible. */ }
+			}
 		}
 		if (!estToujoursEnPreparation(cible) || cible.declaree) return;
 		cible.resultat = { fichier, motif };
@@ -126,11 +137,7 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 	}
 
 	function estNotreLecture(courant, lecture) {
-		if (!courant || !lecture) return false;
-		if (lecture.lecteurId != null) {
-			return lecture.lecteurId === lecteurId && (!preparation || courant.passageId === preparation.passageId);
-		}
-		return Boolean(preparation?.lectureId && lecture.lectureId === preparation.lectureId && courant.passageId === preparation.passageId);
+		return courant && lecture?.lecteurId === lecteurId && (!preparation || courant.passageId === preparation.passageId);
 	}
 	function passerEnErreur() {
 		if (!preparation) preparation = { passageId: vue.courant.passageId };
@@ -182,8 +189,7 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 
 		if (phase === 'erreur' && !(appel && autrePassage)) return;
 		const lectureEngagee = depart || phase === 'fin';
-		const abandonnerPreparation = estPreparation(phase) && (lecteurDesigneId !== lecteurId || (locale && !notreLecture)
-			|| (evenement && origine.type === 'passage-demarre' && !locale));
+		const abandonnerPreparation = lecteurDesigneId !== lecteurId || (locale ? !notreLecture : !appel);
 		if (phase === 'erreur' || (lectureEngagee ? !actif || autrePassage || !locale
 			: estPreparation(phase) && (!actif || autrePassage || abandonnerPreparation))) {
 			redevenirPret();
@@ -246,12 +252,13 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 			intentionDesignation = aEteLectrice;
 			changerPhase(sonDebloque ? 'pret' : 'son-bloque');
 		},
-		async debloquer() {
+		async debloquer({ attendreVue = () => false } = {}) {
 			if (detruit) return;
 			const essai = ++essaiSon;
+			const lectureEnAttente = depart?.enCours;
 			try { await lecteur.debloquer(); }
 			catch {
-				if (detruit || essai !== essaiSon || joueOuEstEnPause(phase)) return;
+				if (detruit || essai !== essaiSon || lectureEnAttente || depart?.enCours || joueOuEstEnPause(phase)) return;
 				if (phase === 'son-bloque') return;
 				sonDebloque = false;
 				phaseInterrompue = phase;
@@ -262,13 +269,8 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 			if (detruit || essai !== essaiSon) return;
 			const change = !sonDebloque;
 			sonDebloque = true;
-			if (phase === 'son-bloque') {
-				const interrompue = phaseInterrompue;
-				phaseInterrompue = undefined;
-				if (!estPreparation(interrompue)) {
-					if (fichiers) redevenirPret();
-					else changerPhase('sans-dossier');
-				} else changerPhase(interrompue);
+			if (phase === 'son-bloque' && !attendreVue()) {
+				reprendreApresDeblocage();
 				traiterVue();
 			} else if (change) surEtat(etat());
 		},
@@ -284,9 +286,11 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 				intentionDesignation = false;
 				if (lecteurDesigneId == null) designation();
 			}
-			if (lecteurDesigneId === lecteurId && derniereDesignation && derniereDesignation !== lecteurId && phase === 'pret') versionDossier++;
+			const redesigne = lecteurDesigneId === lecteurId && derniereDesignation && derniereDesignation !== lecteurId;
+			if (redesigne && (phase === 'pret' || phase === 'son-bloque')) versionDossier++;
 			if (lecteurDesigneId != null) derniereDesignation = lecteurDesigneId;
 			if (avant !== aEteLectrice || avantAutre !== autreLecteur) surEtat(etat());
+			if (phase === 'son-bloque' && sonDebloque) reprendreApresDeblocage();
 			traiterVue(origine, precedente?.etat);
 		},
 		detruire() {

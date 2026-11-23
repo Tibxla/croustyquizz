@@ -63,17 +63,30 @@ test('durée inconnue, fin, erreur et nettoyage des URL au remplacement et au d�
 	assert.deepEqual([fins, erreurs], [1, 1]);
 });
 
-test('le déblocage rend le refus de play et utilise un WAV silencieux sans toucher au fichier', async () => {
+test('le silence débloque le même élément qui lira le fichier, sans lancer ni remplacer le fichier après chargement', async () => {
 	const { lecteur, audio, audios } = banc();
+	await lecteur.debloquer();
+	assert.equal(audios.length, 1);
+	assert.equal(audio.lectures, 1);
+	assert.match(audio.src, /^data:audio\/wav;base64,/);
 	const charge = lecteur.charger({ name: 'a.wav' });
-	const refus = new DOMException('Bloqué', 'NotAllowedError');
-	const creerSon = lecteur.debloquer();
-	audios[1].refus = refus;
-	await creerSon;
-	audios[1].play = () => Promise.reject(refus);
-	await assert.rejects(lecteur.debloquer(), { name: 'NotAllowedError' });
-	assert.match(audios[1].src, /^data:audio\/wav;base64,/);
-	assert.equal(audio.src, 'blob:a.wav');
-	lecteur.detruire();
+	audio.duration = 1;
+	audio.dispatchEvent({ type: 'loadedmetadata' });
 	await charge;
+	await lecteur.debloquer();
+	assert.equal(audio.src, 'blob:a.wav');
+	assert.equal(audio.lectures, 1);
+	await lecteur.lire();
+	assert.equal(audio.lectures, 2);
+	lecteur.detruire();
+});
+
+test('le déblocage rend le refus de play et permet un nouveau geste sur le même élément', async () => {
+	const { lecteur, audio, audios } = banc();
+	audio.refus = new DOMException('Bloqué', 'NotAllowedError');
+	await assert.rejects(lecteur.debloquer(), { name: 'NotAllowedError' });
+	audio.refus = null;
+	await lecteur.debloquer();
+	assert.equal(audios.length, 1);
+	assert.equal(audio.lectures, 2);
 });

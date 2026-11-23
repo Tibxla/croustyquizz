@@ -193,15 +193,114 @@ async function fichierEnLecture() {
 	return b;
 }
 
-test('le reçu permet de rattraper une vue portant le même lectureId et la vue est prioritaire si elle désigne un autre lecteur', async () => {
+test('le départ trouve la lecture locale dans la vue même si le 2xx a précédé la publication de la préparation', async () => {
 	const b = await fichierPrepare();
-	b.cycle.surVue({ ...demarre(), lecture: lecture({ etat: 'DEMARREE', lecteurId: null }) }, evenement('passage-demarre'));
+	b.cycle.surVue(demarre(), evenement('passage-demarre'));
 	await terminerMicrotaches();
 	assert.equal(b.etat(), 'lecture');
-	const autre = await fichierPrepare();
-	autre.cycle.surVue({ ...demarre(), lecture: lecture({ etat: 'DEMARREE', lecteurId: 'ailleurs' }) }, evenement('passage-demarre'));
-	assert.equal(autre.etat(), 'pret');
-	assert.ok(!autre.gestes.includes('lire'));
+
+	const b2 = await fichierPrepare();
+	b2.cycle.surVue(bloc(appel(), null, { lecteurDesigneId: 'ailleurs' }), evenement('lecture-chanson-modifiee'));
+	const autre = lecture({ etat: 'DEMARREE', lecteurId: 'ailleurs', lectureId: 'autre-lecture' });
+	b2.cycle.surVue(bloc(demarre().courant, autre, { lecteurDesigneId: 'ailleurs' }), evenement('passage-demarre'));
+	assert.equal(b2.etat(), 'pret');
+	assert.ok(!b2.gestes.includes('lire'));
+});
+
+test('un nom de fichier interdit par le contrat est déclaré illisible sans charger le fichier', async () => {
+	const b = await preparer([{ ...fichier, name: 'Beyoncé\\Halo.WAV' }]);
+	assert.equal(b.chargements.length, 0);
+	assert.deepEqual(b.commandes[1].corps, { lecteurId: 'ici', etapeId: 'e-p', numeroModification: 1,
+		source: 'PAROLES_SEULES', fichier: null, motifParolesSeules: 'FICHIER_ILLISIBLE' });
+});
+
+test('une capture d’un Passage déjà commencé en paroles seules libère le fichier préparé', async () => {
+	const sansFichier = lecture({ lecteurId: null, lectureId: 'secours', source: 'PAROLES_SEULES', etat: 'DEMARREE',
+		motifParolesSeules: 'ECRAN_NON_PRET' });
+	for (const [preparerFichier, lectureVue] of [[preparer, null], [fichierPrepare, sansFichier]]) {
+		const b = await preparerFichier();
+		b.cycle.surVue(bloc(demarre().courant, lectureVue), capture);
+		assert.equal(b.etat(), 'pret');
+		assert.deepEqual(b.gestes, ['libérer']);
+	}
+
+	const b = await fichierPrepare();
+	b.bloquer();
+	await b.cycle.debloquer();
+	b.cycle.surVue(bloc(appel('p', { etat: 'EN_PAUSE', numeroModification: 2 }), sansFichier, { etat: 'EN_PAUSE' }), capture);
+	b.debloquer();
+	await b.cycle.debloquer();
+	assert.equal(b.etat(), 'pret');
+	assert.deepEqual(b.gestes, ['libérer']);
+});
+
+test('une redésignation pendant le blocage recharge une seule fois à la reprise du même appel', async () => {
+	for (const avantBlocage of [false, true]) {
+		const b = await fichierPrepare();
+		const ailleurs = bloc(appel(), null, { lecteurDesigneId: 'ailleurs' });
+		if (avantBlocage) b.cycle.surVue(ailleurs, capture);
+		b.bloquer();
+		await b.cycle.debloquer();
+		if (!avantBlocage) b.cycle.surVue(ailleurs, capture);
+		b.cycle.surVue(bloc(appel()), capture);
+		assert.equal(b.etat(), 'son-bloque');
+		assert.equal(b.chargements.length, 1);
+		b.debloquer();
+		await b.cycle.debloquer();
+		assert.equal(b.etat(), 'preparation');
+		assert.equal(b.chargements.length, 2);
+		b.chargements[1].resolve({ dureeMs: 20000 });
+		await terminerMicrotaches();
+		assert.equal(b.commandes.filter(c => c.chemin.endsWith('/lecture')).length, 2);
+	}
+});
+
+test('un refus de déblocage pendant un lire en attente laisse aboutir le départ', async () => {
+	const b = await fichierPrepare();
+	let terminerLecture;
+	b.attendreLecture(new Promise(resolve => { terminerLecture = resolve; }));
+	b.cycle.surVue(demarre(), evenement('passage-demarre'));
+	b.bloquer();
+	await b.cycle.debloquer();
+	assert.equal(b.etat(), 'preparee');
+	assert.equal(b.cycle.etat().sonDebloque, true);
+	terminerLecture();
+	await terminerMicrotaches();
+	assert.equal(b.etat(), 'lecture');
+	assert.deepEqual(b.gestes, ['lire']);
+});
+
+test('un dossier restauré avec le son bloqué attend le déblocage avant de préparer le fichier', async () => {
+	const b = banc();
+	b.cycle.reprendreDossier({ fichiers: [fichier], aEteLectrice: true, sonDebloque: false });
+	assert.equal(b.etat(), 'son-bloque');
+	b.cycle.surVue(bloc(appel()), capture);
+	assert.equal(b.chargements.length, 0);
+	await b.cycle.debloquer();
+	assert.equal(b.chargements.length, 1);
+});
+
+test('la clôture suivant la fin locale libère le fichier sans émettre une seconde fin', async () => {
+	const b = await fichierEnLecture();
+	b.fin();
+	assert.equal(b.etat(), 'fin');
+	b.cycle.surVue(bloc(appel('p', { etat: 'TERMINE' })), evenement('passage-termine'));
+	assert.equal(b.etat(), 'pret');
+	assert.deepEqual(b.gestes, ['lire', 'libérer']);
+	b.fin();
+	assert.equal(b.commandes.filter(c => c.chemin.endsWith('/fin-lecture')).length, 1);
+});
+
+test('deux vues identiques en prêt ne redéclarent pas sans redésignation', async () => {
+	const b = await fichierPrepare();
+	b.cycle.surVue(bloc(appel(), null, { lecteurDesigneId: null }), capture);
+	assert.equal(b.etat(), 'pret');
+	const memeAppel = bloc(appel());
+	b.cycle.surVue(memeAppel, capture);
+	b.cycle.surVue(memeAppel, capture);
+	assert.equal(b.etat(), 'pret');
+	assert.equal(b.chargements.length, 1);
+	assert.equal(b.commandes.filter(c => c.chemin.endsWith('/lecture')).length, 1);
 });
 
 test('pause, relevé unique, capture sans reprise et reprise sur transition observée', async () => {

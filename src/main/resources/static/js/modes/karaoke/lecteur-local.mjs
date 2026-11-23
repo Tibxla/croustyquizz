@@ -1,27 +1,32 @@
-// WAV PCM mono silencieux de 10 ms. Le geste de déblocage ne touche pas au fichier du Passage.
+// WAV PCM mono silencieux de 10 ms. Safari accorde le déblocage à cet élément audio.
 const SILENCE = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
 
 export function creerLecteurLocal({ document, creerUrl, revoquerUrl }) {
 	const audio = document.createElement('audio');
 	audio.preload = 'metadata';
 	const fins = new Set(), erreurs = new Set();
-	let temoin, libererFichier = () => {};
+	let sonDebloque = false, libererFichier;
 
 	function abonner(rappels, rappel) {
 		rappels.add(rappel);
 		return () => rappels.delete(rappel);
 	}
+	function retirerSource() {
+		audio.pause();
+		audio.removeAttribute('src');
+		audio.load();
+	}
 	const lire = () => audio.play();
 	return {
-		debloquer() {
-			if (!temoin) {
-				temoin = document.createElement('audio');
-				temoin.src = SILENCE;
-			}
-			return temoin.play();
+		async debloquer() {
+			if (sonDebloque) return;
+			if (libererFichier) throw new DOMException('Débloque le son avant de charger un fichier.', 'InvalidStateError');
+			if (audio.src !== SILENCE) audio.src = SILENCE;
+			await audio.play();
+			sonDebloque = true;
 		},
 		charger(fichier) {
-			libererFichier();
+			libererFichier?.();
 			return new Promise((resolve, reject) => {
 				const url = creerUrl(fichier);
 				let enAttente = true;
@@ -40,13 +45,11 @@ export function creerLecteurLocal({ document, creerUrl, revoquerUrl }) {
 				audio.addEventListener('ended', fin);
 				audio.addEventListener('error', erreur);
 				libererFichier = () => {
-					libererFichier = () => {};
+					libererFichier = undefined;
 					audio.removeEventListener('loadedmetadata', metadonnees);
 					audio.removeEventListener('ended', fin);
 					audio.removeEventListener('error', erreur);
-					audio.pause();
-					audio.removeAttribute('src');
-					audio.load();
+					retirerSource();
 					revoquerUrl(url);
 					if (enAttente) resolve({ dureeMs: null });
 				};
@@ -62,8 +65,8 @@ export function creerLecteurLocal({ document, creerUrl, revoquerUrl }) {
 		surErreur: rappel => abonner(erreurs, rappel),
 		// Le port peut être réutilisé lors de la Manche suivante.
 		detruire: () => {
-			libererFichier();
-			temoin?.pause();
+			if (libererFichier) libererFichier();
+			else if (audio.src === SILENCE) retirerSource();
 		},
 	};
 }
