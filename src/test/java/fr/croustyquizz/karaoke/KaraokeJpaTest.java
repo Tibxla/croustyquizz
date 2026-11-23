@@ -85,6 +85,38 @@ class KaraokeJpaTest {
         service.inscrirePassage(suivante, envoi(joueur, "/passages-suivante", corps), corps);
         assertThat(((InstantaneKaraoke) service.instantane(soiree, suivante)).file().passages().getFirst().numero()).isEqualTo(3);
     }
+    @Test void restaureLeCycleLaLectureEtLeLecteurSansRejouerLeDepart() {
+        UUID soiree = UUID.randomUUID();
+        var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+        var joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
+        var inscription = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1));
+        var accuse = (AccusePassage) ((Accepte) service.inscrirePassage(manche,
+                envoi(joueur, "/passages", inscription), inscription)).accuse();
+        var transaction = new TransactionTemplate(socle.transactions());
+        var initial = (InstantaneKaraoke) service.instantane(soiree, manche);
+        UUID passage = accuse.passageId();
+        UUID lecteur = UUID.randomUUID();
+        Instant appel = Instant.parse("2026-11-17T10:00:00Z");
+        var cycle = new EtatCyclePassage(passage, UUID.randomUUID(), appel, appel.plusSeconds(30),
+                null, null, Duration.ZERO, null, null);
+        var parole = new ParolesDuPassage(UUID.randomUUID(), 180_000, List.of(new LigneParoles(0, "Un")));
+        var lecture = new LecturePassage(UUID.randomUUID(), passage, lecteur, EtatLecture.PREPAREE,
+                SourceLecture.FICHIER_LOCAL, new FichierAudioLocal("Un.mp3", 120, null), null,
+                OrigineParoles.REPLI_INSCRIPTION, parole, 1, 100, 0, null, null);
+        var prepare = new InstantaneKaraoke(EtatManche.EN_COURS, initial.file(), initial.contenus(),
+                cycle, Map.of(passage, lecture), lecteur);
+        transaction.executeWithoutResult(s -> contenus.enregistrer(manche, prepare));
+        transaction.executeWithoutResult(s -> assertThat(contenus.charger(manche))
+                .isEqualTo(new EtatKaraokePersiste(initial.file(), initial.contenus(), cycle, Map.of(passage, lecture), lecteur)));
+        var remplace = new InstantaneKaraoke(EtatManche.EN_COURS, initial.file(), initial.contenus(),
+                cycle, Map.of(), UUID.randomUUID());
+        transaction.executeWithoutResult(s -> contenus.enregistrer(manche, remplace));
+        transaction.executeWithoutResult(s -> assertThat(contenus.charger(manche))
+                .isEqualTo(new EtatKaraokePersiste(initial.file(), initial.contenus(), cycle, Map.of(), remplace.lecteurDesigneId())));
+    }
+
     static EnvoiDeCommande envoi(Acteur acteur, String route, Object corps) { return new EnvoiDeCommande(acteur, route, UUID.randomUUID(), corps); }
 
 }
