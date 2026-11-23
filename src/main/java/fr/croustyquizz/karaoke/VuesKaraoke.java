@@ -57,6 +57,7 @@ public final class VuesKaraoke {
         }
         var file = FileAttente.depuis(etat);
         boolean enPause = instantane.etatManche() == EtatManche.EN_PAUSE;
+        boolean enCours = instantane.etatManche() == EtatManche.EN_COURS;
         var projection = CycleDePassage.projeter(etat, instantane.cycle(), enPause, maintenant);
         var courant = courant(instantane, projection, participants);
         var positions = file.positions();
@@ -81,15 +82,15 @@ public final class VuesKaraoke {
                     lecture != null && projection.courant().etat() == EtatPassage.EN_COURS ? lecture.paroles() : null);
             case CONSOLE -> new BlocKaraokeConsole(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                     etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, publics, true, true, true,
-                    instantane.lecteurDesigneId() != null, !enPause && !projection.actif() && !publics.isEmpty(),
-                    projection.actif(), enPause && !lectureEnErreur, !enPause && lecture != null
+                    instantane.lecteurDesigneId() != null, enCours && !projection.actif() && !publics.isEmpty(),
+                    projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
                             && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
                     lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier());
             case JOUEUR -> {
                 UUID joueur = destination.joueurId();
                 var personnels = publics.stream().filter(p -> p.interpretes().stream().anyMatch(i -> i.joueurId().equals(joueur))).toList();
                 boolean peutInscrire = personnels.size() < etat.limitePassagesEnAttente();
-                boolean peutConfirmer = !enPause && projection.actif() && projection.courant().etat() == EtatPassage.APPELE
+                boolean peutConfirmer = enCours && projection.actif() && projection.courant().etat() == EtatPassage.APPELE
                         && projection.courant().interpretes().contains(joueur);
                 yield new BlocKaraokeManette(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                         etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),

@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Service réel, transactions annulables, source et ports factices. */
@@ -312,7 +311,7 @@ class ServiceKaraokeTest {
         verifyNoInteractions(banc.calages);
     }
 
-    @Test void deuxConfirmationsConcurrentesNePublientQuUnDepartEtLaPremiereSeRejoue() throws Exception {
+    @Test void deuxConfirmationsConcurrentesNePublientQuUnDepartEtLeursRecusSeRejouent() throws Exception {
         UUID manche = demarrer();
         var appel = appeler(manche, inscrire(manche, 1).passageId());
         var premiere = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), appel.etapeId(), 1L);
@@ -334,12 +333,12 @@ class ServiceKaraokeTest {
             ResultatDeCommande resultatConcurrent = second.get(5, TimeUnit.SECONDS);
             assertThat(List.of(resultatInitial, resultatConcurrent))
                     .extracting(ReponsesDeCommande::statut).containsExactlyInAnyOrder(200, 409);
-            assertThat(banc.json.<JsonNode>valueToTree(ReponsesDeCommande.corps(banc.service.confirmerPresencePassage(
+            assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(banc.service.confirmerPresencePassage(
                     manche, appel.passageId(), envoiInitial, premiere), envoiInitial.route())))
-                    .isEqualTo(banc.json.<JsonNode>valueToTree(ReponsesDeCommande.corps(resultatInitial, envoiInitial.route())));
-            assertThat(banc.json.<JsonNode>valueToTree(ReponsesDeCommande.corps(banc.service.confirmerPresencePassage(
+                    .isEqualTo(banc.json.writeValueAsString(ReponsesDeCommande.corps(resultatInitial, envoiInitial.route())));
+            assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(banc.service.confirmerPresencePassage(
                     manche, appel.passageId(), envoiConcurrent, seconde), envoiConcurrent.route())))
-                    .isEqualTo(banc.json.<JsonNode>valueToTree(ReponsesDeCommande.corps(resultatConcurrent, envoiConcurrent.route())));
+                    .isEqualTo(banc.json.writeValueAsString(ReponsesDeCommande.corps(resultatConcurrent, envoiConcurrent.route())));
         }
         assertThat(banc.horloge.minuteursEnAttente()).isEqualTo(1);
         assertThat(banc.diffuseur.envois().stream().filter(e -> e.evenement().type().equals("passage-demarre"))).hasSize(5);
