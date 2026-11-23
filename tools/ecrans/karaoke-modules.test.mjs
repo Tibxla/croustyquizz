@@ -407,7 +407,7 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	b.module.afficher(vue({ passagesEnAttente: [p], peutAppeler: true }), capture);
 	assert.equal(bouton(b.principale, 'Passer').disabled, true);
 	assert.equal(bouton(b.principale, 'Pause').disabled, false);
-	assert.equal(bouton(b.principale, 'ça commence').parentNode.hidden, true);
+	assert.equal(bouton(b.principale, 'Ça commence').parentNode.hidden, true);
 	bouton(b.principale, 'Appeler le suivant').click();
 	assert.deepEqual(b.appels[0].args.slice(0, 3), ['POST', '/api/soirees/s/manches/m/passages/premier/appel', { numeroModification: 2 }]);
 	const lecture = { lectureId: 'lecture', etat: 'DEMARREE', source: 'FICHIER_LOCAL', numeroModificationCalage: 3, decalageMs: -300 };
@@ -417,7 +417,7 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	assert.match(b.principale.textContent, /Fichier local : A.wav/);
 	bouton(b.principale, 'Pause').click();
 	assert.deepEqual(b.appels[1].args[2], { action: 'METTRE_EN_PAUSE', etapeId: 'etape' });
-	bouton(b.principale, 'ça commence').click();
+	bouton(b.principale, 'Ça commence').click();
 	assert.deepEqual(b.appels[2].args[2], { etapeId: 'etape', lectureId: 'lecture' });
 	for (const [libelle, sens, nom] of [['−0,1 s', 'AVANCER', 'Avancer'], ['+0,1 s', 'RETARDER', 'Retarder']]) {
 		const action = bouton(b.principale, libelle);
