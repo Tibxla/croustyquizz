@@ -89,3 +89,11 @@ test('un 503 ou un 5xx sans code du contrat donne un état inconnu, jamais un re
 	await contexte.envoyer('POST', '/commande', {});
 	assert.deepEqual(etats.at(-1), { etat: 'refuse', detail: 'La Manche est terminée.' }, 'un 4xx reste un refus');
 });
+
+test('le contexte expose l’heure serveur recalée sans figer sa valeur', () => {
+	let maintenant = 1000;
+	const { contexte } = creerContexte({ maintenantServeur: () => maintenant });
+	assert.equal(contexte.maintenantServeur(), 1000);
+	maintenant = 2600;
+	assert.equal(contexte.maintenantServeur(), 2600);
+});

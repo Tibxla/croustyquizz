@@ -3,10 +3,33 @@ import assert from 'node:assert/strict';
 import { creerBanc, creerDocument, terminerMicrotaches, chanson, passage, vue } from './karaoke-dom-factice.mjs';
 import { monter as manette } from '../../src/main/resources/static/js/modes/karaoke/manette.mjs';
 import { monter as consoleKaraoke } from '../../src/main/resources/static/js/modes/karaoke/console.mjs';
-import { monter as ecran } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
+import { creerEcranKaraoke, reinitialiserEtatEcranPourTests, etatEcranKaraoke } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
 import { readFile } from 'node:fs/promises';
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'karaoke-file-modifiee' };
 const bouton = (zone, texte) => zone.querySelectorAll('button').find(b => b.textContent === texte);
+
+function bancLecteur() {
+	const appels = [], trames = new Map();
+	let numero = 0;
+	const lecteur = {
+		debloquer: async () => { appels.push('son'); },
+		charger: async () => { appels.push('charger'); return { dureeMs: 2000 }; },
+		lire: async () => { appels.push('lire'); },
+		pause: () => appels.push('pause'),
+		reprendre: async () => { appels.push('reprendre'); },
+		position: () => 1500,
+		surFin: () => () => {},
+		surErreur: () => () => {},
+		detruire: () => appels.push('libérer'),
+	};
+	return { lecteur, appels, trames,
+		dependances: { lecteur, requestAnimationFrame(f) { trames.set(++numero, f); return numero; },
+			cancelAnimationFrame: id => trames.delete(id), setTimeout, clearTimeout, performance } };
+}
+function ecran(zones, contexte) {
+	reinitialiserEtatEcranPourTests();
+	return creerEcranKaraoke(zones, contexte, { ...bancLecteur().dependances, document: zones.principale.ownerDocument });
+}
 
 test('les trois écrans partagent un lien CSS, conservent le talon et libèrent zones et abonnement', () => {
 	const document = creerDocument(), talon = document.createElement('div'); talon.textContent = 'DEMO01'; document.body.append(talon);
@@ -247,7 +270,7 @@ test('la Manette conserve la recherche au quota, consulte par GET puis attend le
 	b.module.demonter();
 });
 
-test('salle : le premier Passage en grand, seulement les suivants dans « Ensuite », pas de commande ni de détachement', () => {
+test('salle : le premier Passage en grand, seulement les suivants dans « Ensuite », seul le choix du dossier est proposé', () => {
 	const b = creerBanc(ecran, 'ECRAN');
 	b.module.afficher(vue({ prochainsPassages: [passage(), passage('p2', 15)], nombreAutresPassages: 1 }), capture);
 	assert.match(b.principale.textContent, /Prépare-toi/); assert.equal(b.principale.querySelectorAll('.ticket').length, 1);
@@ -255,7 +278,7 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 	assert.match(b.laterale.textContent, /et 1 autre$/);
 	b.module.afficher(vue({ prochainsPassages: [passage()], nombreAutresPassages: 2 }), capture);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 0); assert.match(b.laterale.textContent, /et 2 autres/);
-	assert.equal(b.document.body.querySelectorAll('button').length, 0);
+	assert.deepEqual(b.document.body.querySelectorAll('button').filter(b => !b.hidden).map(b => b.textContent), ['Choisir le dossier de musique']);
 	assert.equal(b.document.body.querySelectorAll('.ticket--detache').length, 0);
 	b.module.demonter(); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
 });
@@ -337,4 +360,196 @@ test('Manette : fermer la fiche pendant une consultation retire « Consultation 
 	assert.match(b.principale.textContent, /Consultation en cours…/);
 	bouton(b.principale.querySelector('dialog'), 'Fermer').click(); await terminerMicrotaches();
 	assert.doesNotMatch(b.principale.textContent, /Consultation en cours…/); b.module.demonter();
+});
+
+const heureAppel = Date.parse('2026-11-17T21:00:00Z');
+const courant = (etat = 'APPELE', champs = {}) => ({ ...passage(), etat, etapeId: 'etape', calculeLe: heureAppel,
+	echeanceAppelLe: heureAppel + 30000, delaiAppelRestantMs: 30000, finPrevueLe: heureAppel + 27000, ...champs });
+
+test('Manette : l’appel personnel garde son ticket et permet la confirmation tardive après recapture', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => heureAppel + 31000;
+	const v = vue({ courant: courant(), peutConfirmerPresence: true });
+	b.connecter('synchronisee');
+	b.module.afficher(v, { source: 'evenement', type: 'passage-appele' });
+	const ticket = b.principale.querySelector('.mon-ticket--appele');
+	assert.ok(ticket.classList.contains('mon-ticket--detachement'));
+	assert.equal(ticket.style.getPropertyValue('--teinte'), 'var(--bleu)');
+	assert.match(ticket.textContent, /Le temps est écoulé, tu peux encore confirmer/);
+	assert.doesNotMatch(ticket.textContent, /Position|Tour|En attente/);
+	bouton(ticket, 'Je suis prêt').click();
+	assert.deepEqual(b.appels[0].args.slice(0, 2), ['POST', '/api/soirees/s/manches/m/passages/p/presence']);
+	assert.deepEqual(Object.keys(b.appels[0].args[2]).sort(), ['envoiId', 'etapeId', 'numeroModification']);
+	const premiereCle = b.appels[0].args[2].envoiId;
+	b.appels[0].resolve({ statut: 409, corps: { code: 'COMMANDE_PERIMEE', detail: 'Le Passage a changé.' } });
+	await terminerMicrotaches();
+	assert.equal(b.captures(), 1);
+	assert.equal(bouton(ticket, 'Je suis prêt').disabled, true);
+	b.module.afficher(v, capture);
+	assert.match(b.principale.textContent, /Le Passage a changé/);
+	bouton(b.principale, 'Je suis prêt').click();
+	assert.notEqual(b.appels[1].args[2].envoiId, premiereCle);
+	b.module.afficher(vue({ courant: courant('EN_COURS') }), evenement);
+	assert.match(b.principale.textContent, /À toi de chanter/);
+	assert.equal(b.principale.querySelector('.mon-ticket--appele'), null);
+	b.module.afficher(vue({ courant: courant('SAUTE', { interpretes: [{ joueurId: 'autre', pseudo: 'Alizé' }] }) }), capture);
+	assert.ok(b.principale.querySelector('.ticket--bleu'));
+	assert.equal(bouton(b.principale, 'Je suis prêt'), undefined);
+});
+
+test('Console : capacités et corps du Passage, calage affiché uniquement après la vue', async t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => heureAppel;
+	b.connecter('synchronisee');
+	const p = { ...passage('premier'), position: 1 };
+	b.module.afficher(vue({ passagesEnAttente: [p], peutAppeler: true }), capture);
+	assert.equal(bouton(b.principale, 'Passer').disabled, true);
+	assert.equal(bouton(b.principale, 'Pause').disabled, false);
+	assert.equal(bouton(b.principale, 'ça commence').parentNode.hidden, true);
+	bouton(b.principale, 'Appeler le suivant').click();
+	assert.deepEqual(b.appels[0].args.slice(0, 3), ['POST', '/api/soirees/s/manches/m/passages/premier/appel', { numeroModification: 2 }]);
+	const lecture = { lectureId: 'lecture', etat: 'DEMARREE', source: 'FICHIER_LOCAL', numeroModificationCalage: 3, decalageMs: -300 };
+	const v = vue({ courant: courant('EN_COURS'), lecture, fichierLocal: { nom: 'A.wav' }, peutCaler: true, peutPasser: true, lecteurDesigne: true });
+	b.module.afficher(v, evenement);
+	assert.match(b.principale.textContent, /Fin prévue dans 27 s/);
+	assert.match(b.principale.textContent, /Fichier local : A.wav/);
+	bouton(b.principale, 'Pause').click();
+	assert.deepEqual(b.appels[1].args[2], { action: 'METTRE_EN_PAUSE', etapeId: 'etape' });
+	bouton(b.principale, 'ça commence').click();
+	assert.deepEqual(b.appels[2].args[2], { etapeId: 'etape', lectureId: 'lecture' });
+	for (const [libelle, sens] of [['−0,1 s', 'AVANCER'], ['+0,1 s', 'RETARDER']]) {
+		bouton(b.principale, libelle).click();
+		assert.deepEqual(b.appels.at(-1).args[2], { etapeId: 'etape', lectureId: 'lecture', numeroModificationCalage: 3, sens });
+	}
+	b.appels.at(-1).resolve({ statut: 200, corps: { decalageMs: 1500 } });
+	await terminerMicrotaches();
+	assert.match(b.principale.textContent, /−0,3 s/);
+	assert.doesNotMatch(b.principale.textContent, /\+1,5 s/);
+	b.module.afficher(vue({ ...v.karaoke, etat: 'EN_PAUSE', courant: courant('EN_PAUSE'), peutCaler: false, peutReprendre: false,
+		peutReprendreEnParolesSeules: true, lecture: { ...lecture, etat: 'EN_ERREUR' } }), evenement);
+	assert.equal(bouton(b.principale, 'Reprendre').disabled, true);
+	assert.doesNotMatch(b.principale.textContent, /Fin prévue dans/);
+	bouton(b.principale, 'Paroles seules').click();
+	assert.deepEqual(b.appels.at(-1).args[2], { etapeId: 'etape', lectureId: 'lecture' });
+	bouton(b.principale, 'Terminer la Manche').click();
+	bouton(b.principale, 'Confirmer').click();
+	assert.deepEqual(b.appels.at(-1).args[2], { action: 'TERMINER', etapeId: 'etape' });
+});
+
+test('salle : tickets actifs, animation unique, calage des lignes et reprise de la boucle', t => {
+	reinitialiserEtatEcranPourTests();
+	const lecteur = bancLecteur();
+	const b = creerBanc((z, c) => creerEcranKaraoke(z, c, { ...lecteur.dependances, document: z.principale.ownerDocument }), 'ECRAN');
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => heureAppel;
+	const prochainsPassages = [passage('a'), passage('b'), passage('c')];
+	const principaux = () => b.principale.querySelector('.karaoke__prochain');
+	const afficher = (courant, origine, champs = {}) => b.module.afficher(vue({ courant, prochainsPassages, nombreAutresPassages: 2, ...champs }), origine);
+	afficher(courant(), { source: 'evenement', type: 'passage-appele' });
+	assert.ok(principaux().hidden);
+	assert.equal(principaux().childElementCount, 0);
+	assert.equal(b.laterale.querySelectorAll('.ticket').length, 4);
+	assert.match(b.laterale.textContent, /Sur scène.*et 2 autres/);
+	assert.equal(b.laterale.querySelector('.ticket--immobile'), null);
+	afficher(courant(), evenement);
+	assert.ok(b.laterale.querySelector('.ticket--immobile'));
+	const lignes = ['Prélude', ' ', '<Chant>', 'Suivante', 'Dernière', 'Hors cadre'].map((texte, i) => ({ texte, positionMs: i * 1000 }));
+	const paroles = { parolesId: 'v1', dureeMs: 6000, lignes };
+	const lecture = { lectureId: 'l', source: 'PAROLES_SEULES', decalageMs: 0 };
+	afficher(courant('EN_COURS', { positionChronologiqueMs: 2300 }), capture, { paroles, lecture });
+	assert.deepEqual(b.principale.querySelectorAll('.paroles__ligne').map(p => p.textContent), ['Prélude', '<Chant>', 'Suivante', 'Dernière']);
+	assert.equal(b.principale.querySelector('.paroles__chante').textContent, '<Chant>');
+	assert.equal(b.principale.querySelector('.paroles__chante').childElementCount, 0);
+	afficher(courant('EN_COURS', { positionChronologiqueMs: 2300 }), evenement, { paroles, lecture: { ...lecture, decalageMs: 1000 } });
+	assert.equal(b.principale.querySelector('.paroles__chante').textContent, 'Prélude');
+	assert.equal(lecteur.trames.size, 1);
+	b.document.hidden = true; b.document.dispatchEvent({ type: 'visibilitychange' });
+	assert.equal(lecteur.trames.size, 0);
+	b.document.hidden = false; b.document.dispatchEvent({ type: 'visibilitychange' });
+	assert.equal(lecteur.trames.size, 1);
+	afficher(courant('TERMINE'), capture);
+	assert.ok(!principaux().hidden);
+	assert.equal(b.laterale.querySelectorAll('.ticket').length, 3);
+	assert.match(b.laterale.textContent, /Terminé/);
+	assert.ok(b.laterale.querySelector('.ticket--immobile'));
+	b.module.demonter();
+	assert.equal(lecteur.trames.size, 0);
+});
+
+test('salle : dossier et lecteur vivent entre les Manches, les commandes restent silencieuses et uniques', async t => {
+	reinitialiserEtatEcranPourTests();
+	const audio = bancLecteur();
+	const b = creerBanc((z, c) => creerEcranKaraoke(z, c, { ...audio.dependances, document: z.principale.ownerDocument }), 'ECRAN');
+	t.after(() => b.module.demonter());
+	b.connecter('synchronisee');
+	b.contexte.maintenantServeur = () => heureAppel;
+	b.module.afficher(vue({ lecteurDesigneId: null }), capture);
+	const choisir = bouton(b.principale, 'Choisir le dossier de musique');
+	choisir.click();
+	assert.deepEqual(audio.appels, ['son']);
+	const input = b.principale.querySelector('input[webkitdirectory]');
+	input.files = [{ name: 'Artiste fictif - Titre de démonstration.wav', size: 600, webkitRelativePath: 'privé/essai.wav' }];
+	input.dispatchEvent({ type: 'change' });
+	assert.equal(etatEcranKaraoke.dossier, 'privé');
+	await terminerMicrotaches();
+	const id = etatEcranKaraoke.lecteurId;
+	assert.deepEqual(b.appels[0].args.slice(0, 3), ['PUT', '/api/soirees/s/manches/m/lecteur', { lecteurId: id }]);
+	b.module.afficher(vue({ courant: courant(), lecteurDesigneId: id }), evenement);
+	await terminerMicrotaches();
+	assert.equal(b.appels[1].args[1], '/api/soirees/s/manches/m/passages/p/lecture');
+	assert.equal(b.appels[1].args[2].fichier.nom, input.files[0].name);
+	assert.doesNotMatch(b.principale.textContent, /privé|\.wav|Envoi/);
+	const nouveauFichier = { name: 'Autre.wav', size: 715, webkitRelativePath: 'nouveau/Autre.wav' };
+	input.files = [nouveauFichier]; input.dispatchEvent({ type: 'change' });
+	assert.equal(etatEcranKaraoke.dossier, 'nouveau');
+	assert.deepEqual(etatEcranKaraoke.fichiers, [nouveauFichier]);
+	assert.equal(b.appels.length, 2, 'le cycle diffère le choix pour le Passage déjà préparé');
+	b.module.afficher(vue({ courant: courant('EN_COURS'), lecteurDesigneId: id,
+		lecture: { lecteurId: id, lectureId: 'local', source: 'FICHIER_LOCAL', etat: 'DEMARREE' } }), { source: 'evenement', type: 'passage-demarre' });
+	await terminerMicrotaches();
+	assert.ok(audio.appels.includes('lire'));
+	b.module.afficher(vue({ mancheId: 'm2', lecteurDesigneId: null }), capture);
+	assert.equal(etatEcranKaraoke.lecteur, audio.lecteur);
+	assert.equal(etatEcranKaraoke.lecteurId, id);
+	assert.equal(audio.appels.at(-1), 'libérer');
+	assert.deepEqual(b.appels.map(a => a.args[3].annoncer), [false, false, false]);
+	assert.equal(new Set(b.appels.map(a => a.args[3].entetes['Idempotency-Key'])).size, 3);
+	assert.deepEqual(b.appels[2].args.slice(0, 3), ['PUT', '/api/soirees/s/manches/m2/lecteur', { lecteurId: id }]);
+	assert.equal(b.appels[0].args[3].signal.aborted, true);
+});
+
+test('les deux décomptes se rafraîchissent chaque seconde et libèrent leurs minuteries', t => {
+	t.mock.timers.enable({ apis: ['setInterval'] });
+	let lectures = 0, heure = heureAppel;
+	const man = creerBanc(manette), con = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	for (const b of [man, con]) {
+		t.after(() => b.module.demonter());
+		b.contexte.maintenantServeur = () => { lectures++; return heure; };
+	}
+	man.module.afficher(vue({ courant: courant() }), capture);
+	con.module.afficher(vue({ courant: courant('EN_COURS') }), capture);
+	assert.match(man.principale.textContent, /30 s/);
+	assert.match(con.principale.textContent, /Fin prévue dans 27 s/);
+	heure += 1000;
+	t.mock.timers.tick(1000);
+	assert.match(man.principale.textContent, /29 s/);
+	assert.match(con.principale.textContent, /Fin prévue dans 26 s/);
+	man.module.demonter(); con.module.demonter();
+	const avant = lectures;
+	t.mock.timers.tick(3000);
+	assert.equal(lectures, avant);
+});
+
+test('un appel sur capture restaure les quatre teintes personnelles sans détachement animé', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => heureAppel;
+	for (const [numero, teinte] of ['orange', 'eau', 'bleu', 'rose'].entries()) {
+		b.module.afficher(vue({ courant: courant('APPELE', { passageId: 'p' + numero, numero }) }), capture);
+		const ticket = b.principale.querySelector('.mon-ticket--appele');
+		assert.equal(ticket.style.getPropertyValue('--teinte'), `var(--${teinte})`);
+		assert.equal(ticket.classList.contains('mon-ticket--detachement'), false);
+	}
 });

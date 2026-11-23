@@ -1,4 +1,4 @@
-/* Composition des zones du mode ; le pied, le talon et le pilotage restent aux coquilles. */
+/* Composition des zones du mode. Le pied, le talon et le pilotage commun restent aux coquilles. */
 .karaoke {
   display: flex;
   flex-direction: column;
@@ -69,6 +69,24 @@
 .karaoke .mon-ticket .bouton { border-color: var(--encre-2); color: var(--encre); }
 .karaoke .mon-ticket .bouton:hover { background: var(--teinte); }
 .karaoke .mon-ticket .bouton:disabled { opacity: 0.65; }
+.karaoke__scene-manette { display: grid; gap: var(--espace-3); }
+.karaoke__scene-manette .mon-ticket--appele { margin-bottom: var(--espace-5); }
+.karaoke__scene-manette .mon-ticket__etiquette { max-width: 24ch; line-height: 1.15; text-align: right; }
+.karaoke .mon-ticket--appele .bouton--action {
+  align-self: start;
+  margin-block: var(--espace-2);
+  border-color: var(--encre);
+  background: var(--citron);
+  color: var(--encre);
+}
+.karaoke .mon-ticket--appele .bouton--action:hover:not(:disabled) { background: var(--citron-appuye); }
+.karaoke .mon-ticket--appele .bouton--action:disabled { background: var(--teinte); }
+.karaoke .mon-ticket--appele .bouton--action:focus-visible { outline-color: var(--encre); }
+.karaoke__barre-passage, .karaoke__passage-courant { display: grid; gap: var(--espace-2); }
+.karaoke__passage-courant { overflow-wrap: anywhere; }
+.karaoke__passage-courant p:empty:not([role]) { display: none; }
+.karaoke__barre-passage .bouton { justify-self: start; }
+.karaoke .ticket--immobile .ticket__corps { animation: none; }
 .salle .karaoke { gap: 1vw; }
 .salle .karaoke h2 { font-size: 1.5vw; }
 .salle .karaoke .karaoke__invitation { font: 700 2.6vw/1.2 var(--police-texte); text-transform: none; letter-spacing: normal; }
@@ -78,16 +96,27 @@
 .salle .karaoke__prochain .ticket__qui { font-size: 2.8vw; }
 .salle .karaoke__prochain .ticket__quoi { font-size: 2.2vw; }
 .salle .karaoke__priorite { font-size: 1.5vw; }
-/* Trois prochains tickets laissent au talon et aux informations communes leur place à 1080 px. */
-.salle__cote .karaoke { gap: 0.7vw; }
-.salle__cote .karaoke .ticket__corps { padding: 0.5vw 0.8vw; }
+.salle .karaoke__delai { font-size: 5vw; }
+.salle .karaoke__paroles { display: grid; gap: 0.4vw; overflow-wrap: anywhere; }
+.salle .karaoke__lecteur { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
+.salle .karaoke__lecteur .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
+.salle .karaoke__lecteur p:empty { display: none; }
+/* Le courant et trois prochains Passages laissent au talon sa place à 1080 px. */
+.salle__cote .karaoke { gap: 0.5vw; }
+.salle__cote .karaoke .ticket { min-height: 4.1vw; }
+.salle__cote .karaoke .ticket__corps { gap: 0; padding: 0.3vw 0.7vw; }
+.salle__cote .karaoke .ticket p { line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .salle__cote .karaoke .ticket__numero { font-size: 2.8vw; }
-.salle__cote .karaoke .ticket__qui { font-size: 1.5vw; }
-.salle__cote .karaoke .ticket__quoi { font-size: 1.2vw; }
+.salle__cote .karaoke .ticket__qui { font-size: 1.32vw; }
+.salle__cote .karaoke .ticket__quoi { font-size: 1.07vw; }
 .salle__cote .karaoke .karaoke__priorite { font-size: 1.1vw; }
+.salle__cote .karaoke__courant-salle { margin: 0 0.8vw 0.4vw 0; }
+.salle__cote .karaoke__etat-ticket { font-size: 1.1vw; font-weight: 700; }
 @media (max-width: 860px) {
   .karaoke__commandes .bouton { flex-grow: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .karaoke *, .karaoke *::before, .karaoke *::after { animation: none; transition: none; }
+  .karaoke .ticket--detache .ticket__corps,
+  .karaoke .mon-ticket--detachement .mon-ticket__bas { animation: none; }
 }

@@ -57,6 +57,7 @@ async function demarrer() {
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
 		resynchroniser: () => suivi?.resynchroniser(),
+		maintenantServeur: () => suivi?.maintenantServeur() ?? Date.now(),
 		surEnvoi(etat, detail) {
 			const envoi = element('envoi');
 			// Envoi annulé : plus rien n'est en cours, le bandeau disparaît.

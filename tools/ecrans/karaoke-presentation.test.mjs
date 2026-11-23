@@ -39,3 +39,9 @@ test('les motifs de la Chanson priment sur le quota du bloc, dans l’ordre des 
 	assert.deepEqual(etatInscription({ inscriptionPossible: true, motifIndisponibilite: null }, quota, true),
 		{ possible: false, motif: 'Ta limite de Passages est atteinte.' });
 });
+
+test('les décomptes arrondissent au plafond et le décalage comporte un signe et un dixième', async () => {
+	const { formaterTempsRestant, formaterDecalage } = await import('../../src/main/resources/static/js/modes/karaoke/presentation.mjs');
+	assert.deepEqual([0, 26999, 59000, 59001, 61442].map(formaterTempsRestant), ['0 s', '27 s', '59 s', '1:00', '1:02']);
+	assert.deepEqual([1500, -349, -50, 1599].map(formaterDecalage), ['+1,5 s', '−0,3 s', '0,0 s', '+1,6 s']);
+});

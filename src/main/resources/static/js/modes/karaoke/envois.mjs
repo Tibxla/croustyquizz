@@ -26,6 +26,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 		envoi.definitif = etat.etat === 'accepte' || (etat.etat === 'refuse' && !peutReessayer(etat));
 		surEtat(envoi.etat);
 		if (exigeCapture(etat) && precedent !== etat.etat) demanderCapture();
+		if (envoi.type === 'CONFIRMER_PRESENCE' && envoi.definitif && etat.etat === 'refuse') oublier(envoi.cle);
 	}
 	function partir(envoi) {
 		const tentative = { controleur: new AbortController(), active: true };
