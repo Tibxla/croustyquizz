@@ -93,7 +93,12 @@ test('Console : un seul réessai manuel après capture puis synchronisée, conte
 	assert.equal(b.appels.length, 2); assert.deepEqual(b.appels[1].args[2], b.appels[0].args[2]);
 	assert.equal(b.appels[1].args[3].entetes['Idempotency-Key'], b.appels[0].args[3].entetes['Idempotency-Key']);
 	b.appels[1].resolve({ statut: 409, corps: { code: 'COMMANDE_PERIMEE', detail: 'Trop tard' } }); await terminerMicrotaches();
+	assert.equal(b.captures(), 2);
+	assert.equal(bouton(b.principale, 'Appliquer').disabled, true);
+	b.module.afficher(vue({ passagesEnAttente: [p] }), evenement);
+	assert.equal(bouton(b.principale, 'Appliquer').disabled, true);
 	b.module.afficher(vue({ passagesEnAttente: [p] }), capture); assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	assert.equal(bouton(b.principale, 'Appliquer').disabled, false);
 	b.module.demonter();
 });
 
@@ -248,6 +253,25 @@ test('changer de Manche ou démonter annule les lectures et ignore toute répons
 	b.module.demonter(); assert.equal(b.appels[1].args[3].signal.aborted, true);
 	b.appels[1].reject(new Error()); await terminerMicrotaches(); assert.equal(b.principale.childElementCount, 0);
 	assert.equal(b.captures(), 0);
+});
+
+test('changer de Manche annule les mutations précédentes et leurs réponses tardives', async () => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	b.module.afficher(vue(), capture);
+	b.connecter('synchronisee');
+	const formulaire = b.principale.querySelector('form');
+	formulaire.dispatchEvent({ type: 'submit' });
+	b.module.afficher(vue({ mancheId: 'nouvelle' }), evenement);
+	assert.equal(b.appels[0].args[3].signal.aborted, true);
+	assert.doesNotMatch(b.principale.textContent, /Envoi en cours/);
+	b.appels[0].resolve({ statut: 503, corps: {} });
+	await terminerMicrotaches();
+	assert.equal(b.captures(), 0);
+	assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	formulaire.dispatchEvent({ type: 'submit' });
+	assert.match(b.appels[1].args[1], /\/manches\/nouvelle\//);
+	assert.notEqual(b.appels[1].args[3].entetes['Idempotency-Key'], b.appels[0].args[3].entetes['Idempotency-Key']);
+	b.module.demonter();
 });
 
 test('les mutations Karaoké se taisent dans le bandeau de la coquille : un seul statut annoncé, près de l’action', () => {

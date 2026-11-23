@@ -53,16 +53,17 @@ test('503 confirmé par vue, oubli accepté absent et inconnue conservée', asyn
 	const b = banc(); const { cle } = b.machine.envoyerCommande(commande);
 	b.appels[0].resolve({ statut: 503, corps: { code: 'SERVICE_INDISPONIBLE' } }); await vider();
 	assert.equal(b.etats.at(-1).etat, 'indisponible');
-	assert.deepEqual(b.machine.reconcilier([]), { acceptees: [], oubliees: [] });
-	assert.deepEqual(b.machine.reconcilier([cle]), { acceptees: [cle], oubliees: [] });
+	assert.deepEqual(b.machine.reconcilier([]), []);
+	assert.equal(b.etats.at(-1).etat, 'indisponible');
+	assert.deepEqual(b.machine.reconcilier([cle]), []);
 	assert.deepEqual(b.etats.at(-1), { cle, etat: 'accepte' });
-	assert.deepEqual(b.machine.reconcilier([]), { acceptees: [], oubliees: [cle] });
+	assert.deepEqual(b.machine.reconcilier([]), [cle]);
 	assert.equal(b.machine.retrouverInscription('m', 'c'), null);
 });
 
 test('une vue confirme une inscription en cours sans fabriquer de reçu ni proposer de réessai', () => {
 	const b = banc(); const { cle } = b.machine.envoyerCommande(commande);
-	assert.deepEqual(b.machine.reconcilier([cle]), { acceptees: [cle], oubliees: [] });
+	b.machine.reconcilier([cle]);
 	assert.deepEqual(b.etats.at(-1), { cle, etat: 'accepte' });
 	assert.equal(b.machine.reessayer(cle), null); b.machine.detruire();
 });
@@ -87,12 +88,14 @@ test('les refus transitoires sont réessayables, les refus définitifs libèrent
 
 test('une désinscription ne se réconcilie pas ; oubli et démontage ignorent les réponses tardives', async () => {
 	const b = banc(); const { cle } = b.machine.envoyerCommande({ ...commande, chansonId: undefined, passageId: 'p' });
-	assert.deepEqual(b.machine.reconcilier([cle]), { acceptees: [], oubliees: [] });
+	assert.deepEqual(b.machine.reconcilier([cle]), []);
+	assert.equal(b.etats.at(-1).etat, 'en-cours');
 	b.machine.oublier(cle); assert.equal(b.appels[0].args[3].signal.aborted, true);
 	b.appels[0].resolve({ statut: 200, corps: {} }); await vider(); assert.equal(b.etats.length, 1);
-	b.machine.envoyerCommande(commande); [...b.delais.values()][0](); b.machine.changerManche('autre'); await vider();
+	b.machine.envoyerCommande(commande); [...b.delais.values()][0](); b.machine.detruire(); await vider();
 	assert.equal(b.captures(), 0); assert.equal(b.machine.retrouverInscription('m', 'c'), null);
-	b.machine.detruire(); assert.equal(b.machine.envoyerCommande(commande), null);
+	assert.equal(b.appels[1].args[3].signal.aborted, true);
+	assert.equal(b.machine.envoyerCommande(commande), null);
 });
 
 test('une erreur 5xx sans code du contrat (page d’erreur d’un relais) reste réessayable, une 409 non', async () => {
@@ -113,9 +116,9 @@ test('une inscription acceptée par 2xx n’est oubliée qu’après avoir été
 	b.appels[0].resolve({ statut: 201, corps: { passageId: 'p' } }); await vider();
 	assert.equal(b.etats.at(-1).etat, 'accepte');
 	// Une vue plus ancienne, sans le Passage, arrive après la réponse : l'inscription reste connue.
-	assert.deepEqual(b.machine.reconcilier([]), { acceptees: [], oubliees: [] });
+	assert.deepEqual(b.machine.reconcilier([]), []);
 	assert.equal(b.machine.retrouverInscription('m', 'c'), cle);
-	assert.deepEqual(b.machine.reconcilier([cle]), { acceptees: [], oubliees: [] });
-	assert.deepEqual(b.machine.reconcilier([]), { acceptees: [], oubliees: [cle] });
+	assert.deepEqual(b.machine.reconcilier([cle]), []);
+	assert.deepEqual(b.machine.reconcilier([]), [cle]);
 	b.machine.detruire();
 });

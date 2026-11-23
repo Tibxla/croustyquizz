@@ -1,5 +1,5 @@
 import { ouvrirDialogue } from '../../dialogue.mjs';
-import { creerMachineEnvoi, peutReessayer } from './envois.mjs';
+import { creerMachineEnvoi, exigeCapture, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
 import { teintePassage, formaterDuree, formaterAttente, etatInscription } from './presentation.mjs';
 
@@ -17,8 +17,6 @@ export function creerUuid(cryptoDisponible = globalThis.crypto) {
 const styles = new WeakMap();
 const paroles = { SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',
 	ABSENTES: 'Sans paroles', SANS_VOIX: 'Sans voix', INCONNU: 'Paroles à vérifier' };
-const exigeCapture = e => ['inconnu', 'indisponible'].includes(e.etat) || (e.etat === 'refuse' && e.code !== 'CSRF_INVALIDE' &&
-	(['COMMANDE_PERIMEE', 'ETAPE_INACTIVE', 'ETAT_INCOMPATIBLE'].includes(e.code) || [401, 403].includes(e.statut)));
 
 export function texteEnvoi(e) {
 	if (!e) return '';
@@ -147,7 +145,7 @@ export function creerInterface(zones, contexte) {
 				const personnels = bloc.mesPassagesEnAttente ?? [];
 				const visibles = [...envois.values()].filter(e => e.commande.acteurType === 'JOUEUR' && e.commande.chansonId &&
 					personnels.some(p => p.chanson.chansonId === e.commande.chansonId)).map(e => e.cle);
-				for (const cle of machine.reconcilier(visibles).oubliees) envois.delete(cle);
+				for (const cle of machine.reconcilier(visibles)) envois.delete(cle);
 				for (const [cle, e] of envois) if (e.commande.acteurType === 'JOUEUR' && e.commande.passageId &&
 					!personnels.some(p => p.passageId === e.commande.passageId)) { machine.oublier(cle); envois.delete(cle); }
 			} finally { suspendre = false; }
