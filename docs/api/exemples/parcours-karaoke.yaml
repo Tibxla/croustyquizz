@@ -1,5 +1,5 @@
 description: 'Toutes les données sont fictives. Contrat seul : aucun serveur exécuté. Un Interprète
-  par Passage dans ce parcours ; courant null (#22/#23).'
+  par Passage dans ce parcours ; courant null : le cycle du Passage est dans parcours-passage-karaoke.yaml.'
 evenementsComplets: true
 parametresCommuns:
   soireeId: 82000000-0000-4000-8000-000000000001
@@ -114,10 +114,14 @@ http:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: &a6
           longueurRechercheMax: 120
           delaiConsultationNavigateurMs: 8000
           delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
         prochainsPassages: &a7 []
         nombreAutresPassages: 0
 - nom: Capture initiale console
@@ -156,11 +160,19 @@ http:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Capture initiale joueur
   operationId: retrouverEtatManette
   acteur: joueur:82000000-0000-4000-8000-000000000003
@@ -197,6 +209,7 @@ http:
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
+        peutConfirmerPresence: false
 - nom: Rechercher, réponse corrélée et saisie nettoyée
   operationId: rechercherChansons
   acteur: joueur:82000000-0000-4000-8000-000000000003
@@ -627,6 +640,7 @@ http:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Quota atteint pour une autre Chanson
   operationId: inscrirePassage
   acteur: joueur:82000000-0000-4000-8000-000000000003
@@ -964,6 +978,9 @@ http:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a31
           - &a28
@@ -1042,6 +1059,8 @@ http:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a28
@@ -1050,6 +1069,12 @@ http:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: false
+        peutReprendre: true
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Gestion et attente suspendue en pause — joueur
   operationId: retrouverEtatManette
   acteur: joueur:82000000-0000-4000-8000-000000000003
@@ -1088,6 +1113,7 @@ http:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Limite courante sans effet en pause
   operationId: reglerLimitePassages
   acteur: animateur:82000000-0000-4000-8000-000000000006
@@ -1221,6 +1247,8 @@ http:
         tourOuvert: 2
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - &a158
@@ -1239,6 +1267,12 @@ http:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Dernière attente retirée sans fin de Manche
   operationId: retirerPassage
   acteur: animateur:82000000-0000-4000-8000-000000000006
@@ -1286,6 +1320,9 @@ http:
         tourOuvert: 2
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a164 []
         nombreAutresPassages: 0
@@ -1589,6 +1626,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a49
           - &a48
@@ -1639,12 +1679,20 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a48
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Inscrire Alizé après réessais transitoires — joueur
   canal: joueur
   message:
@@ -1680,6 +1728,7 @@ evenements:
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
+        peutConfirmerPresence: false
 - nom: Même Chanson permise à Basile — salle
   canal: salle
   message:
@@ -1707,6 +1756,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a55
           - &a53
@@ -1770,6 +1822,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a53
@@ -1777,6 +1831,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Même Chanson permise à Basile — joueur
   canal: joueur
   message:
@@ -1812,6 +1872,7 @@ evenements:
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
+        peutConfirmerPresence: false
 - nom: Deuxième Passage d’Alizé au Tour suivant — salle
   canal: salle
   message:
@@ -1839,6 +1900,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a61
           - &a58
@@ -1915,6 +1979,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a58
@@ -1923,6 +1989,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Deuxième Passage d’Alizé au Tour suivant — joueur
   canal: joueur
   message:
@@ -1959,6 +2031,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Arrivée d’une retardataire — salle
   canal: salle
   message:
@@ -1986,6 +2059,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a67
           - &a64
@@ -2062,6 +2138,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a64
@@ -2070,6 +2148,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Arrivée d’une retardataire — joueur
   canal: joueur
   message: &a184
@@ -2106,6 +2190,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Retardataire admis en fin du Tour ouvert — salle
   canal: salle
   message:
@@ -2133,6 +2218,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a73
           - &a70
@@ -2209,6 +2297,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a70
@@ -2230,6 +2320,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Retardataire admis en fin du Tour ouvert — joueur
   canal: joueur
   message: &a185
@@ -2266,6 +2362,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Première limite dans l’ordre serveur — salle
   canal: salle
   message:
@@ -2293,6 +2390,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a80
           - &a77
@@ -2369,6 +2469,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a77
@@ -2390,6 +2492,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Première limite dans l’ordre serveur — joueur
   canal: joueur
   message:
@@ -2426,6 +2534,7 @@ evenements:
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
+        peutConfirmerPresence: false
 - nom: Baisse de limite sans retrait — salle
   canal: salle
   message:
@@ -2448,6 +2557,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: *a84
         nombreAutresPassages: 1
@@ -2485,6 +2597,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente: &a173
           - *a15
@@ -2494,6 +2608,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Baisse de limite sans retrait — joueur
   canal: joueur
   message:
@@ -2529,6 +2649,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: 82000000-0000-4000-8000-000000000043
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a94
           - &a91
@@ -2605,6 +2728,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: 82000000-0000-4000-8000-000000000043
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a91
@@ -2625,6 +2750,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Priorité au deuxième Passage — joueur
   canal: joueur
   message:
@@ -2661,6 +2792,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Remplacer la priorité sans perdre l’ordre normal — salle
   canal: salle
   message:
@@ -2688,6 +2820,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: 82000000-0000-4000-8000-000000000042
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a100
           - &a97
@@ -2764,6 +2899,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: 82000000-0000-4000-8000-000000000042
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a97
@@ -2785,6 +2922,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Remplacer la priorité sans perdre l’ordre normal — joueur
   canal: joueur
   message:
@@ -2821,6 +2964,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Priorité retirée — salle
   canal: salle
   message:
@@ -2848,6 +2992,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a107
           - &a104
@@ -2924,6 +3071,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a104
@@ -2945,6 +3094,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Priorité retirée — joueur
   canal: joueur
   message:
@@ -2981,6 +3136,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Placement avant une ancre — salle
   canal: salle
   message:
@@ -3008,6 +3164,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a114
           - &a111
@@ -3084,6 +3243,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a111
@@ -3105,6 +3266,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Placement avant une ancre — joueur
   canal: joueur
   message:
@@ -3141,6 +3308,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Fin de Tour admissible — salle
   canal: salle
   message:
@@ -3168,6 +3336,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a121
           - &a118
@@ -3244,6 +3415,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a118
@@ -3265,6 +3438,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Fin de Tour admissible — joueur
   canal: joueur
   message:
@@ -3301,6 +3480,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Retirer Basile malgré les inscriptions étrangères — salle
   canal: salle
   message:
@@ -3328,6 +3508,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a128
           - &a125
@@ -3404,6 +3587,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a125
@@ -3412,6 +3597,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Retirer Basile malgré les inscriptions étrangères — joueur
   canal: joueur
   message:
@@ -3448,6 +3639,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Réinscrire Basile en fin du Tour admissible — salle
   canal: salle
   message:
@@ -3475,6 +3667,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a134
           - &a131
@@ -3553,6 +3748,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a131
@@ -3574,6 +3771,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Réinscrire Basile en fin du Tour admissible — joueur
   canal: joueur
   message:
@@ -3610,6 +3813,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Désinscription personnelle de Basile — salle
   canal: salle
   message:
@@ -3637,6 +3841,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a141
           - &a138
@@ -3713,6 +3920,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a138
@@ -3721,6 +3930,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Désinscription personnelle de Basile — joueur
   canal: joueur
   message:
@@ -3757,6 +3972,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Pause sans courant — salle
   canal: salle
   message:
@@ -3808,6 +4024,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a150
           - &a147
@@ -3884,6 +4103,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a147
@@ -3892,6 +4113,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Reprise — joueur
   canal: joueur
   message:
@@ -3928,6 +4155,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Retirer Alizé du premier Tour — salle
   canal: salle
   message:
@@ -3955,6 +4183,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a155
           - &a153
@@ -4018,6 +4249,8 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente:
         - *a153
@@ -4025,6 +4258,12 @@ evenements:
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Retirer Alizé du premier Tour — joueur
   canal: joueur
   message:
@@ -4060,6 +4299,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Dernier Passage du premier Tour, ouvrir le suivant — salle
   canal: salle
   message:
@@ -4082,6 +4322,9 @@ evenements:
         tourOuvert: 2
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &a160
           - *a158
@@ -4129,6 +4372,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 - nom: Dernière attente retirée sans fin de Manche — salle
   canal: salle
   message:
@@ -4171,11 +4415,19 @@ evenements:
         tourOuvert: 2
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Dernière attente retirée sans fin de Manche — joueur
   canal: joueur
   message:
@@ -4210,6 +4462,7 @@ evenements:
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
+        peutConfirmerPresence: false
 - nom: Fin, blocs Karaoké nuls — salle
   canal: salle
   message:
@@ -4262,6 +4515,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: []
         nombreAutresPassages: 0
@@ -4294,11 +4550,19 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Démarrer la Manche suivante — joueur
   canal: joueur
   message:
@@ -4333,6 +4597,7 @@ evenements:
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
+        peutConfirmerPresence: false
 - nom: Numéro suivant sur la Soirée
   canal: salle
   message:
@@ -4361,6 +4626,9 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
         configurationInterface: *a6
         prochainsPassages: &passagesMancheSuivante
         - passageId: 82000000-0000-4000-8000-000000000046
@@ -4401,11 +4669,19 @@ evenements:
         tourOuvert: 1
         passagePrioritaireId: null
         courant: null
+        lecture: null
+        fichierLocal: null
         configurationInterface: *a6
         passagesEnAttente: *passagesMancheSuivante
         peutGererFile: true
         peutReglerLimite: true
         peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
 - nom: Numéro suivant sur la Soirée — joueur
   canal: joueur
   message:
@@ -4440,6 +4716,7 @@ evenements:
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
 cases:
 - nom: Création avec limite configurée
   schema: CreationManche
@@ -4531,7 +4808,7 @@ cases:
     dernierBuzz: null
     karaoke: null
   valide: true
-- nom: Vue sans paroles — salle
+- nom: Paroles sans Passage courant refusées — salle
   schema: VueSalle
   valeur:
     soiree: *a2
@@ -4548,11 +4825,27 @@ cases:
       tourOuvert: 1
       passagePrioritaireId: null
       courant: null
+      lecteurDesigneId: null
+      lecture: null
+      paroles:
+        parolesId: 82000000-0000-4000-8000-000000000a01
+        dureeMs: 205000
+        lignes:
+        - positionMs: 0
+          texte: ''
+        - positionMs: 12000
+          texte: Une ligne fictive qui ouvre la Chanson
+        - positionMs: 16500
+          texte: Une seconde ligne fictive
       configurationInterface: *a6
       prochainsPassages: *a84
       nombreAutresPassages: 1
-      paroles: interdit
   valide: false
+  correction:
+    chemin:
+    - karaoke
+    - paroles
+    valeur: null
 - nom: Vue sans jetonReconnexion — salle
   schema: VueSalle
   valeur:
@@ -4570,6 +4863,9 @@ cases:
       tourOuvert: 1
       passagePrioritaireId: null
       courant: null
+      lecteurDesigneId: null
+      lecture: null
+      paroles: null
       configurationInterface: *a6
       prochainsPassages: *a84
       nombreAutresPassages: 1
@@ -4592,6 +4888,9 @@ cases:
       tourOuvert: 1
       passagePrioritaireId: null
       courant: null
+      lecteurDesigneId: null
+      lecture: null
+      paroles: null
       configurationInterface: *a6
       prochainsPassages: *a84
       nombreAutresPassages: 1
@@ -4690,11 +4989,19 @@ cases:
       tourOuvert: 1
       passagePrioritaireId: null
       courant: null
+      lecture: null
+      fichierLocal: null
       configurationInterface: *a6
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
       peutRechercher: true
+      lecteurDesigne: false
+      peutAppeler: true
+      peutPasser: false
+      peutReprendre: false
+      peutCaler: false
+      peutReprendreEnParolesSeules: false
       paroles: interdit
   valide: false
 - nom: Vue sans jetonReconnexion — console
@@ -4715,11 +5022,19 @@ cases:
       tourOuvert: 1
       passagePrioritaireId: null
       courant: null
+      lecture: null
+      fichierLocal: null
       configurationInterface: *a6
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
       peutRechercher: true
+      lecteurDesigne: false
+      peutAppeler: true
+      peutPasser: false
+      peutReprendre: false
+      peutCaler: false
+      peutReprendreEnParolesSeules: false
       jetonReconnexion: interdit
   valide: false
 - nom: Vue sans cleEcran — console
@@ -4740,11 +5055,19 @@ cases:
       tourOuvert: 1
       passagePrioritaireId: null
       courant: null
+      lecture: null
+      fichierLocal: null
       configurationInterface: *a6
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
       peutRechercher: true
+      lecteurDesigne: false
+      peutAppeler: true
+      peutPasser: false
+      peutReprendre: false
+      peutCaler: false
+      peutReprendreEnParolesSeules: false
       cleEcran: interdit
   valide: false
 - nom: Vue Karaoké sans bloc Quiz — joueur
@@ -4866,6 +5189,7 @@ cases:
       peutRechercher: true
       peutInscrire: false
       motifInscriptionRefusee: LIMITE_ATTEINTE
+      peutConfirmerPresence: false
       paroles: interdit
   valide: false
 - nom: Vue sans jetonReconnexion — joueur
@@ -4897,6 +5221,7 @@ cases:
       peutRechercher: true
       peutInscrire: false
       motifInscriptionRefusee: LIMITE_ATTEINTE
+      peutConfirmerPresence: false
       jetonReconnexion: interdit
   valide: false
 - nom: Vue sans cleEcran — joueur
@@ -4928,6 +5253,7 @@ cases:
       peutRechercher: true
       peutInscrire: false
       motifInscriptionRefusee: LIMITE_ATTEINTE
+      peutConfirmerPresence: false
       cleEcran: interdit
   valide: false
 - nom: Retardataire présent peut s’inscrire
@@ -5243,6 +5569,7 @@ cases:
     longueurRechercheMax: 0
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
+    delaiAppelMs: 30000
   valide: false
 - nom: Limite de recherche configurée à 1
   schema: ConfigurationInterfaceKaraoke
@@ -5250,6 +5577,7 @@ cases:
     longueurRechercheMax: 1
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
+    delaiAppelMs: 30000
   valide: true
 - nom: Limite de recherche configurée à 120
   schema: ConfigurationInterfaceKaraoke
@@ -5257,6 +5585,7 @@ cases:
     longueurRechercheMax: 120
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
+    delaiAppelMs: 30000
   valide: true
 - nom: Limite de recherche configurée à 121
   schema: ConfigurationInterfaceKaraoke
@@ -5264,6 +5593,7 @@ cases:
     longueurRechercheMax: 121
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
+    delaiAppelMs: 30000
   valide: false
 - nom: Commande valide — InscriptionPassage
   schema: InscriptionPassage
@@ -5615,6 +5945,9 @@ cases:
     tourOuvert: 1
     passagePrioritaireId: null
     courant: null
+    lecteurDesigneId: null
+    lecture: null
+    paroles: null
     configurationInterface: *a6
     prochainsPassages:
     - passageId: 82000000-0000-4000-8000-000000000041

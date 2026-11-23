@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: CroustyQuizz — contrats Quiz et File d’attente du Karaoké
+  title: CroustyQuizz — contrats du Quiz et du Karaoké
   version: 0.1.0
-  description: 'Contrat cible à relire (#34, #82), pas une déclaration d’endpoints déjà déployés.
-    Format Solo, Pilotage Manuel, Quiz et File d’attente du Karaoké ; socle de Buzz inclus.
-    README.md fait partie du contrat.'
+  description: 'Contrat cible à relire (#34, #82, #98), pas une déclaration d’endpoints déjà déployés.
+    Format Solo, Pilotage Manuel, Quiz, File d’attente et cycle du Passage du Karaoké ; socle de Buzz
+    inclus. README.md fait partie du contrat.'
 servers:
 - url: http://localhost:8080
   description: Développement local
@@ -437,9 +437,11 @@ paths:
     post:
       operationId: creerAccesEcran
       summary: Créer un accès de lecture pour l’Écran de salle
-      description: L’Animateur ouvre l’Écran de salle avec cette capacité limitée à sa Soirée. La clé expire à expireLe
-        ; ne donne accès ni à la Console ni aux vues privées. Préférer un transfert par fragment URL, retirer ce
-        fragment après lecture et ne jamais inscrire la clé dans une chaîne de requête.
+      description: L’Animateur ouvre l’Écran de salle avec cette capacité limitée à sa Soirée. La clé expire à expireLe.
+        Elle lit la salle et les résultats et envoie les seules commandes du lecteur de l’Écran de salle (désignation,
+        déclaration, fin, erreur et relevé de position), sans aucune action de jeu ; elle ne donne accès ni à la
+        Console ni aux vues privées. Préférer un transfert par fragment URL, retirer ce fragment après lecture et ne
+        jamais inscrire la clé dans une chaîne de requête.
       tags:
       - Soirée
       security:
@@ -934,12 +936,19 @@ paths:
     post:
       operationId: piloterManche
       summary: Intervenir sur la Manche active
-      description: 'Uniquement la Manche active en Soirée EN_COURS. METTRE_EN_PAUSE gèle une Question ouverte ;
-        REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la Question ouverte et révèle la correction, ou
-        passe de CORRECTION à la Question suivante ; après la dernière correction, termine la Manche. TERMINER arrête
-        la Manche sans révéler une Question abandonnée ni lui attribuer de points. Idempotence selon Idempotency-Key
-        ; etapeId absent ou non courant pour le Quiz : 409 ETAPE_INACTIVE. etapeId peut être omis pour une
-        Manche sans étape courante (Karaoké, Freestyle).'
+      description: 'Uniquement la Manche active en Soirée EN_COURS. Idempotence selon Idempotency-Key. Quiz :
+        METTRE_EN_PAUSE gèle une Question ouverte ; REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la
+        Question ouverte et révèle la correction, ou passe de CORRECTION à la Question suivante ; après la dernière
+        correction, termine la Manche. TERMINER arrête la Manche sans révéler une Question abandonnée ni lui
+        attribuer de points. etapeId absent ou non courant : 409 ETAPE_INACTIVE. Karaoké : etapeId est celui du
+        courant actif (APPELE, EN_COURS ou EN_PAUSE), créé à l’appel, et il est omis sans courant actif ; 409
+        ETAPE_INACTIVE s’il est absent ou différent avec un courant actif, présent sans courant actif, et pour
+        PASSER_ETAPE sans courant actif, etapeId omis ou non, même si le courant affiché est TERMINE ou SAUTE.
+        METTRE_EN_PAUSE fige le délai d’appel restant ou la chronologie du Passage, REPRENDRE les restitue ; 409
+        ETAT_INCOMPATIBLE pour REPRENDRE pendant une lecture EN_ERREUR. PASSER_ETAPE saute le courant actif
+        (SAUTE, Tour conservé, passage-saute), et une Manche en pause le reste. TERMINER annule le courant actif
+        (ANNULE, Tour conservé, lecture arrêtée) et le bloc karaoke devient null. Conditions : README.md,
+        section Karaoké, « Passage : appel, lecture et calage ».'
       tags:
       - Soirée
       security:
@@ -1919,6 +1928,804 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '503':
           $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/appel:
+    post:
+      operationId: appelerPassage
+      summary: Appeler le Passage en tête de la File d’attente
+      description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu. Appelle le Passage en position 1 :
+        EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
+        numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
+        recalculée sur la salle, la Console et toutes les Manettes. Le saut automatique relève de #25 :
+        d’ici là, le Pilotage Manuel s’applique quel que soit soiree.pilotage. Propres, dans l’ordre : 409
+        ETAT_INCOMPATIBLE (Manche en pause, puis courant actif) ; 409 COMMANDE_PERIMEE (compteur, Passage
+        sorti de l’attente ou plus en position 1). Refus communs : 400 REQUETE_INVALIDE, 401
+        AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 403 CSRF_INVALIDE, 404 RESSOURCE_INTROUVABLE (Manche ou
+        Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
+        ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
+        Manche (pause comprise), puis gardes d’objet ; un Passage clos, une étape, un compteur, un lectureId
+        ou un demandeId qui ne sont plus les actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu :
+        README.md, section Karaoké, « Passage : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/AppelPassage
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCyclePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/presence:
+    post:
+      operationId: confirmerPresencePassage
+      summary: Confirmer « Je suis prêt »
+      description: 'Manche Karaoké active en Soirée EN_COURS. Joueur Interprète du Passage appelé, envoiId dans le
+        corps. APPELE vers EN_COURS ; numeroModification augmente et la chronologie démarre aussitôt
+        (demarreLe). Une lecture préparée pendant l’appel est figée ; sinon le Passage démarre en paroles
+        seules, motif ECRAN_NON_PRET, lecteurId nul. La confirmation reste acceptée après l’échéance, qui ne
+        publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
+        l’ordre : 404 RESSOURCE_INTROUVABLE (Joueur non Interprète, avant tout reçu) ; 409 ETAT_INCOMPATIBLE
+        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE). Refus communs :
+        400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE
+        (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
+        ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
+        Manche (pause comprise), puis gardes d’objet ; un Passage clos, une étape, un compteur, un lectureId
+        ou un demandeId qui ne sont plus les actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu :
+        README.md, section Karaoké, « Passage : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ConfirmationPresencePassage
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCyclePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/lecteur:
+    put:
+      operationId: designerLecteurChanson
+      summary: Désigner le lecteur de l’Écran de salle
+      description: 'Manche Karaoké active en Soirée EN_COURS. Écran de salle. La fenêtre qui vient de choisir son
+        dossier se désigne par un lecteurId qu’elle a engendré ; la dernière désignation l’emporte, un seul
+        lecteur par Manche. La fenêtre garde son dossier et se redésigne à la Manche Karaoké suivante.
+        Pendant l’appel, la désignation efface la lecture préparée par un autre lecteur ; jamais celle d’un
+        Passage démarré, dont les signaux restent réservés à son lecteur. Publie lecture-chanson-modifiee
+        sur la salle et la Console. Aucun code propre : le lecteur déjà désigné réussit sans effet ni
+        publication. Refus communs : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE,
+        404 RESSOURCE_INTROUVABLE (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409
+        ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans
+        reçu). Ordre : accès puis état de la Manche (pause comprise). Reçu et rejeu :
+        README.md, section Karaoké, « Passage : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité de l’Écran de salle issue de sa clé, jamais du corps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/DesignationLecteur
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseLectureChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/lecture:
+    post:
+      operationId: declarerLectureChanson
+      summary: Déclarer la lecture préparée pendant l’appel
+      description: 'Manche Karaoké active en Soirée EN_COURS. Écran lecteur désigné, pendant l’appel. FICHIER_LOCAL avec
+        le seul nom, la taille et la durée du fichier trouvé (le serveur ne reçoit aucun son), ou
+        PAROLES_SEULES avec son motif. Rend un nouveau lectureId ; une déclaration répétée par le même
+        lecteur remplace la précédente. En fichier local, les paroles retenues sont la version de durée la
+        plus proche du fichier (VERSION_ADAPTEE), sinon celles de l’inscription (REPLI_INSCRIPTION) : le
+        choix ne refuse jamais la déclaration, et jamais par SOURCE_PAROLES_INDISPONIBLE. Le décalage
+        mémorisé pour la même Chanson, la même version et le même fichier devient le decalageMs initial.
+        Publie lecture-chanson-modifiee sur la salle et la Console. Une déclaration arrivée après « Je suis
+        prêt » est périmée et ne lance jamais le fichier. Propres, dans l’ordre : 409 COMMANDE_PERIMEE
+        (Passage non APPELE, compteur ou étape) ; 409 LECTEUR_NON_DESIGNE (autre lecteurId que le désigné).
+        Refus communs : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404
+        RESSOURCE_INTROUVABLE (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409
+        ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans
+        reçu). Ordre : accès, état de la Manche (pause comprise), puis gardes d’objet ; un Passage clos, une
+        étape, un compteur, un lectureId ou un demandeId qui ne sont plus les actuels donnent
+        COMMANDE_PERIMEE, jamais 404. Reçu et rejeu : README.md, section Karaoké, « Passage : appel, lecture
+        et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité de l’Écran de salle issue de sa clé, jamais du corps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/DeclarationLectureChanson
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseLectureChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/fin-lecture:
+    post:
+      operationId: signalerFinLectureChanson
+      summary: Signaler la fin du fichier local
+      description: 'Manche Karaoké active en Soirée EN_COURS. Écran lecteur de la lecture, en fichier local. La vraie
+        fin du fichier peut devancer la fin prévue : EN_COURS ou EN_PAUSE vers TERMINE, passage-termine sur
+        la salle, la Console et toutes les Manettes ; une Manche en pause le reste. Quand fin locale et fin
+        prévue se croisent, une seule clôture a lieu et le signal perdant reçoit COMMANDE_PERIMEE. Propres,
+        dans l’ordre : 409 COMMANDE_PERIMEE (Passage clos, étape ou lectureId) ; 409 LECTEUR_NON_DESIGNE
+        (autre lecteurId que celui de la lecture) ; 409 ETAT_INCOMPATIBLE (lecture PREPAREE, en paroles
+        seules ou EN_ERREUR). Refus communs : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403
+        ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche ou Passage inconnus, hors portée), 409
+        ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche terminée), 503
+        SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la Manche (pause comprise), puis gardes
+        d’objet ; un Passage clos, une étape, un compteur, un lectureId ou un demandeId qui ne sont plus les
+        actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu : README.md, section Karaoké, « Passage
+        : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité de l’Écran de salle issue de sa clé, jamais du corps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/SignalFinLectureChanson
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseLectureChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/erreur-lecture:
+    post:
+      operationId: signalerErreurLectureChanson
+      summary: Signaler une erreur du fichier local
+      description: 'Manche Karaoké active en Soirée EN_COURS. Écran lecteur de la lecture, après « Je suis prêt ». Un
+        départ refusé par le navigateur ou une erreur du fichier met la Manche en pause et la lecture
+        EN_ERREUR ; REPRENDRE est alors refusé et l’Animateur choisit reprendreEnParolesSeules ou
+        PASSER_ETAPE. Publie lecture-chanson-modifiee sur la salle, la Console et toutes les Manettes ; sans
+        effet ni publication si la lecture est déjà EN_ERREUR. Propres, dans l’ordre : 409 COMMANDE_PERIMEE
+        (Passage clos, étape ou lectureId) ; 409 LECTEUR_NON_DESIGNE (autre lecteurId que celui de la
+        lecture) ; 409 ETAT_INCOMPATIBLE (lecture PREPAREE ou en paroles seules). Refus communs : 400
+        REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche
+        ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
+        ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
+        Manche (pause comprise), puis gardes d’objet ; un Passage clos, une étape, un compteur, un lectureId
+        ou un demandeId qui ne sont plus les actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu :
+        README.md, section Karaoké, « Passage : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité de l’Écran de salle issue de sa clé, jamais du corps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/SignalErreurLectureChanson
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseLectureChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/paroles-seules:
+    post:
+      operationId: reprendreEnParolesSeules
+      summary: Reprendre en paroles seules après une erreur de lecture
+      description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu, seule sortie d’une lecture EN_ERREUR
+        avec PASSER_ETAPE, acceptée Manche en pause. La lecture garde lectureId, lecteurId, paroles,
+        origineParoles et decalageMs, passe en PAROLES_SEULES, motif ERREUR_LECTURE, sans fichier ni demande
+        de position, et redevient DEMARREE ; la Manche et le Passage repartent EN_COURS, numeroModification
+        inchangé. Publie lecture-chanson-modifiee sur la salle, la Console et toutes les Manettes. Propres,
+        dans l’ordre : 409 COMMANDE_PERIMEE (Passage clos, étape ou lectureId) ; 409 ETAT_INCOMPATIBLE
+        (lecture non EN_ERREUR). Refus communs : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403
+        ACCES_REFUSE, 403 CSRF_INVALIDE, 404 RESSOURCE_INTROUVABLE (Manche ou Passage inconnus, hors
+        portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche
+        terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la Manche (pause comprise),
+        puis gardes d’objet ; un Passage clos, une étape, un compteur, un lectureId ou un demandeId qui ne
+        sont plus les actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu : README.md, section
+        Karaoké, « Passage : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/RepriseParolesSeules
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCyclePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/calage/debut:
+    post:
+      operationId: marquerDebutParoles
+      summary: Marquer « ça commence »
+      description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu. Remplace le décalage précédent :
+        decalageMs vaut la position au geste moins positionMs de la première ligne non blanche. En fichier
+        local, le serveur publie dans la vue salle une demande de position identifiée ; le lecteur relève sa
+        position à réception et la renvoie par releverPositionLecture. En paroles seules, il prend
+        positionChronologiqueMs à réception. Une nouvelle demande remplace celle en attente ; la clôture
+        l’efface. En fichier local, le décalage est mémorisé pour toutes les Soirées par Chanson, version de
+        paroles et fichier (nom et taille), clé absente de toute vue ; rien n’est mémorisé en paroles
+        seules. Publie calage-chanson-modifie sur la salle et la Console. Propres, dans l’ordre : 409
+        ETAT_INCOMPATIBLE (Manche en pause) ; 409 COMMANDE_PERIMEE (étape ou lectureId) ; 409
+        ETAT_INCOMPATIBLE (Passage non EN_COURS ou lecture non DEMARREE). Refus communs : 400
+        REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 403 CSRF_INVALIDE, 404
+        RESSOURCE_INTROUVABLE (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409
+        ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans
+        reçu). Ordre : accès, état de la Manche (pause comprise), puis gardes d’objet ; un Passage clos, une
+        étape, un compteur, un lectureId ou un demandeId qui ne sont plus les actuels donnent
+        COMMANDE_PERIMEE, jamais 404. Reçu et rejeu : README.md, section Karaoké, « Passage : appel, lecture
+        et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/MarqueDebutParoles
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCalage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/calage/correction:
+    post:
+      operationId: corrigerCalage
+      summary: Corriger le calage de 0,1 seconde
+      description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu. RETARDER ajoute 100 ms à decalageMs
+        (paroles plus tard), AVANCER en retire 100 ; numeroModificationCalage change avec decalageMs. Une
+        correction ne supprime pas une demande de position en attente : le relevé qui arrive ensuite
+        recalcule le décalage depuis la première ligne et la remplace. Mémorisée en fichier local comme le
+        geste. Publie calage-chanson-modifie sur la salle et la Console. Propres, dans l’ordre : 409
+        ETAT_INCOMPATIBLE (Manche en pause) ; 409 COMMANDE_PERIMEE (étape, lectureId ou
+        numeroModificationCalage) ; 409 ETAT_INCOMPATIBLE (Passage non EN_COURS ou lecture non DEMARREE).
+        Refus communs : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 403
+        CSRF_INVALIDE, 404 RESSOURCE_INTROUVABLE (Manche ou Passage inconnus, hors portée), 409
+        ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche terminée), 503
+        SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la Manche (pause comprise), puis gardes
+        d’objet ; un Passage clos, une étape, un compteur, un lectureId ou un demandeId qui ne sont plus les
+        actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu : README.md, section Karaoké, « Passage
+        : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/CorrectionCalage
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCalage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/calage/position:
+    post:
+      operationId: releverPositionLecture
+      summary: Relever la position du lecteur local
+      description: 'Manche Karaoké active en Soirée EN_COURS. Écran lecteur de la lecture, en réponse à la demande de
+        position publiée dans la vue salle. Le serveur calcule decalageMs depuis la première ligne non
+        blanche, efface la demande et publie calage-chanson-modifie sur la salle et la Console. Une demande
+        sans réponse reste en attente jusqu’à un nouveau geste ; le relevé d’une demande remplacée ou
+        effacée reçoit COMMANDE_PERIMEE. Propres, dans l’ordre : 409 COMMANDE_PERIMEE (Passage clos, étape,
+        lectureId ou demandeId) ; 409 LECTEUR_NON_DESIGNE (autre lecteurId que celui de la lecture) ; 409
+        ETAT_INCOMPATIBLE (lecture PREPAREE, en paroles seules ou EN_ERREUR). Refus communs : 400
+        REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche
+        ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
+        ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
+        Manche (pause comprise), puis gardes d’objet ; un Passage clos, une étape, un compteur, un lectureId
+        ou un demandeId qui ne sont plus les actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu :
+        README.md, section Karaoké, « Passage : appel, lecture et calage ».'
+      tags:
+      - Karaoké
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité de l’Écran de salle issue de sa clé, jamais du corps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/RelevePositionLecture
+      responses:
+        '200':
+          description: Reçu immuable, sans Location. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseLectureChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
 components:
   securitySchemes:
     sessionAnimateur:
@@ -1936,8 +2743,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: opaque
-      description: Capacité de lecture seule limitée à une Soirée, créée par un Animateur ; aucune commande ni vue
-        privée.
+      description: Capacité limitée à une Soirée, créée par un Animateur. Elle lit la salle et les résultats et envoie
+        les cinq commandes du lecteur de l’Écran de salle (designerLecteurChanson, declarerLectureChanson,
+        signalerFinLectureChanson, signalerErreurLectureChanson, releverPositionLecture), sans aucune action de
+        jeu ni vue privée.
   responses:
     Erreur400:
       description: JSON, paramètre ou identifiant mal formé.

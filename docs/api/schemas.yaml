@@ -268,8 +268,10 @@ $defs:
     - soireeId
     - cleEcran
     - expireLe
-    description: Capacité de lecture seule pour l'Écran de salle, limitée à cette Soirée. Transport dans Authorization/CONNECT,
-      jamais dans une chaîne de requête. La durée est donnée par expireLe.
+    description: Capacité de l'Écran de salle, limitée à cette Soirée. Elle lit la salle et envoie les seules
+      commandes de son lecteur (designerLecteurChanson, declarerLectureChanson, signalerFinLectureChanson,
+      signalerErreurLectureChanson, releverPositionLecture), sans aucune action de jeu. Transport dans
+      Authorization/CONNECT, jamais dans une chaîne de requête. La durée est donnée par expireLe.
   ModeDeJeu:
     type: string
     enum:
@@ -702,9 +704,10 @@ $defs:
         format: uuid
     required:
     - action
-    description: etapeId est facultatif pour une Manche sans étape courante (Karaoké, Freestyle). Pour le Quiz,
-      il doit être présent et correspondre à l’étape courante, sinon 409 ETAPE_INACTIVE. La correction reste
-      attachée au même etapeId jusqu’à l’étape suivante.
+    description: etapeId désigne l’étape courante et doit alors lui correspondre, sinon 409 ETAPE_INACTIVE. Pour
+      le Quiz, il est toujours présent ; la correction reste attachée au même etapeId jusqu’à l’étape suivante.
+      Au Karaoké, un Passage actif (APPELE, EN_COURS ou EN_PAUSE) a une étape, créée à l’appel ; etapeId est
+      omis seulement sans Passage actif, et PASSER_ETAPE y donne ETAPE_INACTIVE.
   AccuseCommande:
     type: object
     additionalProperties: false
@@ -1164,6 +1167,12 @@ $defs:
         - buzz-recu
         - file-attente-modifiee
         - limite-passages-modifiee
+        - passage-appele
+        - passage-demarre
+        - passage-termine
+        - passage-saute
+        - lecture-chanson-modifiee
+        - calage-chanson-modifie
       soireeId:
         type: string
         format: uuid
@@ -1205,6 +1214,12 @@ $defs:
         - buzz-recu
         - file-attente-modifiee
         - limite-passages-modifiee
+        - passage-appele
+        - passage-demarre
+        - passage-termine
+        - passage-saute
+        - lecture-chanson-modifiee
+        - calage-chanson-modifie
       soireeId:
         type: string
         format: uuid
@@ -1248,6 +1263,12 @@ $defs:
         - resultat-personnel
         - file-attente-modifiee
         - limite-passages-modifiee
+        - passage-appele
+        - passage-demarre
+        - passage-termine
+        - passage-saute
+        - lecture-chanson-modifiee
+        - calage-chanson-modifie
       soireeId:
         type: string
         format: uuid
@@ -1316,6 +1337,7 @@ $defs:
         - ROTATION_PROTEGEE
         - CHANSON_INDISPONIBLE
         - SOURCE_PAROLES_INDISPONIBLE
+        - LECTEUR_NON_DESIGNE
       detail:
         type: string
         minLength: 1
@@ -1695,10 +1717,15 @@ $defs:
         type: integer
         minimum: 1
         maximum: 9007199254740991
+      delaiAppelMs:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
     required:
     - longueurRechercheMax
     - delaiConsultationNavigateurMs
     - delaiConfirmationNavigateurMs
+    - delaiAppelMs
   PassageEnAttentePublic:
     type: object
     additionalProperties: false
@@ -1792,8 +1819,61 @@ $defs:
         - APPELE
         - EN_COURS
         - EN_PAUSE
-        - VOTE
+        - TERMINE
+        - SAUTE
+        description: EN_PAUSE seulement depuis EN_COURS. TERMINE et SAUTE restent affichés jusqu’au prochain appel.
       prochainAppelPrevuLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: 'null'
+      appeleLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      echeanceAppelLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: 'null'
+      delaiAppelRestantMs:
+        oneOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+      demarreLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: 'null'
+      finPrevueLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: 'null'
+      positionChronologiqueMs:
+        oneOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+      tempsPauseMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+        description: Pauses closes après demarreLe ; 0 en APPELE.
+      calculeLe:
+        type: string
+        format: date-time
+        pattern: Z$
+        description: Instant où le serveur a projeté la vue lors de la mutation ; une capture de même Révision rend la
+          même vue.
+      clotureLe:
         oneOf:
         - type: string
           format: date-time
@@ -1808,6 +1888,132 @@ $defs:
     - etapeId
     - etat
     - prochainAppelPrevuLe
+    - appeleLe
+    - echeanceAppelLe
+    - delaiAppelRestantMs
+    - demarreLe
+    - finPrevueLe
+    - positionChronologiqueMs
+    - tempsPauseMs
+    - calculeLe
+    - clotureLe
+    description: 'Passage courant affiché : le courant actif (APPELE, EN_COURS ou EN_PAUSE), sinon le dernier Passage
+      TERMINE ou SAUTE jusqu’au prochain appel. APPELE : délai restant max(0, échéance − calculeLe), figé en pause
+      où l’échéance est nulle ; prochainAppelPrevuLe vaut l’échéance plus la durée d’inscription si le délai restant
+      est positif hors pause, sinon null. EN_COURS : positionChronologiqueMs vaut min(durée de référence, calculeLe −
+      demarreLe − tempsPauseMs) et prochainAppelPrevuLe vaut finPrevueLe. EN_PAUSE : position figée au début de la
+      pause.'
+    allOf:
+    - if:
+        properties:
+          etat:
+            const: APPELE
+      then:
+        properties:
+          delaiAppelRestantMs:
+            type: integer
+          demarreLe:
+            type: 'null'
+          finPrevueLe:
+            type: 'null'
+          positionChronologiqueMs:
+            type: 'null'
+          clotureLe:
+            type: 'null'
+          tempsPauseMs:
+            const: 0
+    - if:
+        properties:
+          etat:
+            const: EN_COURS
+      then:
+        properties:
+          echeanceAppelLe:
+            type: 'null'
+          delaiAppelRestantMs:
+            type: 'null'
+          demarreLe:
+            type: string
+            format: date-time
+            pattern: Z$
+          finPrevueLe:
+            type: string
+            format: date-time
+            pattern: Z$
+          positionChronologiqueMs:
+            type: integer
+          clotureLe:
+            type: 'null'
+          prochainAppelPrevuLe:
+            type: string
+            format: date-time
+            pattern: Z$
+    - if:
+        properties:
+          etat:
+            const: EN_PAUSE
+      then:
+        properties:
+          echeanceAppelLe:
+            type: 'null'
+          delaiAppelRestantMs:
+            type: 'null'
+          demarreLe:
+            type: string
+            format: date-time
+            pattern: Z$
+          finPrevueLe:
+            type: 'null'
+          positionChronologiqueMs:
+            type: integer
+          clotureLe:
+            type: 'null'
+          prochainAppelPrevuLe:
+            type: 'null'
+    - if:
+        properties:
+          etat:
+            const: TERMINE
+      then:
+        properties:
+          echeanceAppelLe:
+            type: 'null'
+          delaiAppelRestantMs:
+            type: 'null'
+          demarreLe:
+            type: string
+            format: date-time
+            pattern: Z$
+          finPrevueLe:
+            type: 'null'
+          positionChronologiqueMs:
+            type: 'null'
+          clotureLe:
+            type: string
+            format: date-time
+            pattern: Z$
+          prochainAppelPrevuLe:
+            type: 'null'
+    - if:
+        properties:
+          etat:
+            const: SAUTE
+      then:
+        properties:
+          echeanceAppelLe:
+            type: 'null'
+          delaiAppelRestantMs:
+            type: 'null'
+          finPrevueLe:
+            type: 'null'
+          positionChronologiqueMs:
+            type: 'null'
+          clotureLe:
+            type: string
+            format: date-time
+            pattern: Z$
+          prochainAppelPrevuLe:
+            type: 'null'
   KaraokeCommun:
     type: object
     properties:
@@ -1865,9 +2071,47 @@ $defs:
           type: integer
           minimum: 0
           maximum: 9007199254740991
+        lecteurDesigneId:
+          oneOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          description: Fenêtre d’Écran de salle désignée comme lecteur de la Manche, sinon null.
+        lecture:
+          oneOf:
+          - $ref: '#/$defs/LectureDeChanson'
+          - type: 'null'
+        paroles:
+          oneOf:
+          - $ref: '#/$defs/ParolesDuPassage'
+          - type: 'null'
       required:
       - prochainsPassages
       - nombreAutresPassages
+      - lecteurDesigneId
+      - lecture
+      - paroles
+    - if:
+        required:
+        - paroles
+        properties:
+          paroles:
+            not:
+              type: 'null'
+      then:
+        description: Des paroles exigent un courant actif EN_COURS ou EN_PAUSE.
+        required:
+        - courant
+        properties:
+          courant:
+            type: object
+            required:
+            - etat
+            properties:
+              etat:
+                enum:
+                - EN_COURS
+                - EN_PAUSE
     unevaluatedProperties: false
   BlocKaraokeConsole:
     allOf:
@@ -1884,11 +2128,66 @@ $defs:
           type: boolean
         peutRechercher:
           type: boolean
+        lecteurDesigne:
+          type: boolean
+          description: Vrai exactement quand lecteurDesigneId de la salle est non nul.
+        peutAppeler:
+          type: boolean
+          description: Manche EN_COURS, sans courant actif, File d’attente non vide.
+        peutPasser:
+          type: boolean
+          description: Courant actif, pause comprise.
+        peutReprendre:
+          type: boolean
+          description: Manche EN_PAUSE et lecture non EN_ERREUR.
+        peutCaler:
+          type: boolean
+          description: Passage EN_COURS, Manche EN_COURS et lecture DEMARREE.
+        peutReprendreEnParolesSeules:
+          type: boolean
+          description: Lecture EN_ERREUR.
+        lecture:
+          oneOf:
+          - $ref: '#/$defs/LectureDeChanson'
+          - type: 'null'
+        fichierLocal:
+          oneOf:
+          - $ref: '#/$defs/FichierAudioLocal'
+          - type: 'null'
+          description: Fichier de la lecture, visible de la seule Console ; non nul exactement quand lecture.source
+            vaut FICHIER_LOCAL.
       required:
       - passagesEnAttente
       - peutGererFile
       - peutReglerLimite
       - peutRechercher
+      - lecteurDesigne
+      - peutAppeler
+      - peutPasser
+      - peutReprendre
+      - peutCaler
+      - peutReprendreEnParolesSeules
+      - lecture
+      - fichierLocal
+    - if:
+        required:
+        - lecture
+        properties:
+          lecture:
+            type: object
+            required:
+            - source
+            properties:
+              source:
+                const: FICHIER_LOCAL
+      then:
+        properties:
+          fichierLocal:
+            $ref: '#/$defs/FichierAudioLocal'
+      else:
+        properties:
+          fichierLocal:
+            type: 'null'
     unevaluatedProperties: false
   BlocKaraokeManette:
     allOf:
@@ -1920,6 +2219,9 @@ $defs:
           oneOf:
           - const: LIMITE_ATTEINTE
           - type: 'null'
+        peutConfirmerPresence:
+          type: boolean
+          description: Courant APPELE dont ce Joueur est Interprète, Manche EN_COURS.
       required:
       - prochainsPassages
       - nombreAutresPassages
@@ -1928,6 +2230,7 @@ $defs:
       - peutRechercher
       - peutInscrire
       - motifInscriptionRefusee
+      - peutConfirmerPresence
     - if:
         properties:
           peutInscrire:
@@ -1943,3 +2246,563 @@ $defs:
           motifInscriptionRefusee:
             const: LIMITE_ATTEINTE
     unevaluatedProperties: false
+  AppelPassage:
+    type: object
+    additionalProperties: false
+    properties:
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - numeroModification
+  ConfirmationPresencePassage:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - envoiId
+    - etapeId
+    - numeroModification
+  AccuseCyclePassage:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      passageId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+        description: Compteur du Passage après décision.
+      action:
+        type: string
+        enum:
+        - APPELER
+        - CONFIRMER_PRESENCE
+        - REPRENDRE_EN_PAROLES_SEULES
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      etatApres:
+        type: string
+        enum:
+        - APPELE
+        - EN_COURS
+    required:
+    - envoiId
+    - soireeId
+    - mancheId
+    - passageId
+    - etapeId
+    - numeroModification
+    - action
+    - recueLe
+    - etatApres
+  DesignationLecteur:
+    type: object
+    additionalProperties: false
+    properties:
+      lecteurId:
+        type: string
+        format: uuid
+        description: Identifiant engendré par la page de l’Écran de salle qui a choisi son dossier.
+    required:
+    - lecteurId
+  FichierAudioLocal:
+    type: object
+    additionalProperties: false
+    properties:
+      nom:
+        type: string
+        minLength: 1
+        pattern: '^[^/\\]+$'
+        description: Nom du fichier seul, sans chemin.
+      tailleOctets:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      dureeMs:
+        oneOf:
+        - type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        - type: 'null'
+        description: 0 ou null signifient une durée inconnue.
+    required:
+    - nom
+    - tailleOctets
+    - dureeMs
+  DeclarationLectureChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      lecteurId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      source:
+        type: string
+        enum:
+        - FICHIER_LOCAL
+        - PAROLES_SEULES
+      fichier:
+        oneOf:
+        - $ref: '#/$defs/FichierAudioLocal'
+        - type: 'null'
+      motifParolesSeules:
+        oneOf:
+        - type: string
+          enum:
+          - FICHIER_ABSENT
+          - FICHIER_AMBIGU
+          - FICHIER_ILLISIBLE
+        - type: 'null'
+    required:
+    - lecteurId
+    - etapeId
+    - numeroModification
+    - source
+    - fichier
+    - motifParolesSeules
+    description: Fichier non nul et motif nul exactement en FICHIER_LOCAL.
+    if:
+      properties:
+        source:
+          const: FICHIER_LOCAL
+    then:
+      properties:
+        fichier:
+          $ref: '#/$defs/FichierAudioLocal'
+        motifParolesSeules:
+          type: 'null'
+    else:
+      properties:
+        fichier:
+          type: 'null'
+        motifParolesSeules:
+          type: string
+  SignalFinLectureChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      lecteurId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      lectureId:
+        type: string
+        format: uuid
+      positionMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - lecteurId
+    - etapeId
+    - lectureId
+    - positionMs
+  SignalErreurLectureChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      lecteurId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      lectureId:
+        type: string
+        format: uuid
+    required:
+    - lecteurId
+    - etapeId
+    - lectureId
+  RelevePositionLecture:
+    type: object
+    additionalProperties: false
+    properties:
+      lecteurId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      lectureId:
+        type: string
+        format: uuid
+      demandeId:
+        type: string
+        format: uuid
+      positionMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - lecteurId
+    - etapeId
+    - lectureId
+    - demandeId
+    - positionMs
+  AccuseLectureChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      lecteurId:
+        type: string
+        format: uuid
+      passageId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      lectureId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      action:
+        type: string
+        enum:
+        - DESIGNER_LECTEUR
+        - DECLARER_LECTURE
+        - SIGNALER_FIN_LECTURE
+        - SIGNALER_ERREUR_LECTURE
+        - RELEVER_POSITION
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+    required:
+    - envoiId
+    - soireeId
+    - mancheId
+    - lecteurId
+    - passageId
+    - lectureId
+    - action
+    - recueLe
+    description: passageId et lectureId sont nuls exactement pour DESIGNER_LECTEUR.
+    if:
+      properties:
+        action:
+          const: DESIGNER_LECTEUR
+    then:
+      properties:
+        passageId:
+          type: 'null'
+        lectureId:
+          type: 'null'
+    else:
+      properties:
+        passageId:
+          type: string
+        lectureId:
+          type: string
+  RepriseParolesSeules:
+    type: object
+    additionalProperties: false
+    properties:
+      etapeId:
+        type: string
+        format: uuid
+      lectureId:
+        type: string
+        format: uuid
+    required:
+    - etapeId
+    - lectureId
+  MarqueDebutParoles:
+    type: object
+    additionalProperties: false
+    properties:
+      etapeId:
+        type: string
+        format: uuid
+      lectureId:
+        type: string
+        format: uuid
+    required:
+    - etapeId
+    - lectureId
+  CorrectionCalage:
+    type: object
+    additionalProperties: false
+    properties:
+      etapeId:
+        type: string
+        format: uuid
+      lectureId:
+        type: string
+        format: uuid
+      numeroModificationCalage:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      sens:
+        type: string
+        enum:
+        - AVANCER
+        - RETARDER
+        description: RETARDER ajoute 100 ms au décalage (paroles plus tard), AVANCER en retire 100.
+    required:
+    - etapeId
+    - lectureId
+    - numeroModificationCalage
+    - sens
+  AccuseCalage:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      passageId:
+        type: string
+        format: uuid
+      lectureId:
+        type: string
+        format: uuid
+      action:
+        type: string
+        enum:
+        - MARQUER_DEBUT
+        - CORRIGER
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      demandeId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+        description: Non nul exactement pour MARQUER_DEBUT en fichier local.
+      numeroModificationCalage:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+        description: Compteur du calage après décision.
+    required:
+    - envoiId
+    - soireeId
+    - mancheId
+    - passageId
+    - lectureId
+    - action
+    - recueLe
+    - demandeId
+    - numeroModificationCalage
+    if:
+      properties:
+        action:
+          const: CORRIGER
+    then:
+      properties:
+        demandeId:
+          type: 'null'
+  DemandePositionLecture:
+    type: object
+    additionalProperties: false
+    properties:
+      demandeId:
+        type: string
+        format: uuid
+      demandeeLe:
+        type: string
+        format: date-time
+        pattern: Z$
+    required:
+    - demandeId
+    - demandeeLe
+  LectureDeChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      lectureId:
+        type: string
+        format: uuid
+      lecteurId:
+        oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      etat:
+        type: string
+        enum:
+        - PREPAREE
+        - DEMARREE
+        - EN_ERREUR
+      source:
+        type: string
+        enum:
+        - FICHIER_LOCAL
+        - PAROLES_SEULES
+      motifParolesSeules:
+        oneOf:
+        - type: string
+          enum:
+          - FICHIER_ABSENT
+          - FICHIER_AMBIGU
+          - FICHIER_ILLISIBLE
+          - ECRAN_NON_PRET
+          - ERREUR_LECTURE
+        - type: 'null'
+      origineParoles:
+        type: string
+        enum:
+        - VERSION_ADAPTEE
+        - REPLI_INSCRIPTION
+        - INSCRIPTION
+      decalageMs:
+        type: integer
+        minimum: -9007199254740991
+        maximum: 9007199254740991
+        description: Ligne active = dernière ligne i telle que position >= lignes[i].positionMs + decalageMs.
+      numeroModificationCalage:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      demandePosition:
+        oneOf:
+        - $ref: '#/$defs/DemandePositionLecture'
+        - type: 'null'
+    required:
+    - lectureId
+    - lecteurId
+    - etat
+    - source
+    - motifParolesSeules
+    - origineParoles
+    - decalageMs
+    - numeroModificationCalage
+    - demandePosition
+    description: Lecture du Passage courant, sans fichier ni son. Motif nul exactement en FICHIER_LOCAL ;
+      REPLI_INSCRIPTION exige FICHIER_LOCAL, ou PAROLES_SEULES avec ERREUR_LECTURE ; EN_ERREUR et une demande de
+      position exigent FICHIER_LOCAL.
+    allOf:
+    - if:
+        properties:
+          source:
+            const: FICHIER_LOCAL
+      then:
+        properties:
+          motifParolesSeules:
+            type: 'null'
+      else:
+        properties:
+          motifParolesSeules:
+            type: string
+    - if:
+        properties:
+          origineParoles:
+            const: REPLI_INSCRIPTION
+      then:
+        anyOf:
+        - properties:
+            source:
+              const: FICHIER_LOCAL
+        - properties:
+            motifParolesSeules:
+              const: ERREUR_LECTURE
+    - if:
+        anyOf:
+        - properties:
+            etat:
+              const: EN_ERREUR
+        - required:
+          - demandePosition
+          properties:
+            demandePosition:
+              type: object
+      then:
+        properties:
+          source:
+            const: FICHIER_LOCAL
+  LigneParoles:
+    type: object
+    additionalProperties: false
+    properties:
+      positionMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      texte:
+        type: string
+        description: Texte de la ligne, vide permis.
+    required:
+    - positionMs
+    - texte
+  ParolesDuPassage:
+    type: object
+    additionalProperties: false
+    properties:
+      parolesId:
+        type: string
+        format: uuid
+        description: Identifiant opaque de la version retenue, sans identifiant de fournisseur.
+      dureeMs:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      lignes:
+        type: array
+        items:
+          $ref: '#/$defs/LigneParoles'
+        contains:
+          properties:
+            texte:
+              pattern: \S
+        description: Lignes dans l’ordre source, dont au moins une non blanche.
+    required:
+    - parolesId
+    - dureeMs
+    - lignes

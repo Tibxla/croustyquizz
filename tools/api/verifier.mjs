@@ -64,10 +64,19 @@ function dependances(nom, vues = new Set()) {
   parcourir(schemas.$defs[nom]);
   return vues;
 }
-for (const vue of ['VueSalle', 'VueConsole', 'VueManette', 'EvenementSalle', 'EvenementConsole', 'EvenementJoueur']) {
+// Le fichier local ne sort que vers la Console. Paroles et lecture restent hors de la Manette pour la
+// légèreté de sa vue, pas pour le secret : la vue salle est lisible par un Joueur.
+const interditsParVue = {
+  salle: ['FichierAudioLocal'],
+  console: ['ParolesDuPassage'],
+  joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal'],
+};
+for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console'], ['VueManette', 'joueur'],
+  ['EvenementSalle', 'salle'], ['EvenementConsole', 'console'], ['EvenementJoueur', 'joueur']]) {
   const utilisees = dependances(vue);
-  for (const prive of ['QuestionPreparee', 'QuestionSaisie', 'Csrf', 'AccesJoueur', 'AccesEcran', 'ConnexionAnimateur', 'InscriptionAnimateur']) {
-    assert.ok(!utilisees.has(prive), `${vue} contient un schéma privé : ${prive}`);
+  for (const prive of ['QuestionPreparee', 'QuestionSaisie', 'Csrf', 'AccesJoueur', 'AccesEcran', 'ConnexionAnimateur',
+    'InscriptionAnimateur', ...interditsParVue[destination]]) {
+    assert.ok(!utilisees.has(prive), `${vue} contient un schéma interdit : ${prive}`);
   }
 }
 
@@ -106,7 +115,7 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();
@@ -120,6 +129,16 @@ for (const { nom, exemples } of parcours) {
       ? `/topic/joueurs/${vue.joueurId}`
       : `/topic/soirees/${vue.soiree.id}/${canal}`;
     projections.push({ destination, vue, revision, instant: Date.parse(instant), contexte });
+    // Le courant du Passage suit l'état de la Manche porté par le bloc : échéance d'appel nulle exactement
+    // en pause, état EN_PAUSE seulement dans une Manche en pause.
+    const courant = vue.karaoke?.courant;
+    if (courant) {
+      const enPause = vue.karaoke.etat === 'EN_PAUSE';
+      if (courant.etat === 'APPELE') {
+        assert.equal(courant.echeanceAppelLe === null, enPause, `${contexte} : échéance d'appel incohérente avec la pause`);
+      }
+      if (courant.etat === 'EN_PAUSE') assert.ok(enPause, `${contexte} : Passage EN_PAUSE hors d'une Manche en pause`);
+    }
   }
 
   const reutilisations = new Map();
