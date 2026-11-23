@@ -390,7 +390,7 @@ async page => {
 	verifier(await positionAudio() === positionFigee, 'Pause locale sans remise à zéro');
 	await action(page, 'Reprendre').click();
 	await ongletSalle.waitForFunction(position => window.recetteAudio.fichiers.at(-1)?.currentTime > position, positionFigee);
-	await action(animateur2.onglet, 'Ça commence').click();
+	await action(animateur2.onglet, 'ça commence').click();
 	await page.waitForFunction(() => !document.querySelector('.karaoke__passage-courant').textContent.includes('Mesure en attente') &&
 		!document.querySelector('.karaoke__passage-courant').textContent.includes('Décalage : 0,0 s'));
 	const decalageMesure = lecture.decalageMs;
@@ -456,7 +456,7 @@ async page => {
 	const mancheSuivante = '00000009-0000-4000-8000-000000000000';
 	mancheId = mancheSuivante; courant = lecture = fichierLocal = lecteurDesigneId = null;
 	publier('manche-demarree');
-	await attendreTexte(page, 'Écran lecteur désigné');
+	await attendreTexte(page, 'Écran lecteur prêt');
 	verifier(lecteurDesigneId === lecteurSuivant && commandes.filter(e => e.chemin.endsWith(`/manches/${mancheSuivante}/lecteur`)).length === 1,
 		'Seule la fenêtre lectrice se redésigne sans choisir de dossier');
 	const clesSalle = commandes.filter(e => e.c.type === 'ECRAN').map(e => e.cle);

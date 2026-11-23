@@ -66,7 +66,7 @@ function installerPassage(ui, commande) {
 		return action;
 	}
 	const caler = [
-		actionLecture('Ça commence', 'MARQUER_DEBUT', 'calage/debut'),
+		actionLecture('ça commence', 'MARQUER_DEBUT', 'calage/debut'),
 		actionLecture('−0,1 s', 'CORRIGER_CALAGE', 'calage/correction', 'AVANCER'),
 		actionLecture('+0,1 s', 'CORRIGER_CALAGE', 'calage/correction', 'RETARDER'),
 	];
@@ -124,7 +124,7 @@ function installerPassage(ui, commande) {
 			if (lecture?.source === 'FICHIER_LOCAL') source.textContent = `Fichier local : ${bloc.fichierLocal.nom}`;
 			else source.textContent = lecture ? motifsLecture[lecture.motifParolesSeules] : p?.etat === 'APPELE' ? 'Préparation de la musique…' : '';
 			if (lecture?.origineParoles === 'REPLI_INSCRIPTION') source.textContent += " · Paroles d'origine : aucune version adaptée au fichier";
-			lecteur.textContent = bloc.lecteurDesigne ? 'Écran lecteur désigné' : 'Aucun Écran lecteur : paroles seules';
+			lecteur.textContent = bloc.lecteurDesigne ? 'Écran lecteur prêt' : 'Aucun Écran lecteur : paroles seules';
 			decalage.textContent = lecture ? `Décalage : ${formaterDecalage(lecture.decalageMs)}` : '';
 			mesure.textContent = lecture?.demandePosition ? "Mesure en attente de l'Écran lecteur" : '';
 			const messageErreur = lecture?.etat === 'EN_ERREUR' ? 'Erreur de lecture : reprends en paroles seules ou passe le Passage.' : '';
