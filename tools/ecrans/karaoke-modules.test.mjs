@@ -59,6 +59,34 @@ test('une priorité apparue pendant la confirmation et un changement de Manche i
 	assert.equal(b.appels.length, 0); b.module.demonter();
 });
 
+for (const [nom, monter, acteur, action, confirmation] of [
+	['Console', consoleKaraoke, 'ANIMATEUR', 'Retirer', 'Confirmer'],
+	['Manette', manette, 'JOUEUR', 'Me désinscrire', 'Confirmer la désinscription'],
+]) {
+	test(`${nom} : la confirmation reste désactivée pendant une coupure quel que soit son libellé`, t => {
+		const b = creerBanc(monter, acteur), p = passage();
+		t.after(() => b.module.demonter());
+		b.module.afficher(vue({ passagesEnAttente: [p], mesPassagesEnAttente: [p] }), capture);
+		b.connecter('synchronisee');
+		if (acteur === 'ANIMATEUR') b.principale.querySelector('button.ticket').click();
+		bouton(b.principale, action).click();
+		const dialogue = b.principale.querySelector('dialog');
+		const confirmer = bouton(dialogue, confirmation);
+		assert.equal(b.document.activeElement, bouton(dialogue, 'Annuler'));
+		confirmer.textContent = 'Valider';
+		b.connecter('coupure');
+		assert.equal(confirmer.disabled, true);
+		confirmer.click();
+		assert.equal(b.appels.length, 0);
+		assert.equal(dialogue.open, true);
+		b.connecter('synchronisee');
+		assert.equal(confirmer.disabled, false);
+		confirmer.click();
+		assert.equal(b.appels.length, 1);
+		assert.equal(dialogue.open, false);
+	});
+}
+
 test('la commande Console focalisée reste joignable après envoi et événement, ou revient au titre si elle disparaît', () => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'), passages = [passage('a', 12), passage('b', 13)];
 	b.module.afficher(vue({ passagesEnAttente: passages }), capture); b.connecter('synchronisee');

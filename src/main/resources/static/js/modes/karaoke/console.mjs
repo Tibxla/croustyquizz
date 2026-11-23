@@ -35,13 +35,17 @@ export function monter(zones, contexte) {
 			(action !== 'priorite' || ui.bloc.passagePrioritaireId === prioriteInitialeId) && (!ancienne ||
 			(ui.bloc.passagePrioritaireId === ancienne.passageId && identique(ancienne)));
 		const libelle = action === 'retirer' ? 'Retirer' : cible.prioritaire ? 'Lever la priorité' : 'Priorité';
-		const d = ui.dialogue({ titre: libelle, declencheur, valide }); d.annuler.textContent = 'Annuler';
-		d.contenu.append(e('p', '', `${libelle} · Passage ${cible.numero} · ${cible.chanson.titre} ?`));
-		if (ancienne) d.contenu.append(e('p', '', `Remplace la priorité du Passage ${ancienne.numero} · ${ancienne.chanson.titre}.`));
 		const cmd = action === 'retirer' ? commande('POST', `/passages/${encodeURIComponent(cible.passageId)}/retrait`, { numeroModification: cible.numeroModification }) :
 			commande('PUT', '/file-attente/priorite', { passage: { passageId: cible.passageId, numeroModification: cible.numeroModification }, prioritaire: !cible.prioritaire });
-		const confirmer = bouton('Confirmer', () => { if (!valide() || !ui.mutationsPermises || !ui.bloc.peutGererFile) return; d.fermer(); ui.commande(cmd); });
-		d.contenu.append(confirmer);
+		const d = ui.dialogue({ titre: libelle, declencheur, valide, confirmation: {
+			libelle: 'Confirmer',
+			permise: () => ui.mutationsPermises && ui.bloc.peutGererFile,
+			executer: () => ui.commande(cmd),
+		} });
+		d.annuler.textContent = 'Annuler';
+		d.contenu.append(e('p', '', `${libelle} · Passage ${cible.numero} · ${cible.chanson.titre} ?`));
+		if (ancienne) d.contenu.append(e('p', '', `Remplace la priorité du Passage ${ancienne.numero} · ${ancienne.chanson.titre}.`));
+		d.contenu.append(d.confirmer);
 	}
 	ecouter(limite, 'submit', evenement => {
 		evenement.preventDefault();
@@ -94,10 +98,6 @@ export function monter(zones, contexte) {
 		if (focusCommande) {
 			const equivalente = actions.find(a => a.tagName === 'BUTTON' && a.textContent === nomCommande && !a.disabled);
 			(equivalente ?? Array.from(file.querySelectorAll('button')).find(b => b.getAttribute('aria-pressed') === 'true') ?? titre).focus();
-		}
-		for (const d of ui.principale.querySelectorAll('dialog')) {
-			const confirmer = Array.from(d.querySelectorAll('button')).find(b => b.textContent === 'Confirmer');
-			if (confirmer) confirmer.disabled = !ui.mutationsPermises || !ui.bloc.peutGererFile;
 		}
 		catalogue.rendre();
 	};
