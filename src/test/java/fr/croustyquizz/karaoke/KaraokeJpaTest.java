@@ -6,6 +6,9 @@ import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.*;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +25,7 @@ class KaraokeJpaTest {
     @Autowired PersistanceKaraokeJpa contenus;
     @Autowired SocleDeManche socle;
     @Autowired ServiceKaraoke service;
+    @Autowired MemoireDeCalageJpa calages;
 
     @Test void conserveLesTracesParolesEtNumerosDansUneSeuleTransaction() {
         UUID soiree = UUID.randomUUID(), manche = UUID.randomUUID(), id = UUID.randomUUID(), joueur = UUID.randomUUID();
@@ -115,6 +119,42 @@ class KaraokeJpaTest {
         transaction.executeWithoutResult(s -> contenus.enregistrer(manche, remplace));
         transaction.executeWithoutResult(s -> assertThat(contenus.charger(manche))
                 .isEqualTo(new EtatKaraokePersiste(initial.file(), initial.contenus(), cycle, Map.of(), remplace.lecteurDesigneId())));
+    }
+
+    @Test void laMemoireDistingueLesVersionsEtLeDernierCommitConcurrentRemplaceLeCalage() throws Exception {
+        var transaction = new TransactionTemplate(socle.transactions());
+        String chansonId = UUID.randomUUID().toString();
+        var fichier = new FichierAudioLocal("Fichier.mp3", 123, null);
+        Instant maintenant = Instant.parse("2026-11-17T10:00:00Z");
+        transaction.executeWithoutResult(s -> calages.memoriser(chansonId, 2, fichier, 900, maintenant));
+        var ecrit = new CountDownLatch(1);
+        var liberer = new CountDownLatch(1);
+        var concurrent = new CountDownLatch(1);
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            try {
+                var premier = fils.submit(() -> transaction.executeWithoutResult(s -> {
+                    calages.memoriser(chansonId, 1, fichier, 100, maintenant);
+                    ecrit.countDown();
+                    ServiceKaraokeTest.attendre(liberer);
+                }));
+                ServiceKaraokeTest.attendre(ecrit);
+                var second = fils.submit(() -> transaction.executeWithoutResult(s -> {
+                    concurrent.countDown();
+                    calages.memoriser(chansonId, 1, fichier, 200, maintenant.plusSeconds(1));
+                }));
+                ServiceKaraokeTest.attendre(concurrent);
+                liberer.countDown();
+                premier.get(5, TimeUnit.SECONDS);
+                second.get(5, TimeUnit.SECONDS);
+            } finally { liberer.countDown(); }
+        }
+        transaction.executeWithoutResult(s -> {
+            assertThat(calages.lire(chansonId, 1, fichier.nom(), fichier.tailleOctets())).isEqualTo(200);
+            assertThat(calages.lire(chansonId, 2, fichier.nom(), fichier.tailleOctets())).isEqualTo(900);
+            calages.memoriser(chansonId, 1, fichier, 300, maintenant.plusSeconds(2));
+            s.setRollbackOnly();
+        });
+        transaction.executeWithoutResult(s -> assertThat(calages.lire(chansonId, 1, fichier.nom(), fichier.tailleOctets())).isEqualTo(200));
     }
 
     static EnvoiDeCommande envoi(Acteur acteur, String route, Object corps) { return new EnvoiDeCommande(acteur, route, UUID.randomUUID(), corps); }

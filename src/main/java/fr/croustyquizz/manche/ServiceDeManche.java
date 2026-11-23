@@ -59,7 +59,11 @@ public class ServiceDeManche<R, E> {
 	}
 	/** La préparation externe est hors verrou ; sa fonction revalide ensuite le domaine sous verrou. */
 	public ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer) {
-		return traiter(mancheId, envoi, preparer, null, false);
+		return executer(mancheId, envoi, preparer, null);
+	}
+	protected ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi,
+			Supplier<PreparationDeCommande> preparer, EtatManche etatApresAcceptation) {
+		return traiter(mancheId, envoi, preparer, etatApresAcceptation, false);
 	}
 	private ResultatDeCommande traiter(UUID id, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer,
 			EtatManche cible, boolean demarrage) {

@@ -43,6 +43,22 @@ class ServiceDeMancheTest {
 	}
 
 	@Test
+	void laTransitionDemandeeParLeModeNestPersisteeQuePourUneAcceptation() {
+		UUID manche = demarrer();
+		var refus = new Refuse(409, "ETAT_INCOMPATIBLE", "Transition refusée.");
+		var envoiRefuse = banc.envoi(soiree, "/transition", Map.of());
+		assertThat(banc.service.executer(manche, envoiRefuse, () -> PreparationDeCommande.prete(d -> refus),
+				EtatManche.EN_PAUSE)).isEqualTo(refus);
+		assertThat(banc.stockage.charger(manche).getEtat()).isEqualTo(EtatManche.EN_COURS);
+
+		var envoi = banc.envoi(soiree, "/transition", Map.of());
+		assertThat(banc.service.executer(manche, envoi, () -> PreparationDeCommande.prete(d ->
+				d.mettreEnPause(new CommandePilotage(envoi.acteur(), envoi.envoiId(), banc.horloge.maintenant()))),
+				EtatManche.EN_PAUSE)).isInstanceOf(Accepte.class);
+		assertThat(banc.stockage.charger(manche).getEtat()).isEqualTo(EtatManche.EN_PAUSE);
+	}
+
+	@Test
 	void reutiliserUnEnvoiAvecUnAutreCorpsEstRefuse() {
 		UUID manche = demarrer();
 		var envoi = banc.envoi(soiree, "/commande-mode", Map.of("titre", "initial"));

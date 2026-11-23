@@ -40,7 +40,7 @@ public final class RechercheKaraoke {
                 .toList();
     }
 
-    private static String normaliser(String texte) {
+    static String normaliser(String texte) {
         return Normalizer.normalize(texte, Normalizer.Form.NFKD).replaceAll("\\p{M}+", "")
                 .toLowerCase(Locale.ROOT).replace("œ", "oe").replace("æ", "ae")
                 .replaceAll("[^\\p{L}\\p{N}]+", " ").trim();

@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-/** Les huit opérations publiques de la File d'attente du Karaoké. */
+/** Opérations HTTP de la File d’attente et du Passage Karaoké. */
 @RestController
 @RequestMapping("/api/soirees/{soireeId}/manches/{mancheId}")
 public class KaraokeControleur {
@@ -31,7 +31,7 @@ public class KaraokeControleur {
         AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
         String route = racine(soireeId, mancheId) + "/passages";
         var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(),
-                new CorpsKaraoke.EmpreinteHttp("POST", corps));
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service.inscrirePassage(mancheId, envoi, corps), route);
     }
     @PostMapping("/passages/{passageId}/desinscription")
@@ -40,9 +40,9 @@ public class KaraokeControleur {
             @Valid @RequestBody CorpsKaraoke.DesinscriptionPassage corps,
             Acteur acteur) {
         AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
-        String route = racine(soireeId, mancheId) + "/passages/" + passageId + "/desinscription";
+        String route = passage(soireeId, mancheId, passageId) + "/desinscription";
         var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(),
-                new CorpsKaraoke.EmpreinteHttp("POST", corps));
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service.desinscrirePassage(mancheId, passageId, envoi, corps), route);
     }
     @PostMapping("/passages/{passageId}/retrait")
@@ -52,9 +52,9 @@ public class KaraokeControleur {
             @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
             Acteur acteur) {
         AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
-        String route = racine(soireeId, mancheId) + "/passages/" + passageId + "/retrait";
+        String route = passage(soireeId, mancheId, passageId) + "/retrait";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId,
-                new CorpsKaraoke.EmpreinteHttp("POST", corps));
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service.retirerPassage(mancheId, passageId, envoi, corps), route);
     }
     @PutMapping("/passages/{passageId}/placement")
@@ -64,9 +64,9 @@ public class KaraokeControleur {
             @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
             Acteur acteur) {
         AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
-        String route = racine(soireeId, mancheId) + "/passages/" + passageId + "/placement";
+        String route = passage(soireeId, mancheId, passageId) + "/placement";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId,
-                new CorpsKaraoke.EmpreinteHttp("PUT", corps));
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
         return ReponsesDeCommande.http(service.deplacerPassage(mancheId, passageId, envoi, corps), route);
     }
     @PutMapping("/file-attente/priorite")
@@ -77,7 +77,7 @@ public class KaraokeControleur {
         AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
         String route = racine(soireeId, mancheId) + "/file-attente/priorite";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId,
-                new CorpsKaraoke.EmpreinteHttp("PUT", corps));
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
         return ReponsesDeCommande.http(service.definirPrioritePassage(mancheId, envoi, corps), route);
     }
     @PutMapping("/file-attente/limite")
@@ -88,11 +88,132 @@ public class KaraokeControleur {
         AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
         String route = racine(soireeId, mancheId) + "/file-attente/limite";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId,
-                new CorpsKaraoke.EmpreinteHttp("PUT", corps));
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
         return ReponsesDeCommande.http(service.reglerLimitePassages(mancheId, envoi, corps), route);
     }
+    @PostMapping("/passages/{passageId}/appel")
+    public ResponseEntity<?> appelerPassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.AppelPassage corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/appel";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.appelerPassage(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/presence")
+    public ResponseEntity<?> confirmerPresencePassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.ConfirmationPresencePassage corps,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/presence";
+        var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(), new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.confirmerPresencePassage(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PutMapping("/lecteur")
+    public ResponseEntity<?> designerLecteurChanson(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @Valid @RequestBody CorpsKaraoke.DesignationLecteur corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ECRAN);
+        String route = racine(soireeId, mancheId) + "/lecteur";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
+        return ReponsesDeCommande.http(service.designerLecteurChanson(mancheId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/lecture")
+    public ResponseEntity<?> declarerLectureChanson(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.DeclarationLectureChanson corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ECRAN);
+        String route = passage(soireeId, mancheId, passageId) + "/lecture";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.declarerLectureChanson(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/fin-lecture")
+    public ResponseEntity<?> signalerFinLectureChanson(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.SignalFinLectureChanson corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ECRAN);
+        String route = passage(soireeId, mancheId, passageId) + "/fin-lecture";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.signalerFinLectureChanson(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/erreur-lecture")
+    public ResponseEntity<?> signalerErreurLectureChanson(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.SignalErreurLectureChanson corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ECRAN);
+        String route = passage(soireeId, mancheId, passageId) + "/erreur-lecture";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.signalerErreurLectureChanson(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/paroles-seules")
+    public ResponseEntity<?> reprendreEnParolesSeules(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.RepriseParolesSeules corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/paroles-seules";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.reprendreEnParolesSeules(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/calage/debut")
+    public ResponseEntity<?> marquerDebutParoles(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.MarqueDebutParoles corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/calage/debut";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.marquerDebutParoles(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/calage/correction")
+    public ResponseEntity<?> corrigerCalage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.CorrectionCalage corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/calage/correction";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.corrigerCalage(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PostMapping("/passages/{passageId}/calage/position")
+    public ResponseEntity<?> releverPositionLecture(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId,
+            @Valid @RequestBody CorpsKaraoke.RelevePositionLecture corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ECRAN);
+        String route = passage(soireeId, mancheId, passageId) + "/calage/position";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.releverPositionLecture(mancheId, passageId, envoi, corps), route);
+    }
+
     private static String racine(UUID soireeId, UUID mancheId) {
         return "/api/soirees/" + soireeId + "/manches/" + mancheId;
+    }
+    private static String passage(UUID soireeId, UUID mancheId, UUID passageId) {
+        return racine(soireeId, mancheId) + "/passages/" + passageId;
     }
     private static ResponseEntity<?> lecture(Object corps) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.APPLICATION_JSON).body(corps);

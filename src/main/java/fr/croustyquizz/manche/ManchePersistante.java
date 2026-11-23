@@ -31,5 +31,6 @@ public class ManchePersistante {
 	public ModeDeJeu getMode() { return mode; }
 	public EtatManche getEtat() { return etat; }
 	public String getReglages() { return reglages; }
+	public Instant getModifieLe() { return modifieLe; }
 	public void changerEtat(EtatManche valeur, Instant maintenant) { etat = valeur; modifieLe = maintenant; }
 }

@@ -3,7 +3,9 @@ package fr.croustyquizz.karaoke;
 import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.*;
 import fr.croustyquizz.tempsreel.AccesAuxVues;
+import java.time.Instant;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
@@ -18,14 +20,17 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private final SourceDeParoles source;
     private final ProprietesKaraoke proprietes;
     private final ProprietesSourceKaraoke proprietesSource;
+    private final ChoixDeVersionParoles choixParoles;
+    private final MemoireDeCalageJpa calages;
 
     public ServiceKaraoke(FabriqueKaraoke fabrique, PersistanceDuMode<EtatKaraokePersiste> persistance,
             SocleDeManche socle, PorteeDePassage portee, ParticipantsDePassage participants,
             PersistancePassageJpa passages, SourceDeParoles source, ProprietesKaraoke proprietes,
-            ProprietesSourceKaraoke proprietesSource) {
+            ProprietesSourceKaraoke proprietesSource, ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
         super(fabrique, persistance, socle);
         this.socle = socle; this.portee = portee; this.participants = participants; this.passages = passages;
         this.source = source; this.proprietes = proprietes; this.proprietesSource = proprietesSource;
+        this.choixParoles = choixParoles; this.calages = calages;
     }
 
     @Override public UUID creer(UUID soireeId, Object reglages) {
@@ -116,6 +121,154 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete(d -> d.commander(new ReglerLimitePassages(envoi.acteur(),
                 socle.horloge().maintenant(), envoi.envoiId(), corps.limitePassagesEnAttente()))));
+    }
+
+    public ResultatDeCommande appelerPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.AppelPassage corps) {
+        return commander(mancheId, envoi, Acteur.Type.ANIMATEUR, maintenant -> new AppelerPassage(envoi.acteur(),
+                maintenant, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification())));
+    }
+
+    public ResultatDeCommande confirmerPresencePassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.ConfirmationPresencePassage corps) {
+        Acteur acteur = envoi.acteur();
+        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+        lecture(acteur.soireeId(), () -> {
+            verifierInterprete(mancheId, passageId, acteur);
+            return null;
+        });
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete(d -> {
+            verifierInterprete(mancheId, passageId, acteur);
+            return d.recevoir(new ConfirmerPresencePassage(acteur, socle.horloge().maintenant(), envoi.envoiId(),
+                    new CiblePassage(passageId, corps.numeroModification()), corps.etapeId()));
+        }));
+    }
+
+    private void verifierInterprete(UUID mancheId, UUID passageId, Acteur acteur) {
+        var file = passages.charger(mancheId);
+        if (file != null && file.passages().stream().anyMatch(p -> p.id().equals(passageId)
+                && !p.interpretes().contains(acteur.identifiant()))) {
+            throw introuvable().exception();
+        }
+    }
+
+    public ResultatDeCommande designerLecteurChanson(UUID mancheId, EnvoiDeCommande envoi, CorpsKaraoke.DesignationLecteur corps) {
+        return commander(mancheId, envoi, Acteur.Type.ECRAN, maintenant -> new DesignerLecteurChanson(
+                envoi.acteur(), maintenant, envoi.envoiId(), corps.lecteurId()));
+    }
+
+    public ResultatDeCommande declarerLectureChanson(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.DeclarationLectureChanson corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.ECRAN);
+        var acteur = envoi.acteur();
+        return executer(mancheId, envoi, () -> {
+            var instantane = (InstantaneKaraoke) instantane(acteur.soireeId(), mancheId);
+            ContenuKaraoke inscription = instantane.contenus().get(passageId);
+            if (inscription == null) { return PreparationDeCommande.prete(d -> introuvable()); }
+            SourceLecture sourceLecture = SourceLecture.valueOf(corps.source());
+            var fichier = corps.fichier() == null ? null : corps.fichier().metadonnees();
+            var choix = choisirParoles(instantane, passageId, corps, fichier, inscription);
+            return PreparationDeCommande.prete(d -> {
+                var courant = (InstantaneKaraoke) d.instantane();
+                long decalage = fichier != null && viseAppelDuLecteur(courant, passageId, corps)
+                        ? calages.lire(inscription.chanson().chansonId(), choix.contenu().chanson().idLrclib(),
+                                fichier.nom(), fichier.tailleOctets()) : 0;
+                return d.commander(new DeclarerLectureChanson(acteur, socle.horloge().maintenant(), envoi.envoiId(),
+                        new CiblePassage(passageId, corps.numeroModification()), corps.etapeId(), corps.lecteurId(),
+                        preparerLecture(corps, sourceLecture, fichier, choix, decalage)));
+            });
+        });
+    }
+
+    private ChoixDeVersionParoles.ResultatChoix choisirParoles(InstantaneKaraoke instantane, UUID passageId,
+            CorpsKaraoke.DeclarationLectureChanson corps, FichierAudioLocal fichier, ContenuKaraoke inscription) {
+        if (fichier == null) { return new ChoixDeVersionParoles.ResultatChoix(inscription, OrigineParoles.INSCRIPTION); }
+        if (fichier.dureeMs() == null || !viseAppelDuLecteur(instantane, passageId, corps)) {
+            return new ChoixDeVersionParoles.ResultatChoix(inscription, OrigineParoles.REPLI_INSCRIPTION);
+        }
+        return choixParoles.choisir(inscription, fichier.dureeMs());
+    }
+
+    private static boolean viseAppelDuLecteur(InstantaneKaraoke instantane, UUID passageId,
+            CorpsKaraoke.DeclarationLectureChanson corps) {
+        return corps.lecteurId().equals(instantane.lecteurDesigneId()) && passageId.equals(instantane.cycle().passageId())
+                && corps.etapeId().equals(instantane.cycle().etapeId())
+                && instantane.file().passages().stream().anyMatch(p -> p.id().equals(passageId)
+                        && p.etat() == EtatPassage.APPELE && p.numeroModification() == corps.numeroModification());
+    }
+
+    private static LecturePreparee preparerLecture(CorpsKaraoke.DeclarationLectureChanson corps, SourceLecture sourceLecture,
+            FichierAudioLocal fichier, ChoixDeVersionParoles.ResultatChoix choix, long decalage) {
+        Chanson version = choix.contenu().chanson();
+        var motif = corps.motifParolesSeules() == null ? null : MotifParolesSeules.valueOf(corps.motifParolesSeules());
+        return new LecturePreparee(sourceLecture, fichier, motif, choix.origine(), version.dureeMs(),
+                choix.contenu().lignes(), version.idLrclib(), decalage);
+    }
+
+    public ResultatDeCommande signalerFinLectureChanson(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.SignalFinLectureChanson corps) {
+        return commander(mancheId, envoi, Acteur.Type.ECRAN, maintenant -> new SignalerFinLectureChanson(envoi.acteur(),
+                maintenant, envoi.envoiId(), passageId, corps.etapeId(), corps.lectureId(), corps.lecteurId(), corps.positionMs()));
+    }
+
+    public ResultatDeCommande signalerErreurLectureChanson(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.SignalErreurLectureChanson corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.ECRAN);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete(d -> d.commander(new SignalerErreurLectureChanson(
+                envoi.acteur(), socle.horloge().maintenant(), envoi.envoiId(), passageId, corps.etapeId(), corps.lectureId(),
+                corps.lecteurId()))), EtatManche.EN_PAUSE);
+    }
+
+    public ResultatDeCommande reprendreEnParolesSeules(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.RepriseParolesSeules corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete(d -> d.commander(new ReprendreEnParolesSeules(
+                envoi.acteur(), socle.horloge().maintenant(), envoi.envoiId(), passageId, corps.etapeId(), corps.lectureId()))),
+                EtatManche.EN_COURS);
+    }
+
+    public ResultatDeCommande marquerDebutParoles(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.MarqueDebutParoles corps) {
+        return commander(mancheId, envoi, Acteur.Type.ANIMATEUR, maintenant -> new MarquerDebutParoles(envoi.acteur(),
+                maintenant, envoi.envoiId(), passageId, corps.etapeId(), corps.lectureId()));
+    }
+
+    public ResultatDeCommande releverPositionLecture(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.RelevePositionLecture corps) {
+        return caler(mancheId, passageId, envoi, Acteur.Type.ECRAN,
+                maintenant -> new ReleverPositionLecture(envoi.acteur(), maintenant, envoi.envoiId(), passageId,
+                        corps.etapeId(), corps.lectureId(), corps.lecteurId(), corps.demandeId(), corps.positionMs()));
+    }
+
+    public ResultatDeCommande corrigerCalage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.CorrectionCalage corps) {
+        return caler(mancheId, passageId, envoi, Acteur.Type.ANIMATEUR,
+                maintenant -> new CorrigerCalage(envoi.acteur(), maintenant, envoi.envoiId(), passageId,
+                        corps.etapeId(), corps.lectureId(), corps.numeroModificationCalage(), SensCorrection.valueOf(corps.sens())));
+    }
+
+    private ResultatDeCommande caler(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, Acteur.Type role,
+            Function<Instant, CommandeDeManche> commande) {
+        verifierEntree(mancheId, envoi, role);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete(d -> {
+            Instant maintenant = socle.horloge().maintenant();
+            var resultat = d.commander(commande.apply(maintenant));
+            if (resultat instanceof Accepte) {
+                var instantane = (InstantaneKaraoke) d.instantane();
+                var lecture = instantane.lectures().get(passageId);
+                if (lecture.source() == SourceLecture.FICHIER_LOCAL) {
+                    String chansonId = instantane.contenus().get(passageId).chanson().chansonId();
+                    calages.memoriser(chansonId, lecture.versionSourceId(), lecture.fichier(), lecture.decalageMs(), maintenant);
+                }
+            }
+            return resultat;
+        }));
+    }
+
+    private ResultatDeCommande commander(UUID mancheId, EnvoiDeCommande envoi, Acteur.Type role,
+            Function<Instant, CommandeDeManche> commande) {
+        verifierEntree(mancheId, envoi, role);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete(
+                d -> d.commander(commande.apply(socle.horloge().maintenant()))));
     }
 
     public VuesKaraoke.ResultatsChansons rechercherChansons(Acteur acteur, UUID soireeId, UUID mancheId, String recherche, UUID rechercheId) {
