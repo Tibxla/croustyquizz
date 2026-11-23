@@ -303,6 +303,38 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
     }
 
     @Test
+    void deuxPausesPendantLAppelPreserventLeDelaiRestantEtLaDureeChantee() {
+        ouvrirPassage();
+        horloge.avancer(Duration.ofSeconds(5));
+        deroulement.mettreEnPause(pilotage());
+        horloge.avancer(Duration.ofSeconds(20));
+        assertThat(projection().delaiAppelRestantMs()).isEqualTo(25_000);
+        deroulement.reprendre(pilotage());
+        horloge.avancer(Duration.ofSeconds(7));
+        deroulement.mettreEnPause(pilotage());
+        horloge.avancer(Duration.ofSeconds(10));
+        assertThat(projection().delaiAppelRestantMs()).isEqualTo(18_000);
+        deroulement.reprendre(pilotage());
+        assertThat(projection().delaiAppelRestantMs()).isEqualTo(18_000);
+        confirmerCourant();
+        assertThat(karaoke().instantane().cycle().tempsPause()).isZero();
+        assertThat(projection().finPrevueLe()).isEqualTo(horloge.maintenant().plusSeconds(180));
+    }
+
+    @Test
+    void laPauseApresLEcheanceGardeUnDelaiNulEtAutoriseLaConfirmation() {
+        ouvrirPassage();
+        horloge.avancer(Duration.ofSeconds(31));
+        deroulement.mettreEnPause(pilotage());
+        horloge.avancer(Duration.ofSeconds(10));
+        assertThat(projection().delaiAppelRestantMs()).isZero();
+        deroulement.reprendre(pilotage());
+        assertThat(projection().delaiAppelRestantMs()).isZero();
+        confirmerCourant();
+        assertThat(karaoke().instantane().cycle().tempsPause()).isZero();
+    }
+
+    @Test
     void sauteEnPausePuisAnnuleLeCourantEtLesAttentesEnTerminant() {
         ouvrirPassage();
         inscrire(SUIVANT);
@@ -471,23 +503,24 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         ouvrirPassage();
         designer(LECTEUR);
         var preparation = new LecturePreparee(SourceLecture.PAROLES_SEULES, null, MotifParolesSeules.FICHIER_ABSENT,
-                OrigineParoles.INSCRIPTION, 180_000L, LIGNES_ADAPTEES, 42, 0);
+                OrigineParoles.INSCRIPTION, 170_000L, LIGNES_ADAPTEES, 42, 0);
         declarer(cible(PASSAGE), ETAPE, LECTEUR, preparation);
         var preparee = lecture();
         confirmerCourant();
         assertThat(lecture().lecteurId()).isEqualTo(LECTEUR);
         assertThat(lecture().motifParolesSeules()).isEqualTo(MotifParolesSeules.FICHIER_ABSENT);
         assertThat(lecture().paroles()).isEqualTo(preparee.paroles());
-        assertThat(karaoke().instantane().cycle().dureeReference()).isEqualTo(Duration.ofSeconds(180));
+        assertThat(karaoke().instantane().contenus().get(PASSAGE).chanson().dureeMs()).isEqualTo(180_000);
+        assertThat(projection().finPrevueLe()).isEqualTo(horloge.maintenant().plusSeconds(170));
         for (Signal signal : Signal.values()) {
             refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR),
-                    409, "ETAT_INCOMPATIBLE", null);
+                    409, signal == Signal.POSITION ? "COMMANDE_PERIMEE" : "ETAT_INCOMPATIBLE", null);
         }
     }
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.EnumSource(Signal.class)
-    void gardeLesSignauxDansLOrdrePassageEtapeLectureLecteurPuisEtat(Signal signal) {
+    void gardeLesSignauxDansLOrdrePassageEtapeLectureDemandeLecteurPuisEtat(Signal signal) {
         ouvrirPassage();
         inscrire(SUIVANT);
         designer(LECTEUR);
@@ -504,13 +537,26 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, premiere, AUTRE_LECTEUR),
                 409, "COMMANDE_PERIMEE", null);
         refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lectureId, AUTRE_LECTEUR),
-                409, "LECTEUR_NON_DESIGNE", null);
+                409, signal == Signal.POSITION ? "COMMANDE_PERIMEE" : "LECTEUR_NON_DESIGNE", null);
         refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lectureId, LECTEUR),
-                409, "ETAT_INCOMPATIBLE", null);
+                409, signal == Signal.POSITION ? "COMMANDE_PERIMEE" : "ETAT_INCOMPATIBLE", null);
         confirmerCourant();
         deroulement.passerEtape(pilotage());
         refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lectureId, LECTEUR),
                 409, "COMMANDE_PERIMEE", null);
+    }
+
+    @Test
+    void rejetteLeReleveDeLaDemandeEffaceeParUneErreurAvantDeVerifierLEtatDeLecture() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        UUID lectureId = lecture().lectureId();
+        marquerDebut(PASSAGE, ETAPE, lectureId);
+        UUID demande = lecture().demandeId();
+        assertThat(demande).isNotNull();
+        refuserSansMutation(() -> deroulement.commander(new ReleverPositionLecture(ECRAN, horloge.maintenant(),
+                ENVOI, PASSAGE, ETAPE, lectureId, AUTRE_LECTEUR, demande, 13_500)), 409, "LECTEUR_NON_DESIGNE", null);
+        accepter(signaler(Signal.ERREUR, PASSAGE, ETAPE, lectureId, LECTEUR), LECTURE_MODIFIEE, true);
+        refuserSansMutation(() -> relever(lectureId, demande, 13_500), 409, "COMMANDE_PERIMEE", null);
     }
 
     @Test
@@ -539,6 +585,26 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(passage(PASSAGE).numeroModification()).isEqualTo(3);
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "SAUTE, passage-saute", "ANNULE, manche-terminee", "TERMINE, passage-termine"
+    })
+    void cloreHorsPauseAnnuleLeMinuteurDeFin(EtatPassage terminal, String cause) {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_COURS);
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.EN_COURS);
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+        var resultat = switch (terminal) {
+            case SAUTE -> deroulement.passerEtape(pilotage());
+            case ANNULE -> deroulement.terminer(pilotage());
+            case TERMINE -> signaler(Signal.FIN, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR);
+            default -> throw new AssertionError(terminal);
+        };
+        assertThat(horloge.minuteursEnAttente()).isZero();
+        accepter(resultat, cause, true);
+        assertThat(passage(PASSAGE).etat()).isEqualTo(terminal);
+    }
+
     @Test
     void unSignalDeFinApresLaFinPrevueEstPerime() {
         chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
@@ -557,7 +623,7 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         refuserSansMutation(() -> reprendreEnParoles(PASSAGE, ETAPE, lectureId), 409, "ETAT_INCOMPATIBLE", null);
         refuserSansMutation(() -> reprendreEnParoles(PASSAGE, INCONNU, lectureId), 409, "COMMANDE_PERIMEE", null);
         refuserSansMutation(() -> reprendreEnParoles(PASSAGE, ETAPE, INCONNU), 409, "COMMANDE_PERIMEE", null);
-        refuserSansMutation(() -> reprendreEnParoles(INCONNU, ETAPE, lectureId), 409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> reprendreEnParoles(INCONNU, ETAPE, lectureId), 404, "RESSOURCE_INTROUVABLE", null);
         horloge.avancer(Duration.ofSeconds(10));
         marquerDebut(PASSAGE, ETAPE, lectureId);
         var depart = projection().demarreLe();
@@ -572,7 +638,7 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(horloge.minuteursEnAttente()).isZero();
         refuserSansMutation(() -> deroulement.reprendre(pilotage()), 409, "ETAT_INCOMPATIBLE", null);
         refuserSansMutation(() -> signaler(Signal.FIN, PASSAGE, ETAPE, lectureId, LECTEUR), 409, "ETAT_INCOMPATIBLE", null);
-        refuserSansMutation(() -> signaler(Signal.POSITION, PASSAGE, ETAPE, lectureId, LECTEUR), 409, "ETAT_INCOMPATIBLE", null);
+        refuserSansMutation(() -> signaler(Signal.POSITION, PASSAGE, ETAPE, lectureId, LECTEUR), 409, "COMMANDE_PERIMEE", null);
         var enErreur = karaoke().instantane();
         horloge.avancer(Duration.ofSeconds(8));
         accepter(signaler(Signal.ERREUR, PASSAGE, ETAPE, lectureId, LECTEUR), LECTURE_MODIFIEE, false);
@@ -608,12 +674,37 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
         UUID lectureId = lecture().lectureId();
         deroulement.mettreEnPause(pilotage());
-        verifierRefusCalage(INCONNU, INCONNU, INCONNU, "ETAT_INCOMPATIBLE");
+        verifierRefusCalage(PASSAGE, INCONNU, INCONNU, "ETAT_INCOMPATIBLE");
+        verifierPassageIntrouvablePourLaRepriseEtLeCalage();
         deroulement.reprendre(pilotage());
-        verifierRefusCalage(INCONNU, ETAPE, lectureId, "COMMANDE_PERIMEE");
+        verifierPassageIntrouvablePourLaRepriseEtLeCalage();
         verifierRefusCalage(PASSAGE, INCONNU, lectureId, "COMMANDE_PERIMEE");
         verifierRefusCalage(PASSAGE, ETAPE, INCONNU, "COMMANDE_PERIMEE");
         verifierRefusCalage(PASSAGE, ETAPE, lectureId, "ETAT_INCOMPATIBLE");
+    }
+
+    @Test
+    void refuseUnCompteurDeCalagePerimeAvantLEtatDeLaLecturePreparee() {
+        ouvrirPassage();
+        designer(LECTEUR);
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+        UUID lectureId = lecture().lectureId();
+        refuserSansMutation(() -> corriger(PASSAGE, ETAPE, lectureId, 1, SensCorrection.RETARDER),
+                409, "COMMANDE_PERIMEE", null);
+    }
+
+    @Test
+    void lePassageIntrouvablePrimeAussiSurLaFinDeManche() {
+        ouvrirPassage();
+        deroulement.terminer(pilotage());
+        verifierPassageIntrouvablePourLaRepriseEtLeCalage();
+    }
+
+    private void verifierPassageIntrouvablePourLaRepriseEtLeCalage() {
+        refuserSansMutation(() -> reprendreEnParoles(INCONNU, ETAPE, INCONNU), 404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> marquerDebut(INCONNU, ETAPE, INCONNU), 404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> corriger(INCONNU, ETAPE, INCONNU, 1, SensCorrection.RETARDER),
+                404, "RESSOURCE_INTROUVABLE", null);
     }
 
     private void verifierRefusCalage(UUID passageId, UUID etapeId, UUID lectureId, String code) {

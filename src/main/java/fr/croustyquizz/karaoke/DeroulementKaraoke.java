@@ -138,6 +138,9 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     @Override public ResultatDeCommande commander(CommandeDeManche commande) {
+        if (commande instanceof ReprendreEnParolesSeules reprise) { return reprendreEnParoles(reprise); }
+        if (commande instanceof MarquerDebutParoles geste) { return marquerDebut(geste); }
+        if (commande instanceof CorrigerCalage correction) { return corriger(correction); }
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
         if (commande instanceof AppelerPassage appel) { return appeler(appel); }
@@ -167,9 +170,6 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
             case DeclarerLectureChanson declaration -> declarer(declaration);
             case SignalerFinLectureChanson fin -> signalerFin(fin);
             case SignalerErreurLectureChanson erreur -> signalerErreur(erreur);
-            case ReprendreEnParolesSeules reprise -> reprendreEnParoles(reprise);
-            case MarquerDebutParoles geste -> marquerDebut(geste);
-            case CorrigerCalage correction -> corriger(correction);
             case ReleverPositionLecture position -> relever(position);
             case null, default -> incompatible();
         };
@@ -277,6 +277,8 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     private ResultatDeCommande reprendreEnParoles(ReprendreEnParolesSeules commande) {
+        Refuse refus = gardeCommune(commande.passageId());
+        if (refus != null) { return refus; }
         LecturePassage lecture = lectureCourante(commande.passageId(), commande.etapeId(), commande.lectureId());
         if (lecture == null) { return perimee(); }
         if (lecture.etat() != EtatLecture.EN_ERREUR) { return incompatible(); }
@@ -296,6 +298,10 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (file.trouver(passageId) == null) { return introuvable(); }
         LecturePassage lecture = lectureCourante(passageId, etapeId, lectureId);
         if (lecture == null) { return perimee(); }
+        return verifierLecteurEtLecture(lecture, lecteurId, erreurAdmise);
+    }
+
+    private static Refuse verifierLecteurEtLecture(LecturePassage lecture, UUID lecteurId, boolean erreurAdmise) {
         if (!Objects.equals(lecture.lecteurId(), lecteurId)) { return lecteurNonDesigne(); }
         if (lecture.source() != SourceLecture.FICHIER_LOCAL || lecture.etat() == EtatLecture.PREPAREE
                 || (!erreurAdmise && lecture.etat() == EtatLecture.EN_ERREUR)) { return incompatible(); }
@@ -314,9 +320,11 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     private ResultatDeCommande marquerDebut(MarquerDebutParoles commande) {
-        Refuse refus = verifierCalage(commande.passageId(), commande.etapeId(), commande.lectureId());
+        Refuse refus = gardeCalage(commande.passageId());
         if (refus != null) { return refus; }
-        LecturePassage lecture = lectures.get(commande.passageId());
+        LecturePassage lecture = lectureCourante(commande.passageId(), commande.etapeId(), commande.lectureId());
+        if (lecture == null) { return perimee(); }
+        if (!calagePossible(lecture)) { return incompatible(); }
         LecturePassage cale;
         if (lecture.source() == SourceLecture.FICHIER_LOCAL) {
             cale = lecture.avecCalage(lecture.decalageMs(), identifiants.get(), commande.recueLe());
@@ -328,10 +336,11 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     private ResultatDeCommande corriger(CorrigerCalage commande) {
-        Refuse refus = verifierCalage(commande.passageId(), commande.etapeId(), commande.lectureId());
+        Refuse refus = gardeCalage(commande.passageId());
         if (refus != null) { return refus; }
-        LecturePassage lecture = lectures.get(commande.passageId());
-        if (lecture.numeroModificationCalage() != commande.numeroModificationCalage()) { return perimee(); }
+        LecturePassage lecture = lectureCourante(commande.passageId(), commande.etapeId(), commande.lectureId());
+        if (lecture == null || lecture.numeroModificationCalage() != commande.numeroModificationCalage()) { return perimee(); }
+        if (!calagePossible(lecture)) { return incompatible(); }
         long correction = switch (commande.sens()) {
             case AVANCER -> -100;
             case RETARDER -> 100;
@@ -341,22 +350,31 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     private ResultatDeCommande relever(ReleverPositionLecture commande) {
-        Refuse refus = verifierSignal(commande.passageId(), commande.etapeId(), commande.lectureId(), commande.lecteurId(), false);
+        if (file.trouver(commande.passageId()) == null) { return introuvable(); }
+        LecturePassage lecture = lectureCourante(commande.passageId(), commande.etapeId(), commande.lectureId());
+        if (lecture == null || lecture.demandeId() == null || !lecture.demandeId().equals(commande.demandeId())) {
+            return perimee();
+        }
+        Refuse refus = verifierLecteurEtLecture(lecture, commande.lecteurId(), false);
         if (refus != null) { return refus; }
-        LecturePassage lecture = lectures.get(commande.passageId());
-        if (lecture.demandeId() == null || !lecture.demandeId().equals(commande.demandeId())) { return perimee(); }
         LecturePassage cale = lecture.avecCalage(commande.positionMs() - lecture.paroles().premierePosition(), null, null);
         lectures.put(lecture.passageId(), cale);
         return accepterLecture(commande.envoiId(), commande.recueLe(), commande.lecteurId(), cale,
                 "RELEVER_POSITION", CALAGE_MODIFIE, SALLE_ET_CONSOLE);
     }
 
-    private Refuse verifierCalage(UUID passageId, UUID etapeId, UUID lectureId) {
-        if (etat == EtatManche.EN_PAUSE) { return incompatible(); }
-        LecturePassage lecture = lectureCourante(passageId, etapeId, lectureId);
-        if (lecture == null) { return perimee(); }
-        if (file.trouver(passageId).etat() != EtatPassage.EN_COURS || lecture.etat() != EtatLecture.DEMARREE) { return incompatible(); }
-        return null;
+    private Refuse gardeCommune(UUID passageId) {
+        return file.trouver(passageId) == null ? introuvable() : gardeCommune();
+    }
+
+    private Refuse gardeCalage(UUID passageId) {
+        Refuse refus = gardeCommune(passageId);
+        if (refus != null) { return refus; }
+        return etat == EtatManche.EN_PAUSE ? incompatible() : null;
+    }
+
+    private boolean calagePossible(LecturePassage lecture) {
+        return file.trouver(lecture.passageId()).etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE;
     }
 
     private Accepte accepterCalage(UUID envoiId, Instant recueLe, LecturePassage lecture, LecturePassage cale,
