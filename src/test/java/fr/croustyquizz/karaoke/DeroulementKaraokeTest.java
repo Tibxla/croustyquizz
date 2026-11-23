@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 class DeroulementKaraokeTest extends ContratDeroulementDeManche {
 	@Override
 	protected DeroulementDeManche creer(ContexteDeManche contexte) {
-		return new DeroulementKaraoke(contexte, new ReglagesKaraoke(2), Duration.ofSeconds(30));
+		var identifiants = java.util.stream.LongStream.iterate(100, id -> id + 1).iterator();
+		return new DeroulementKaraoke(contexte, new ReglagesKaraoke(2), Duration.ofSeconds(30),
+				() -> new UUID(0, identifiants.nextLong()));
 	}
 
 	@Override
@@ -50,11 +52,13 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
     private void refuserSansMutation(java.util.function.Supplier<ResultatDeCommande> action,
             int statut, String code, String motif) {
         var avant = karaoke().instantane();
+        int minuteurs = horloge.minuteursEnAttente();
         assertThat(action.get()).isInstanceOfSatisfying(Refuse.class, r -> {
             assertThat(r.statutHttp()).isEqualTo(statut); assertThat(r.code()).isEqualTo(code);
             if (motif != null) { assertThat(r.detail()).contains(motif); }
         });
         assertThat(karaoke().instantane()).isEqualTo(avant);
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(minuteurs);
     }
 
     @Test
@@ -195,10 +199,10 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         accepter(deroulement.mettreEnPause(pilotage()), "manche-en-pause", true);
         refuserSansMutation(() -> deroulement.mettreEnPause(pilotage()), 409, "ETAT_INCOMPATIBLE", null);
         assertThat(karaoke().instantane().file()).isEqualTo(file);
-        assertThat(karaoke().estimerAttentes(null).values()).extracting(AttenteEstimee::etat).containsOnly(EtatAttente.SUSPENDUE);
+        assertThat(karaoke().estimerAttentes().values()).extracting(AttenteEstimee::etat).containsOnly(EtatAttente.SUSPENDUE);
         horloge.avancer(Duration.ofSeconds(42));
         accepter(deroulement.reprendre(pilotage()), "manche-reprise", true);
-        assertThat(karaoke().estimerAttentes(null).values()).containsExactly(new AttenteEstimee(horloge.maintenant(), EtatAttente.ESTIMEE, 0L));
+        assertThat(karaoke().estimerAttentes().values()).containsExactly(new AttenteEstimee(horloge.maintenant(), EtatAttente.ESTIMEE, 0L));
         assertThat(karaoke().instantane().file()).isEqualTo(file);
         var commande = pilotage();
         Accepte fin = accepter(deroulement.terminer(commande), "manche-terminee", true);
@@ -219,5 +223,162 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThatThrownBy(() -> new Accepte(null, Set.of(), "inconnu")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Accepte(null, Set.of(Destination.SALLE), "reponse-enregistree"))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+    private static final UUID PASSAGE = new UUID(0, 10);
+    private static final UUID SUIVANT = new UUID(0, 11);
+    private static final UUID ETAPE = new UUID(0, 100);
+    private static final UUID INCONNU = new UUID(0, 20);
+    private static final UUID ENVOI = new UUID(0, 21);
+    private static final Acteur INTERPRETE = new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE);
+
+    @Test
+    void appelleSelonLOrdreDesRefusEtViseUniquementLEtapeActive() {
+        refuserSansMutation(() -> appeler(new CiblePassage(INCONNU, 0)), 409, "ETAPE_INACTIVE", null);
+        deroulement.demarrer();
+        inscrire(PASSAGE);
+        inscrire(SUIVANT);
+        deroulement.mettreEnPause(pilotage());
+        refuserSansMutation(() -> appeler(new CiblePassage(INCONNU, 0)), 404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> appeler(new CiblePassage(SUIVANT, 42)), 409, "ETAT_INCOMPATIBLE", null);
+        deroulement.reprendre(pilotage());
+        refuserSansMutation(() -> appeler(cible(SUIVANT)), 409, "COMMANDE_PERIMEE", null);
+        var recu = accepter(appeler(cible(PASSAGE)), "passage-appele", true);
+        assertThat(recu.accuse()).isEqualTo(new AccuseCyclePassage(ENVOI, SOIREE, MANCHE, PASSAGE,
+                ETAPE, 1, "APPELER", horloge.maintenant(), EtatPassage.APPELE));
+        assertThat(deroulement.viseEtape(ETAPE)).isTrue();
+        assertThat(deroulement.viseEtape(null)).isFalse();
+        assertThat(deroulement.viseEtape(INCONNU)).isFalse();
+        refuserSansMutation(() -> appeler(cible(SUIVANT)), 409, "ETAT_INCOMPATIBLE", null);
+    }
+
+    @Test
+    void confirmeSeulLInterpreteMemeApresLEcheanceEtUneSeuleFois() {
+        ouvrirPassage();
+        Acteur autre = new Acteur(Acteur.Type.JOUEUR, INCONNU, SOIREE);
+        deroulement.mettreEnPause(pilotage());
+        assertThat(deroulement.viseEtape(ETAPE)).isTrue();
+        refuserSansMutation(() -> confirmer(autre, cible(PASSAGE), ETAPE), 404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> confirmer(INTERPRETE, new CiblePassage(INCONNU, 0), ETAPE),
+                404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> confirmer(INTERPRETE, new CiblePassage(PASSAGE, 0), INCONNU),
+                409, "ETAT_INCOMPATIBLE", null);
+        deroulement.reprendre(pilotage());
+        inscrire(SUIVANT);
+        refuserSansMutation(() -> confirmer(INTERPRETE, cible(SUIVANT), ETAPE), 409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> confirmer(INTERPRETE, cible(PASSAGE), INCONNU), 409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> confirmer(INTERPRETE, new CiblePassage(PASSAGE, 0), ETAPE),
+                409, "COMMANDE_PERIMEE", null);
+        horloge.avancer(Duration.ofSeconds(31));
+        CiblePassage appele = cible(PASSAGE);
+        var recu = accepter(confirmer(INTERPRETE, appele, ETAPE), "passage-demarre", true);
+        assertThat(recu.accuse()).isEqualTo(new AccuseCyclePassage(ENVOI, SOIREE, MANCHE, PASSAGE,
+                ETAPE, 2, "CONFIRMER_PRESENCE", horloge.maintenant(), EtatPassage.EN_COURS));
+        refuserSansMutation(() -> confirmer(INTERPRETE, appele, ETAPE), 409, "COMMANDE_PERIMEE", null);
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+        assertThat(karaoke().instantane().lectures().get(PASSAGE)).isEqualTo(new LecturePassage(new UUID(0, 101),
+                PASSAGE, null, EtatLecture.DEMARREE, SourceLecture.PAROLES_SEULES, null, MotifParolesSeules.ECRAN_NON_PRET,
+                OrigineParoles.INSCRIPTION, new ParolesDuPassage(new UUID(0, 102), 180_000L,
+                        List.of(new LigneParoles(12_000, "Des paroles"))), 42, 0, 0, null, null));
+        assertThat(karaoke().instantane().cycle().dureeReference()).isEqualTo(Duration.ofMinutes(3));
+    }
+
+    @Test
+    void estimeLesAttentesDepuisLeCourantPuisSaFinPrevue() {
+        ouvrirPassage();
+        inscrire(SUIVANT);
+        assertThat(karaoke().estimerAttentes().get(SUIVANT).dureeMs()).isEqualTo(210_000L);
+        horloge.avancer(Duration.ofSeconds(30));
+        assertThat(karaoke().estimerAttentes().get(SUIVANT).etat()).isEqualTo(EtatAttente.INCONNUE);
+        confirmer(INTERPRETE, cible(PASSAGE), ETAPE);
+        assertThat(karaoke().estimerAttentes().get(SUIVANT).dureeMs()).isEqualTo(180_000L);
+        var pause = pilotage();
+        deroulement.mettreEnPause(pause);
+        assertThat(karaoke().instantane().cycle().pauseDepuis()).isEqualTo(pause.recueLe());
+        assertThat(horloge.minuteursEnAttente()).isZero();
+        assertThat(karaoke().estimerAttentes().get(SUIVANT).etat()).isEqualTo(EtatAttente.SUSPENDUE);
+        horloge.avancer(Duration.ofSeconds(10));
+        deroulement.reprendre(pilotage());
+        assertThat(karaoke().instantane().cycle().tempsPause()).isEqualTo(Duration.ofSeconds(10));
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+    }
+
+    @Test
+    void sauteEnPausePuisAnnuleLeCourantEtLesAttentesEnTerminant() {
+        ouvrirPassage();
+        inscrire(SUIVANT);
+        confirmer(INTERPRETE, cible(PASSAGE), ETAPE);
+        deroulement.mettreEnPause(pilotage());
+        var commande = pilotage();
+        var saute = accepter(deroulement.passerEtape(commande), "passage-saute", true);
+        assertThat(saute.accuse()).isEqualTo(commande.accuse());
+        assertThat(passage(PASSAGE).traceTerminale()).isEqualTo(
+                new TraceTerminale("PASSE_PAR_ANIMATEUR", commande.acteur().identifiant(), commande.recueLe()));
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_PAUSE);
+        assertThat(karaoke().instantane().lectures()).containsOnlyKeys(PASSAGE);
+        assertThat(deroulement.viseEtape(null)).isTrue();
+        assertThat(deroulement.viseEtape(ETAPE)).isFalse();
+        refuserSansMutation(() -> deroulement.passerEtape(pilotage()), 409, "ETAPE_INACTIVE", null);
+        deroulement.reprendre(pilotage());
+        appeler(cible(SUIVANT));
+        assertThat(karaoke().instantane().lectures()).isEmpty();
+        inscrire(INCONNU);
+        var terminer = pilotage();
+        accepter(deroulement.terminer(terminer), "manche-terminee", true);
+        var trace = new TraceTerminale("MANCHE_TERMINEE", terminer.acteur().identifiant(), terminer.recueLe());
+        assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.ANNULE);
+        assertThat(passage(SUIVANT).tourConsomme()).isEqualTo(2L);
+        assertThat(passage(INCONNU).etat()).isEqualTo(EtatPassage.ANNULE);
+        assertThat(passage(INCONNU).tourConsomme()).isNull();
+        assertThat(passage(SUIVANT).traceTerminale()).isEqualTo(trace);
+        assertThat(passage(INCONNU).traceTerminale()).isEqualTo(trace);
+        assertThat(horloge.minuteursEnAttente()).isZero();
+    }
+
+    @Test
+    void laFinPrevueDuDernierPassageNeTerminePasLaManche() {
+        ouvrirPassage();
+        var fabrique = new FabriqueKaraoke(Duration.ofSeconds(30));
+        assertThat(karaoke().causeDernierMinuteur()).isNull();
+        confirmer(INTERPRETE, cible(PASSAGE), ETAPE);
+        horloge.avancer(Duration.ofMinutes(3));
+        assertThat(fabrique.typeEvenementMinuteur(deroulement)).isEqualTo("passage-termine");
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo("passage-termine");
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.TERMINE);
+        assertThat(passage(PASSAGE).traceTerminale()).isEqualTo(new TraceTerminale("FIN_PREVUE", null, horloge.maintenant()));
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_COURS);
+        assertThat(karaoke().instantane().lectures()).containsOnlyKeys(PASSAGE);
+        assertThat(deroulement.points()).isEmpty();
+        assertThat(finsSignalees).isZero();
+        deroulement.terminer(pilotage());
+        assertThat(fabrique.typeEvenementMinuteur(deroulement)).isEqualTo("manche-terminee");
+    }
+
+    private void ouvrirPassage() {
+        deroulement.demarrer();
+        inscrire(PASSAGE);
+        accepter(appeler(cible(PASSAGE)), "passage-appele", true);
+    }
+
+    private void inscrire(UUID id) {
+        var contenu = new ContenuKaraoke(new Chanson(id.toString(), 42, "Titre", "Artiste", null, 180_000L,
+                EtatParoles.SYNCHRONISEES), List.of(new LigneParoles(12_000, "Des paroles")));
+        assertThat(deroulement.recevoir(new InscrirePassage(INTERPRETE, horloge.maintenant(), ENVOI,
+                new FaitsInscription(id, 1), id.toString(), contenu))).isInstanceOf(Accepte.class);
+    }
+
+    private ResultatDeCommande appeler(CiblePassage cible) {
+        return deroulement.commander(new AppelerPassage(pilotage().acteur(), horloge.maintenant(), ENVOI, cible));
+    }
+
+    private ResultatDeCommande confirmer(Acteur joueur, CiblePassage cible, UUID etape) {
+        var action = new ConfirmerPresencePassage(joueur, horloge.maintenant(), ENVOI, cible, etape);
+        assertThat(action.joueurId()).isEqualTo(joueur.identifiant());
+        return deroulement.recevoir(action);
+    }
+
+    private Passage passage(UUID id) {
+        return karaoke().instantane().file().passages().stream()
+                .filter(p -> p.id().equals(id)).findFirst().orElseThrow();
     }
 }

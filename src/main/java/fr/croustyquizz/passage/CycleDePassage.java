@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /** Ordonne les transitions de la File et gère la chronologie du Passage courant. */
 public final class CycleDePassage {
@@ -40,11 +41,19 @@ public final class CycleDePassage {
     }
 
     public ResultatFile appeler(CiblePassage cible, UUID etapeId, Instant maintenant) {
+        Objects.requireNonNull(etapeId);
+        return appelerAvecIdentifiant(cible, () -> etapeId, maintenant);
+    }
+
+    /** L’étape n’est créée que si la File accepte l’appel. */
+    public ResultatFile appelerAvecIdentifiant(CiblePassage cible, Supplier<UUID> identifiants, Instant maintenant) {
         if (courantActif() != null) { return incompatible(); }
-        var appel = new EtatCyclePassage(cible.passageId(), etapeId, maintenant, maintenant.plus(delaiAppel),
-                null, null, Duration.ZERO, null, null);
+        Instant echeance = maintenant.plus(delaiAppel);
         ResultatFile resultat = file.appelerPassage(cible);
-        if (resultat instanceof ResultatFile.Modifiee) { chronologie = appel; }
+        if (resultat instanceof ResultatFile.Modifiee) {
+            chronologie = new EtatCyclePassage(cible.passageId(), identifiants.get(), maintenant, echeance,
+                    null, null, Duration.ZERO, null, null);
+        }
         return resultat;
     }
 
@@ -109,7 +118,7 @@ public final class CycleDePassage {
         Duration reste = dureePositive(Duration.between(horloge.maintenant(), chronologie.finPrevue()));
         fin = horloge.programmer(reste, () -> {
             if (rappel == generation && Objects.equals(chronologie.etapeId(), etapeId)) {
-                clore(EtatPassage.TERMINE, "FIN_PREVUE", null, horloge.maintenant());
+                clore(EtatPassage.TERMINE, TraceTerminale.FIN_PREVUE, null, horloge.maintenant());
             }
         });
     }

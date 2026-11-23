@@ -277,7 +277,7 @@ public final class FileAttente {
         for (Passage passage : List.copyOf(passages)) {
             if (passage.etat() == EtatPassage.EN_ATTENTE) {
                 remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.ANNULE,
-                        null, new TraceTerminale("MANCHE_TERMINEE", acteurId, recueLe), true));
+                        null, new TraceTerminale(TraceTerminale.MANCHE_TERMINEE, acteurId, recueLe), true));
                 modifiee = true;
             }
         }
