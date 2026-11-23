@@ -381,4 +381,404 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         return karaoke().instantane().file().passages().stream()
                 .filter(p -> p.id().equals(id)).findFirst().orElseThrow();
     }
+    private static final UUID LECTEUR = new UUID(0, 40);
+    private static final UUID AUTRE_LECTEUR = new UUID(0, 41);
+    private static final Acteur ECRAN = new Acteur(Acteur.Type.ECRAN, new UUID(0, 42), SOIREE);
+    private static final String LECTURE_MODIFIEE = "lecture-chanson-modifiee";
+    private static final String CALAGE_MODIFIE = "calage-chanson-modifie";
+    private static final Set<Destination> SALLE_ET_CONSOLE = Set.of(Destination.SALLE, Destination.CONSOLE);
+    private static final List<LigneParoles> LIGNES_ADAPTEES = List.of(new LigneParoles(0, ""),
+            new LigneParoles(12_000, "Première ligne"), new LigneParoles(15_000, "Deuxième ligne"));
+
+    @Test
+    void designeUnLecteurSansEffetAuRejeuEtRetireLaPreparationDeLAncienLecteur() {
+        ouvrirPassage();
+        assertThat(accepterLecture(designer(LECTEUR), LECTURE_MODIFIEE, SALLE_ET_CONSOLE).accuse())
+                .isEqualTo(new AccuseLectureChanson(ENVOI, SOIREE, MANCHE, LECTEUR,
+                        null, null, "DESIGNER_LECTEUR", horloge.maintenant()));
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 75);
+        var avant = karaoke().instantane();
+        accepterLecture(designer(LECTEUR), LECTURE_MODIFIEE, Set.of());
+        assertThat(karaoke().instantane()).isEqualTo(avant);
+        accepterLecture(designer(AUTRE_LECTEUR), LECTURE_MODIFIEE, SALLE_ET_CONSOLE);
+        assertThat(karaoke().instantane().lecteurDesigneId()).isEqualTo(AUTRE_LECTEUR);
+        assertThat(karaoke().instantane().lectures()).isEmpty();
+        confirmerCourant();
+        assertThat(lecture().motifParolesSeules()).isEqualTo(MotifParolesSeules.ECRAN_NON_PRET);
+        assertThat(lecture().lecteurId()).isNull();
+    }
+
+    @Test
+    void laDeclarationGardePassageEtapeCompteurPuisLecteurEtRemplaceLaPreparation() {
+        ouvrirPassage();
+        inscrire(SUIVANT);
+        var preparation = preparationLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, -75);
+        refuserSansMutation(() -> declarer(new CiblePassage(INCONNU, 0), INCONNU, AUTRE_LECTEUR, preparation),
+                404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> declarer(cible(SUIVANT), ETAPE, AUTRE_LECTEUR, preparation),
+                409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> declarer(cible(PASSAGE), INCONNU, AUTRE_LECTEUR, preparation),
+                409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> declarer(new CiblePassage(PASSAGE, 0), ETAPE, AUTRE_LECTEUR, preparation),
+                409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> declarer(cible(PASSAGE), ETAPE, LECTEUR, preparation),
+                409, "LECTEUR_NON_DESIGNE", null);
+        designer(LECTEUR);
+        refuserSansMutation(() -> declarer(cible(PASSAGE), ETAPE, AUTRE_LECTEUR, preparation),
+                409, "LECTEUR_NON_DESIGNE", null);
+        var appele = passage(PASSAGE);
+        deroulement.mettreEnPause(pilotage());
+        var recu = accepterLecture(declarer(cible(PASSAGE), ETAPE, LECTEUR, preparation), LECTURE_MODIFIEE, SALLE_ET_CONSOLE);
+        var premiere = lecture();
+        assertThat(recu.accuse()).isEqualTo(new AccuseLectureChanson(ENVOI, SOIREE, MANCHE, LECTEUR,
+                PASSAGE, premiere.lectureId(), "DECLARER_LECTURE", horloge.maintenant()));
+        assertThat(premiere).isEqualTo(new LecturePassage(new UUID(0, 101), PASSAGE, LECTEUR, EtatLecture.PREPAREE,
+                SourceLecture.FICHIER_LOCAL, preparation.fichier(), null, OrigineParoles.VERSION_ADAPTEE,
+                new ParolesDuPassage(new UUID(0, 102), 290_000L, LIGNES_ADAPTEES), 43, -75, 0, null, null));
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 50);
+        assertThat(lecture().lectureId()).isNotEqualTo(premiere.lectureId());
+        assertThat(lecture().decalageMs()).isEqualTo(50);
+        assertThat(passage(PASSAGE)).isEqualTo(appele);
+        deroulement.reprendre(pilotage());
+        confirmerCourant();
+        refuserSansMutation(() -> declarer(cible(PASSAGE), ETAPE, LECTEUR, preparation), 409, "COMMANDE_PERIMEE", null);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.NullSource
+    @org.junit.jupiter.params.provider.ValueSource(longs = {0, 300_000})
+    void conserveLaDureeDuFichierConnuOuPrendCelleDesParoles(Long dureeFichier) {
+        ouvrirPassage();
+        designer(LECTEUR);
+        declarerLocale(dureeFichier, dureeFichier == null || dureeFichier == 0
+                ? OrigineParoles.REPLI_INSCRIPTION : OrigineParoles.VERSION_ADAPTEE, 0);
+        var preparee = lecture();
+        confirmerCourant();
+        assertThat(lecture().lectureId()).isEqualTo(preparee.lectureId());
+        assertThat(lecture().paroles()).isEqualTo(preparee.paroles());
+        assertThat(lecture().etat()).isEqualTo(EtatLecture.DEMARREE);
+        long duree = Long.valueOf(300_000).equals(dureeFichier) ? 300_000 : 290_000;
+        var projection = projection();
+        assertThat(projection.finPrevueLe()).isEqualTo(projection.demarreLe().plusMillis(duree));
+        horloge.avancer(Duration.ofMillis(duree - 1));
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.EN_COURS);
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.TERMINE);
+    }
+
+    @Test
+    void unePreparationEnParolesSeulesDemarreAvecSaPropreDuree() {
+        ouvrirPassage();
+        designer(LECTEUR);
+        var preparation = new LecturePreparee(SourceLecture.PAROLES_SEULES, null, MotifParolesSeules.FICHIER_ABSENT,
+                OrigineParoles.INSCRIPTION, 180_000L, LIGNES_ADAPTEES, 42, 0);
+        declarer(cible(PASSAGE), ETAPE, LECTEUR, preparation);
+        var preparee = lecture();
+        confirmerCourant();
+        assertThat(lecture().lecteurId()).isEqualTo(LECTEUR);
+        assertThat(lecture().motifParolesSeules()).isEqualTo(MotifParolesSeules.FICHIER_ABSENT);
+        assertThat(lecture().paroles()).isEqualTo(preparee.paroles());
+        assertThat(karaoke().instantane().cycle().dureeReference()).isEqualTo(Duration.ofSeconds(180));
+        for (Signal signal : Signal.values()) {
+            refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR),
+                    409, "ETAT_INCOMPATIBLE", null);
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(Signal.class)
+    void gardeLesSignauxDansLOrdrePassageEtapeLectureLecteurPuisEtat(Signal signal) {
+        ouvrirPassage();
+        inscrire(SUIVANT);
+        designer(LECTEUR);
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+        UUID premiere = lecture().lectureId();
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+        UUID lectureId = lecture().lectureId();
+        refuserSansMutation(() -> signaler(signal, INCONNU, INCONNU, premiere, AUTRE_LECTEUR),
+                404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> signaler(signal, SUIVANT, ETAPE, lectureId, AUTRE_LECTEUR),
+                409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> signaler(signal, PASSAGE, INCONNU, lectureId, AUTRE_LECTEUR),
+                409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, premiere, AUTRE_LECTEUR),
+                409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lectureId, AUTRE_LECTEUR),
+                409, "LECTEUR_NON_DESIGNE", null);
+        refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lectureId, LECTEUR),
+                409, "ETAT_INCOMPATIBLE", null);
+        confirmerCourant();
+        deroulement.passerEtape(pilotage());
+        refuserSansMutation(() -> signaler(signal, PASSAGE, ETAPE, lectureId, LECTEUR),
+                409, "COMMANDE_PERIMEE", null);
+    }
+
+    @Test
+    void laFinDuLecteurInitialClotLeChantEnPauseEtEffaceLaDemande() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        marquerDebut(PASSAGE, ETAPE, lecture().lectureId());
+        designer(AUTRE_LECTEUR);
+        UUID lectureId = lecture().lectureId();
+        assertThat(lecture().lecteurId()).isEqualTo(LECTEUR);
+        horloge.avancer(Duration.ofSeconds(10));
+        deroulement.mettreEnPause(pilotage());
+        horloge.avancer(Duration.ofSeconds(1));
+        refuserSansMutation(() -> signaler(Signal.FIN, PASSAGE, ETAPE, lectureId, AUTRE_LECTEUR),
+                409, "LECTEUR_NON_DESIGNE", null);
+        var fin = accepter(signaler(Signal.FIN, PASSAGE, ETAPE, lectureId, LECTEUR), "passage-termine", true);
+        assertThat(fin.accuse()).isEqualTo(new AccuseLectureChanson(ENVOI, SOIREE, MANCHE, LECTEUR,
+                PASSAGE, lectureId, "SIGNALER_FIN_LECTURE", horloge.maintenant()));
+        assertThat(passage(PASSAGE).traceTerminale()).isEqualTo(new TraceTerminale("FIN_LECTURE", null, horloge.maintenant()));
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.TERMINE);
+        assertThat(lecture().demandeId()).isNull();
+        assertThat(lecture().demandeeLe()).isNull();
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_PAUSE);
+        assertThat(karaoke().instantane().cycle().tempsPause()).isZero();
+        assertThat(karaoke().causeDernierMinuteur()).isNull();
+        horloge.avancer(Duration.ofMinutes(6));
+        assertThat(passage(PASSAGE).numeroModification()).isEqualTo(3);
+    }
+
+    @Test
+    void unSignalDeFinApresLaFinPrevueEstPerime() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        horloge.avancer(Duration.ofSeconds(300));
+        refuserSansMutation(() -> signaler(Signal.FIN, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR),
+                409, "COMMANDE_PERIMEE", null);
+        assertThat(passage(PASSAGE).traceTerminale().motif()).isEqualTo("FIN_PREVUE");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = OrigineParoles.class,
+            names = {"VERSION_ADAPTEE", "REPLI_INSCRIPTION"})
+    void lerreurSuspendPuisLesParolesSeulesReprennentLaMemeChronologie(OrigineParoles origine) {
+        chanterSurFichier(origine);
+        UUID lectureId = lecture().lectureId();
+        refuserSansMutation(() -> reprendreEnParoles(PASSAGE, ETAPE, lectureId), 409, "ETAT_INCOMPATIBLE", null);
+        refuserSansMutation(() -> reprendreEnParoles(PASSAGE, INCONNU, lectureId), 409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> reprendreEnParoles(PASSAGE, ETAPE, INCONNU), 409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> reprendreEnParoles(INCONNU, ETAPE, lectureId), 409, "COMMANDE_PERIMEE", null);
+        horloge.avancer(Duration.ofSeconds(10));
+        marquerDebut(PASSAGE, ETAPE, lectureId);
+        var depart = projection().demarreLe();
+        var avantErreur = lecture();
+        var erreur = accepter(signaler(Signal.ERREUR, PASSAGE, ETAPE, lectureId, LECTEUR), LECTURE_MODIFIEE, true);
+        assertThat(erreur.accuse()).isEqualTo(new AccuseLectureChanson(ENVOI, SOIREE, MANCHE, LECTEUR,
+                PASSAGE, lectureId, "SIGNALER_ERREUR_LECTURE", horloge.maintenant()));
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_PAUSE);
+        assertThat(karaoke().instantane().cycle().pauseDepuis()).isEqualTo(horloge.maintenant());
+        assertThat(lecture().etat()).isEqualTo(EtatLecture.EN_ERREUR);
+        assertThat(lecture().demandeId()).isNull();
+        assertThat(horloge.minuteursEnAttente()).isZero();
+        refuserSansMutation(() -> deroulement.reprendre(pilotage()), 409, "ETAT_INCOMPATIBLE", null);
+        refuserSansMutation(() -> signaler(Signal.FIN, PASSAGE, ETAPE, lectureId, LECTEUR), 409, "ETAT_INCOMPATIBLE", null);
+        refuserSansMutation(() -> signaler(Signal.POSITION, PASSAGE, ETAPE, lectureId, LECTEUR), 409, "ETAT_INCOMPATIBLE", null);
+        var enErreur = karaoke().instantane();
+        horloge.avancer(Duration.ofSeconds(8));
+        accepter(signaler(Signal.ERREUR, PASSAGE, ETAPE, lectureId, LECTEUR), LECTURE_MODIFIEE, false);
+        assertThat(karaoke().instantane()).isEqualTo(enErreur);
+        var reprise = accepter(reprendreEnParoles(PASSAGE, ETAPE, lectureId), LECTURE_MODIFIEE, true);
+        assertThat(reprise.accuse()).isEqualTo(new AccuseCyclePassage(ENVOI, SOIREE, MANCHE, PASSAGE, ETAPE, 2,
+                "REPRENDRE_EN_PAROLES_SEULES", horloge.maintenant(), EtatPassage.EN_COURS));
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_COURS);
+        assertThat(lecture()).isEqualTo(new LecturePassage(lectureId, PASSAGE, LECTEUR, EtatLecture.DEMARREE,
+                SourceLecture.PAROLES_SEULES, null, MotifParolesSeules.ERREUR_LECTURE, origine, avantErreur.paroles(),
+                avantErreur.versionSourceId(), avantErreur.decalageMs(), avantErreur.numeroModificationCalage(), null, null));
+        assertThat(projection().finPrevueLe()).isEqualTo(depart.plusSeconds(308));
+        assertThat(projection().positionChronologiqueMs()).isEqualTo(10_000L);
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+    }
+
+    @Test
+    void lerreurPendantUnePauseManuelleGardeSonDebutEtBloqueLaRepriseSimple() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        horloge.avancer(Duration.ofSeconds(10));
+        var pause = pilotage();
+        deroulement.mettreEnPause(pause);
+        horloge.avancer(Duration.ofSeconds(5));
+        accepter(signaler(Signal.ERREUR, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR), LECTURE_MODIFIEE, true);
+        assertThat(karaoke().instantane().cycle().pauseDepuis()).isEqualTo(pause.recueLe());
+        refuserSansMutation(() -> deroulement.reprendre(pilotage()), 409, "ETAT_INCOMPATIBLE", null);
+    }
+
+    @Test
+    void leCalageControleLaPausePuisLesIdentifiantsPuisLeDepart() {
+        ouvrirPassage();
+        designer(LECTEUR);
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+        UUID lectureId = lecture().lectureId();
+        deroulement.mettreEnPause(pilotage());
+        verifierRefusCalage(INCONNU, INCONNU, INCONNU, "ETAT_INCOMPATIBLE");
+        deroulement.reprendre(pilotage());
+        verifierRefusCalage(INCONNU, ETAPE, lectureId, "COMMANDE_PERIMEE");
+        verifierRefusCalage(PASSAGE, INCONNU, lectureId, "COMMANDE_PERIMEE");
+        verifierRefusCalage(PASSAGE, ETAPE, INCONNU, "COMMANDE_PERIMEE");
+        verifierRefusCalage(PASSAGE, ETAPE, lectureId, "ETAT_INCOMPATIBLE");
+    }
+
+    private void verifierRefusCalage(UUID passageId, UUID etapeId, UUID lectureId, String code) {
+        refuserSansMutation(() -> marquerDebut(passageId, etapeId, lectureId), 409, code, null);
+        refuserSansMutation(() -> corriger(passageId, etapeId, lectureId, 0, SensCorrection.RETARDER), 409, code, null);
+    }
+
+    @Test
+    void marqueLeDebutEnParolesSeulesALInstantDeReceptionEtSansDemande() {
+        ouvrirPassage();
+        confirmerCourant();
+        horloge.avancer(Duration.ofSeconds(14));
+        Instant recueLe = horloge.maintenant().minusMillis(500);
+        UUID lectureId = lecture().lectureId();
+        var avant = projection();
+        var geste = new MarquerDebutParoles(pilotage().acteur(), recueLe, ENVOI, PASSAGE, ETAPE, lectureId);
+        var recu = accepterLecture(deroulement.commander(geste), CALAGE_MODIFIE, SALLE_ET_CONSOLE);
+        assertThat(recu.accuse()).isEqualTo(new AccuseCalage(ENVOI, SOIREE, MANCHE, PASSAGE, lectureId,
+                "MARQUER_DEBUT", recueLe, null, 1));
+        assertThat(lecture().decalageMs()).isEqualTo(1_500);
+        assertThat(lecture().demandeId()).isNull();
+        assertThat(projection()).isEqualTo(avant);
+        var capture = karaoke().instantane();
+        accepterLecture(deroulement.commander(geste), CALAGE_MODIFIE, Set.of());
+        assertThat(karaoke().instantane()).isEqualTo(capture);
+    }
+
+    @Test
+    void remplaceLaDemandeEtRecaleALaPositionDuLecteurMemeEnPause() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        UUID lectureId = lecture().lectureId();
+        var avant = projection();
+        var premierGeste = accepterLecture(marquerDebut(PASSAGE, ETAPE, lectureId), CALAGE_MODIFIE, SALLE_ET_CONSOLE);
+        UUID premiereDemande = lecture().demandeId();
+        assertThat(premiereDemande).isEqualTo(new UUID(0, 103));
+        assertThat(premierGeste.accuse()).isEqualTo(new AccuseCalage(ENVOI, SOIREE, MANCHE, PASSAGE, lectureId,
+                "MARQUER_DEBUT", horloge.maintenant(), premiereDemande, 0));
+        assertThat(lecture().decalageMs()).isEqualTo(25);
+        assertThat(lecture().demandeeLe()).isEqualTo(horloge.maintenant());
+        assertThat(projection()).isEqualTo(avant);
+        horloge.avancer(Duration.ofSeconds(1));
+        marquerDebut(PASSAGE, ETAPE, lectureId);
+        UUID demande = lecture().demandeId();
+        assertThat(demande).isEqualTo(new UUID(0, 104));
+        assertThat(lecture().demandeeLe()).isEqualTo(horloge.maintenant());
+        refuserSansMutation(() -> relever(lectureId, premiereDemande, 13_500), 409, "COMMANDE_PERIMEE", null);
+        deroulement.mettreEnPause(pilotage());
+        avant = projection();
+        var releve = accepterLecture(relever(lectureId, demande, 13_500), CALAGE_MODIFIE, SALLE_ET_CONSOLE);
+        assertThat(releve.accuse()).isEqualTo(new AccuseLectureChanson(ENVOI, SOIREE, MANCHE, LECTEUR,
+                PASSAGE, lectureId, "RELEVER_POSITION", horloge.maintenant()));
+        assertThat(lecture().decalageMs()).isEqualTo(1_500);
+        assertThat(lecture().numeroModificationCalage()).isEqualTo(1);
+        assertThat(lecture().demandeId()).isNull();
+        assertThat(lecture().demandeeLe()).isNull();
+        assertThat(projection()).isEqualTo(avant);
+        refuserSansMutation(() -> relever(lectureId, demande, 13_500), 409, "COMMANDE_PERIMEE", null);
+        deroulement.reprendre(pilotage());
+        marquerDebut(PASSAGE, ETAPE, lectureId);
+        accepterLecture(relever(lectureId, lecture().demandeId(), 13_500), CALAGE_MODIFIE, SALLE_ET_CONSOLE);
+        assertThat(lecture().numeroModificationCalage()).isEqualTo(1);
+        assertThat(lecture().demandeId()).isNull();
+    }
+
+    @Test
+    void corrigeParPasDeCentEtGardeLaDemandeJusquAuReleve() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        UUID lectureId = lecture().lectureId();
+        marquerDebut(PASSAGE, ETAPE, lectureId);
+        UUID demande = lecture().demandeId();
+        var avant = projection();
+        var correction = accepterLecture(corriger(PASSAGE, ETAPE, lectureId, 0, SensCorrection.RETARDER),
+                CALAGE_MODIFIE, SALLE_ET_CONSOLE);
+        assertThat(correction.accuse()).isEqualTo(new AccuseCalage(ENVOI, SOIREE, MANCHE, PASSAGE, lectureId,
+                "CORRIGER", horloge.maintenant(), null, 1));
+        assertThat(lecture().decalageMs()).isEqualTo(125);
+        assertThat(lecture().demandeId()).isEqualTo(demande);
+        refuserSansMutation(() -> corriger(PASSAGE, ETAPE, lectureId, 0, SensCorrection.AVANCER),
+                409, "COMMANDE_PERIMEE", null);
+        accepterLecture(corriger(PASSAGE, ETAPE, lectureId, 1, SensCorrection.AVANCER), CALAGE_MODIFIE, SALLE_ET_CONSOLE);
+        assertThat(lecture().decalageMs()).isEqualTo(25);
+        assertThat(lecture().numeroModificationCalage()).isEqualTo(2);
+        assertThat(projection()).isEqualTo(avant);
+        relever(lectureId, demande, 13_500);
+        assertThat(lecture().decalageMs()).isEqualTo(1_500);
+        assertThat(lecture().numeroModificationCalage()).isEqualTo(3);
+        assertThat(lecture().versionSourceId()).isEqualTo(43);
+    }
+
+    private enum Signal { FIN, ERREUR, POSITION }
+
+    private ResultatDeCommande signaler(Signal signal, UUID passage, UUID etape, UUID lecture, UUID lecteur) {
+        Instant recueLe = horloge.maintenant();
+        return deroulement.commander(switch (signal) {
+            case FIN -> new SignalerFinLectureChanson(ECRAN, recueLe, ENVOI, passage, etape, lecture, lecteur, 10_000);
+            case ERREUR -> new SignalerErreurLectureChanson(ECRAN, recueLe, ENVOI, passage, etape, lecture, lecteur);
+            case POSITION -> new ReleverPositionLecture(ECRAN, recueLe, ENVOI, passage, etape, lecture, lecteur,
+                    INCONNU, 13_500);
+        });
+    }
+
+    private ResultatDeCommande designer(UUID lecteur) {
+        return deroulement.commander(new DesignerLecteurChanson(ECRAN, horloge.maintenant(), ENVOI, lecteur));
+    }
+
+    private ResultatDeCommande declarer(CiblePassage cible, UUID etape, UUID lecteur, LecturePreparee preparation) {
+        return deroulement.commander(new DeclarerLectureChanson(ECRAN, horloge.maintenant(), ENVOI,
+                cible, etape, lecteur, preparation));
+    }
+
+    private void declarerLocale(Long dureeFichier, OrigineParoles origine, long decalage) {
+        accepterLecture(declarer(cible(PASSAGE), ETAPE, LECTEUR, preparationLocale(dureeFichier, origine, decalage)),
+                LECTURE_MODIFIEE, SALLE_ET_CONSOLE);
+    }
+
+    private LecturePreparee preparationLocale(Long dureeFichier, OrigineParoles origine, long decalage) {
+        return new LecturePreparee(SourceLecture.FICHIER_LOCAL, new FichierAudioLocal("titre.mp3", 5, dureeFichier),
+                null, origine, 290_000, LIGNES_ADAPTEES, 43, decalage);
+    }
+
+    private void chanterSurFichier(OrigineParoles origine) {
+        ouvrirPassage();
+        designer(LECTEUR);
+        declarerLocale(300_000L, origine, 25);
+        confirmerCourant();
+    }
+
+    private void confirmerCourant() {
+        accepter(confirmer(INTERPRETE, cible(PASSAGE), ETAPE), "passage-demarre", true);
+    }
+
+    private LecturePassage lecture() { return karaoke().instantane().lectures().get(PASSAGE); }
+
+    private ProjectionCycle projection() {
+        var capture = karaoke().instantane();
+        return CycleDePassage.projeter(capture.file(), capture.cycle(),
+                capture.etatManche() == EtatManche.EN_PAUSE, horloge.maintenant());
+    }
+
+    private ResultatDeCommande reprendreEnParoles(UUID passageId, UUID etapeId, UUID lectureId) {
+        return deroulement.commander(new ReprendreEnParolesSeules(pilotage().acteur(), horloge.maintenant(),
+                ENVOI, passageId, etapeId, lectureId));
+    }
+
+    private ResultatDeCommande marquerDebut(UUID passageId, UUID etapeId, UUID lectureId) {
+        return deroulement.commander(new MarquerDebutParoles(pilotage().acteur(), horloge.maintenant(), ENVOI,
+                passageId, etapeId, lectureId));
+    }
+
+    private ResultatDeCommande corriger(UUID passageId, UUID etapeId, UUID lectureId, long numero, SensCorrection sens) {
+        return deroulement.commander(new CorrigerCalage(pilotage().acteur(), horloge.maintenant(), ENVOI,
+                passageId, etapeId, lectureId, numero, sens));
+    }
+
+    private ResultatDeCommande relever(UUID lectureId, UUID demandeId, long position) {
+        return deroulement.commander(new ReleverPositionLecture(ECRAN, horloge.maintenant(), ENVOI,
+                PASSAGE, ETAPE, lectureId, LECTEUR, demandeId, position));
+    }
+
+    private Accepte accepterLecture(ResultatDeCommande resultat, String cause, Set<Destination> destinations) {
+        assertThat(resultat).isInstanceOf(Accepte.class);
+        var accepte = (Accepte) resultat;
+        assertThat(accepte.statutHttp()).isEqualTo(200);
+        assertThat(accepte.typeEvenement()).isEqualTo(cause);
+        assertThat(accepte.aRepublier()).isEqualTo(destinations);
+        return accepte;
+    }
 }

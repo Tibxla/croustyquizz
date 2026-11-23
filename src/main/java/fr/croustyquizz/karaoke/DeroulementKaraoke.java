@@ -11,6 +11,10 @@ import java.util.function.Supplier;
 public final class DeroulementKaraoke implements DeroulementDeManche {
     private static final Set<Destination> ECRANS = Set.of(
             Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
+    private static final Set<Destination> SALLE_ET_CONSOLE = Set.of(Destination.SALLE, Destination.CONSOLE);
+    private static final String LECTURE_MODIFIEE = "lecture-chanson-modifiee";
+    private static final String CALAGE_MODIFIE = "calage-chanson-modifie";
+
     private final ContexteDeManche contexte;
     private final Duration delaiAppel;
     private final Supplier<UUID> identifiants;
@@ -158,14 +162,24 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
             return accepter(resultat, new AccuseFileAttente(limite.envoiId(), contexte.soireeId(), contexte.mancheId(),
                     "REGLER_LIMITE", limite.recueLe(), null), "limite-passages-modifiee");
         }
-        return incompatible();
+        return switch (commande) {
+            case DesignerLecteurChanson designation -> designer(designation);
+            case DeclarerLectureChanson declaration -> declarer(declaration);
+            case SignalerFinLectureChanson fin -> signalerFin(fin);
+            case SignalerErreurLectureChanson erreur -> signalerErreur(erreur);
+            case ReprendreEnParolesSeules reprise -> reprendreEnParoles(reprise);
+            case MarquerDebutParoles geste -> marquerDebut(geste);
+            case CorrigerCalage correction -> corriger(correction);
+            case ReleverPositionLecture position -> relever(position);
+            case null, default -> incompatible();
+        };
     }
 
     private ResultatDeCommande appeler(AppelerPassage commande) {
         CiblePassage cible = commande.cible();
         if (file.trouver(cible.passageId()) == null) { return introuvable(); }
         if (etat == EtatManche.EN_PAUSE) { return incompatible(); }
-        ResultatFile resultat = cycle.appelerAvecIdentifiant(cible, identifiants, commande.recueLe());
+        ResultatFile resultat = cycle.appeler(cible, commande.recueLe(), identifiants);
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
         lectures.clear();
         return accepterCycle(commande.envoiId(), commande.recueLe(), "APPELER", "passage-appele");
@@ -207,6 +221,153 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
                 cycle.etat().etapeId(), courant.numeroModification(), action, recueLe, courant.etat()), ECRANS, cause);
     }
 
+    private ResultatDeCommande designer(DesignerLecteurChanson commande) {
+        UUID lecteurId = Objects.requireNonNull(commande.lecteurId());
+        boolean change = !lecteurId.equals(lecteurDesigneId);
+        if (change) {
+            lecteurDesigneId = lecteurId;
+            Passage courant = cycle.courantActif();
+            if (courant != null && courant.etat() == EtatPassage.APPELE) {
+                LecturePassage lecture = lectures.get(courant.id());
+                if (lecture != null && lecture.etat() == EtatLecture.PREPAREE && !lecteurId.equals(lecture.lecteurId())) {
+                    lectures.remove(courant.id());
+                }
+            }
+        }
+        return accepterLecture(commande.envoiId(), commande.recueLe(), lecteurId, null,
+                "DESIGNER_LECTEUR", LECTURE_MODIFIEE, change ? SALLE_ET_CONSOLE : Set.of());
+    }
+
+    private ResultatDeCommande declarer(DeclarerLectureChanson commande) {
+        UUID passageId = commande.cible().passageId();
+        if (file.trouver(passageId) == null) { return introuvable(); }
+        if (!viseAppel(commande.cible(), commande.etapeId())) { return perimee(); }
+        if (lecteurDesigneId == null || !lecteurDesigneId.equals(commande.lecteurId())) { return lecteurNonDesigne(); }
+        LecturePreparee preparation = commande.preparation();
+        UUID lectureId = identifiants.get();
+        var paroles = new ParolesDuPassage(identifiants.get(), preparation.dureeParolesMs(), preparation.lignes());
+        var lecture = new LecturePassage(lectureId, passageId, commande.lecteurId(), EtatLecture.PREPAREE,
+                preparation.source(), preparation.fichier(), preparation.motifParolesSeules(), preparation.origineParoles(),
+                paroles, preparation.versionSourceId(), preparation.decalageInitialMs(), 0, null, null);
+        lectures.put(passageId, lecture);
+        return accepterLecture(commande.envoiId(), commande.recueLe(), commande.lecteurId(), lecture,
+                "DECLARER_LECTURE", LECTURE_MODIFIEE, SALLE_ET_CONSOLE);
+    }
+
+    private ResultatDeCommande signalerFin(SignalerFinLectureChanson commande) {
+        Refuse refus = verifierSignal(commande.passageId(), commande.etapeId(), commande.lectureId(), commande.lecteurId(), false);
+        if (refus != null) { return refus; }
+        ResultatFile resultat = cycle.clore(EtatPassage.TERMINE, TraceTerminale.FIN_LECTURE, null, commande.recueLe());
+        if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
+        return accepterLecture(commande.envoiId(), commande.recueLe(), commande.lecteurId(), lectures.get(commande.passageId()),
+                "SIGNALER_FIN_LECTURE", "passage-termine", ECRANS);
+    }
+
+    private ResultatDeCommande signalerErreur(SignalerErreurLectureChanson commande) {
+        Refuse refus = verifierSignal(commande.passageId(), commande.etapeId(), commande.lectureId(), commande.lecteurId(), true);
+        if (refus != null) { return refus; }
+        LecturePassage lecture = lectures.get(commande.passageId());
+        boolean change = lecture.etat() != EtatLecture.EN_ERREUR;
+        if (change) {
+            lectures.put(lecture.passageId(), lecture.passerA(EtatLecture.EN_ERREUR));
+            if (etat == EtatManche.EN_COURS) { suspendreManche(commande.recueLe()); }
+        }
+        return accepterLecture(commande.envoiId(), commande.recueLe(), commande.lecteurId(), lecture,
+                "SIGNALER_ERREUR_LECTURE", LECTURE_MODIFIEE, change ? ECRANS : Set.of());
+    }
+
+    private ResultatDeCommande reprendreEnParoles(ReprendreEnParolesSeules commande) {
+        LecturePassage lecture = lectureCourante(commande.passageId(), commande.etapeId(), commande.lectureId());
+        if (lecture == null) { return perimee(); }
+        if (lecture.etat() != EtatLecture.EN_ERREUR) { return incompatible(); }
+        lectures.put(lecture.passageId(), lecture.reprendreEnParolesSeules());
+        reprendreManche(commande.recueLe());
+        return accepterCycle(commande.envoiId(), commande.recueLe(), "REPRENDRE_EN_PAROLES_SEULES", LECTURE_MODIFIEE);
+    }
+
+    private LecturePassage lectureCourante(UUID passageId, UUID etapeId, UUID lectureId) {
+        Passage courant = cycle.courantActif();
+        if (courant == null || !courant.id().equals(passageId) || !cycle.etat().etapeId().equals(etapeId)) { return null; }
+        LecturePassage lecture = lectures.get(passageId);
+        return lecture != null && lecture.lectureId().equals(lectureId) ? lecture : null;
+    }
+
+    private Refuse verifierSignal(UUID passageId, UUID etapeId, UUID lectureId, UUID lecteurId, boolean erreurAdmise) {
+        if (file.trouver(passageId) == null) { return introuvable(); }
+        LecturePassage lecture = lectureCourante(passageId, etapeId, lectureId);
+        if (lecture == null) { return perimee(); }
+        if (!Objects.equals(lecture.lecteurId(), lecteurId)) { return lecteurNonDesigne(); }
+        if (lecture.source() != SourceLecture.FICHIER_LOCAL || lecture.etat() == EtatLecture.PREPAREE
+                || (!erreurAdmise && lecture.etat() == EtatLecture.EN_ERREUR)) { return incompatible(); }
+        return null;
+    }
+
+    private static Refuse lecteurNonDesigne() {
+        return new Refuse(409, "LECTEUR_NON_DESIGNE", "Ce lecteur ne peut pas commander cette lecture.");
+    }
+
+    private Accepte accepterLecture(UUID envoiId, Instant recueLe, UUID lecteurId, LecturePassage lecture,
+            String action, String cause, Set<Destination> destinations) {
+        return new Accepte(new AccuseLectureChanson(envoiId, contexte.soireeId(), contexte.mancheId(), lecteurId,
+                lecture == null ? null : lecture.passageId(), lecture == null ? null : lecture.lectureId(), action, recueLe),
+                destinations, cause);
+    }
+
+    private ResultatDeCommande marquerDebut(MarquerDebutParoles commande) {
+        Refuse refus = verifierCalage(commande.passageId(), commande.etapeId(), commande.lectureId());
+        if (refus != null) { return refus; }
+        LecturePassage lecture = lectures.get(commande.passageId());
+        LecturePassage cale;
+        if (lecture.source() == SourceLecture.FICHIER_LOCAL) {
+            cale = lecture.avecCalage(lecture.decalageMs(), identifiants.get(), commande.recueLe());
+        } else {
+            var projection = CycleDePassage.projeter(file.etat(), cycle.etat(), false, commande.recueLe());
+            cale = lecture.avecCalage(projection.positionChronologiqueMs() - lecture.paroles().premierePosition(), null, null);
+        }
+        return accepterCalage(commande.envoiId(), commande.recueLe(), lecture, cale, "MARQUER_DEBUT", cale.demandeId());
+    }
+
+    private ResultatDeCommande corriger(CorrigerCalage commande) {
+        Refuse refus = verifierCalage(commande.passageId(), commande.etapeId(), commande.lectureId());
+        if (refus != null) { return refus; }
+        LecturePassage lecture = lectures.get(commande.passageId());
+        if (lecture.numeroModificationCalage() != commande.numeroModificationCalage()) { return perimee(); }
+        long correction = switch (commande.sens()) {
+            case AVANCER -> -100;
+            case RETARDER -> 100;
+        };
+        LecturePassage cale = lecture.avecCalage(lecture.decalageMs() + correction, lecture.demandeId(), lecture.demandeeLe());
+        return accepterCalage(commande.envoiId(), commande.recueLe(), lecture, cale, "CORRIGER", null);
+    }
+
+    private ResultatDeCommande relever(ReleverPositionLecture commande) {
+        Refuse refus = verifierSignal(commande.passageId(), commande.etapeId(), commande.lectureId(), commande.lecteurId(), false);
+        if (refus != null) { return refus; }
+        LecturePassage lecture = lectures.get(commande.passageId());
+        if (lecture.demandeId() == null || !lecture.demandeId().equals(commande.demandeId())) { return perimee(); }
+        LecturePassage cale = lecture.avecCalage(commande.positionMs() - lecture.paroles().premierePosition(), null, null);
+        lectures.put(lecture.passageId(), cale);
+        return accepterLecture(commande.envoiId(), commande.recueLe(), commande.lecteurId(), cale,
+                "RELEVER_POSITION", CALAGE_MODIFIE, SALLE_ET_CONSOLE);
+    }
+
+    private Refuse verifierCalage(UUID passageId, UUID etapeId, UUID lectureId) {
+        if (etat == EtatManche.EN_PAUSE) { return incompatible(); }
+        LecturePassage lecture = lectureCourante(passageId, etapeId, lectureId);
+        if (lecture == null) { return perimee(); }
+        if (file.trouver(passageId).etat() != EtatPassage.EN_COURS || lecture.etat() != EtatLecture.DEMARREE) { return incompatible(); }
+        return null;
+    }
+
+    private Accepte accepterCalage(UUID envoiId, Instant recueLe, LecturePassage lecture, LecturePassage cale,
+            String action, UUID demandeId) {
+        boolean change = !lecture.equals(cale);
+        if (change) { lectures.put(cale.passageId(), cale); }
+        return new Accepte(new AccuseCalage(envoiId, contexte.soireeId(), contexte.mancheId(), cale.passageId(),
+                cale.lectureId(), action, recueLe, demandeId, cale.numeroModificationCalage()),
+                change ? SALLE_ET_CONSOLE : Set.of(), CALAGE_MODIFIE);
+    }
+
     private Passage passage(CiblePassage cible) {
         return file.etat().passages().stream().filter(p -> p.id().equals(cible.passageId())).findFirst().orElseThrow();
     }
@@ -226,9 +387,13 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     @Override public ResultatDeCommande mettreEnPause(CommandePilotage commande) {
         Refuse refus = gardeCommune(); if (refus != null) { return refus; }
         if (etat != EtatManche.EN_COURS) { return incompatible(); }
-        etat = EtatManche.EN_PAUSE;
-        cycle.suspendre(commande.recueLe());
+        suspendreManche(commande.recueLe());
         return new Accepte(commande.accuse(), ECRANS, "manche-en-pause");
+    }
+
+    private void suspendreManche(Instant recueLe) {
+        etat = EtatManche.EN_PAUSE;
+        cycle.suspendre(recueLe);
     }
 
     @Override public ResultatDeCommande reprendre(CommandePilotage commande) {
@@ -237,9 +402,13 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         Passage courant = cycle.courantActif();
         LecturePassage lecture = courant == null ? null : lectures.get(courant.id());
         if (lecture != null && lecture.etat() == EtatLecture.EN_ERREUR) { return incompatible(); }
-        etat = EtatManche.EN_COURS;
-        cycle.reprendre(commande.recueLe());
+        reprendreManche(commande.recueLe());
         return new Accepte(commande.accuse(), ECRANS, "manche-reprise");
+    }
+
+    private void reprendreManche(Instant recueLe) {
+        etat = EtatManche.EN_COURS;
+        cycle.reprendre(recueLe);
     }
 
     @Override public ResultatDeCommande passerEtape(CommandePilotage commande) {

@@ -70,6 +70,31 @@ class LecturePassageTest {
                 null, null).source()).isEqualTo(SourceLecture.PAROLES_SEULES);
     }
 
+    @Test
+    void lectureReserveLOrigineInscriptionAuDepartDirectEnParolesSeules() {
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                lecture(EtatLecture.PREPAREE, OrigineParoles.INSCRIPTION, null, null, null));
+        assertThatIllegalArgumentException().isThrownBy(() -> lecture(EtatLecture.DEMARREE,
+                OrigineParoles.VERSION_ADAPTEE, MotifParolesSeules.ECRAN_NON_PRET, null, null));
+        assertThatIllegalArgumentException().isThrownBy(() -> lecture(EtatLecture.DEMARREE,
+                OrigineParoles.INSCRIPTION, MotifParolesSeules.ERREUR_LECTURE, null, null));
+    }
+
+    @Test
+    void lectureRespecteLesBornesDuCalageDuContrat() {
+        assertThatIllegalArgumentException().isThrownBy(() -> calage(9_007_199_254_740_992L, 0));
+        assertThatIllegalArgumentException().isThrownBy(() -> calage(-9_007_199_254_740_992L, 0));
+        assertThatIllegalArgumentException().isThrownBy(() -> calage(0, -1));
+        assertThatIllegalArgumentException().isThrownBy(() -> calage(0, 9_007_199_254_740_992L));
+        assertThat(calage(-9_007_199_254_740_991L, 9_007_199_254_740_991L).numeroModificationCalage())
+                .isEqualTo(9_007_199_254_740_991L);
+    }
+
+    private static LecturePassage calage(long decalage, long compteur) {
+        return new LecturePassage(ID, ID, ID, EtatLecture.DEMARREE, SourceLecture.FICHIER_LOCAL, FICHIER,
+                null, OrigineParoles.VERSION_ADAPTEE, PAROLES, 42, decalage, compteur, null, null);
+    }
+
     private static LecturePassage lecture(EtatLecture etat, OrigineParoles origine, MotifParolesSeules motif,
             UUID demande, Instant demandeeLe) {
         SourceLecture source = motif == null ? SourceLecture.FICHIER_LOCAL : SourceLecture.PAROLES_SEULES;

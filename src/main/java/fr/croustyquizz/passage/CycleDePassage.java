@@ -42,19 +42,17 @@ public final class CycleDePassage {
 
     public ResultatFile appeler(CiblePassage cible, UUID etapeId, Instant maintenant) {
         Objects.requireNonNull(etapeId);
-        return appelerAvecIdentifiant(cible, () -> etapeId, maintenant);
+        return appeler(cible, maintenant, () -> etapeId);
     }
 
     /** L’étape n’est créée que si la File accepte l’appel. */
-    public ResultatFile appelerAvecIdentifiant(CiblePassage cible, Supplier<UUID> identifiants, Instant maintenant) {
+    public ResultatFile appeler(CiblePassage cible, Instant maintenant, Supplier<UUID> identifiants) {
         if (courantActif() != null) { return incompatible(); }
         Instant echeance = maintenant.plus(delaiAppel);
-        ResultatFile resultat = file.appelerPassage(cible);
-        if (resultat instanceof ResultatFile.Modifiee) {
-            chronologie = new EtatCyclePassage(cible.passageId(), identifiants.get(), maintenant, echeance,
-                    null, null, Duration.ZERO, null, null);
-        }
-        return resultat;
+        return file.appelerPassage(cible, () -> {
+            chronologie = new EtatCyclePassage(cible.passageId(), Objects.requireNonNull(identifiants.get()),
+                    maintenant, echeance, null, null, Duration.ZERO, null, null);
+        });
     }
 
     public ResultatFile demarrer(CiblePassage cible, UUID etapeId, Duration dureeReference, Instant maintenant) {

@@ -237,9 +237,15 @@ public final class FileAttente {
     }
 
     public ResultatFile appelerPassage(CiblePassage cible) {
+        return appelerPassage(cible, () -> { });
+    }
+
+    /** Prépare la chronologie du cycle après les gardes et avant de consommer le Tour. */
+    ResultatFile appelerPassage(CiblePassage cible, Runnable preparerAppel) {
         Refuse refus = verifierCible(cible);
         if (refus != null) { return new ResultatFile.Refus(refus); }
         if (!ordreEffectif().getFirst().id().equals(cible.passageId())) { return new ResultatFile.Refus(perimee()); }
+        preparerAppel.run();
         extraireProchainPassage(false);
         return new ResultatFile.Modifiee();
     }
@@ -261,6 +267,9 @@ public final class FileAttente {
         Passage passage = trouver(cible.passageId());
         Refuse refus = verifierCible(cible, passage, departs);
         if (refus != null) { return new ResultatFile.Refus(refus); }
+        if (etat != EtatPassage.EN_COURS && (trace == null || !trace.correspondA(etat))) {
+            throw new IllegalArgumentException("La clôture exige un motif, un instant et l’acteur correspondant.");
+        }
         remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), etat, passage.tourConsomme(), trace, true));
         return new ResultatFile.Modifiee();
     }

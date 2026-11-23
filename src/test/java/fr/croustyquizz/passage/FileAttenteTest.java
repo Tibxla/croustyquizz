@@ -50,8 +50,10 @@ class FileAttenteTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.EnumSource(value = EtatPassage.class, names = {"TERMINE", "SAUTE", "ANNULE"})
-    void clotureAvecLeTourConsommeEtSansReplacerLesAutresAttentes(EtatPassage terminal) {
+    @org.junit.jupiter.params.provider.CsvSource({
+        "TERMINE, EN_COURS", "SAUTE, APPELE", "SAUTE, EN_COURS", "ANNULE, APPELE", "ANNULE, EN_COURS"
+    })
+    void clotureAvecLeTourConsommeEtSansReplacerLesAutresAttentes(EtatPassage terminal, EtatPassage depart) {
         inscrireDeuxTours();
         file.definirPriorite(cible("Ana-2"), true);
         var attente = cible("Ana-2");
@@ -68,8 +70,8 @@ class FileAttenteTest {
             avant = file.etat();
             verifierRefus(file.clorePassage(cible("Ana-2"), terminal, trace), 409, "COMMANDE_PERIMEE");
             assertThat(file.etat()).isEqualTo(avant);
-            file.demarrerPassage(cible("Ana-2"));
         }
+        if (depart == EtatPassage.EN_COURS) { file.demarrerPassage(cible("Ana-2")); }
         var courant = cible("Ana-2");
         var autres = file.ordreEffectif();
         var tours = file.etat().derniersToursConsommes();
@@ -87,6 +89,24 @@ class FileAttenteTest {
         avant = file.etat();
         verifierRefus(file.clorePassage(cible("Ana-2"), terminal, trace), 409, "COMMANDE_PERIMEE");
         assertThat(file.etat()).isEqualTo(avant);
+    }
+
+    @Test
+    void uneClotureExigeLeMotifEtLActeurCorrespondants() {
+        inscrire(ANA, "Ana-1");
+        file.appelerPassage(cible("Ana-1"));
+        file.demarrerPassage(cible("Ana-1"));
+        var depart = file.etat();
+        var courant = cible("Ana-1");
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.TERMINE, new TraceTerminale("FIN_LECTURE", BORIS, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.TERMINE, new TraceTerminale("PASSE_PAR_ANIMATEUR", BORIS, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.SAUTE, new TraceTerminale("PASSE_PAR_ANIMATEUR", null, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.ANNULE, new TraceTerminale("MANCHE_TERMINEE", null, RECU)));
+        assertThat(file.etat()).isEqualTo(depart);
     }
 
     private static void verifierRefus(ResultatFile resultat, int statut, String code) {

@@ -19,6 +19,7 @@ public record ParolesDuPassage(UUID parolesId, long dureeMs, List<LigneParoles> 
     }
 
     static boolean contientDuTexte(LigneParoles ligne) {
-        return ligne.positionMs() >= 0 && ligne.texte() != null && !ligne.texte().isBlank();
+        return ligne.positionMs() >= 0 && ligne.texte() != null
+                && !ligne.texte().trim().isEmpty() && !ligne.texte().isBlank();
     }
 }

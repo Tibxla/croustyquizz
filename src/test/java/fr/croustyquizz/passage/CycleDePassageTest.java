@@ -62,6 +62,26 @@ class CycleDePassageTest {
     }
 
     @Test
+    void uneFileHistoriqueSansChronologieNeRetrouvePasDeCourant() {
+        var cycle = creer(horloge);
+        file.extraireProchainPassage(false);
+        assertThat(cycle.courantActif()).isNull();
+        assertThat(projection(cycle, false).courant()).isNull();
+        assertThat(horloge.minuteursEnAttente()).isZero();
+    }
+
+    @Test
+    void gardeLaFileIntacteSiLIdentifiantDEtapeNePeutEtreCree() {
+        var cycle = creer(horloge);
+        var avant = file.etat();
+        assertThatIllegalStateException().isThrownBy(() -> cycle.appeler(cible(), debut,
+                () -> { throw new IllegalStateException("Identifiant indisponible."); }));
+        assertThat(file.etat()).isEqualTo(avant);
+        assertThat(cycle.etat()).isEqualTo(EtatCyclePassage.vide());
+        assertThat(horloge.minuteursEnAttente()).isZero();
+    }
+
+    @Test
     void figeDeuxPausesDAppelSansLesCompterDansLaDureeChantee() {
         var cycle = creer(horloge);
         cycle.appeler(cible(), ETAPE, debut);
