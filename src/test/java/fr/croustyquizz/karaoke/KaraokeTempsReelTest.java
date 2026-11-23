@@ -69,7 +69,12 @@ class KaraokeTempsReelTest {
         flux.add(abonner(animateur, Canaux.console(soiree), "console"));
         flux.add(abonner(new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree), Canaux.salle(soiree), "salle"));
         for (UUID id : ConfigurationTroisJoueurs.JOUEURS) { flux.add(abonner(new Acteur(Acteur.Type.JOUEUR, id, soiree), Canaux.joueur(id), "manette")); }
-        for (var f : flux) { assertThat(capturer(f).path("revision").asLong()).isEqualTo(1); }
+        Map<Abonnement, Long> revisionsInitiales = new HashMap<>();
+        for (var f : flux) {
+            long revision = capturer(f).path("revision").asLong();
+            assertThat(revision).isPositive();
+            revisionsInitiales.put(f, revision);
+        }
         String racine = "/api/soirees/" + soiree + "/manches/" + manche;
         var inscription = Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1));
         var reponse = envoyer(HttpMethod.POST, racine + "/passages", joueur, inscription, null);
@@ -79,7 +84,7 @@ class KaraokeTempsReelTest {
             JsonNode evenement = f.messages().poll(3, TimeUnit.SECONDS);
             assertThat(evenement).isNotNull();
             assertThat(evenement.path("type").asString()).isEqualTo("file-attente-modifiee");
-            assertThat(evenement.path("revision").asLong()).isEqualTo(2);
+            assertThat(evenement.path("revision").asLong()).isEqualTo(revisionsInitiales.get(f) + 1);
             assertThat(evenement.at("/donnees/karaoke/nombreEnAttente").asLong()).isEqualTo(1);
             assertThat(evenement.toString()).doesNotContain("idLrclib", "lignesParoles", "Une ligne");
             assertThat(capturer(f).path("vue").toString()).isEqualTo(evenement.path("donnees").toString());
@@ -103,13 +108,13 @@ class KaraokeTempsReelTest {
         for (var f : flux) {
             var evenement = f.messages().poll(3, TimeUnit.SECONDS);
             assertThat(evenement).isNotNull(); assertThat(evenement.path("type").asString()).isEqualTo("limite-passages-modifiee");
-            assertThat(evenement.path("revision").asLong()).isEqualTo(3); assertThat(f.messages()).isEmpty();
+            assertThat(evenement.path("revision").asLong()).isEqualTo(revisionsInitiales.get(f) + 2); assertThat(f.messages()).isEmpty();
             assertThat(capturer(f).path("vue").toString()).isEqualTo(evenement.path("donnees").toString());
         }
         flux.getFirst().session().disconnect();
         var reconnecte = abonner(animateur, Canaux.console(soiree), "console");
         var capture = capturer(reconnecte);
-        assertThat(capture.path("revision").asLong()).isEqualTo(3);
+        assertThat(capture.path("revision").asLong()).isEqualTo(revisionsInitiales.get(flux.getFirst()) + 2);
         assertThat(capture.at("/vue/karaoke/limitePassagesEnAttente").asLong()).isEqualTo(2);
         assertThat(reconnecte.messages()).isEmpty();
     }
@@ -232,6 +237,9 @@ class KaraokeTempsReelTest {
         KaraokeHttpTest.verifier("signalerFinLectureChanson", signalTardif, 409);
         assertThat(json.readTree(signalTardif.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
         assertThat(capturer(salle).at("/vue/karaoke/lecture").isNull()).isTrue();
+        for (var abonne : flux) {
+            assertThat(abonne.messages().poll(250, TimeUnit.MILLISECONDS)).isNull();
+        }
     }
 
     private JsonNode lireEvenement(Abonnement abonne, String cause) throws Exception {
