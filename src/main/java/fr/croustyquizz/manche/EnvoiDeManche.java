@@ -1,5 +1,7 @@
 package fr.croustyquizz.manche;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
@@ -25,7 +27,7 @@ public class EnvoiDeManche {
 	public EnvoiDeManche(Acteur acteur, String route, UUID envoiId, String empreinte,
 			int statut, String corps, Instant creeLe) {
 		this.id = cle(acteur, route, envoiId); this.acteur = acteur.getName(); this.route = route;
-		this.envoiId = envoiId; this.empreinte = empreinte; this.statut = statut; this.corps = corps; this.creeLe = creeLe;
+		this.envoiId = envoiId; this.empreinte = empreinte; this.statut = statut; this.corps = corps; this.creeLe = creeLe.truncatedTo(MICROS);
 	}
 	public static UUID cle(Acteur acteur, String route, UUID envoiId) {
 		return UUID.nameUUIDFromBytes((acteur.getName() + "\n" + route + "\n" + envoiId).getBytes(StandardCharsets.UTF_8));

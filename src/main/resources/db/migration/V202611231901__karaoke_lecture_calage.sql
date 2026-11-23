@@ -22,7 +22,10 @@ CREATE TABLE karaoke_lecture_passage (
     CHECK ((source = 'FICHIER_LOCAL' AND fichier_nom IS NOT NULL AND fichier_taille_octets IS NOT NULL
             AND motif_paroles_seules IS NULL)
         OR (source = 'PAROLES_SEULES' AND fichier_nom IS NULL AND fichier_taille_octets IS NULL
-            AND fichier_duree_ms IS NULL AND motif_paroles_seules IS NOT NULL))
+            AND fichier_duree_ms IS NULL AND motif_paroles_seules IS NOT NULL)),
+    CHECK ((origine_paroles = 'INSCRIPTION') = (source = 'PAROLES_SEULES'
+        AND motif_paroles_seules IS DISTINCT FROM 'ERREUR_LECTURE')),
+    CHECK (source <> 'PAROLES_SEULES' OR (etat <> 'EN_ERREUR' AND demande_id IS NULL))
 );
 CREATE TABLE karaoke_lecteur_chanson (
     manche_id UUID PRIMARY KEY REFERENCES manche_deroulement(manche_id),

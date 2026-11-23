@@ -1,5 +1,7 @@
 package fr.croustyquizz.karaoke;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import org.springframework.stereotype.Repository;
@@ -28,9 +30,10 @@ public class MemoireDeCalageJpa {
                 DO UPDATE SET decalage_ms = EXCLUDED.decalage_ms,
                     numero_modification = karaoke_calage_chanson.numero_modification + 1,
                     modifie_le = EXCLUDED.modifie_le
+                WHERE karaoke_calage_chanson.decalage_ms IS DISTINCT FROM EXCLUDED.decalage_ms
                 """)
                 .setParameter("chanson", chansonId).setParameter("version", versionSourceId)
                 .setParameter("nom", fichier.nom()).setParameter("taille", fichier.tailleOctets())
-                .setParameter("decalage", decalageMs).setParameter("instant", maintenant).executeUpdate();
+                .setParameter("decalage", decalageMs).setParameter("instant", maintenant.truncatedTo(MICROS)).executeUpdate();
     }
 }

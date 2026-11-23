@@ -1,5 +1,7 @@
 package fr.croustyquizz.karaoke;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.List;
@@ -53,7 +55,7 @@ public class LecturePassagePersistante {
         decalageMs = lecture.decalageMs();
         numeroModificationCalage = lecture.numeroModificationCalage();
         demandeId = lecture.demandeId();
-        demandeeLe = lecture.demandeeLe();
+        if (lecture.demandeeLe() != null) { demandeeLe = lecture.demandeeLe().truncatedTo(MICROS); }
     }
 
     UUID getPassageId() { return passageId; }

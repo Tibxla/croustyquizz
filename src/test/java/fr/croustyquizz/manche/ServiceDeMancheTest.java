@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import java.util.concurrent.atomic.AtomicReference;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -56,6 +57,28 @@ class ServiceDeMancheTest {
 				d.mettreEnPause(new CommandePilotage(envoi.acteur(), envoi.envoiId(), banc.horloge.maintenant()))),
 				EtatManche.EN_PAUSE)).isInstanceOf(Accepte.class);
 		assertThat(banc.stockage.charger(manche).getEtat()).isEqualTo(EtatManche.EN_PAUSE);
+	}
+
+	@Test
+	void laDatePersistanteEstCelleDeLaCommandeMemeSiLHorlogeAvance() {
+		var temps = new HorlogeFactice(Instant.parse("2026-10-02T20:00:00.123456789Z"));
+		Horloge horloge = new Horloge() {
+			@Override public Instant maintenant() {
+				Instant instant = temps.maintenant();
+				temps.avancer(Duration.ofMillis(2));
+				return instant;
+			}
+			@Override public Minuteur programmer(Duration delai, Runnable action) { return temps.programmer(delai, action); }
+		};
+		var socle = new BancDuSocle(horloge);
+		UUID manche = socle.creer(soiree);
+		socle.service.demarrer(manche, socle.envoi(soiree, "/demarrer", Map.of()));
+
+		var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
+		var resultat = (Accepte) socle.service.piloter(manche, socle.envoi(soiree, "/commandes", pause), pause);
+		Instant recueLe = ((AccuseCommande) resultat.accuse()).recueLe();
+		assertThat(socle.stockage.charger(manche).getModifieLe()).isEqualTo(recueLe);
+		assertThat(recueLe.getNano() % 1_000).isZero();
 	}
 
 	@Test

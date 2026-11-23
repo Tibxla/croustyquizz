@@ -1,5 +1,7 @@
 package fr.croustyquizz.passage;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -16,8 +18,11 @@ public class CyclePassagePersistant {
     private Instant appeleLe;
     private Instant echeanceAppelLe;
     private Instant demarreLe;
-    private Long dureeReferenceMs;
-    private long tempsPauseMs;
+    // La pause peut durer moins d’une milliseconde. Seules les projections la convertissent en ms.
+    private Long dureeReferenceSecondes;
+    private Integer dureeReferenceNanos;
+    private long tempsPauseSecondes;
+    private int tempsPauseNanos;
     private Instant pauseDepuis;
     private Instant clotureLe;
 
@@ -27,18 +32,22 @@ public class CyclePassagePersistant {
         this.mancheId = mancheId;
         passageId = cycle.passageId();
         etapeId = cycle.etapeId();
-        appeleLe = cycle.appeleLe();
-        echeanceAppelLe = cycle.echeanceAppelLe();
-        demarreLe = cycle.demarreLe();
-        if (cycle.dureeReference() != null) { dureeReferenceMs = cycle.dureeReference().toMillis(); }
-        tempsPauseMs = cycle.tempsPause().toMillis();
-        pauseDepuis = cycle.pauseDepuis();
-        clotureLe = cycle.clotureLe();
+        if (cycle.appeleLe() != null) { appeleLe = cycle.appeleLe().truncatedTo(MICROS); }
+        if (cycle.echeanceAppelLe() != null) { echeanceAppelLe = cycle.echeanceAppelLe().truncatedTo(MICROS); }
+        if (cycle.demarreLe() != null) { demarreLe = cycle.demarreLe().truncatedTo(MICROS); }
+        if (cycle.dureeReference() != null) {
+            dureeReferenceSecondes = cycle.dureeReference().getSeconds();
+            dureeReferenceNanos = cycle.dureeReference().getNano();
+        }
+        tempsPauseSecondes = cycle.tempsPause().getSeconds();
+        tempsPauseNanos = cycle.tempsPause().getNano();
+        if (cycle.pauseDepuis() != null) { pauseDepuis = cycle.pauseDepuis().truncatedTo(MICROS); }
+        if (cycle.clotureLe() != null) { clotureLe = cycle.clotureLe().truncatedTo(MICROS); }
     }
 
     EtatCyclePassage restaurer() {
         return new EtatCyclePassage(passageId, etapeId, appeleLe, echeanceAppelLe, demarreLe,
-                dureeReferenceMs == null ? null : Duration.ofMillis(dureeReferenceMs),
-                Duration.ofMillis(tempsPauseMs), pauseDepuis, clotureLe);
+                dureeReferenceSecondes == null ? null : Duration.ofSeconds(dureeReferenceSecondes, dureeReferenceNanos),
+                Duration.ofSeconds(tempsPauseSecondes, tempsPauseNanos), pauseDepuis, clotureLe);
     }
 }
