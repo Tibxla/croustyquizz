@@ -22,6 +22,20 @@ import fr.croustyquizz.manche.Destination;
 /** Les Manettes de démonstration conservent leur identité sans partager leur canal ni leur cache. */
 class FournisseurCommunDemonstrationTest {
 	@Test
+	void lesTroisDestinationsRestituentLePilotageDeLaSoiree() {
+		var banc = new BancDuSocle();
+		UUID soiree = UUID.randomUUID();
+		UUID autreSoiree = UUID.randomUUID();
+		var fournisseur = new FournisseurCommunDemonstration(banc.stockage, banc.json, soiree::equals);
+		for (Destination destination : List.of(Destination.SALLE, Destination.CONSOLE,
+				Destination.joueur(FournisseurCommunDemonstration.joueurId(soiree)))) {
+			assertThat(fournisseur.fournir(soiree, destination).get("soiree")).extracting("pilotage").isEqualTo("AUTOMATIQUE");
+			assertThat(fournisseur.fournir(autreSoiree, destination).get("soiree")).extracting("pilotage").isEqualTo("MANUEL");
+			assertThat(banc.commun.fournir(soiree, destination).get("soiree")).extracting("pilotage").isEqualTo("MANUEL");
+		}
+	}
+
+	@Test
 	void deuxSoireesOntDesManettesStablesEtDesCapturesIndependantes() {
 		var banc = new BancDuSocle();
 		UUID soiree = UUID.fromString("11111111-1111-4111-8111-111111111111");

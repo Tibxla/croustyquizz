@@ -25,3 +25,10 @@ test('l’avertissement du retardataire ne dépend que de eligiblePourMancheActi
 	}
 	assert.equal(decrireVue({ ...vue, mancheActive: null, modeEnCours: null, eligiblePourMancheActive: false }).personnel, 'Jo');
 });
+
+test('le résumé de la Console affiche le Pilotage de la Soirée', () => {
+	const vue = { soiree: { etat: 'EN_COURS', format: 'SOLO', pilotage: 'AUTOMATIQUE' }, joueurs: [], classement: [] };
+	assert.equal(decrireVue(vue).resume, 'En cours · Solo · Pilotage automatique');
+	assert.equal(decrireVue({ ...vue, soiree: { ...vue.soiree, pilotage: 'MANUEL' } }).resume,
+		'En cours · Solo · Pilotage manuel');
+});

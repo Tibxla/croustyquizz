@@ -22,20 +22,73 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.tempsreel.*;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Serveur HTTP réel, service et diffuseur réels ; seule la base et l'identité sont factices. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = SocleHttpTest.Configuration.class,
 		properties = "spring.docker.compose.enabled=false")
-@ActiveProfiles({"recette", "socle-http-test"})
+@ActiveProfiles({"dev", "socle-http-test"})
 class SocleHttpTest {
 	private static final String CONTRAT = "docs/api/openapi.yaml";
 	private static final String PROTOTYPE = "docs/api/prototype/openapi.yaml";
+	private static final String CHOISIR_PILOTAGE = "choisirPilotageDeTest";
 	@LocalServerPort private int port;
 	@Autowired private JsonMapper json;
 	@Autowired private StockageMancheFactice stockage;
 	@Autowired private RegistreDesDeroulements registre;
 	@Autowired private ServiceDeManche<?, ?> service;
+	@Autowired private PilotageDeSoiree pilotage;
+
+	@Test
+	void choisirLePilotageAvantLeDemarrageModifieLaCaptureSansPublier() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		UUID autreSoiree = UUID.randomUUID();
+		UUID manche = service.creer(soiree, new ModeFacticeDuSocle.Reglages(3, 20));
+		String route = "/api/test/soirees/" + soiree + "/pilotage";
+		assertThat(captureConsole(soiree).at("/vue/soiree/pilotage").asString()).isEqualTo("MANUEL");
+		for (String pilotage : List.of("AUTOMATIQUE", "MANUEL", "AUTOMATIQUE")) {
+			var reponse = envoyer(HttpMethod.PUT, route, soiree, Acteur.Type.ANIMATEUR, Map.of("pilotage", pilotage), null);
+			assertThat(reponse.getStatusCode().value()).isEqualTo(200);
+			ContratApi.verifier(PROTOTYPE, CHOISIR_PILOTAGE, reponse);
+			assertThat(reponse.getHeaders().getCacheControl()).isEqualTo("no-store");
+			assertThat(json.readTree(reponse.getBody()).path("soireeId").asString()).isEqualTo(soiree.toString());
+			assertThat(json.readTree(reponse.getBody()).path("pilotage").asString()).isEqualTo(pilotage);
+			var capture = captureConsole(soiree);
+			assertThat(capture.path("revision").asLong()).isZero();
+			assertThat(capture.at("/vue/soiree/pilotage").asString()).isEqualTo(pilotage);
+		}
+		assertThat(captureConsole(autreSoiree).at("/vue/soiree/pilotage").asString()).isEqualTo("MANUEL");
+
+		var demarrage = envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches/" + manche + "/demarrer",
+				soiree, Acteur.Type.ANIMATEUR, null, UUID.randomUUID());
+		assertThat(demarrage.getStatusCode().value()).isEqualTo(200);
+		ContratApi.verifier(PROTOTYPE, "demarrerMancheDeTest", demarrage);
+		var refus = envoyer(HttpMethod.PUT, route, soiree, Acteur.Type.ANIMATEUR, Map.of("pilotage", "MANUEL"), null);
+		verifierRefusPilotage(refus, 409, "ETAT_INCOMPATIBLE");
+		assertThat(json.readTree(refus.getBody()).path("detail").asString())
+				.isEqualTo("La Soirée a commencé : son Pilotage ne change plus.");
+		assertThat(pilotage.estAutomatique(soiree)).isTrue();
+		var capture = captureConsole(soiree);
+		assertThat(capture.path("revision").asLong()).isOne();
+		assertThat(capture.at("/vue/soiree/pilotage").asString()).isEqualTo("AUTOMATIQUE");
+	}
+
+	@Test
+	void choisirLePilotageExigeUnCorpsValideEtLAnimateurDeLaSoiree() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		String route = "/api/test/soirees/" + soiree + "/pilotage";
+		for (var corps : List.of(Map.of(), Map.of("pilotage", "INCONNU"), Map.of("pilotage", "MANUEL", "autre", true))) {
+			verifierRefusPilotage(envoyer(HttpMethod.PUT, route, soiree, Acteur.Type.ANIMATEUR, corps, null),
+					400, "REQUETE_INVALIDE");
+		}
+		var corps = Map.of("pilotage", "AUTOMATIQUE");
+		verifierRefusPilotage(envoyer(HttpMethod.PUT, route, soiree, null, corps, null), 401, "AUTHENTIFICATION_REQUISE");
+		verifierRefusPilotage(envoyer(HttpMethod.PUT, route, soiree, Acteur.Type.JOUEUR, corps, null), 403, "ACCES_REFUSE");
+		verifierRefusPilotage(envoyer(HttpMethod.PUT, route, UUID.randomUUID(), Acteur.Type.ANIMATEUR, corps, null),
+				404, "RESSOURCE_INTROUVABLE");
+		assertThat(captureConsole(soiree).at("/vue/soiree/pilotage").asString()).isEqualTo("MANUEL");
+	}
 
 	@Test
 	void creationDemarragePilotageEtCapturesRespectentLesContrats() throws Exception {
@@ -121,6 +174,19 @@ class SocleHttpTest {
 		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", abonnement);
 	}
 
+	private JsonNode captureConsole(UUID soiree) throws Exception {
+		var reponse = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/console", soiree, Acteur.Type.ANIMATEUR, null, null);
+		assertThat(reponse.getStatusCode().value()).isEqualTo(200);
+		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", reponse);
+		return json.readTree(reponse.getBody());
+	}
+
+	private void verifierRefusPilotage(ResponseEntity<String> reponse, int statut, String code) throws Exception {
+		assertThat(reponse.getStatusCode().value()).isEqualTo(statut);
+		ContratApi.verifier(PROTOTYPE, CHOISIR_PILOTAGE, reponse);
+		assertThat(json.readTree(reponse.getBody()).path("code").asString()).isEqualTo(code);
+	}
+
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, UUID soiree, Acteur.Type role, Object corps, UUID envoi) {
 		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
 		if (role != null) {
@@ -140,15 +206,16 @@ class SocleHttpTest {
 	@Import({PilotageMancheControleur.class, ManchesDeTestControleur.class, VuesControleur.class, ErreursHttp.class,
 			ConfigurationActeurHttp.class, AssembleurDeVues.class, PublicationDeVues.class, PublicationApresCommit.class,
 			VerrousSoiree.class, RegistreDesDeroulements.class, RegistreDesEnvois.class, SocleDeManche.class,
-			RegistreServicesDeManche.class, RegistreAbonnements.class, DiffuseurStomp.class, IdentitesFactices.class})
+			RegistreServicesDeManche.class, RegistreAbonnements.class, DiffuseurStomp.class, IdentitesFactices.class,
+			PilotageDeSoireeDemonstration.class})
 	static class Configuration {
 		@Bean ModeFacticeDuSocle mode() { return new ModeFacticeDuSocle(); }
 		@Bean StockageMancheFactice stockage(ModeFacticeDuSocle mode) { return new StockageMancheFactice(mode); }
 		@Bean Horloge horloge() { return new HorlogeFactice(); }
 		@Bean Clock clock(Horloge horloge) { return Clock.fixed(horloge.maintenant(), ZoneOffset.UTC); }
 		@Bean ServiceDeManche<?, ?> service(ModeFacticeDuSocle mode, SocleDeManche socle) { return new ServiceDeManche<>(mode, mode, socle); }
-		@Bean FournisseurPartieCommune commun(StockageMancheFactice stockage, JsonMapper json) {
-			return new FournisseurCommunDemonstration(stockage, json);
+		@Bean FournisseurPartieCommune commun(StockageMancheFactice stockage, JsonMapper json, PilotageDeSoiree pilotage) {
+			return new FournisseurCommunDemonstration(stockage, json, pilotage);
 		}
 		@Bean FournisseurDeBloc bloc(org.springframework.beans.factory.ObjectProvider<ServiceDeManche<?, ?>> service,
 				StockageMancheFactice stockage) { return new BlocFacticeDuSocle(service::getObject, stockage); }
