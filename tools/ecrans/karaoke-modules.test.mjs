@@ -216,7 +216,7 @@ test('la Manette conserve la recherche au quota, consulte par GET puis attend le
 
 test('salle : le premier Passage en grand, seulement les suivants dans « Ensuite », pas de commande ni de détachement', () => {
 	const b = creerBanc(ecran, 'ECRAN');
-	b.module.afficher(vue({ prochainsPassages: [passage(), passage({ passageId: 'p2', numero: 2 })], nombreAutresPassages: 1 }), capture);
+	b.module.afficher(vue({ prochainsPassages: [passage(), passage('p2', 15)], nombreAutresPassages: 1 }), capture);
 	assert.match(b.principale.textContent, /Prépare-toi/); assert.equal(b.principale.querySelectorAll('.ticket').length, 1);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 1, 'le premier Passage n’est pas répété');
 	assert.match(b.laterale.textContent, /et 1 autre$/);
@@ -224,7 +224,7 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 0); assert.match(b.laterale.textContent, /et 2 autres/);
 	assert.equal(b.document.body.querySelectorAll('button').length, 0);
 	assert.equal(b.document.body.querySelectorAll('.ticket--detache').length, 0);
-	b.module.afficher({ karaoke: null }, capture); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
+	b.module.demonter(); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
 });
 
 test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async () => {

@@ -133,7 +133,6 @@ export function creerInterface(zones, contexte) {
 		},
 		afficher(vue, origine) {
 			if (detruite) return;
-			if (!vue.karaoke) { ui.demonter(); return; }
 			suspendre = true;
 			try {
 				if (vue.karaoke.mancheId !== bloc?.mancheId) {
