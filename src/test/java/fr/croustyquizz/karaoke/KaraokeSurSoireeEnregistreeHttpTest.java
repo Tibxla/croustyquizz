@@ -3,6 +3,7 @@ package fr.croustyquizz.karaoke;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.EtatDeSoiree;
 import fr.croustyquizz.passage.ParticipantsDePassage;
@@ -36,6 +37,7 @@ class KaraokeSurSoireeEnregistreeHttpTest {
     @Autowired JsonMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired EtatDeSoiree etatDeSoiree;
+    private SessionAnimateurHttp animateur;
 
     @TestConfiguration(proxyBeanMethods = false)
     static class SourceLocale {
@@ -57,7 +59,7 @@ class KaraokeSurSoireeEnregistreeHttpTest {
         String soiree = soireeOuverte();
         String jeton = rejoindre(soiree, "Léa").path("jetonReconnexion").asString();
         lancer(soiree);
-        String manche = demarrerKaraoke(soiree);
+        String manche = demarrerKaraoke(soiree, null);
 
         var inscription = envoyer(HttpMethod.POST, "/api/soirees/" + soiree + "/manches/" + manche + "/passages", jeton,
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
@@ -74,7 +76,7 @@ class KaraokeSurSoireeEnregistreeHttpTest {
     @Test void uneSoireeSeulementOuverteNeFaitPasTournerLaFile() throws Exception {
         String soiree = soireeOuverte();
         String jeton = rejoindre(soiree, "Léa").path("jetonReconnexion").asString();
-        String manche = demarrerKaraoke(soiree);
+        String manche = demarrerKaraoke(soiree, null);
         var refus = envoyer(HttpMethod.POST, "/api/soirees/" + soiree + "/manches/" + manche + "/passages", jeton,
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
         KaraokeHttpTest.verifier("inscrirePassage", refus, 409);
@@ -84,7 +86,7 @@ class KaraokeSurSoireeEnregistreeHttpTest {
     @Test void uneSoireeDeDemonstrationPasseParLeRepliCommeAvant() throws Exception {
         UUID demonstration = UUID.randomUUID();
         String joueur = "demo:JOUEUR:" + demonstration + ":" + FournisseurCommunDemonstration.joueurId(demonstration);
-        String manche = demarrerKaraoke(demonstration.toString());
+        String manche = demarrerKaraoke(demonstration.toString(), "demo:ANIMATEUR:" + demonstration + ":" + UUID.randomUUID());
         var inscription = envoyer(HttpMethod.POST, "/api/soirees/" + demonstration + "/manches/" + manche + "/passages", joueur,
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
         KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
@@ -100,37 +102,46 @@ class KaraokeSurSoireeEnregistreeHttpTest {
         jdbc.update("update soiree set etat = 'EN_COURS', debutee_le = now() where id = ?::uuid", soiree);
     }
 
-    String soireeOuverte() {
-        String id = json.readTree(envoyer(HttpMethod.POST, "/api/soirees", null,
-                Map.of("titre", "Karaoké du vendredi", "format", "SOLO", "pilotage", "MANUEL"), null).getBody()).path("id").asString();
-        assertThat(envoyer(HttpMethod.POST, "/api/soirees/" + id + "/ouverture", null, null, UUID.randomUUID())
-                .getStatusCode().is2xxSuccessful()).isTrue();
+    String soireeOuverte() throws Exception {
+        animateur = SessionAnimateurHttp.ouvrir(port, json);
+        var creation = envoyer(HttpMethod.POST, "/api/soirees", null,
+                Map.of("titre", "Karaoké du vendredi", "format", "SOLO", "pilotage", "MANUEL"), null);
+        ContratApi.verifier("docs/api/openapi.yaml", "creerSoiree", creation);
+        assertThat(creation.getStatusCode().value()).isEqualTo(201);
+        String id = json.readTree(creation.getBody()).path("id").asString();
+        var ouverture = envoyer(HttpMethod.POST, "/api/soirees/" + id + "/ouverture", null, null, UUID.randomUUID());
+        ContratApi.verifier("docs/api/openapi.yaml", "ouvrirSoiree", ouverture);
+        assertThat(ouverture.getStatusCode().value()).isEqualTo(200);
         return id;
     }
 
-    JsonNode rejoindre(String soiree, String pseudo) {
-        String code = json.readTree(envoyer(HttpMethod.GET, "/api/soirees/" + soiree, null, null, null).getBody())
-                .path("codeAcces").asString();
+    JsonNode rejoindre(String soiree, String pseudo) throws Exception {
+        var lecture = envoyer(HttpMethod.GET, "/api/soirees/" + soiree, null, null, null);
+        ContratApi.verifier("docs/api/openapi.yaml", "consulterSoiree", lecture);
+        String code = json.readTree(lecture.getBody()).path("codeAcces").asString();
         var arrivee = envoyer(HttpMethod.POST, "/api/soirees/rejoindre", null, Map.of("codeAcces", code, "pseudo", pseudo), null);
+        ContratApi.verifier("docs/api/openapi.yaml", "rejoindreSoiree", arrivee);
         assertThat(arrivee.getStatusCode().value()).isEqualTo(201);
         return json.readTree(arrivee.getBody());
     }
 
-    String demarrerKaraoke(String soiree) throws Exception {
-        String animateur = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
-        var creation = envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches", animateur,
+    String demarrerKaraoke(String soiree, String secret) throws Exception {
+        var creation = envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches", secret,
                 Map.of("mode", "KARAOKE", "reglages", Map.of()), null);
         KaraokeHttpTest.verifierPrototype("creerMancheDeTest", creation, 201);
         String manche = json.readTree(creation.getBody()).path("mancheId").asString();
         KaraokeHttpTest.verifierPrototype("demarrerMancheDeTest", envoyer(HttpMethod.POST,
-                "/api/test/soirees/" + soiree + "/manches/" + manche + "/demarrer", animateur, null, UUID.randomUUID()), 200);
+                "/api/test/soirees/" + soiree + "/manches/" + manche + "/demarrer", secret, null, UUID.randomUUID()), 200);
         return manche;
     }
 
     ResponseEntity<String> envoyer(HttpMethod methode, String route, String secret, Object corps, UUID cle) {
         var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
         if (secret != null) { requete.header("Authorization", "Bearer " + secret); }
-        if (cle != null) { requete.header("Idempotency-Key", cle.toString()).header("X-CSRF-TOKEN", "demonstration"); }
+        if (secret == null && !route.equals("/api/soirees/rejoindre")) {
+            requete.headers(entetes -> entetes.addAll(animateur.entetes()));
+        }
+        if (cle != null) { requete.header("Idempotency-Key", cle.toString()); }
         if (corps != null) { requete.contentType(MediaType.APPLICATION_JSON).body(corps); }
         return requete.retrieve().onStatus(s -> s.isError(), (q, r) -> { }).toEntity(String.class);
     }

@@ -1,0 +1,47 @@
+.compte {
+  width: min(100% - 2 * var(--espace-4), 33rem);
+  margin: 0 auto;
+  padding-block: var(--espace-6);
+  display: grid;
+  gap: var(--espace-5);
+}
+
+.compte h1 {
+  font-size: 1.75rem;
+  line-height: 1.15;
+}
+
+.compte__formulaire {
+  display: grid;
+  gap: var(--espace-4);
+}
+
+.compte__formulaire fieldset {
+  min-width: 0;
+  display: grid;
+  gap: var(--espace-4);
+  padding: 0 0 var(--espace-4);
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--fond-4);
+}
+
+.compte__formulaire legend {
+  padding: 0;
+  margin-bottom: var(--espace-3);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.compte__formulaire input[aria-invalid="true"] {
+  border-color: var(--refus);
+}
+
+.compte__navigation {
+  color: var(--texte-2);
+}
+
+.compte__navigation a {
+  color: var(--citron);
+  text-underline-offset: 0.2em;
+}

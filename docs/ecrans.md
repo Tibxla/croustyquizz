@@ -2,9 +2,20 @@
 
 Ouvrir `/test/identite.html?soiree=<UUID>` en profil `dev` ou `recette`. Pour ouvrir deux Manettes, charger la page dans deux onglets avec le même UUID de Soirée, choisir le rôle Joueur dans chacun, puis sélectionner « Joueur 1 » dans le premier et « Joueur 2 » dans le second. Quatre Joueurs de démonstration sont disponibles. La page lit l’UUID stable du Joueur choisi dans la vue du serveur. Le jeton `demo:TYPE:soireeId:acteurId` reste dans le `sessionStorage` de l’onglet (`croustyquizz.jeton`), jamais dans l’URL. La page est stockée dans `resources/demonstration/`, hors de `static/`, et servie par un contrôleur `@Profile({"dev", "recette"})`.
 
-Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. La Console utilise le Bearer de démonstration ; sans ce jeton, elle demande `/api/csrf` et transmet session et CSRF, en prévision de #5. Le serveur de production refuse encore les identités tant que #5/#10 ne sont pas installées. La salle n'a aucune commande ; la Console et la Manette ont un bouton de recapture. Les commandes métier appartiennent aux modules des modes.
+Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. La Console utilise la session Animateur sur une Soirée enregistrée et le Bearer de démonstration sur une Soirée absente de la base en dev/recette. Avec une session, elle récupère `/api/csrf` pour les mutations et la connexion STOMP. Le serveur vérifie le Lieu pour chaque abonnement de l’Animateur. La salle n'a aucune commande ; la Console et la Manette ont un bouton de recapture. Les commandes métier appartiennent aux modules des modes.
 
 Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les WebJars à chaque chargement (`Cache-Control: no-cache` et `Last-Modified`) : après un déploiement, il ne mélange pas un module ancien et un module neuf (#132). Un fichier inchangé coûte une réponse `304`. La page `/test/identite.html` reste en `no-store`. Cette revalidation repose sur la date des fichiers dans le JAR : ne pas ajouter `project.build.outputTimestamp` au `pom.xml` (builds reproductibles) sans passer à un ETag calculé sur le contenu, sinon tous les fichiers garderaient la même date et le navigateur resservirait d'anciens modules.
+
+## Recette du compte du Lieu (#5)
+
+Avec l’application sur le port 8080, `playwright-cli run-code --filename=tools/ecrans/compte-recette-navigateur.mjs` (après `playwright-cli open`) joue l’inscription, le refus du mot de passe, la connexion, la création, la synchronisation de la Console et la déconnexion dans un contexte isolé. Le script crée un compte et une Soirée fictifs dans la base de développement.
+
+1. En navigation privée, ouvre `/preparer-soiree.html`. La page de connexion doit s’ouvrir avec le chemin demandé dans `retour`.
+2. Suis « Créer un compte ». Envoie le formulaire vide, puis une inscription valide. Vérifie au clavier le focus sur le premier champ en erreur et l’association du message au champ. L’inscription réussie ramène à la connexion.
+3. Saisis un mauvais mot de passe. Vérifie le message en français et le retour du focus au mot de passe. Connecte-toi avec le bon mot de passe : la préparation doit s’ouvrir.
+4. Crée et ouvre une Soirée, ouvre l’Écran de salle, puis ouvre la Console depuis la préparation. Vérifie le passage à « Vue synchronisée ». Depuis un autre profil de navigateur connecté à un second Lieu, essaie d’ouvrir les mêmes liens de préparation et de Console : la Soirée doit être signalée introuvable.
+5. Dans la Console, clique « Se déconnecter ». La page de connexion doit s’ouvrir et une nouvelle connexion doit ramener à la même Console. Avec un paramètre `retour` qui contient une URL absolue, la connexion doit ouvrir la préparation.
+6. En `dev` ou `recette`, reprends le parcours de démonstration avec un UUID absent de la base.
 
 ## Module factice
 

@@ -2,6 +2,7 @@ package fr.croustyquizz.tempsreel;
 
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.context.annotation.Fallback;
 import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Component;
@@ -10,8 +11,9 @@ import fr.croustyquizz.manche.Refuse;
 
 /** Jetons de démonstration pour #80 : demo:TYPE:soireeId:acteurId, uniquement en dev/recette. */
 @Component
+@Fallback
 @Profile({"dev", "recette"})
-public final class ResolveurDActeurDemonstration implements ResolveurDActeur {
+public final class ResolveurDActeurDemonstration implements ResolveurDActeurDuProfil {
 	private static final int NOMBRE_PARTIES = 3;
 	@Override
 	public Acteur resoudre(HttpServletRequest requete) { return lire(requete.getHeader("Authorization")); }

@@ -19,8 +19,7 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 /** Barrière d'installation effective, indépendante du registre interne du broker. */
 @Component
 public final class RegistreAbonnements implements ExecutorChannelInterceptor {
-	private final Map<String, Map<UUID, String>> connexions = new HashMap<>();
-	private final Map<String, Acteur> acteurs = new HashMap<>();
+	private final Map<String, Map<UUID, Abonnement>> connexions = new HashMap<>();
 
 	@Override
 	public synchronized Message<?> beforeHandle(Message<?> message, MessageChannel canal, MessageHandler gestionnaire) {
@@ -28,9 +27,6 @@ public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 				&& SimpMessageHeaderAccessor.getMessageType(message.getHeaders()) == SimpMessageType.CONNECT) {
 			String connexion = SimpMessageHeaderAccessor.getSessionId(message.getHeaders());
 			connexions.putIfAbsent(connexion, new HashMap<>());
-			if (SimpMessageHeaderAccessor.getUser(message.getHeaders()) instanceof IdentiteStomp identite) {
-				acteurs.put(connexion, identite.acteur());
-			}
 		}
 		return message;
 	}
@@ -45,10 +41,9 @@ public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 		SimpMessageType type = SimpMessageHeaderAccessor.getMessageType(message.getHeaders());
 		if (type == SimpMessageType.DISCONNECT) {
 			connexions.remove(connexion);
-			acteurs.remove(connexion);
 			return;
 		}
-		Map<UUID, String> abonnements = connexions.get(connexion);
+		Map<UUID, Abonnement> abonnements = connexions.get(connexion);
 		String identifiant = SimpMessageHeaderAccessor.getSubscriptionId(message.getHeaders());
 		if (abonnements == null || identifiant == null) {
 			return;
@@ -62,7 +57,8 @@ public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 		if (type == SimpMessageType.SUBSCRIBE) {
 			String destination = SimpMessageHeaderAccessor.getDestination(message.getHeaders());
 			if (destination != null && destination.startsWith("/topic/")) {
-				abonnements.putIfAbsent(abonnement, destination);
+				var acteur = message.getHeaders().get(ControleAccesStomp.ACTEUR_ABONNE, Acteur.class);
+				abonnements.putIfAbsent(abonnement, new Abonnement(destination, acteur));
 			}
 		} else if (type == SimpMessageType.UNSUBSCRIBE) {
 			abonnements.remove(abonnement);
@@ -71,20 +67,34 @@ public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 
 	/** Un UUID identifie une seule connexion vivante et exactement cette destination. */
 	public synchronized boolean estInstalle(UUID abonnementId, String destination) {
-		long correspondances = connexions.values().stream().filter(a -> a.containsKey(abonnementId)).count();
-		return correspondances == 1 && connexions.values().stream()
-				.anyMatch(a -> destination.equals(a.get(abonnementId)));
+		var abonnement = abonnementUnique(abonnementId);
+		return abonnement != null && destination.equals(abonnement.destination());
 	}
 
 	/** La barrière métier exige aussi le même Acteur que la connexion STOMP. */
 	public synchronized boolean estInstalle(UUID abonnementId, String destination, Acteur acteur) {
-		return estInstalle(abonnementId, destination) && connexions.entrySet().stream()
-				.anyMatch(c -> destination.equals(c.getValue().get(abonnementId)) && acteur.equals(acteurs.get(c.getKey())));
+		var abonnement = abonnementUnique(abonnementId);
+		return abonnement != null && destination.equals(abonnement.destination()) && acteur.equals(abonnement.acteur());
+	}
+
+	private Abonnement abonnementUnique(UUID abonnementId) {
+		Abonnement trouve = null;
+		for (var connexion : connexions.values()) {
+			Abonnement candidat = connexion.get(abonnementId);
+			if (candidat != null) {
+				if (trouve != null) {
+					return null;
+				}
+				trouve = candidat;
+			}
+		}
+		return trouve;
 	}
 
 	@EventListener
 	public synchronized void deconnecter(SessionDisconnectEvent evenement) {
 		connexions.remove(evenement.getSessionId());
-		acteurs.remove(evenement.getSessionId());
 	}
+
+	private record Abonnement(String destination, Acteur acteur) { }
 }

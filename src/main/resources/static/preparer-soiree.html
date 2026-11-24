@@ -41,7 +41,7 @@
 				<h2 id="titre-panneau">Préparer la Soirée</h2>
 				<p id="erreur" class="erreur" role="alert" hidden></p>
 
-				<form id="creation" class="preparation" novalidate>
+				<form id="creation" class="preparation" novalidate hidden>
 					<div class="preparation">
 						<label for="titre">Titre de la Soirée</label>
 						<input id="titre" type="text" maxlength="150" required placeholder="Quiz du jeudi">
@@ -61,13 +61,15 @@
 
 				<div id="soiree" class="preparation" hidden>
 					<p id="consigne" class="console__note"></p>
+					<a id="console" class="bouton" href="/console.html">Ouvrir la Console d’animation</a>
 				</div>
 			</section>
 		</main>
 	</div>
 
 	<script type="module">
-		import { appeler, nouvelleCle } from '/js/api.js';
+		import { appeler, appelerAvecCsrf, nouvelleCle } from '/js/api.js';
+		import { consulterSession, renvoyerVersConnexion } from '/js/compte.mjs';
 
 		const FORMATS = { SOLO: 'Solo', EQUIPE: 'Équipe' };
 		const PILOTAGES = { MANUEL: 'Pilotage manuel', AUTOMATIQUE: 'Pilotage automatique' };
@@ -75,13 +77,18 @@
 		const MESSAGES = {
 			DONNEES_INVALIDES: 'Donne un titre de 1 à 150 caractères.',
 			ETAT_INCOMPATIBLE: 'La Soirée est déjà lancée ou terminée.',
-			RESSOURCE_INTROUVABLE: 'Cette Soirée n’existe pas. Crée-en une nouvelle.',
+			RESSOURCE_INTROUVABLE: 'Cette Soirée est introuvable.',
+			CSRF_INVALIDE: 'La session a changé. Réessaie.',
 			RESEAU_INDISPONIBLE: 'Pas de connexion au serveur. Réessaie dans un instant.',
 		};
 		const erreur = document.getElementById('erreur');
 		let soiree = null;
 
 		function signaler(resultat) {
+			if (resultat.statut === 401) {
+				renvoyerVersConnexion();
+				return;
+			}
 			erreur.textContent = MESSAGES[resultat.code] ?? 'L’action n’a pas abouti. Réessaie dans un instant.';
 			erreur.hidden = false;
 		}
@@ -91,6 +98,7 @@
 			erreur.hidden = true;
 			document.getElementById('creation').hidden = true;
 			document.getElementById('soiree').hidden = false;
+			document.getElementById('console').href = `/console.html?${new URLSearchParams({ soiree: soiree.id })}`;
 			document.getElementById('titre-panneau').textContent = soiree.titre;
 			document.getElementById('resume').textContent = `${soiree.titre} · ${FORMATS[soiree.format]} · ${PILOTAGES[soiree.pilotage]}`;
 			document.getElementById('etat').textContent = ETATS[soiree.etat];
@@ -108,7 +116,7 @@
 		document.getElementById('creation').addEventListener('submit', async (evenement) => {
 			evenement.preventDefault();
 			const donnees = new FormData(evenement.target);
-			const creation = await appeler('POST', '/api/soirees', { corps: {
+			const creation = await appelerAvecCsrf('POST', '/api/soirees', { corps: {
 				titre: document.getElementById('titre').value,
 				format: donnees.get('format'),
 				pilotage: donnees.get('pilotage'),
@@ -117,7 +125,7 @@
 		});
 
 		document.getElementById('ouvrir').addEventListener('click', async () => {
-			const ouverture = await appeler('POST', `/api/soirees/${encodeURIComponent(soiree.id)}/ouverture`,
+			const ouverture = await appelerAvecCsrf('POST', `/api/soirees/${encodeURIComponent(soiree.id)}/ouverture`,
 				{ entetes: { 'Idempotency-Key': nouvelleCle() } });
 			ouverture.ok ? afficher(ouverture.corps) : signaler(ouverture);
 		});
@@ -125,7 +133,7 @@
 		document.getElementById('ecran').addEventListener('click', async () => {
 			// La fenêtre s'ouvre pendant le clic, sinon le navigateur la bloquerait après l'appel.
 			const fenetre = window.open('', 'croustyquizz-ecran-de-salle');
-			const acces = await appeler('POST', `/api/soirees/${encodeURIComponent(soiree.id)}/acces-ecran`);
+			const acces = await appelerAvecCsrf('POST', `/api/soirees/${encodeURIComponent(soiree.id)}/acces-ecran`);
 			if (!acces.ok) {
 				fenetre?.close();
 				signaler(acces);
@@ -137,10 +145,21 @@
 			if (fenetre) fenetre.location.href = adresse; else location.href = adresse;
 		});
 
-		const existante = new URLSearchParams(location.search).get('soiree');
-		if (existante) {
-			const lecture = await appeler('GET', `/api/soirees/${encodeURIComponent(existante)}`);
-			lecture.ok ? afficher(lecture.corps) : signaler(lecture);
+		const session = await consulterSession();
+		if (session.ok) {
+			const existante = new URLSearchParams(location.search).get('soiree');
+			if (existante) {
+				const lecture = await appeler('GET', `/api/soirees/${encodeURIComponent(existante)}`);
+				if (lecture.ok) afficher(lecture.corps);
+				else {
+					signaler(lecture);
+					if (lecture.statut === 404) document.getElementById('creation').hidden = false;
+				}
+			} else {
+				document.getElementById('creation').hidden = false;
+			}
+		} else if (session.statut !== 401) {
+			signaler(session);
 		}
 	</script>
 </body>

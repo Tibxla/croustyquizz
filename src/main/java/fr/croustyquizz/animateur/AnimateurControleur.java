@@ -74,6 +74,8 @@ class AnimateurControleur {
 		contexte.setAuthentication(authentification);
 		SecurityContextHolder.setContext(contexte);
 		sessions.saveContext(contexte, requete, reponse);
+		new SessionAnimateur(new AnimateurConnecte(identite.id(), identite.lieuId()))
+				.attacher(requete.getSession());
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(identite);
 	}
 
