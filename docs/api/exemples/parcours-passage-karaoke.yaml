@@ -56,6 +56,8 @@ http:
             delaiConfirmationNavigateurMs: 10000
             delaiAppelMs: 30000
             dureeVoteMs: 30000
+            dureeAffichageMoyenneMs: 10000
+          votes: []
           prochainsPassages: &a12
             - &a8
               passageId: 98000000-0000-4000-8000-000000000041
@@ -687,6 +689,7 @@ http:
             calculeLe: 2026-11-17T21:00:30.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a73
             - &a69
               passageId: 98000000-0000-4000-8000-000000000042
@@ -1245,6 +1248,7 @@ http:
             calculeLe: 2026-11-17T21:04:35.500Z
             clotureLe: 2026-11-17T21:04:35.500Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a135
             - &a132
               passageId: 98000000-0000-4000-8000-000000000042
@@ -1642,6 +1646,7 @@ evenements:
           passagePrioritaireId: null
           courant: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a37
               passageId: 98000000-0000-4000-8000-000000000041
@@ -1772,6 +1777,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a26
           configurationInterface: *a7
+          votes: []
           prochainsPassages: *a27
           nombreAutresPassages: 0
           lecteurDesigneId: 98000000-0000-4000-8000-000000000061
@@ -1889,6 +1895,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:20.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a45
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2038,6 +2045,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:22.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a53
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2187,6 +2195,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:24.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a64
             - &a60
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2545,6 +2554,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:58.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a81
             - &a77
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2782,6 +2792,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:11.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a86
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2933,6 +2944,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:11.500Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a93
               passageId: 98000000-0000-4000-8000-000000000042
@@ -3084,6 +3096,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:12.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a211
             - &a100
               passageId: 98000000-0000-4000-8000-000000000042
@@ -3233,6 +3246,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:14.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a107
               passageId: 98000000-0000-4000-8000-000000000042
@@ -3360,6 +3374,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a113
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a119
             - *a114
             - *a115
@@ -3496,6 +3511,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:50.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a127
             - &a123
               passageId: 98000000-0000-4000-8000-000000000042
@@ -3854,6 +3870,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:00.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a141
             - &a139
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4054,6 +4071,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:20.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a148
             - &a145
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4270,6 +4288,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:34.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a153
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4405,6 +4424,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:40.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a162
             - &a159
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4614,6 +4634,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:45.000Z
             clotureLe: 2026-11-17T21:05:45.000Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a168
             - &a166
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4814,6 +4835,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:50.000Z
             clotureLe: 2026-11-17T21:05:45.000Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a174
             - &a172
               passageId: 98000000-0000-4000-8000-000000000043
@@ -5014,6 +5036,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:00.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a179
             - &a178
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5199,6 +5222,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:05.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a183
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5320,6 +5344,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:10.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a188
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5432,6 +5457,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:13.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a192
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5553,6 +5579,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:20.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a199
             - &a197
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5756,6 +5783,7 @@ evenements:
             calculeLe: 2026-11-17T21:10:19.000Z
             clotureLe: 2026-11-17T21:10:19.000Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a204
             - &a203
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5941,6 +5969,7 @@ evenements:
             calculeLe: 2026-11-17T21:10:39.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a208 []
           nombreAutresPassages: 0
           lecteurDesigneId: 98000000-0000-4000-8000-000000000062
@@ -6433,6 +6462,7 @@ cases:
       delaiConfirmationNavigateurMs: 10000
       delaiAppelMs: 0
       dureeVoteMs: 30000
+      dureeAffichageMoyenneMs: 10000
     valide: false
     correction:
       chemin:
@@ -6466,6 +6496,7 @@ cases:
         passagePrioritaireId: null
         courant: *a99
         configurationInterface: *a7
+        votes: []
         prochainsPassages: *a211
         nombreAutresPassages: 0
         lecteurDesigneId: 98000000-0000-4000-8000-000000000061
@@ -6561,6 +6592,7 @@ cases:
         passagePrioritaireId: null
         courant: *a76
         configurationInterface: *a7
+        votes: []
         prochainsPassages: *a81
         nombreAutresPassages: 0
         votes: []
@@ -6662,6 +6694,7 @@ cases:
         passagePrioritaireId: null
         courant: *a26
         configurationInterface: *a7
+        votes: []
         prochainsPassages: *a27
         nombreAutresPassages: 0
         lecteurDesigneId: 98000000-0000-4000-8000-000000000061
