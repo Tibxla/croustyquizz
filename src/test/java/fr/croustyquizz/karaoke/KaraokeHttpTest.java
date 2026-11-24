@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
@@ -33,7 +34,7 @@ class KaraokeHttpTest {
     @MockitoSpyBean PersistanceKaraokeJpa persistance;
     final UUID soiree = UUID.randomUUID();
     final Acteur animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
-    final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+    final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
 
     @Test void lesHuitOperationsEtLeRejeuApresRetraitEtFinRespectentLeContrat() throws Exception {
         UUID manche = demarrer(); String racine = racine(manche);
@@ -136,7 +137,7 @@ class KaraokeHttpTest {
         verifier("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", autreSoiree, inscription, null), 404);
         var acceptee = envoyer(HttpMethod.POST, racine + "/passages", joueur, inscription, null);
         verifier("inscrirePassage", acceptee, 201);
-        var autreJoueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        var autreJoueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
         String passage = json.readTree(acceptee.getBody()).path("passageId").asString();
         verifier("desinscrirePassage", envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/desinscription", autreJoueur,
                 Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0), null), 404);
@@ -211,7 +212,7 @@ class KaraokeHttpTest {
         String etape = json.readTree(appel.getBody()).path("etapeId").asString();
         UUID envoiId = UUID.randomUUID();
         var corps = Map.of("envoiId", envoiId, "etapeId", etape, "numeroModification", 1);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
         refuser("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", autre, corps, null),
                 404, "RESSOURCE_INTROUVABLE");
         assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(autre, route + "/presence", envoiId))).isNull();
@@ -377,7 +378,7 @@ class KaraokeHttpTest {
     @Test void appelerRefuseLaPausePuisLeCourantActif() throws Exception {
         UUID manche = demarrer();
         String racine = racine(manche);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
         UUID premier = inscrire(manche, joueur, 1);
         UUID second = inscrire(manche, autre, 2);
         var corps = Map.of("numeroModification", 0);
