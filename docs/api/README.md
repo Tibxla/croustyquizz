@@ -343,8 +343,11 @@ Un jeton `demo:JOUEUR` qui porte l’UUID d’un vrai Joueur reçoit le même re
 déclarée. Pour une Soirée enregistrée, la Manette utilise son jeton de reconnexion et l’Écran de salle sa clé.
 L’Animateur de démonstration vérifie son jeton par la capture de la Console. `demo:ANIMATEUR` reste accepté
 sur une Soirée enregistrée jusqu’à la connexion du Lieu (#5), pour les routes de test des Manches et le pilotage.
-En `dev` et `recette`, le contrôle des abonnements STOMP anonymes du [prototype #7](prototype/README.md)
-porte sur la forme de la destination. Restreindre ce contrôle aux canaux du prototype reste à faire (#181).
+Le [prototype #7](prototype/README.md) peut s’abonner anonymement au canal de salle uniquement en `dev`
+et `recette`, pour un UUID de Soirée absent de la base (#181). Le serveur vérifie cette absence à chaque
+`SUBSCRIBE` anonyme. Si la Soirée est enregistrée, le broker n’installe aucun abonnement pour ce `SUBSCRIBE`.
+La coquille STOMP `/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la
+clé dans le stockage de l’onglet, pour cette seule Soirée.
 
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.

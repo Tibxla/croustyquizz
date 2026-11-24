@@ -3,7 +3,7 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
-import { decrireVue } from './vue-commune.mjs';
+import { afficherClassementDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
@@ -36,14 +36,15 @@ function afficherCommun(vue) {
 	const description = decrireVue(vue);
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
-	lister('classement', description.classement, 'Aucun point attribué.', ecran === 'ecran' ? 3 : Infinity);
+	lister('classement', description.classement, 'Aucun point attribué.');
+	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
 	if (talon) {
 		talon.hidden = !description.codeAcces || vue.soiree.etat === 'TERMINEE';
 		texte('code', description.codeAcces ?? '');
 	}
-	texte('attente', vue.modeEnCours === null && vue.soiree.etat !== 'TERMINEE' ? 'La prochaine Manche s’affichera ici.' : '');
+	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
 
