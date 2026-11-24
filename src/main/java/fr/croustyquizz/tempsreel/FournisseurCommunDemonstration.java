@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.springframework.context.annotation.Fallback;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -23,15 +24,26 @@ import tools.jackson.databind.json.JsonMapper;
 @Profile({"dev", "recette"})
 @Fallback
 public final class FournisseurCommunDemonstration implements FournisseurPartieCommune {
+	public static final int NOMBRE_JOUEURS = 4;
+
 	private final DepotDeManches depot;
 	private final JsonMapper json;
 	public FournisseurCommunDemonstration(DepotDeManches depot, JsonMapper json) { this.depot = depot; this.json = json; }
 	/** Identité stable par Soirée, partagée par les projections et les jetons de démonstration. */
 	public static UUID joueurId(UUID soireeId) {
-		return UUID.nameUUIDFromBytes(("croustyquizz:demo:joueur:" + soireeId).getBytes(StandardCharsets.UTF_8));
+		return joueurId(soireeId, 1);
+	}
+	public static UUID joueurId(UUID soireeId, int rang) {
+		if (rang < 1 || rang > NOMBRE_JOUEURS) {
+			throw new IllegalArgumentException("Rang de Joueur de démonstration invalide : " + rang);
+		}
+		String nom = "croustyquizz:demo:joueur:" + soireeId;
+		return UUID.nameUUIDFromBytes((rang == 1 ? nom : nom + ":" + rang).getBytes(StandardCharsets.UTF_8));
 	}
 	@Override
-	public List<UUID> joueurs(UUID soireeId) { return List.of(joueurId(soireeId)); }
+	public List<UUID> joueurs(UUID soireeId) {
+		return IntStream.rangeClosed(1, NOMBRE_JOUEURS).mapToObj(rang -> joueurId(soireeId, rang)).toList();
+	}
 	@Override
 	public Map<String, Object> fournir(UUID soireeId, Destination destination) {
 		List<ManchePersistante> programme = depot.deLaSoiree(soireeId);
@@ -42,7 +54,10 @@ public final class FournisseurCommunDemonstration implements FournisseurPartieCo
 				"etat", "EN_COURS", "codeAcces", "DEMO01"));
 		vue.put("mancheActive", active == null ? null : decrire(active, programme.indexOf(active)));
 		vue.put("modeEnCours", active == null ? null : active.getMode());
-		vue.put("joueurs", List.of(Map.of("id", joueurId(soireeId), "pseudo", "Joueur de démonstration", "connecte", true)));
+		vue.put("joueurs", IntStream.rangeClosed(1, NOMBRE_JOUEURS)
+				.mapToObj(rang -> Map.of("id", joueurId(soireeId, rang),
+						"pseudo", "Joueur de démonstration " + rang, "connecte", true))
+				.toList());
 		vue.put("classement", List.of()); vue.put("dernierBuzz", null);
 		if (destination.type() == Destination.Type.CONSOLE) {
 			vue.put("programme", programme.stream().map(m -> decrire(m, programme.indexOf(m))).toList());

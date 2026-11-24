@@ -292,10 +292,14 @@ Les captures de repli utilisent le même assembleur que les publications.
 En `dev` et `recette`, le résolveur reconnaît `Authorization: Bearer demo:TYPE:soireeId:acteurId`,
 avec `TYPE` dans `ANIMATEUR`, `JOUEUR`, `ECRAN`. #80 peut déposer la valeur
 `demo:TYPE:soireeId:acteurId` dans `sessionStorage` sous `croustyquizz.jeton`,
-puis la transmettre aussi dans CONNECT STOMP. Le Joueur fictif du fournisseur commun
-porte un UUID stable propre à sa Soirée, fourni par `FournisseurCommunDemonstration.joueurId(soireeId)` :
-`UUID.nameUUIDFromBytes` appliqué aux octets UTF-8 de `croustyquizz:demo:joueur:` suivi de `soireeId`.
-Les projections et le jeton `demo:JOUEUR:soireeId:acteurId` utilisent tous cet UUID comme `acteurId`.
+et la transmettre dans CONNECT STOMP. Le fournisseur commun projette quatre Joueurs de
+démonstration, chacun avec un UUID stable propre à sa Soirée, fourni par
+`FournisseurCommunDemonstration.joueurId(soireeId, rang)`. Le calcul applique
+`UUID.nameUUIDFromBytes` aux octets UTF-8 de `croustyquizz:demo:joueur:<soireeId>`
+pour le rang 1, et de `croustyquizz:demo:joueur:<soireeId>:<rang>` pour les rangs 2 à 4.
+`joueurId(soireeId)` renvoie toujours le rang 1. Sur la page d’identité de démonstration,
+le Joueur choisit son rang. La page lit l’UUID correspondant dans la projection et
+l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
 Ces identités fictives ne sont pas
 une authentification ; en production le résolveur refuse systématiquement avec `401`.
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
