@@ -8,6 +8,9 @@
 const PREFIXE = 'croustyquizz.manette.';
 const DERNIERE = 'croustyquizz.manette-derniere';
 const SONDE = 'croustyquizz.manette-sonde';
+// Accès rangé au jeton le plus long (128 caractères), plus la marge de la dernière Soirée rangée ensuite.
+const VALEUR_SONDE = JSON.stringify({ jeton: 'x'.repeat(128), joueurId: 'x'.repeat(36), codeAcces: 'x'.repeat(6) })
+	+ 'x'.repeat(80);
 // Sans code, la page reprend la dernière Soirée rejointe le temps d'une soirée seulement : au-delà, un ancien
 // pseudo ne revient pas tout seul. Un QR code rescanné reprend la Soirée de son code à tout moment.
 const REPRISE_SANS_CODE_MS = 12 * 3_600_000;
@@ -93,9 +96,12 @@ export function creerAccesManette(stockages = stockagesDuNavigateur(), { mainten
 		},
 		/** Accès gardés pour ce code d'accès : un code peut resservir après la fin d'une Soirée. */
 		parCode: (codeAcces) => soirees().map(lire).filter((acces) => acces && acces.codeAcces === codeAcces),
-		/** Vrai si un stockage accepte d'écrire : à vérifier avant de créer un Joueur. */
+		/**
+		 * Vrai si un stockage accepte d'écrire un accès complet : à vérifier avant de créer un Joueur. La sonde a la
+		 * taille d'un accès au jeton le plus long, pour qu'un quota presque atteint ne la garde pas seule.
+		 */
 		disponible() {
-			const accepte = liste.some((stockage) => ecrireDans(stockage, SONDE, '1'));
+			const accepte = liste.some((stockage) => ecrireDans(stockage, SONDE, VALEUR_SONDE));
 			effacer(SONDE);
 			return accepte;
 		},

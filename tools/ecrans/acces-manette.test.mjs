@@ -86,6 +86,20 @@ test('aucun stockage utilisable : l’accès le dit avant l’arrivée, et range
 	assert.equal(creerAccesManette([]).disponible(), false);
 });
 
+test('un stockage presque plein, qui garderait la sonde mais pas un accès complet, n’est pas disponible', () => {
+	// Accepte encore quelques caractères, comme un quota presque atteint.
+	const presquePlein = stockageFactice();
+	const ecrire = presquePlein.setItem;
+	presquePlein.setItem = (cle, valeur) => {
+		if (String(valeur).length > 20) throw new DOMException('plein', 'QuotaExceededError');
+		ecrire(cle, valeur);
+	};
+	const acces = creerAccesManette(presquePlein);
+	assert.equal(acces.disponible(), false);
+	assert.equal(acces.ranger(soiree, { jeton: 'a'.repeat(128), joueurId: joueur, codeAcces: 'K7PQ2M' }), false);
+	assert.equal(presquePlein.valeurs.size, 0);
+});
+
 test('un stockage durable utilisable reste le premier choix ; la sonde ne laisse rien derrière elle', () => {
 	const durable = stockageFactice();
 	const onglet = stockageFactice();
