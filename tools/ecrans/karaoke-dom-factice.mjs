@@ -2,7 +2,10 @@
 export function creerDocument() {
 	class Element {
 		constructor(tag) {
-			this.tagName = tag.toUpperCase(); this.ownerDocument = document; this.children = []; this.attributes = new Map();
+			this.tagName = tag.toUpperCase();
+			// Liens vers le haut non énumérables : un message d'échec d'assert ne parcourt que les enfants (18 Go le 24/11, #120).
+			Object.defineProperties(this, { ownerDocument: { value: document, writable: true }, parentNode: { value: null, writable: true } });
+			this.children = []; this.attributes = new Map();
 			this.ecouteurs = new Map(); this.hidden = false; this.disabled = false; this.value = ''; this.open = false; this.texte = '';
 			const proprietes = new Map(); this.style = { setProperty: (k, v) => proprietes.set(k, v), getPropertyValue: k => proprietes.get(k) ?? '' };
 			this.classList = { contains: c => this.className.split(/\s+/).includes(c), add: c => { if (!this.classList.contains(c)) this.className += ` ${c}`; }, remove: c => { this.className = this.className.split(/\s+/).filter(x => x !== c).join(' '); }, toggle: (c, force) => { const ajouter = force ?? !this.classList.contains(c); this.classList[ajouter ? 'add' : 'remove'](c); return ajouter; } };

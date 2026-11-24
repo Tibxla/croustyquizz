@@ -31,6 +31,7 @@ class KaraokeHttpTest {
     @Autowired ServiceKaraoke service;
     @Autowired PortsDePassageFactices ports;
     @Autowired DepotDeManches depot;
+    @Autowired PilotageDeSoireeDemonstration pilotage;
     @MockitoSpyBean PersistanceKaraokeJpa persistance;
     final UUID soiree = UUID.randomUUID();
     final Acteur animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
@@ -464,6 +465,32 @@ class KaraokeHttpTest {
         refuser("appelerPassage", envoyer(HttpMethod.POST, secondAppel, animateur, corps, UUID.randomUUID()), 409, "COMMANDE_PERIMEE");
         verifier("appelerPassage", envoyer(HttpMethod.POST, premierAppel, animateur, corps, UUID.randomUUID()), 200);
         refuser("appelerPassage", envoyer(HttpMethod.POST, secondAppel, animateur, corps, UUID.randomUUID()), 409, "ETAT_INCOMPATIBLE");
+    }
+
+    @Test void leContratConserveLe201EtRefuseLAppelManuelEnAutomatique() throws Exception {
+        pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        String racine = racine(manche);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        verifier("inscrirePassage", inscription, 201);
+        var recu = json.readTree(inscription.getBody());
+        assertThat(recu.path("etatApres").asString()).isEqualTo("EN_ATTENTE");
+        assertThat(recu.path("numeroModification").asInt()).isZero();
+        var avant = (InstantaneKaraoke) service.instantane(soiree, manche);
+        UUID courant = UUID.fromString(recu.path("passageId").asString());
+        assertThat(avant.cycle().passageId()).isEqualTo(courant);
+
+        String route = racine + "/passages/" + courant + "/appel";
+        var corps = Map.of("numeroModification", 0);
+        var refus = envoyer(HttpMethod.POST, route, animateur, corps, UUID.randomUUID());
+        refuser("appelerPassage", refus, 409, "ETAT_INCOMPATIBLE");
+        assertThat(json.readTree(refus.getBody()).path("detail").asString())
+                .isEqualTo("En Pilotage Automatique, le Passage suivant est appelé seul.");
+        refuser("appelerPassage",
+                envoyer(HttpMethod.POST, racine + "/passages/" + UUID.randomUUID() + "/appel", animateur, corps, UUID.randomUUID()),
+                404, "RESSOURCE_INTROUVABLE");
+        assertThat(service.instantane(soiree, manche)).isEqualTo(avant);
     }
 
     private UUID inscrire(UUID manche, Acteur interprete, long chanson) throws Exception {
