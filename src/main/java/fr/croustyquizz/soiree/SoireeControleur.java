@@ -43,8 +43,9 @@ class SoireeControleur {
 
 	@PostMapping("/api/soirees")
 	ResponseEntity<ProjectionSoiree> creer(@RequestBody DemandeDeCreation demande) {
-		if (demande.format() == null || demande.pilotage() == null) {
-			throw new Refuse(400, "REQUETE_INVALIDE", "Le Format et le Pilotage sont obligatoires.").exception();
+		// Un champ requis absent viole le schéma (400) ; un titre vide après nettoyage est refusé par la Soirée (422).
+		if (demande.titre() == null || demande.format() == null || demande.pilotage() == null) {
+			throw new Refuse(400, "REQUETE_INVALIDE", "Le titre, le Format et le Pilotage sont obligatoires.").exception();
 		}
 		Soiree soiree = service.creer(demande.titre(), demande.format(), demande.pilotage());
 		return ResponseEntity.created(URI.create("/api/soirees/" + soiree.getId()))
