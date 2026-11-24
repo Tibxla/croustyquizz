@@ -1,15 +1,13 @@
 import { trouverFichierDeChanson } from './fichiers.mjs';
-import { delaiAppelRestant } from './paroles.mjs';
 import { passageActif } from './presentation.mjs';
 
 const estPreparation = etat => etat === 'preparation' || etat === 'preparee';
 const joueOuEstEnPause = etat => etat === 'lecture' || etat === 'pause';
-const fichierIllisible = { fichier: null, motif: 'FICHIER_ILLISIBLE' };
 
-export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEtat, setTimeout, clearTimeout }) {
+export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 	let phase = 'sans-dossier', phaseInterrompue, sonDebloque = false, aEteLectrice = false, autreLecteur = false;
 	let fichiers, prochainDossier, versionDossier = 0, intentionDesignation = false;
-	let vue, derniereDesignation, preparation, depart, delai, essaiSon = 0, detruit = false;
+	let vue, derniereDesignation, preparation, depart, essaiSon = 0, detruit = false;
 	const declarations = new Set(), demandesTraitees = new Set();
 	const lecturesJouees = new Set(), erreursSignalees = new Set();
 
@@ -32,12 +30,7 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		const { courant, lecture } = vue;
 		void commander('POST', cheminPassage(courant, suffixe), { etapeId: courant.etapeId, lectureId: lecture.lectureId, ...champs });
 	}
-	function annulerDelai() {
-		if (delai !== undefined) clearTimeout(delai);
-		delai = undefined;
-	}
 	function libererPassage() {
-		annulerDelai();
 		const avaitFichier = preparation?.charge || depart;
 		preparation = undefined;
 		depart = undefined;
@@ -68,16 +61,10 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		return preparation === cible && cible.version === versionDossier && courant?.etat === 'APPELE'
 			&& courant.passageId === cible.passageId && courant.numeroModification === cible.numeroModification;
 	}
-	function resteAvantEcheance(courant) {
-		if (courant.echeanceAppelLe == null) return null;
-		return delaiAppelRestant({ ...courant, maintenant: horloge.maintenantServeur(), enPause: false });
-	}
 	function declarer(cible) {
 		if (phase !== 'preparation' || !estToujoursEnPreparation(cible) || cible.declaree || !cible.resultat) return;
 		cible.declaree = true;
-		annulerDelai();
-		// Les métadonnées peuvent arriver avant le rappel du minuteur, même après l'échéance.
-		const { fichier, motif } = resteAvantEcheance(vue.courant) === 0 ? fichierIllisible : cible.resultat;
+		const { fichier, motif } = cible.resultat;
 		cible.fichier = fichier;
 		if (motif && cible.charge) {
 			cible.charge = false;
@@ -93,19 +80,6 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		});
 	}
 
-	function recalerDelai(cible) {
-		annulerDelai();
-		if (!estToujoursEnPreparation(cible) || cible.declaree) return;
-		const restant = resteAvantEcheance(vue.courant);
-		if (restant === null) return;
-		const expirer = () => {
-			cible.resultat = fichierIllisible;
-			declarer(cible);
-		};
-		if (restant === 0) expirer();
-		else delai = setTimeout(expirer, restant);
-	}
-
 	async function preparer(courant) {
 		const { passageId, numeroModification, chanson } = courant;
 		const cle = JSON.stringify([passageId, numeroModification, versionDossier]);
@@ -114,8 +88,6 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		const cible = { passageId, numeroModification, version: versionDossier };
 		preparation = cible;
 		changerPhase('preparation');
-		recalerDelai(cible);
-		if (cible.declaree) return;
 		const resultat = trouverFichierDeChanson(fichiers, chanson);
 		let fichier = null, motif = 'FICHIER_' + resultat.etat.toUpperCase();
 		if (resultat.etat === 'unique') {
@@ -144,7 +116,6 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 		if (preparation.charge || depart) lecteur.detruire();
 		preparation.charge = false;
 		depart = undefined;
-		annulerDelai();
 		changerPhase('erreur');
 		const lectureId = vue.lecture.lectureId;
 		if (!erreursSignalees.has(lectureId)) {
@@ -209,20 +180,15 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 			}
 			return;
 		}
-		if (phase === 'preparation' && notreLecture) {
-			annulerDelai();
-			changerPhase('preparee');
-		}
+		if (phase === 'preparation' && notreLecture) changerPhase('preparee');
 		if (actif && locale && notreLecture && lecture.etat === 'DEMARREE') {
 			if (phase === 'preparee' && evenement && origine.type === 'passage-demarre' && preparation?.fichier) void jouer(false);
 			else if ((!origine || origine.source === 'capture' || (evenement && origine.type === 'passage-demarre'))
 				&& !lecturesJouees.has(lecture.lectureId) && !erreursSignalees.has(lecture.lectureId)) passerEnErreur();
 			return;
 		}
-		if (phase === 'preparation') {
-			if (preparation.resultat) declarer(preparation);
-			recalerDelai(preparation);
-		} else if (phase === 'pret' && appel && lecteurDesigneId === lecteurId) void preparer(courant);
+		if (phase === 'preparation') declarer(preparation);
+		else if (phase === 'pret' && appel && lecteurDesigneId === lecteurId) void preparer(courant);
 	}
 
 	const retirerFin = lecteur.surFin(() => {
@@ -262,7 +228,6 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 				if (phase === 'son-bloque') return;
 				sonDebloque = false;
 				phaseInterrompue = phase;
-				annulerDelai();
 				changerPhase('son-bloque');
 				return;
 			}
@@ -298,7 +263,6 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, horloge, surEta
 			detruit = true;
 			retirerFin?.();
 			retirerErreur?.();
-			annulerDelai();
 			preparation = undefined;
 			depart = undefined;
 			lecteur.detruire();
