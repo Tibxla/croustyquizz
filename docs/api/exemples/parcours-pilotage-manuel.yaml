@@ -99,12 +99,12 @@ evenements:
       dernierBuzz: null
 - nom: Deuxième Manche selon l’ordre enregistré
   canal: salle
-  message:
+  message: &demarrageDeuxieme
     type: manche-demarree
     soireeId: 12000000-0000-4000-8000-000000000001
     revision: 7
     emisLe: '2026-11-24T20:01:05Z'
-    donnees:
+    donnees: &vueDeuxieme
       soiree: *enCours
       mancheActive:
         id: 12000000-0000-4000-8000-000000000002
@@ -113,6 +113,20 @@ evenements:
         etat: EN_COURS
         reglages: *reglages
       modeEnCours: QUIZ
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+- nom: Clôture de la deuxième Manche avant la fin de la Soirée
+  canal: salle
+  message: &clotureDeuxieme
+    type: manche-terminee
+    soireeId: 12000000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: '2026-11-24T20:01:15Z'
+    donnees: &vueApresCloture
+      soiree: *enCours
+      mancheActive: null
+      modeEnCours: null
       joueurs: *joueurs
       classement: []
       dernierBuzz: null
@@ -180,3 +194,18 @@ evenements:
       derniereReponse: null
       resultatPersonnel: null
 cases: []
+resynchronisation:
+  destination: /topic/soirees/12000000-0000-4000-8000-000000000001/salle
+  routeEtat: /api/soirees/12000000-0000-4000-8000-000000000001/etat/salle
+  typeEvenementFinal: manche-terminee
+  etat:
+    abonnementId: 12000000-0000-4000-8000-000000000020
+    revision: 7
+    heureServeur: '2026-11-24T20:01:10Z'
+    vue: *vueDeuxieme
+  tampon:
+  - *demarrageDeuxieme
+  - *clotureDeuxieme
+  - *clotureDeuxieme
+  revisionFinale: 8
+  vueFinale: *vueApresCloture
