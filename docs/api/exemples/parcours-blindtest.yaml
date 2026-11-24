@@ -55,6 +55,7 @@ http:
     heureServeur: 2026-11-25T20:10:01.000Z
     abonnementId: 17400000-0000-4000-8000-000000000021
     vue: &a10
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: &a3
         id: 17400000-0000-4000-8000-000000000001
         titre: Blind test du mardi
@@ -344,6 +345,7 @@ http:
     heureServeur: 2026-11-25T20:10:37.000Z
     abonnementId: 17400000-0000-4000-8000-000000000023
     vue:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -575,6 +577,7 @@ evenements:
     revision: 11
     emisLe: 2026-11-25T20:10:04.200Z
     donnees:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -618,6 +621,7 @@ evenements:
     revision: 12
     emisLe: 2026-11-25T20:10:09.000Z
     donnees:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -654,6 +658,7 @@ evenements:
     revision: 13
     emisLe: 2026-11-25T20:10:15.000Z
     donnees: &a21
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -727,6 +732,7 @@ evenements:
     revision: 14
     emisLe: 2026-11-25T20:10:35.000Z
     donnees: &a22
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -755,6 +761,7 @@ evenements:
     revision: 15
     emisLe: 2026-11-25T20:10:50.000Z
     donnees: &a24
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -783,6 +790,7 @@ evenements:
     revision: 16
     emisLe: 2026-11-25T20:10:51.000Z
     donnees:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -814,6 +822,7 @@ evenements:
     revision: 17
     emisLe: 2026-11-25T20:10:57.000Z
     donnees:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -849,6 +858,7 @@ evenements:
     revision: 18
     emisLe: 2026-11-25T20:11:02.000Z
     donnees:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive:
         id: 17400000-0000-4000-8000-000000000002
@@ -889,6 +899,7 @@ evenements:
     revision: 19
     emisLe: 2026-11-25T20:11:30.000Z
     donnees:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -924,6 +935,7 @@ evenements:
     revision: 20
     emisLe: 2026-11-25T20:11:35.000Z
     donnees:
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       soiree: *a3
       mancheActive: *a4
       modeEnCours: BLIND_TEST
@@ -1291,6 +1303,7 @@ cases:
 - nom: Un bloc Blind test exige une Manche active de Blind test
   schema: VueSalle
   valeur:
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     soiree: *a3
     mancheActive: null
     modeEnCours: BLIND_TEST

@@ -124,7 +124,7 @@ Les règles sont celles de l’[ADR 0009](../adr/0009-deroulement-du-blind-test.
 
 ## Karaoké
 
-Le contrat fixe la recherche de Chansons, l’inscription personnelle, la gestion de la File d’attente (#82) puis le cycle du Passage : appel, « Je suis prêt », lecture, calage et fin (#98, voir « Passage : appel, lecture et calage »). Le mécanisme commun (File d’attente, appel, « Je suis prêt », fin du Passage) vit dans `passage` ; la Chanson, ses paroles, la lecture et le calage vivent dans `karaoke` (ADR 0006). Un seul Interprète par Passage ici ; les tableaux acceptent déjà un à quatre Interprètes pour #66. Aucun Point n’est attribué au Karaoké, même en Format Équipe. Vote du public (#23), Pilotage Automatique (#25), YouTube (palier 2 de l’ADR 0007), Délégation et ajout pour autrui sont hors périmètre. Le port `LecteurDeChanson` de l’Écran de salle couvre charger, lire, pause, reprise, position, fin, volume et erreur (ADR 0007).
+Le contrat fixe la recherche de Chansons, l’inscription personnelle, la gestion de la File d’attente (#82) puis le cycle du Passage : appel, « Je suis prêt », lecture, calage et fin (#98, voir « Passage : appel, lecture et calage »). Le mécanisme commun (File d’attente, appel, « Je suis prêt », fin du Passage, Vote du public) vit dans `passage` ; la Chanson, ses paroles, la lecture et le calage vivent dans `karaoke` (ADR 0006). Un seul Interprète par Passage ici ; les tableaux acceptent déjà un à quatre Interprètes pour #66. Aucun Point n’est attribué au Karaoké, même en Format Équipe. Les sections suivantes décrivent aussi l’appel en Pilotage Automatique (#120) et le résultat du Vote du public (#116). Le port `LecteurDeChanson` de l’Écran de salle couvre charger, lire, pause, reprise, position, fin, volume et erreur (ADR 0007).
 
 ### Rotation et cycle
 
@@ -283,10 +283,26 @@ rend le reçu initial sans publication. Un autre contenu avec le même identifia
 
 `passage-termine` ouvre le vote, et `vote-clos` signale l’échéance à la salle, la Console et toutes
 les Manettes. `vote-enregistre` est publié vers la salle, la Console et la Manette du votant.
-La Console reçoit le nombre de votes. Chaque Manette reçoit uniquement sa propre note et sa
-capacité de voter. Les deux vues ordonnent les votes ouverts et le dernier vote clos par date
-d’ouverture décroissante. `configurationInterface.dureeVoteMs` expose le réglage
-`croustyquizz.passage.dureeVoteSecondes`.
+En Pilotage Automatique, si la clôture appelle un Passage, la vue complète arrive avec
+`passage-appele`. Les trois blocs Karaoké portent une liste `votes` avec les votes ouverts et le
+vote clos le plus récemment, triés par date d’ouverture décroissante.
+
+Pendant le vote, la salle et la Console reçoivent le nombre de votes. Sur la Manette,
+`nombreVotes` reste nul, avec la note personnelle et la capacité de voter disponibles.
+Sur les trois écrans, `moyenneDixiemes` reste nul jusqu’à la clôture. À la clôture,
+`nombreVotes` est renseigné sur les trois écrans et, si des votes ont été reçus, la moyenne
+est arrondie au dixième le plus proche, une moitié vers le haut. En division entière,
+`moyenneDixiemes = (20 × sommeNotes + nombreVotes) / (2 × nombreVotes)`. Sans vote, la moyenne
+reste nulle et les écrans affichent « Aucun vote ».
+
+La salle affiche jusqu’à deux bandeaux au-dessus du rouleau, dans l’ordre de la liste. Un vote
+ouvert reste visible. Pour un vote clos encore dans la liste, le bandeau reste visible jusqu’au
+plus tardif de deux instants, le démarrage d’un Passage suivant et la fin de
+`configurationInterface.dureeAffichageMoyenneMs` après `clotureLe`. Ce délai court aussi pendant
+la pause, d’après l’heure du serveur. Le champ persistant `suivantDemarre`, disponible dans
+`VoteDuPassage` (salle et Console), devient vrai au démarrage d’un Passage suivant et le reste
+après sa fin ou son saut. Un Passage simplement appelé ne le change pas.
+`configurationInterface.dureeVoteMs` expose le réglage `croustyquizz.passage.dureeVoteSecondes`.
 
 ### Configuration par défaut
 
@@ -294,6 +310,8 @@ d’ouverture décroissante. `configurationInterface.dureeVoteMs` expose le rég
 |---|---|
 | `croustyquizz.passage.limitePassagesEnAttente` | 1 (de 1 à 20) |
 | `croustyquizz.passage.delaiAppelSecondes` | 30 |
+| `croustyquizz.passage.dureeVoteSecondes` | 30 |
+| `croustyquizz.passage.dureeAffichageMoyenneSecondes` | 10 |
 | `croustyquizz.karaoke.longueurRechercheMax` | 120 points de code, réduction seule |
 | `croustyquizz.karaoke.delaiConsultationNavigateurMs` | 8000 |
 | `croustyquizz.karaoke.delaiConfirmationNavigateurMs` | 10000 |
@@ -358,13 +376,15 @@ Elles ne visent que des Soirées fictives : un jeton `demo:JOUEUR` ou `demo:ECRA
 est enregistrée est refusé : en HTTP par `401 AUTHENTIFICATION_REQUISE`, au CONNECT STOMP par une
 trame `ERROR` suivie de la fermeture de la connexion, sans statut HTTP. Le canal
 d'une Manette et sa dernière vue ne dépendant que de l'UUID du Joueur, un jeton `demo:JOUEUR` qui
-porte l'UUID d'un vrai Joueur est refusé de même, quelle que soit la Soirée déclarée. Seuls
-le jeton de reconnexion du Joueur et la clé de l'Écran de salle donnent accès à une Soirée enregistrée.
-`demo:ANIMATEUR`
-reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5) : les routes de test
-des Manches en dépendent. Reste ouvert en `dev` et `recette` : un abonnement STOMP anonyme au canal
-de salle n'est contrôlé que sur la forme de sa destination, pour le [prototype #7](prototype/README.md) :
-il ne protège pas encore la salle d'une Soirée enregistrée et reste à réserver aux canaux du prototype (#181).
+porte l'UUID d'un vrai Joueur est refusé de même, quelle que soit la Soirée déclarée. Sur une Soirée
+enregistrée, le Joueur doit présenter son jeton de reconnexion et l'Écran de salle sa clé.
+`demo:ANIMATEUR` reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5),
+pour les routes de test des Manches. Le [prototype #7](prototype/README.md) peut s'abonner
+anonymement au canal de salle uniquement en `dev` et `recette`, pour un UUID de Soirée absent
+de la base (#181). Le serveur vérifie cette absence à chaque `SUBSCRIBE` anonyme. Si la Soirée
+est enregistrée, le broker n'installe aucun abonnement pour ce `SUBSCRIBE`. La coquille STOMP
+`/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la clé
+dans le stockage de l'onglet, pour cette seule Soirée.
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
