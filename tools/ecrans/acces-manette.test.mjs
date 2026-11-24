@@ -261,6 +261,20 @@ test('un code tapé à la main reprend le Joueur gardé pour ce code avant toute
 		{ resultat: 'coupure' });
 });
 
+test('une capture illisible servie en 200 (page d’un proxy) garde le jeton, comme une coupure', async () => {
+	const acces = creerAccesManette(stockageFactice());
+	acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' });
+	const illisible = async () => ({ statut: 200, corps: null });
+
+	assert.deepEqual(await reprendreAcces(acces, { codeAcces: 'K7PQ2M', consulter: illisible }), { resultat: 'coupure' });
+	assert.equal(acces.lire(soiree).jeton, jeton);
+
+	const ancienStockage = ancienOnglet();
+	assert.deepEqual(await reprendreAcces(creerAccesManette(stockageFactice()), { consulter: illisible, ancienStockage }),
+		{ resultat: 'coupure' });
+	assert.equal(ancienStockage.valeurs.get('croustyquizz.jeton'), jeton);
+});
+
 test('sans accès gardé valable pour ce code, l’arrivée crée le Joueur', async () => {
 	const acces = creerAccesManette(stockageFactice());
 	acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' });

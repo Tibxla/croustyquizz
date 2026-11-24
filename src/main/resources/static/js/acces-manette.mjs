@@ -128,7 +128,8 @@ export async function reprendreAcces(accesManette, { codeAcces, consulter, ancie
 	const candidats = codeAcces ? accesManette.parCode(codeAcces) : [accesManette.derniere()].filter(Boolean);
 	for (const acces of candidats) {
 		const { statut, corps } = await consulter(acces.soireeId, acces.jeton);
-		if (statut === 200 && corps?.vue?.soiree?.etat !== 'TERMINEE') return { resultat: 'reprise', soireeId: acces.soireeId };
+		if (captureIllisible(statut, corps)) return { resultat: 'coupure' };
+		if (statut === 200 && corps.vue.soiree?.etat !== 'TERMINEE') return { resultat: 'reprise', soireeId: acces.soireeId };
 		if (statut === 200 || statut === 401 || statut === 404) {
 			accesManette.oublier(acces.soireeId);
 			continue;
@@ -150,6 +151,12 @@ export async function arriver(accesManette, { codeAcces, consulter, rejoindre })
 	return { resultat: 'arrivee', arrivee: await rejoindre() };
 }
 
+// Un 200 sans vue lisible vient d'un relais (page HTML d'un proxy, portail captif), pas du serveur : il ne dit
+// rien du jeton, qui est donc gardé comme pendant une coupure.
+function captureIllisible(statut, corps) {
+	return statut === 200 && (corps?.vue === null || typeof corps?.vue !== 'object');
+}
+
 // Rend l'accès repris ({ soireeId, codeAcces }), null s'il n'y en a pas ou s'il est refusé, ou 'coupure'.
 // L'ancien emplacement n'est effacé qu'une fois l'accès relu dans le nouveau : sinon le jeton serait perdu.
 async function reprendreAncienAcces(accesManette, ancienStockage, consulter) {
@@ -160,6 +167,7 @@ async function reprendreAncienAcces(accesManette, ancienStockage, consulter) {
 	// Une identité de démonstration occupe le même emplacement : elle n'est ni consultée ni effacée.
 	if (!opaque.test(jeton ?? '') || !uuid.test(soireeId ?? '')) return null;
 	const { statut, corps } = await consulter(soireeId, jeton);
+	if (captureIllisible(statut, corps)) return 'coupure';
 	const vue = corps?.vue;
 	if (statut === 200 && vue?.soiree?.etat !== 'TERMINEE' && uuid.test(vue?.joueurId ?? '')) {
 		const codeAcces = code.test(vue.soiree.codeAcces ?? '') ? vue.soiree.codeAcces : null;
