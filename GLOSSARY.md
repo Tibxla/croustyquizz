@@ -107,8 +107,16 @@ Titre musical dont un extrait est diffusé pendant un Blind test, à reconnaîtr
 _Éviter_ : chanson, piste, track
 
 **Buzz** :
-Signal envoyé depuis une Manette pour réclamer la parole pendant un Blind test. Le premier Buzz donne le droit de proposer un titre.
+Signal envoyé depuis une Manette pour réclamer la parole pendant un Blind test. Le premier Buzz donne la main : le droit de faire une Proposition de titre, l'extrait en pause.
 _Éviter_ : clic, main levée
+
+**Proposition de titre** :
+Titre et artiste d'un Morceau tapés par le Joueur qui a la main, dans deux champs, et jugés par le serveur. Chaque partie juste rapporte ses points ; un champ faux ou vide bloque le Joueur jusqu'au Morceau suivant (ADR 0009). À ne pas confondre avec les propositions d'une Question de Quiz.
+_Éviter_ : réponse (réservé au Quiz), devinette
+
+**Révélation** :
+Moment où le titre, l'artiste et la pochette d'un Morceau apparaissent sur l'Écran de salle, à la fin du Morceau. Une partie déjà trouvée est montrée dès qu'elle l'est ; rien d'autre ne quitte le serveur avant.
+_Éviter_ : solution, correction (réservé au Quiz)
 
 **Chanson** :
 Titre musical chanté pendant un Passage de Karaoké, avec ses paroles synchronisées.

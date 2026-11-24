@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choisirPilotage, lireAcces, lireJeton, preparerIdentite } from '../../src/main/resources/static/js/identite.mjs';
+import { choisirPilotage, lireAcces, preparerIdentite } from '../../src/main/resources/static/js/identite.mjs';
 
 const soiree = '00000001-0000-4000-8000-000000000000';
 const joueur = '65c5618c-10e0-357e-8f8e-eb7295ba6c74';
@@ -13,6 +13,19 @@ test('les trois pages utilisent la portée du jeton de démonstration, sans acce
 	assert.throws(() => lireAcces('manette', `?soiree=${joueur}`, `demo:JOUEUR:${soiree}:${joueur}`), /Soirée/);
 	assert.throws(() => lireAcces('manette', '', ''), /Soirée/);
 	assert.equal(lireAcces('console', `?soiree=${soiree}`, null).destination, `/topic/soirees/${soiree}/console`);
+});
+
+test('un vrai jeton de Joueur, opaque, s’accompagne de l’UUID rangé par la page d’arrivée', () => {
+	const jeton = 'a'.repeat(43);
+	const acces = lireAcces('manette', `?soiree=${soiree}`, jeton, joueur);
+	assert.equal(acces.destination, `/topic/joueurs/${joueur}`);
+	assert.equal(acces.routeEtat, `/api/soirees/${soiree}/etat/manette`);
+	assert.deepEqual(acces.acteur, { type: 'JOUEUR', identifiant: joueur, soireeId: soiree });
+	assert.throws(() => lireAcces('manette', `?soiree=${soiree}`, jeton, null), /Rejoins/);
+	assert.throws(() => lireAcces('manette', `?soiree=${soiree}`, 'trop-court', joueur), /identité/);
+	const ecran = lireAcces('ecran', `?soiree=${soiree}`, 'b'.repeat(43));
+	assert.equal(ecran.destination, `/topic/soirees/${soiree}/salle`);
+	assert.deepEqual(ecran.acteur, { type: 'ECRAN', soireeId: soiree });
 });
 
 test('le Joueur de démonstration prend son UUID dans la projection du serveur', async () => {
@@ -28,34 +41,14 @@ test('le Joueur de démonstration prend son UUID dans la projection du serveur',
 	assert.equal(acces.page, 'manette');
 });
 
-test('les accès d’une Soirée enregistrée ouvrent les mêmes coquilles avec une clé ou un jeton opaque', () => {
+test('l’Écran de salle ouvert depuis la préparation utilise la clé du fragment', () => {
+	const cle = 'c'.repeat(43);
 	const recherche = `?soiree=${soiree}`;
-	assert.equal(lireAcces('ecran', recherche, 'cle-opaque').destination, `/topic/soirees/${soiree}/salle`);
-	const manette = lireAcces('manette', recherche, 'jeton-opaque', joueur);
-	assert.equal(manette.destination, `/topic/joueurs/${joueur}`);
-	assert.equal(manette.acteur.identifiant, joueur);
-	assert.throws(() => lireAcces('manette', recherche, 'jeton-opaque'), /identité/);
-});
-
-test('l’Écran retire la clé de l’adresse et la retrouve dans le même onglet', () => {
-	const donnees = new Map();
-	const adresse = `https://exemple.test/ecran.html?soiree=${soiree}`;
-	const onglet = {
-		location: new URL(`${adresse}#cle=cle-opaque%2B`),
-		history: { replaceState(_etat, _titre, chemin) { onglet.location = new URL(chemin, adresse); } },
-		memoire: { lire: cle => donnees.get(cle) ?? null, ecrire: (cle, valeur) => donnees.set(cle, valeur) },
-	};
-	assert.equal(lireJeton('ecran', soiree, onglet), 'cle-opaque+');
-	assert.equal(onglet.location.href, adresse);
-	assert.equal(lireJeton('ecran', soiree, onglet), 'cle-opaque+');
-	assert.equal(lireJeton('ecran', joueur, onglet), null);
-});
-
-test('la vérification de l’accès Animateur utilise son propre rôle', async () => {
-	await preparerIdentite('ANIMATEUR', soiree, joueur, async (url, options) => {
-		assert.equal(options.headers.Authorization, `Bearer demo:ANIMATEUR:${soiree}:${joueur}`);
-		return Response.json({ vue: { joueurs: [] } });
-	});
+	const acces = lireAcces('ecran', recherche, `demo:ECRAN:${soiree}:${joueur}`, undefined, `#cle=${cle}`);
+	assert.equal(acces.cleEcran, cle);
+	assert.equal(acces.destination, `/topic/soirees/${soiree}/salle`);
+	assert.deepEqual(acces.acteur, { type: 'ECRAN', soireeId: soiree });
+	assert.throws(() => lireAcces('ecran', recherche, null, undefined, '#cle=trop-court'), /clé/);
 });
 
 test('le rang 3 ouvre la Manette du troisième Joueur de la projection', async () => {
@@ -86,6 +79,16 @@ test('une entrée présente sans UUID valide garde le message historique', async
 		await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, requete, 2),
 			{ message: 'Le serveur n’a pas fourni de Joueur de démonstration.' });
 	}
+});
+
+test('l’Animateur vérifie la Soirée par la capture de la Console, avec son propre jeton', async () => {
+	let appel;
+	const acces = await preparerIdentite('ANIMATEUR', soiree, joueur, async (url, options) => {
+		appel = { url, autorisation: options.headers.Authorization };
+		return Response.json({ vue: {} });
+	});
+	assert.deepEqual(appel, { url: `/api/soirees/${soiree}/etat/console`, autorisation: `Bearer demo:ANIMATEUR:${soiree}:${joueur}` });
+	assert.deepEqual(acces, { jeton: `demo:ANIMATEUR:${soiree}:${joueur}`, page: 'console' });
 });
 
 test('l’Animateur et l’Écran de salle ignorent le rang du Joueur', async () => {

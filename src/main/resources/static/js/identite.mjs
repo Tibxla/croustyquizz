@@ -2,26 +2,16 @@ import { lireCorps, reponseIllisible } from './transport.mjs';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const roles = { manette: 'JOUEUR', console: 'ANIMATEUR', ecran: 'ECRAN' };
+// Jeton de reconnexion ou clé d'Écran remis par le serveur (format du contrat) : opaque, il ne contient pas l'identité.
+const opaque = /^[A-Za-z0-9_-]{43,128}$/;
 
-export function lireJeton(ecran, soireeId, { location, history, memoire }) {
-	if (ecran === 'ecran') {
-		const cle = new URLSearchParams(location.hash.slice(1)).get('cle');
-		if (cle && soireeId) {
-			memoire.ecrire('croustyquizz.cleEcran', cle);
-			memoire.ecrire('croustyquizz.soireeEcran', soireeId);
-			history.replaceState(null, '', location.pathname + location.search);
-			return cle;
-		}
-		if (memoire.lire('croustyquizz.soireeEcran') === soireeId) {
-			return memoire.lire('croustyquizz.cleEcran');
-		}
-	}
-	return memoire.lire('croustyquizz.jeton');
-}
-
-export function lireAcces(ecran, recherche, jeton, joueurId) {
+// identifiant : l'UUID du Joueur, rangé à côté de son jeton opaque par la page d'arrivée (rejoindre.html).
+export function lireAcces(ecran, recherche, jeton, identifiant, fragment = '') {
 	const soireeId = new URLSearchParams(recherche).get('soiree');
 	if (!uuid.test(soireeId ?? '')) throw new Error('Lien incomplet : une Soirée valide est requise (?soiree=UUID).');
+	const cleEcran = ecran === 'ecran' ? new URLSearchParams(fragment.replace(/^#/, '')).get('cle') : null;
+	if (cleEcran !== null && !opaque.test(cleEcran)) throw new Error('La clé d’Écran est invalide. Ouvre l’Écran depuis la préparation.');
+	jeton = cleEcran ?? jeton;
 	let acteur = { type: roles[ecran], soireeId };
 	if (jeton?.startsWith('demo:')) {
 		const [prefixe, type, portee, identifiant, surplus] = jeton.split(':');
@@ -30,13 +20,18 @@ export function lireAcces(ecran, recherche, jeton, joueurId) {
 		}
 		if (portee !== soireeId) throw new Error('Cette identité appartient à une autre Soirée.');
 		acteur = { type, identifiant, soireeId };
-	} else if (ecran === 'manette' && jeton && uuid.test(joueurId ?? '')) {
-		acteur.identifiant = joueurId;
-	} else if (ecran !== 'console' && !(ecran === 'ecran' && jeton)) {
-		throw new Error('Une identité est requise. Rejoins la Soirée ou ouvre l’Écran depuis la préparation.');
+	} else if (opaque.test(jeton ?? '') && ecran !== 'console') {
+		if (ecran === 'manette' && !uuid.test(identifiant ?? '')) {
+			throw new Error('Ton accès est incomplet. Rejoins à nouveau la Soirée avec son code.');
+		}
+		acteur = ecran === 'manette' ? { type: roles[ecran], identifiant, soireeId } : acteur;
+	} else if (ecran === 'ecran') {
+		throw new Error('Une identité est requise. Ouvre l’Écran depuis la préparation ou la page d’identité de démonstration.');
+	} else if (ecran !== 'console') {
+		throw new Error('Une identité est requise. Rejoins la Soirée avec son code, ou ouvre la page d’identité de démonstration en dev ou recette.');
 	}
 	return {
-		acteur, soireeId,
+		acteur, soireeId, cleEcran,
 		destination: ecran === 'manette' ? `/topic/joueurs/${acteur.identifiant}` :
 			`/topic/soirees/${soireeId}/${ecran === 'ecran' ? 'salle' : 'console'}`,
 		routeEtat: `/api/soirees/${soireeId}/etat/${ecran === 'ecran' ? 'salle' : ecran}`,
@@ -51,10 +46,12 @@ export async function preparerIdentite(type, soireeId, acteurId, requete, rangJo
 	if (type === 'JOUEUR' && (!Number.isInteger(rangJoueur) || rangJoueur < 1 || rangJoueur > 4)) {
 		throw new Error(joueurAbsent);
 	}
-	// Le fournisseur commun donne l’UUID du Joueur au rang choisi.
-	const roleDeLecture = type === 'ANIMATEUR' ? type : 'ECRAN';
-	const reponse = await requete(`/api/soirees/${soireeId}/etat/salle`, {
-		headers: { Authorization: `Bearer demo:${roleDeLecture}:${soireeId}:${acteurId}` },
+	// L’Animateur reste accepté sur une Soirée enregistrée, l’Écran de démonstration non :
+	// il vérifie la Soirée avec son propre jeton. Pour les autres rôles, le fournisseur
+	// commun de la salle donne l’UUID du Joueur au rang choisi.
+	const [capture, verificateur] = type === 'ANIMATEUR' ? ['console', 'ANIMATEUR'] : ['salle', 'ECRAN'];
+	const reponse = await requete(`/api/soirees/${soireeId}/etat/${capture}`, {
+		headers: { Authorization: `Bearer demo:${verificateur}:${soireeId}:${acteurId}` },
 		cache: 'no-store', credentials: 'same-origin',
 	});
 	const { lisible, corps } = await lireCorps(reponse);

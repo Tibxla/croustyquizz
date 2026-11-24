@@ -10,6 +10,7 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-quiz.yaml](exemples/parcours-quiz.yaml) | Échanges fictifs, événements, refus de données sensibles et exemple de reconnexion |
 | [exemples/parcours-karaoke.yaml](exemples/parcours-karaoke.yaml) | Recherche, inscription, File d’attente, refus, reçus et reconnexion du Karaoké |
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
+| [exemples/parcours-pilotage-manuel.yaml](exemples/parcours-pilotage-manuel.yaml) | Lancement, enchaînement des Manches et fin de la Soirée sur les trois écrans |
 | [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console d’une Soirée en Pilotage Automatique |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
@@ -34,7 +35,7 @@ La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut 
 
 Les jetons sont opaques. Le serveur en déduit l’identité et la portée ; une route ou un corps contenant un UUID ne confère aucun droit. Un Joueur ne peut agir pour un autre, un Animateur ne peut accéder à un autre Lieu et une clé d’Écran n’envoie que les commandes de son lecteur (désignation, déclaration, fin, erreur et relevé de position), sans aucune action de jeu. Les ressources hors de la portée autorisée répondent `404`, les identités absentes ou expirées `401`.
 
-Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée ; sa durée de conservation après la fin sera précisée avec l’implémentation des accès. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès créé depuis la Console. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. Le transfert initial d’une clé d’Écran peut utiliser un fragment URL, retiré par la page après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
+Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée. La page d’arrivée conserve le jeton et l’UUID du Joueur renvoyés par le serveur pour la Soirée concernée. La Manette utilise le jeton pour ses requêtes HTTP et le CONNECT STOMP, et l’UUID pour choisir son canal. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès depuis la préparation. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. La préparation ouvre `ecran.html?soiree=<UUID>#cle=<clé>` ; l’Écran de salle conserve sa clé dans le stockage de l’onglet et retire le fragment après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
 
 Pour la session Animateur, obtenir un jeton par `GET /api/csrf`, puis envoyer `X-CSRF-TOKEN` avec les opérations mutantes. L’inscription et la connexion sont également protégées contre les requêtes intersites. Après connexion/déconnexion, récupérer un nouveau jeton. Le cookie de session est `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS.
 
@@ -303,10 +304,18 @@ pour le rang 1, et de `croustyquizz:demo:joueur:<soireeId>:<rang>` pour les rang
 `joueurId(soireeId)` renvoie toujours le rang 1. Sur la page d’identité de démonstration,
 le Joueur choisit son rang. La page lit l’UUID correspondant dans la projection et
 l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
-En HTTP et au CONNECT STOMP, les jetons de démonstration `JOUEUR` et `ECRAN`
-sont réservés aux Soirées fictives. Pour une Soirée enregistrée, ils donnent `401 AUTHENTIFICATION_REQUISE`.
-L’Animateur de démonstration reste accepté pour les Soirées enregistrées jusqu’à #5.
-En production, le résolveur refuse les jetons de démonstration avec `401`.
+
+En production, le résolveur refuse les jetons de démonstration avec `401`. En `dev` et `recette`,
+`demo:JOUEUR` et `demo:ECRAN` sont réservés aux Soirées fictives. Sur une Soirée enregistrée, ces jetons
+reçoivent `401 AUTHENTIFICATION_REQUISE` en HTTP et une trame `ERROR` suivie de la fermeture de la
+connexion au CONNECT STOMP. Le canal de la Manette et sa dernière vue dépendent de l’UUID du Joueur.
+Un jeton `demo:JOUEUR` qui porte l’UUID d’un vrai Joueur reçoit le même refus, quelle que soit la Soirée
+déclarée. Pour une Soirée enregistrée, la Manette utilise son jeton de reconnexion et l’Écran de salle sa clé.
+L’Animateur de démonstration vérifie son jeton par la capture de la Console. `demo:ANIMATEUR` reste accepté
+sur une Soirée enregistrée jusqu’à la connexion du Lieu (#5), pour les routes de test des Manches et le pilotage.
+En `dev` et `recette`, le contrôle des abonnements STOMP anonymes du [prototype #7](prototype/README.md)
+porte sur la forme de la destination. Restreindre ce contrôle aux canaux du prototype reste à faire (#181).
+
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
