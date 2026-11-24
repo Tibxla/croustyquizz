@@ -148,6 +148,8 @@ Spécification #135, tickets #138 et #139. Reprendre la Soirée de démonstratio
 8. Après la fin du Passage, vérifier que le Vote du public est proposé au Joueur 3 seulement : les Manettes des Joueurs 1 et 2 affichent « Le public vote pour ton Passage. ».
 9. À 390 × 844, dans une Soirée enregistrée où quatre Joueurs ont rejoint par `rejoindre.html` avec des pseudos longs, former un Passage de quatre Interprètes : les pseudos tiennent sur deux lignes au plus dans le ticket de la Manette, de la Console et de l’Écran de salle, sans déborder, et le lecteur d’écran annonce la liste complète.
 
+Recette exécutée le 25/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans interface : Écran à 1920 × 1080, Console à 1440 px et trois Manettes de démonstration à 390 × 844. La fiche ne propose que les Joueurs 2, 3 et 4. Le Joueur 2 reçoit « Joueur de démonstration 1 t'invite à chanter » et accepte, le Joueur 3 refuse. L'inscripteur lit « a accepté » et « a refusé ». La Console et l'Écran affichent « Joueur de démonstration 1, Joueur de démonstration 2 », et la salle ne montre aucune Invitation. Après l'appel, l'invitée confirme « Je suis prêt » et le Passage démarre. Aucun écran ne déborde.
+
 ### Musique d'attente (#140)
 
 Sur `/ecran.html`, choisir le dossier de musique depuis la coquille. Les MP3, M4A, OGG et WAV du sous-dossier `Attente`, y compris dans ses sous-dossiers, alimentent la Musique d'attente. La casse et les accents du nom `Attente` sont ignorés. La recherche locale des Chansons écarte ces fichiers. Le navigateur garde le dossier en mémoire le temps de l'ouverture de la page.
