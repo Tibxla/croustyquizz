@@ -88,6 +88,15 @@ public class PassagesControleur {
                 new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service(soireeId, mancheId).voterPassage(mancheId, passageId, envoi, corps), route);
     }
+    @PostMapping("/passages/{passageId}/meilleur-interprete")
+    public ResponseEntity<?> designerMeilleurInterprete(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId, @Valid @RequestBody CorpsPassage.DesignationMeilleurInterprete corps, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/meilleur-interprete";
+        var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(),
+                new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service(soireeId, mancheId).designerMeilleurInterprete(mancheId, passageId, envoi, corps), route);
+    }
     @PostMapping("/passages/{passageId}/retrait")
     public ResponseEntity<?> retirerPassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
             @PathVariable UUID passageId,

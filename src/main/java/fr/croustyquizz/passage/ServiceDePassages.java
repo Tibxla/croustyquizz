@@ -77,6 +77,13 @@ public abstract class ServiceDePassages<R, E> extends ServiceDeManche<R, E> {
                 d.recevoir(new VoterPassage(envoi.acteur(), recueLe, envoi.envoiId(),
                         new CiblePassage(passageId, corps.numeroModification()), corps.note().intValue()))));
     }
+    public ResultatDeCommande designerMeilleurInterprete(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsPassage.DesignationMeilleurInterprete corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+                d.recevoir(new DesignerMeilleurInterprete(envoi.acteur(), recueLe, envoi.envoiId(),
+                        new CiblePassage(passageId, corps.numeroModification()), corps.interpreteId()))));
+    }
     public ResultatDeCommande retirerPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsPassage.RetraitPassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.commander(new RetirerPassage(envoi.acteur(),

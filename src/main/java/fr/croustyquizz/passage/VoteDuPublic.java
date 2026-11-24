@@ -14,10 +14,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /** Votes indépendants des Passages d’une Manche, appelés sous le verrou de Soirée. */
 public final class VoteDuPublic {
@@ -25,12 +27,23 @@ public final class VoteDuPublic {
     private final Horloge horloge;
     private final Duration dureeVote;
     private final Consumer<ClotureVote> surClotureVote;
+    private final Predicate<Passage> parDesignation;
     private final Map<UUID, EtatVotePassage> votes = new LinkedHashMap<>();
     private final Map<UUID, Rappel> rappels = new HashMap<>();
     private long generation;
 
     public VoteDuPublic(FileAttente file, Horloge horloge, Duration dureeVote, EtatVoteDuPublic etat,
             Consumer<ClotureVote> surClotureVote) {
+        this(file, horloge, dureeVote, etat, surClotureVote, passage -> false);
+    }
+
+    /**
+     * {@code parDesignation} dit, selon le Mode, quels Passages se votent en désignant un Interprète plutôt qu’en
+     * notant : au Freestyle, ceux qui ont plusieurs Interprètes (#74). Le Karaoké note toujours.
+     */
+    public VoteDuPublic(FileAttente file, Horloge horloge, Duration dureeVote, EtatVoteDuPublic etat,
+            Consumer<ClotureVote> surClotureVote, Predicate<Passage> parDesignation) {
+        this.parDesignation = parDesignation;
         if (!dureeVote.isPositive()) { throw new IllegalArgumentException("La durée du vote doit être positive."); }
         this.file = file;
         this.horloge = horloge;
@@ -57,7 +70,27 @@ public final class VoteDuPublic {
                 "vote-enregistre");
     }
 
+    public ResultatDeCommande recevoir(DesignerMeilleurInterprete action, boolean enPause) {
+        var refus = designer(action.joueurId(), action.cible(), action.interpreteId(), action.recueLe(), enPause);
+        if (refus.isPresent()) { return refus.get(); }
+        Passage passage = file.trouver(action.cible().passageId());
+        var accuse = new AccuseDesignation(action.envoiId(), passage.soireeId(), passage.mancheId(),
+                passage.id(), action.interpreteId(), action.recueLe());
+        return new Accepte(accuse, Set.of(Destination.SALLE, Destination.CONSOLE, Destination.joueur(action.joueurId())),
+                "vote-enregistre");
+    }
+
     public Optional<Refuse> voter(UUID joueurId, CiblePassage cible, int note, Instant recueLe, boolean enPause) {
+        VoteRecu.verifierNote(note);
+        return enregistrer(joueurId, cible, new VoteRecu(joueurId, note, recueLe), enPause);
+    }
+
+    public Optional<Refuse> designer(UUID joueurId, CiblePassage cible, UUID interpreteId, Instant recueLe, boolean enPause) {
+        return enregistrer(joueurId, cible, VoteRecu.designation(joueurId, interpreteId, recueLe), enPause);
+    }
+
+    /** Ordre des refus du contrat, puis le scrutin : note ou désignation d’un Interprète du Passage. */
+    private Optional<Refuse> enregistrer(UUID joueurId, CiblePassage cible, VoteRecu recu, boolean enPause) {
         Passage passage = file.trouver(cible.passageId());
         if (passage == null) {
             return Optional.of(new Refuse(404, "RESSOURCE_INTROUVABLE", "Ce Passage est introuvable."));
@@ -70,17 +103,29 @@ public final class VoteDuPublic {
         }
         if (passage.numeroModification() != cible.numeroModification()) { return Optional.of(FileAttente.perimee()); }
         EtatVotePassage vote = votes.get(passage.id());
-        if (vote == null || !vote.ouvert() || !recueLe.isBefore(vote.echeanceLe())) {
+        if (vote == null || !vote.ouvert() || !recu.recueLe().isBefore(vote.echeanceLe())) {
             return refuser("VOTE_CLOS", "Le vote de ce Passage est clos.");
         }
-        if (vote.votes().stream().anyMatch(recu -> recu.joueurId().equals(joueurId))) {
+        if (vote.votes().stream().anyMatch(precedent -> precedent.joueurId().equals(joueurId))) {
             return refuser("VOTE_DEJA_ENREGISTRE", "Tu as déjà voté pour ce Passage.");
         }
+        boolean designation = parDesignation.test(passage);
+        if (designation && recu.note() != null) {
+            return invalide("Ce Passage se vote en désignant le meilleur Interprète.");
+        }
+        if (!designation && recu.note() == null) { return invalide("Ce Passage se vote par une note."); }
+        if (designation && !passage.interpretes().contains(recu.interpreteDesigneId())) {
+            return invalide("Choisis un Interprète de ce Passage.");
+        }
         List<VoteRecu> notes = new ArrayList<>(vote.votes());
-        notes.add(new VoteRecu(joueurId, note, recueLe));
+        notes.add(recu);
         votes.put(passage.id(), new EtatVotePassage(passage.id(), vote.ouvertLe(), vote.echeanceLe(),
                 vote.pauseDepuis(), null, notes, vote.suivantDemarre()));
         return Optional.empty();
+    }
+
+    private static Optional<Refuse> invalide(String detail) {
+        return Optional.of(new Refuse(422, "DONNEES_INVALIDES", detail));
     }
 
     private static Optional<Refuse> refuser(String code, String detail) {
@@ -188,7 +233,7 @@ public final class VoteDuPublic {
     }
 
     private static long sommeNotes(EtatVotePassage vote) {
-        return vote.votes().stream().mapToLong(VoteRecu::note).sum();
+        return vote.votes().stream().map(VoteRecu::note).filter(Objects::nonNull).mapToLong(Integer::longValue).sum();
     }
 
     private static Duration delaiRestant(EtatVotePassage vote, Instant maintenant) {
@@ -196,6 +241,14 @@ public final class VoteDuPublic {
         Duration delai = Duration.between(vote.pauseDepuis() == null ? maintenant : vote.pauseDepuis(), vote.echeanceLe());
         return delai.isNegative() ? Duration.ZERO : delai;
     }
+
+    /** Voix de chaque Interprète du Passage, dans l’ordre des Interprètes (#74). */
+    public static List<Voix> voix(EtatVotePassage vote, Passage passage) {
+        return passage.interpretes().stream().map(id -> new Voix(id, vote.votes().stream()
+                .filter(recu -> id.equals(recu.interpreteDesigneId())).count())).toList();
+    }
+
+    public record Voix(UUID interpreteId, long nombre) { }
 
     private record Rappel(long generation, Minuteur minuteur) { }
 }

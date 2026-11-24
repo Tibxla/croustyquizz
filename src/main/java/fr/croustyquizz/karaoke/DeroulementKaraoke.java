@@ -143,6 +143,8 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
         if (action instanceof VoterPassage notation) { return vote.recevoir(notation, etat == EtatManche.EN_PAUSE); }
+        // Le Karaoké note toujours : le Vote du public refuse la désignation (422).
+        if (action instanceof DesignerMeilleurInterprete choix) { return vote.recevoir(choix, etat == EtatManche.EN_PAUSE); }
         if (action instanceof ConfirmerPresencePassage confirmation) { return confirmer(confirmation); }
         if (action instanceof RepondreInvitation reponse) {
             return commandesDeFile.repondreInvitation(reponse);

@@ -39,6 +39,11 @@ public class CorpsPassage {
         }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
+    /** Choix du meilleur Interprète d’un Passage de Freestyle à plusieurs (#74). */
+    public record DesignationMeilleurInterprete(UUID envoiId, Long numeroModification, UUID interpreteId) {
+        public DesignationMeilleurInterprete { obligatoire(envoiId); entier(numeroModification, true); obligatoire(interpreteId); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
     public record RetraitPassage(Long numeroModification) {
         public RetraitPassage { entier(numeroModification, true); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
