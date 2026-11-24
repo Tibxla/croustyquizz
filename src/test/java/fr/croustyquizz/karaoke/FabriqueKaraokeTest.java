@@ -198,6 +198,52 @@ class FabriqueKaraokeTest {
         assertThat(horloge.minuteursEnAttente()).isZero();
     }
 
+    @Test
+    void restaureLeVoteAvecSaVraieEcheanceEtGardeLaDureeConfigureePourLesSuivants() {
+        var depart = horloge.maintenant();
+        var personnalisee = new FabriqueKaraoke(Duration.ofSeconds(30), Duration.ofSeconds(12));
+        var etat = etatAvecCourant(EtatPassage.EN_COURS, EtatManche.EN_COURS, EtatLecture.DEMARREE);
+        var deroulement = personnalisee.restaurer(contexte, reglages, etat, EtatManche.EN_COURS);
+        horloge.avancer(Duration.ofSeconds(110));
+        var vote = deroulement.instantane().voteDuPublic().votes().getFirst();
+        assertThat(vote.echeanceLe()).isEqualTo(depart.plusSeconds(122));
+
+        var redemarrage = new HorlogeFactice(depart.plusSeconds(115));
+        var contexteRestaure = new ContexteDeManche(soiree, manche, contexte.reglages(), redemarrage, () -> { });
+        var capture = deroulement.instantane();
+        var persiste = new EtatKaraokePersiste(capture.file(), capture.contenus(), capture.cycle(), capture.lectures(),
+                capture.lecteurDesigneId(), capture.voteDuPublic());
+        var restaure = personnalisee.restaurer(contexteRestaure, reglages, persiste, EtatManche.EN_COURS);
+        redemarrage.avancer(Duration.ofSeconds(6));
+        assertThat(restaure.instantane().voteDuPublic()).isEqualTo(persiste.voteDuPublic());
+        redemarrage.avancer(Duration.ofSeconds(1));
+        assertThat(restaure.instantane().voteDuPublic().votes().getFirst().clotureLe()).isEqualTo(depart.plusSeconds(122));
+        assertThat(personnalisee.typeEvenementMinuteur(restaure)).isEqualTo("vote-clos");
+
+        horloge.avancer(Duration.ofSeconds(15));
+        var echeanceDepassee = personnalisee.restaurer(contexte, reglages, persiste, EtatManche.EN_COURS);
+        assertThat(echeanceDepassee.instantane().voteDuPublic()).isEqualTo(persiste.voteDuPublic());
+        horloge.avancer(Duration.ZERO);
+        assertThat(echeanceDepassee.instantane().voteDuPublic().votes().getFirst().clotureLe())
+                .isEqualTo(depart.plusSeconds(125));
+    }
+
+    @Test
+    void gardeUnVoteFigeEtUnVoteClosSansProgrammerLeurEcheance() {
+        var etat = etatAvecCourant(EtatPassage.TERMINE, EtatManche.EN_COURS, EtatLecture.DEMARREE);
+        var ouverture = horloge.maintenant();
+        var voteFige = new EtatVotePassage(PASSAGE, ouverture, ouverture.plusSeconds(30), ouverture, null, List.of());
+        var voteClos = new EtatVotePassage(PASSAGE, ouverture, ouverture.plusSeconds(30), null, ouverture, List.of());
+        for (var vote : List.of(voteFige, voteClos)) {
+            var persiste = new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(),
+                    etat.lecteurDesigneId(), new EtatVoteDuPublic(List.of(vote)));
+            var restaure = fabrique.restaurer(contexte, reglages, persiste, vote.ouvert() ? EtatManche.EN_PAUSE : EtatManche.EN_COURS);
+            assertThat(horloge.minuteursEnAttente()).isZero();
+            horloge.avancer(Duration.ofSeconds(45));
+            assertThat(restaure.instantane().voteDuPublic()).isEqualTo(persiste.voteDuPublic());
+        }
+    }
+
     private EtatKaraokePersiste etatAvecCourant(EtatPassage etatPassage, EtatManche etatManche, EtatLecture etatLecture) {
         var debut = horloge.maintenant();
         var contenu = contenu();

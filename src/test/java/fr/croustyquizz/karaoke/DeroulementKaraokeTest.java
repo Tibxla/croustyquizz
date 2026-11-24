@@ -365,6 +365,7 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(passage(SUIVANT).traceTerminale()).isEqualTo(trace);
         assertThat(passage(INCONNU).traceTerminale()).isEqualTo(trace);
         assertThat(horloge.minuteursEnAttente()).isZero();
+        assertThat(karaoke().instantane().voteDuPublic().votes()).isEmpty();
     }
 
     @Test
@@ -382,6 +383,20 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(karaoke().instantane().lectures()).containsOnlyKeys(PASSAGE);
         assertThat(deroulement.points()).isEmpty();
         assertThat(finsSignalees).isZero();
+        Instant ouverture = horloge.maintenant();
+        assertThat(karaoke().instantane().voteDuPublic().votes()).containsExactly(
+                new EtatVotePassage(PASSAGE, ouverture, ouverture.plusSeconds(30), null, null, List.of()));
+        Acteur votant = new Acteur(Acteur.Type.JOUEUR, INCONNU, SOIREE);
+        var vote = new VoterPassage(votant, ouverture, ENVOI, cible(PASSAGE), 4);
+        assertThat(deroulement.recevoir(vote)).isEqualTo(new Accepte(
+                new AccuseVote(ENVOI, SOIREE, MANCHE, PASSAGE, 4, ouverture),
+                Set.of(Destination.SALLE, Destination.CONSOLE, Destination.joueur(INCONNU)), "vote-enregistre", 200));
+        horloge.avancer(Duration.ofSeconds(30));
+        assertThat(fabrique.typeEvenementMinuteur(deroulement)).isEqualTo("vote-clos");
+        assertThat(karaoke().instantane().voteDuPublic().votes()).containsExactly(
+                new EtatVotePassage(PASSAGE, ouverture, horloge.maintenant(), null, horloge.maintenant(),
+                        List.of(new VoteRecu(INCONNU, 4, ouverture))));
+        assertThat(deroulement.points()).isEmpty();
         deroulement.terminer(pilotage());
         assertThat(fabrique.typeEvenementMinuteur(deroulement)).isEqualTo("manche-terminee");
     }
@@ -581,8 +596,15 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_PAUSE);
         assertThat(karaoke().instantane().cycle().tempsPause()).isZero();
         assertThat(karaoke().causeDernierMinuteur()).isNull();
+        Instant ouverture = horloge.maintenant();
         horloge.avancer(Duration.ofMinutes(6));
         assertThat(passage(PASSAGE).numeroModification()).isEqualTo(3);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).containsExactly(
+                new EtatVotePassage(PASSAGE, ouverture, ouverture.plusSeconds(30), ouverture, null, List.of()));
+        deroulement.reprendre(pilotage());
+        horloge.avancer(Duration.ofSeconds(30));
+        assertThat(karaoke().instantane().voteDuPublic().votes().getFirst().clotureLe()).isEqualTo(horloge.maintenant());
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo("vote-clos");
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -600,7 +622,8 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
             case TERMINE -> signaler(Signal.FIN, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR);
             default -> throw new AssertionError(terminal);
         };
-        assertThat(horloge.minuteursEnAttente()).isZero();
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(terminal == EtatPassage.TERMINE ? 1 : 0);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).hasSize(terminal == EtatPassage.TERMINE ? 1 : 0);
         accepter(resultat, cause, true);
         assertThat(passage(PASSAGE).etat()).isEqualTo(terminal);
     }
@@ -795,6 +818,52 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
     }
 
     private enum Signal { FIN, ERREUR, POSITION }
+
+    @Test
+    void uneErreurSurLePassageSuivantFigeLeVotePrecedentPuisLesParolesSeulesLeReprennent() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        signaler(Signal.FIN, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR);
+        horloge.avancer(Duration.ofSeconds(10));
+        inscrire(SUIVANT);
+        appeler(cible(SUIVANT));
+        UUID etape = karaoke().instantane().cycle().etapeId();
+        declarer(cible(SUIVANT), etape, LECTEUR, preparationLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0));
+        confirmer(INTERPRETE, cible(SUIVANT), etape);
+        UUID lecture = karaoke().instantane().lectures().get(SUIVANT).lectureId();
+        signaler(Signal.ERREUR, SUIVANT, etape, lecture, LECTEUR);
+        Instant pause = horloge.maintenant();
+        horloge.avancer(Duration.ofSeconds(40));
+        var vote = karaoke().instantane().voteDuPublic().votes().getFirst();
+        assertThat(vote.pauseDepuis()).isEqualTo(pause);
+        assertThat(VoteDuPublic.projeter(vote, horloge.maintenant()).delaiRestantMs()).isEqualTo(20_000);
+        reprendreEnParoles(SUIVANT, etape, lecture);
+        horloge.avancer(Duration.ofSeconds(20));
+        assertThat(karaoke().instantane().voteDuPublic().votes().getFirst().clotureLe()).isEqualTo(horloge.maintenant());
+    }
+
+    @Test
+    void terminerLaMancheEnPauseClotDeuxVotesEtConserveLaNoteDejaRecue() {
+        chanterSurFichier(OrigineParoles.VERSION_ADAPTEE);
+        signaler(Signal.FIN, PASSAGE, ETAPE, lecture().lectureId(), LECTEUR);
+        var votant = new Acteur(Acteur.Type.JOUEUR, INCONNU, SOIREE);
+        var recueLe = horloge.maintenant();
+        deroulement.recevoir(new VoterPassage(votant, recueLe, ENVOI, cible(PASSAGE), 5));
+        horloge.avancer(Duration.ofSeconds(5));
+        inscrire(SUIVANT);
+        appeler(cible(SUIVANT));
+        var etape = karaoke().instantane().cycle().etapeId();
+        declarer(cible(SUIVANT), etape, LECTEUR, preparationLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0));
+        confirmer(INTERPRETE, cible(SUIVANT), etape);
+        signaler(Signal.FIN, SUIVANT, etape, karaoke().instantane().lectures().get(SUIVANT).lectureId(), LECTEUR);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).hasSize(2).allMatch(EtatVotePassage::ouvert);
+        deroulement.mettreEnPause(pilotage());
+        assertThat(karaoke().instantane().voteDuPublic().votes()).allMatch(vote -> vote.pauseDepuis() != null);
+        accepter(deroulement.terminer(pilotage()), "manche-terminee", true);
+        var votes = karaoke().instantane().voteDuPublic().votes();
+        assertThat(votes).hasSize(2).allMatch(vote -> vote.pauseDepuis() == null && vote.clotureLe().equals(horloge.maintenant()));
+        assertThat(votes.getFirst().votes()).containsExactly(new VoteRecu(INCONNU, 5, recueLe));
+        assertThat(horloge.minuteursEnAttente()).isZero();
+    }
 
     private ResultatDeCommande signaler(Signal signal, UUID passage, UUID etape, UUID lecture, UUID lecteur) {
         Instant recueLe = horloge.maintenant();

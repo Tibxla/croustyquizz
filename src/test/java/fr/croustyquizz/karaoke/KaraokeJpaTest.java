@@ -192,10 +192,46 @@ class KaraokeJpaTest {
         var avant = (InstantaneKaraoke) service.instantane(soiree, manche);
         var persiste = new TransactionTemplate(socle.transactions()).execute(s -> contenus.charger(manche));
         assertThat(persiste).isEqualTo(new EtatKaraokePersiste(
-                avant.file(), avant.contenus(), avant.cycle(), avant.lectures(), avant.lecteurDesigneId()));
+                avant.file(), avant.contenus(), avant.cycle(), avant.lectures(), avant.lecteurDesigneId(), avant.voteDuPublic()));
         socle.registre().retirer(manche);
         assertThat(service.instantane(soiree, manche)).isEqualTo(avant);
         return avant;
+    }
+
+    @Test void conserveUnVoteOuvertFigePuisClosEtLesContraintesDeNote() {
+        UUID soiree = UUID.randomUUID(), manche = UUID.randomUUID(), passage = UUID.randomUUID();
+        UUID interprete = UUID.randomUUID(), votant = UUID.randomUUID();
+        Instant ouverture = Instant.parse("2026-11-18T21:00:00Z");
+        var file = FileAttente.depuis(new EtatFileAttente(soiree, manche, 1, 1, 1, 1, null, List.of(), Map.of()));
+        var contenu = ServiceKaraokeTest.contenu(1);
+        file.inscrire(new NouveauPassage(passage, soiree, manche, interprete, List.of(interprete),
+                contenu.chanson().chansonId(), Duration.ofMinutes(3), 1, ouverture.minusSeconds(180)));
+        file.appelerPassage(new CiblePassage(passage, 0));
+        file.demarrerPassage(new CiblePassage(passage, 1));
+        file.clorePassage(new CiblePassage(passage, 2), EtatPassage.TERMINE,
+                new TraceTerminale("FIN_PREVUE", null, ouverture));
+        var note = new VoteRecu(votant, 4, ouverture.plusSeconds(2));
+        var transaction = new TransactionTemplate(socle.transactions());
+        List<EtatVotePassage> etats = List.of(
+                new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), null, null, List.of(note)),
+                new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), ouverture.plusSeconds(5), null, List.of(note)),
+                new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), null, ouverture.plusSeconds(8), List.of(note)));
+        for (var etat : etats) {
+            var votes = new EtatVoteDuPublic(List.of(etat));
+            transaction.executeWithoutResult(suite -> contenus.enregistrer(manche, new InstantaneKaraoke(
+                    etat.pauseDepuis() == null ? EtatManche.EN_COURS : EtatManche.EN_PAUSE, file.etat(),
+                    Map.of(passage, contenu), EtatCyclePassage.vide(), Map.of(), null, votes)));
+            assertThat(transaction.execute(suite -> contenus.charger(manche)).voteDuPublic()).isEqualTo(votes);
+        }
+        String insertion = "INSERT INTO passage_note(passage_id, joueur_id, note, recue_le) VALUES (?, ?, ?, ?)";
+        for (int invalide : List.of(0, 6)) {
+            assertThatThrownBy(() -> jdbc.update(insertion, passage, UUID.randomUUID(), invalide, java.sql.Timestamp.from(ouverture)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+        assertThatThrownBy(() -> jdbc.update(insertion, passage, votant, 5, java.sql.Timestamp.from(ouverture)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update("UPDATE passage_vote SET pause_depuis = cloture_le WHERE passage_id = ?", passage))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test void laMemoireDistingueLesVersionsEtLeDernierCommitConcurrentRemplaceLeCalage() throws Exception {

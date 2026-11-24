@@ -19,7 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Service réel, transactions annulables, source et ports factices. */
 class ServiceKaraokeTest {
-    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30), new ProprietesKaraoke.Karaoke(8000, 10000));
+    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30, 30), new ProprietesKaraoke.Karaoke(8000, 10000));
     static final ProprietesSourceKaraoke SOURCE = new ProprietesSourceKaraoke(URI.create("https://source.invalid"), "Test", 5000, 2000000, 120);
     final BancKaraoke banc = new BancKaraoke();
     final UUID soiree = UUID.randomUUID();
@@ -452,6 +452,73 @@ class ServiceKaraokeTest {
         verifyNoMoreInteractions(banc.calages);
     }
 
+    @Test void lesVotesConcurrentsSontDurablesEtUnRejeuNeRepubliePas() throws Exception {
+        UUID manche = demarrer(), passage = ouvrirVote(manche);
+        var premier = votant(1);
+        var second = votant(2);
+        var note = new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 4L);
+        var attente = new CountDownLatch(1);
+        int avant = banc.diffuseur.envois().size();
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            var uneNote = fils.submit(() -> { attendre(attente); return voter(manche, passage, premier, note); });
+            var autreNote = fils.submit(() -> { attendre(attente); return voter(manche, passage, second,
+                    new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 5L)); });
+            attente.countDown();
+            assertThat(ReponsesDeCommande.statut(uneNote.get(5, TimeUnit.SECONDS))).isEqualTo(200);
+            assertThat(ReponsesDeCommande.statut(autreNote.get(5, TimeUnit.SECONDS))).isEqualTo(200);
+        }
+        assertThat(banc.diffuseur.envois()).hasSize(avant + 6);
+        banc.registre.retirer(manche);
+        var console = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(soiree, Destination.CONSOLE);
+        assertThat(console.votes().getFirst().nombreVotes()).isEqualTo(2L);
+        assertThat(voter(manche, passage, premier, note)).isInstanceOfSatisfying(Accepte.class,
+                recu -> assertThat(banc.json.valueToTree(recu.accuse()).path("note").asInt()).isEqualTo(4));
+        assertThat(voter(manche, passage, premier, new CorpsKaraoke.VotePassage(note.envoiId(), 3L, 1L)))
+                .isInstanceOfSatisfying(Refuse.class, refus -> assertThat(refus.code()).isEqualTo("ENVOI_REUTILISE"));
+        assertThat(voter(manche, passage, premier, new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 1L)))
+                .isInstanceOfSatisfying(Refuse.class, refus -> assertThat(refus.code()).isEqualTo("VOTE_DEJA_ENREGISTRE"));
+        assertThat(banc.diffuseur.envois()).hasSize(avant + 6);
+    }
+
+    @Test void controleLeRoleEtLaPresencePuisAnnuleUnVoteSiLeCommitEchoue() {
+        UUID manche = demarrer(), passage = ouvrirVote(manche);
+        var votant = votant(1);
+        var corps = new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 4L);
+        assertThatThrownBy(() -> voter(manche, passage, animateur, corps)).isInstanceOfSatisfying(
+                RefusDeCommande.class, refus -> assertThat(refus.refus().statutHttp()).isEqualTo(403));
+        banc.ports.absents.add(votant.identifiant());
+        assertThatThrownBy(() -> voter(manche, passage, votant, corps)).isInstanceOfSatisfying(
+                RefusDeCommande.class, refus -> assertThat(refus.refus().statutHttp()).isEqualTo(404));
+        banc.ports.absents.clear();
+        int publications = banc.diffuseur.envois().size();
+        var avant = banc.service.instantane(soiree, manche);
+        doAnswer(invocation -> {
+            banc.echouerCommit = true;
+            return invocation.callRealMethod();
+        }).when(banc.passages).enregistrer(eq(manche), any());
+        assertThatThrownBy(() -> voter(manche, passage, votant, corps)).isInstanceOf(TransactionSystemException.class);
+        doCallRealMethod().when(banc.passages).enregistrer(eq(manche), any());
+        assertThat(banc.diffuseur.envois()).hasSize(publications);
+        assertThat(banc.service.instantane(soiree, manche)).isEqualTo(avant);
+        assertThat(voter(manche, passage, votant, corps)).isInstanceOf(Accepte.class);
+    }
+
+    UUID ouvrirVote(UUID manche) {
+        UUID passage = inscrire(manche, 1).passageId();
+        assertThat(confirmer(manche, appeler(manche, passage))).isInstanceOf(Accepte.class);
+        banc.horloge.avancer(Duration.ofSeconds(180));
+        return passage;
+    }
+
+    Acteur votant(int index) {
+        return new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(index), soiree);
+    }
+
+    ResultatDeCommande voter(UUID manche, UUID passage, Acteur votant, CorpsKaraoke.VotePassage corps) {
+        var envoi = envoi(votant, corps.envoiId(), "POST", "/passages/" + passage + "/vote", corps);
+        return banc.service.voterPassage(manche, passage, envoi, corps);
+    }
+
     AccuseCyclePassage appeler(UUID manche, UUID passage) {
         var corps = new CorpsKaraoke.AppelPassage(0L);
         return (AccuseCyclePassage) ((Accepte) banc.service.appelerPassage(manche, passage,
@@ -568,7 +635,7 @@ class ServiceKaraokeTest {
                 public void enregistrer(UUID id, Object valeur) {
                     var etat = (InstantaneKaraoke) valeur;
                     passages.enregistrer(id, etat.file());
-                    etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId()));
+                    etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId(), etat.voteDuPublic()));
                 }
             };
             service = new ServiceKaraoke(fabrique, persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE,

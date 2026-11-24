@@ -6,8 +6,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /** Défauts de File et délais transmis aux écrans. */
 @ConfigurationProperties("croustyquizz")
 public record ProprietesKaraoke(Passage passage, Karaoke karaoke) {
-    public record Passage(long limitePassagesEnAttente, long delaiAppelSecondes) {
+    public record Passage(long limitePassagesEnAttente, long delaiAppelSecondes, long dureeVoteSecondes) {
         public Passage {
+            if (dureeVoteSecondes <= 0 || dureeVoteSecondes > 9007199254740L) {
+                throw new IllegalArgumentException("Durée du vote positive et représentable attendue.");
+            }
             EtatFileAttente.verifierLimite(limitePassagesEnAttente);
             if (delaiAppelSecondes <= 0) { throw new IllegalArgumentException("Délai d'appel positif attendu."); }
         }

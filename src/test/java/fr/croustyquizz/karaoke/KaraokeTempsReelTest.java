@@ -242,6 +242,44 @@ class KaraokeTempsReelTest {
         }
     }
 
+    @Test void laNoteVaAuVotantEtLaClotureAToutesLesManettes() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString();
+        var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        KaraokeHttpTest.verifier("appelerPassage", appel, 200);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        var votant = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(2), soiree);
+        var salle = abonner(ecran, Canaux.salle(soiree), "salle");
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var interprete = abonner(joueur, Canaux.joueur(joueur.identifiant()), "manette");
+        var manette = abonner(votant, Canaux.joueur(votant.identifiant()), "manette");
+        var autreManette = abonner(autre, Canaux.joueur(autre.identifiant()), "manette");
+        var flux = List.of(salle, console, interprete, manette, autreManette);
+        KaraokeHttpTest.verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "etapeId", json.readTree(appel.getBody()).path("etapeId").asString(),
+                        "numeroModification", 1), null), 200);
+        for (var abonne : flux) { lireEvenement(abonne, "passage-demarre"); }
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+        for (var abonne : flux) { lireEvenement(abonne, "passage-termine"); }
+
+        var corps = Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", 4);
+        KaraokeHttpTest.verifier("voterPassage", envoyer(HttpMethod.POST, route + "/vote", votant, corps, null), 200);
+        assertThat(lireEvenement(salle, "vote-enregistre").at("/karaoke/votes").isMissingNode()).isTrue();
+        assertThat(lireEvenement(console, "vote-enregistre").at("/karaoke/votes/0/nombreVotes").asInt()).isEqualTo(1);
+        assertThat(lireEvenement(manette, "vote-enregistre").at("/karaoke/votes/0/maNote").asInt()).isEqualTo(4);
+        socle.registre().retirer(manche);
+        assertThat(service.instantane(soiree, manche)).isInstanceOf(InstantaneKaraoke.class);
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(30));
+        for (var abonne : flux) { lireEvenement(abonne, "vote-clos"); }
+        assertThat(capturer(autreManette).at("/vue/karaoke/votes/0/maNote").isNull()).isTrue();
+    }
+
     private JsonNode lireEvenement(Abonnement abonne, String cause) throws Exception {
         var evenement = abonne.messages().poll(3, TimeUnit.SECONDS);
         assertThat(evenement).isNotNull();

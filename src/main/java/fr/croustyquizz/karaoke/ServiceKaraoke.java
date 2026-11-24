@@ -104,6 +104,12 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
                     new CiblePassage(passageId, corps.numeroModification())));
         }));
     }
+    public ResultatDeCommande voterPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.VotePassage corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+                d.recevoir(new VoterPassage(envoi.acteur(), recueLe, envoi.envoiId(),
+                        new CiblePassage(passageId, corps.numeroModification()), corps.note().intValue()))));
+    }
     public ResultatDeCommande retirerPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.RetraitPassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.commander(new RetirerPassage(envoi.acteur(),

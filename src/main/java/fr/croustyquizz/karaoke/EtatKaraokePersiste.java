@@ -2,17 +2,24 @@ package fr.croustyquizz.karaoke;
 
 import fr.croustyquizz.passage.EtatCyclePassage;
 import fr.croustyquizz.passage.EtatFileAttente;
+import fr.croustyquizz.passage.EtatVoteDuPublic;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 /** Capture immuable, contenus de tous les Passages compris. */
 public record EtatKaraokePersiste(EtatFileAttente file, Map<UUID, ContenuKaraoke> contenus,
-        EtatCyclePassage cycle, Map<UUID, LecturePassage> lectures, UUID lecteurDesigneId) {
+        EtatCyclePassage cycle, Map<UUID, LecturePassage> lectures, UUID lecteurDesigneId, EtatVoteDuPublic voteDuPublic) {
     public EtatKaraokePersiste {
         cycle = Objects.requireNonNullElseGet(cycle, EtatCyclePassage::vide);
         contenus = Map.copyOf(contenus);
         lectures = Map.copyOf(lectures);
+        voteDuPublic = Objects.requireNonNullElseGet(voteDuPublic, EtatVoteDuPublic::vide);
+    }
+
+    public EtatKaraokePersiste(EtatFileAttente file, Map<UUID, ContenuKaraoke> contenus,
+            EtatCyclePassage cycle, Map<UUID, LecturePassage> lectures, UUID lecteurDesigneId) {
+        this(file, contenus, cycle, lectures, lecteurDesigneId, EtatVoteDuPublic.vide());
     }
 
     public EtatKaraokePersiste(EtatFileAttente file, Map<UUID, ContenuKaraoke> contenus) {
