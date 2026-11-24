@@ -73,6 +73,36 @@ confirmer « Je suis prêt » depuis sa Manette et laisser le Passage se termine
 Les tests automatisés couvrent le rendu des modules, les reçus et les destinations STOMP. Cette
 recette décrit les vérifications à réaliser dans le navigateur.
 
+### Recette de la note moyenne du Karaoké (#116)
+
+Vérification navigateur à réaliser à 1920 × 1080 puis à 1280 × 720, avec l’Écran de salle
+visible à cinq mètres. Reprendre la Soirée de démonstration et ouvrir deux Manettes de votants
+en plus de celle de l’Interprète.
+
+1. Terminer un Passage et envoyer les notes 4 et 5. La salle affiche le numéro, la Chanson,
+   les Interprètes, le nombre de votes et le temps restant dans le bandeau au-dessus du rouleau.
+   Pendant le vote, vérifier l’absence de moyenne sur les trois écrans et de nombre de votes
+   sur la Manette. Le changement du nombre garde le bandeau en place et l’appel ou les paroles
+   restent dans la zone principale.
+2. Laisser le vote se clore. Vérifier « 4,5 sur 5 » et « 2 votes » sur les trois écrans, la note
+   personnelle sur la Manette et une seule annonce du résultat au lecteur d’écran. Recharger
+   la Manette et vérifier que le résultat reste lisible sans nouvelle annonce. Refaire la
+   clôture sans voter et vérifier « Aucun vote ».
+3. Démarrer un Passage suivant avant la clôture, puis mettre la Manche en pause après la
+   clôture. La moyenne reste dix secondes après la clôture, délai qui continue pendant la
+   pause. Refaire avec un Passage suivant simplement appelé. La moyenne reste au-delà des
+   dix secondes et s’efface dès « Je suis prêt ». Sauter alors ce Passage, en appeler un autre
+   et recharger la salle. Le bandeau échu reste masqué. Refaire en sautant le Passage dès
+   l’appel, avant « Je suis prêt ». Ce saut laisse la moyenne affichée.
+4. Terminer deux Passages en moins de trente secondes pour obtenir deux votes ouverts et
+   mettre la Manche en pause. Vérifier les deux bandeaux au-dessus du rouleau, le plus récent
+   en haut, les temps figés sous « Pause », les textes lisibles, le talon visible et la colonne
+   latérale sans débordement aux deux résolutions. En terminant la Manche pendant un vote,
+   vérifier que les bandeaux disparaissent.
+5. En Pilotage Automatique, provoquer une clôture qui appelle le Passage suivant. Vérifier
+   que la Manette annonce aussi la moyenne à cette clôture et que la salle garde le bandeau
+   jusqu’au démarrage du Passage ou à l’expiration de l’affichage, selon le dernier des deux.
+
 ## Recette navigateur du Pilotage de démonstration (#119)
 
 1. Ouvrir la page d’identité en profil `dev` ou `recette` avec un UUID de Soirée de démonstration neuf. Le champ « Pilotage de la Soirée » apparaît uniquement pour le rôle Animateur. Son choix par défaut est « Garder le Pilotage actuel ».

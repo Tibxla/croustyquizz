@@ -4,6 +4,7 @@ import { estFichierAudio } from './fichiers.mjs';
 import { creerLecteurLocal } from './lecteur-local.mjs';
 import { delaiAppelRestant, determinerLignes, positionChronologique } from './paroles.mjs';
 import { formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
+import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes, votesVisiblesSalle } from './vote.mjs';
 
 export const etatEcranKaraoke = {
 	dossier: null, fichiers: [], lecteur: null, lecteurId: null, aEteLectrice: false, sonDebloque: false,
@@ -36,9 +37,12 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	const invitation = e('h2', 'karaoke__invitation'), prochain = e('div', 'karaoke__prochain');
 	const minutes = e('p', 'karaoke__delai chiffres'), paroles = e('div', 'karaoke__paroles');
 	ui.principale.append(invitation, prochain, minutes, paroles);
+	const listeVotes = e('div', 'karaoke__bandeaux-vote');
+	const bandeaux = new Map();
+	listeVotes.hidden = true;
 	const courantAffiche = e('div', 'karaoke__courant-salle');
 	const titre = e('h2', '', 'Ensuite'), file = e('ol', 'rouleau'), autres = e('p');
-	ui.laterale.append(courantAffiche, titre, file, autres);
+	ui.laterale.append(listeVotes, courantAffiche, titre, file, autres);
 
 	const choix = e('input');
 	choix.type = 'file'; choix.setAttribute('webkitdirectory', ''); choix.multiple = true; choix.hidden = true;
@@ -61,6 +65,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		rendreLecteur(cycle.etat());
 	});
 	let cycle, requetes, ticketCourant, descriptionCourant, etiquetteCourant, blocAffiche, trame, versionParoles, lignes = [], indexAffiche;
+	let votesChronometres = false;
 	function rendreLecteur(etat) {
 		const avaitFocus = document.activeElement === activer;
 		choisir.disabled = !ui.synchronisee;
@@ -95,7 +100,59 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		detruireCycle();
 		monterCycle();
 		ticketCourant = descriptionCourant = etiquetteCourant = undefined;
+		bandeaux.clear();
 	};
+	function creerBandeau(id) {
+		const bandeau = e('article', 'bandeau-vote');
+		bandeau.setAttribute('data-passage-id', id);
+		const numero = e('div', 'bandeau-vote__numero');
+		const corps = e('div', 'bandeau-vote__corps');
+		const chanson = e('p', 'bandeau-vote__chanson'), interpretes = e('p');
+		const invitationVote = e('p', '', 'Note ce Passage sur ta Manette');
+		const donnees = e('div', 'bandeau-vote__donnees');
+		const moyenne = e('p', 'bandeau-vote__moyenne');
+		const nombre = e('p', 'bandeau-vote__nombre'), temps = e('p');
+		donnees.append(moyenne, nombre, temps);
+		corps.append(chanson, interpretes, invitationVote, donnees);
+		bandeau.append(numero, corps);
+		return { bandeau, numero, chanson, interpretes, invitationVote, moyenne, nombre, temps };
+	}
+	function rendreVotes(bloc, maintenant) {
+		const visibles = votesVisiblesSalle(bloc, maintenant);
+		const pause = bloc.etat === 'EN_PAUSE';
+		votesChronometres = false;
+		for (const id of bandeaux.keys()) {
+			if (!visibles.some(vote => vote.passageId === id)) bandeaux.delete(id);
+		}
+		const ordre = visibles.map(vote => {
+			const fiche = bandeaux.get(vote.passageId) ?? creerBandeau(vote.passageId);
+			const ouvert = vote.etat === 'OUVERT';
+			if (fiche.vote !== vote) {
+				fiche.vote = vote;
+				bandeaux.set(vote.passageId, fiche);
+				fiche.bandeau.style.setProperty('--teinte', `var(--${teintePassage(vote.numero)})`);
+				fiche.numero.textContent = vote.numero;
+				fiche.chanson.textContent = vote.chanson.titre;
+				fiche.interpretes.textContent = vote.interpretes.map(interprete => interprete.pseudo).join(', ');
+				fiche.invitationVote.hidden = fiche.temps.hidden = !ouvert;
+				fiche.moyenne.hidden = ouvert || vote.moyenneDixiemes == null;
+				fiche.moyenne.textContent = fiche.moyenne.hidden ? '' : formaterMoyenne(vote.moyenneDixiemes);
+				fiche.nombre.textContent = formaterNombreVotes(vote.nombreVotes);
+				if (!ouvert) fiche.temps.textContent = '';
+			}
+			if (ouvert) {
+				const restant = delaiVoteRestant(vote, maintenant, pause);
+				const texte = (pause ? 'Pause · ' : '') + formaterTempsRestant(restant);
+				if (fiche.temps.textContent !== texte) fiche.temps.textContent = texte;
+				votesChronometres ||= !pause && restant > 0;
+			} else votesChronometres ||= vote.suivantDemarre;
+			return fiche.bandeau;
+		});
+		listeVotes.hidden = ordre.length === 0;
+		if (ordre.length !== listeVotes.childElementCount || ordre.some((bandeau, i) => listeVotes.children[i] !== bandeau)) {
+			listeVotes.replaceChildren(...ordre);
+		}
+	}
 	function rendreCourant(courant, origine) {
 		const description = courant ? JSON.stringify([courant.passageId, courant.numero, courant.chanson.titre,
 			courant.chanson.artiste, courant.interpretes.map(i => i.pseudo), Boolean(courant.prioritaire)]) : null;
@@ -144,9 +201,12 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	}
 	function actualiserTemps() {
 		const bloc = ui.bloc;
-		if (!bloc || !passageActif(bloc.courant)) return;
+		if (!bloc) return;
+		const maintenant = contexte.maintenantServeur();
+		rendreVotes(bloc, maintenant);
+		if (!passageActif(bloc.courant)) return;
 		if (!minutes.hidden) {
-			const restant = delaiAppelRestant({ ...bloc.courant, maintenant: contexte.maintenantServeur(), enPause: bloc.etat === 'EN_PAUSE' });
+			const restant = delaiAppelRestant({ ...bloc.courant, maintenant, enPause: bloc.etat === 'EN_PAUSE' });
 			const texte = formaterTempsRestant(restant);
 			if (minutes.textContent !== texte) minutes.textContent = texte;
 		}
@@ -158,7 +218,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		planifier();
 	}
 	function planifier() {
-		const animee = !document.hidden && passageActif(ui.bloc?.courant);
+		const animee = !document.hidden && (passageActif(ui.bloc?.courant) || votesChronometres);
 		if (animee && trame === undefined) trame = requestAnimationFrame(animer);
 		if (!animee && trame !== undefined) {
 			cancelAnimationFrame(trame);
