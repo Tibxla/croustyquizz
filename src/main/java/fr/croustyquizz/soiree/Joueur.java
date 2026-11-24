@@ -20,7 +20,9 @@ public class Joueur {
 	static final int LONGUEUR_MAX_PSEUDO = 30;
 
 	private static final Pattern MARQUES = Pattern.compile("\\p{M}+");
-	private static final Pattern BLANCS = Pattern.compile("\\s+");
+	/** Tous les blancs Unicode, espaces insécables compris, que {@code \s} seul et {@code strip()} ignorent. */
+	private static final Pattern BLANCS = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
+	private static final Pattern BLANCS_AUTOUR = Pattern.compile("^\\s+|\\s+$", Pattern.UNICODE_CHARACTER_CLASS);
 
 	@Id
 	private UUID id;
@@ -58,15 +60,15 @@ public class Joueur {
 	}
 
 	/**
-	 * Espaces de début et de fin retirés, de 1 à {@value #LONGUEUR_MAX_PSEUDO}
-	 * caractères. On compte les caractères Unicode, pas les unités UTF-16 : un
-	 * emoji compte pour un.
+	 * Blancs de début et de fin retirés, insécables compris, de 1 à
+	 * {@value #LONGUEUR_MAX_PSEUDO} caractères. On compte les caractères Unicode,
+	 * pas les unités UTF-16 : un emoji compte pour un.
 	 */
 	static String nettoyerPseudo(String pseudo) {
 		if (pseudo == null) {
 			throw new PseudoInvalide();
 		}
-		String nettoye = pseudo.strip();
+		String nettoye = BLANCS_AUTOUR.matcher(pseudo).replaceAll("");
 		int longueur = nettoye.codePointCount(0, nettoye.length());
 		if (longueur == 0 || longueur > LONGUEUR_MAX_PSEUDO) {
 			throw new PseudoInvalide();
@@ -76,12 +78,13 @@ public class Joueur {
 
 	/**
 	 * Deux pseudos de même clé désignent le même nom à l'écran : « Léa »,
-	 * « lea » et « LÉA » se confondent, tout comme « Jean  Luc » et « Jean Luc ».
+	 * « lea » et « LÉA » se confondent, tout comme « Jean  Luc » et « Jean Luc »,
+	 * avec une espace ordinaire ou insécable.
 	 */
 	static String cleDePseudo(String pseudo) {
 		String sansAccent = MARQUES.matcher(Normalizer.normalize(pseudo, Normalizer.Form.NFD)).replaceAll("");
 		String recompose = Normalizer.normalize(sansAccent, Normalizer.Form.NFC);
-		return BLANCS.matcher(recompose.strip()).replaceAll(" ").toLowerCase(Locale.ROOT);
+		return BLANCS.matcher(recompose).replaceAll(" ").strip().toLowerCase(Locale.ROOT);
 	}
 
 	public UUID getId() {

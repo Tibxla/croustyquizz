@@ -18,6 +18,19 @@ class JoueurTest {
 		assertThat(Joueur.cleDePseudo("한글")).isEqualTo("한글");
 	}
 
+	@Test
+	void laCleDePseudoConfondLesEspacesInsecables() {
+		// Insécable (U+00A0), insécable fine (U+202F) : un clavier de téléphone peut les produire.
+		assertThat(Joueur.cleDePseudo("Jean Luc")).isEqualTo(Joueur.cleDePseudo("Jean Luc")).isEqualTo("jean luc");
+		assertThat(Joueur.cleDePseudo(" Léa ")).isEqualTo("lea");
+	}
+
+	@Test
+	void unPseudoFaitDEspacesInsecablesEstVide() {
+		assertThatThrownBy(() -> new Joueur(SOIREE, "   ", jeton, ARRIVEE)).isInstanceOf(PseudoInvalide.class);
+		assertThat(new Joueur(SOIREE, " Léa ", jeton, ARRIVEE).getPseudo()).isEqualTo("Léa");
+	}
+
 	private static final UUID SOIREE = UUID.randomUUID();
 	private static final Instant ARRIVEE = Instant.parse("2026-11-12T19:41:07Z");
 
