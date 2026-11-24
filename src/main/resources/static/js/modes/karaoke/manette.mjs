@@ -191,13 +191,14 @@ function installerVotes(ui) {
 		const actionsVisibles = etat === 'a-voter' && !accepte;
 		const interdit = !ui.mutationsPermises || !vote.peutVoter || enCours || Boolean(peutReessayer(envoi));
 		message.textContent = {
-			'a-voter': accepte ? 'Résultat à la fin du vote.' : 'Note ce Passage',
+			'a-voter': accepte ? '' : 'Note ce Passage',
 			interprete: 'Le public vote pour ton Passage.',
-			enregistre: enCours ? '' : accepte ? 'Résultat à la fin du vote.'
+			enregistre: enCours || accepte ? ''
 				: `Ta note : ${formaterNote(vote.maNote)}. Résultat à la fin du vote.`,
 			pause: 'Pause : tu pourras voter à la reprise.',
 			clos: vote.maNote == null ? 'Vote clos.' : `Vote clos. Ta note : ${formaterNote(vote.maNote)}.`,
 		}[etat];
+		message.hidden = !message.textContent;
 		temps.hidden = choix.hidden = envoyer.hidden = !actionsVisibles;
 		envoyer.className = principale && actionsVisibles ? 'bouton bouton--action bouton--grand' : 'bouton';
 		envoyer.disabled = interdit || note == null;
@@ -207,7 +208,7 @@ function installerVotes(ui) {
 		});
 		reessayer.hidden = !actionsVisibles || !ui.reessaiPossible(envoi);
 		const texte = enCours ? 'Envoi de ta note…' : accepte
-			? `Ta note est enregistrée : ${formaterNote(envoi.corps.note)}.` : texteEnvoi(envoi);
+			? `Ta note est enregistrée : ${formaterNote(envoi.corps.note)}. Résultat à la fin du vote.` : texteEnvoi(envoi);
 		const variante = envoi?.etat === 'indisponible' ? 'refuse' : envoi?.etat;
 		statut.className = texte ? `envoi envoi--${variante}` : '';
 		if (statut.textContent !== texte) statut.textContent = texte;

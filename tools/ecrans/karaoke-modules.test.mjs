@@ -676,7 +676,7 @@ test('Manette : cinq notes, une seule action citron et confirmation après le 20
 	assert.equal(premier.querySelector('.envoi--accepte'), null);
 	b.appels[0].resolve({ statut: 200, corps: { ...corps } });
 	await terminerMicrotaches();
-	assert.equal(premier.querySelector('.envoi--accepte').textContent, 'Ta note est enregistrée : 4 sur 5.');
+	assert.equal(premier.querySelector('.envoi--accepte').textContent, 'Ta note est enregistrée : 4 sur 5. Résultat à la fin du vote.');
 });
 
 test('Manette : après un refus définitif le détail est visible et une nouvelle tentative a une autre clé', async t => {
