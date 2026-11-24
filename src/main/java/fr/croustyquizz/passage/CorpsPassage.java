@@ -85,7 +85,7 @@ public class CorpsPassage {
             @JsonInclude(JsonInclude.Include.NON_NULL) List<UUID> invitesIds) {
         public Inscription {
             verifierInvites(invitesIds);
-            invitesIds = invitesIds == null ? null : List.copyOf(invitesIds);
+            if (invitesIds != null) { invitesIds = List.copyOf(invitesIds); }
         }
         public Inscription(UUID envoiId, String chansonId, UUID instrumentaleId) { this(envoiId, chansonId, instrumentaleId, null); }
         public boolean concerneLeKaraoke() { return chansonId != null; }

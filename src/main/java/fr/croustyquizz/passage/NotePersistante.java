@@ -24,7 +24,7 @@ public class NotePersistante {
     NotePersistante(UUID passageId, VoteRecu vote) {
         this.passageId = passageId;
         this.joueurId = vote.joueurId();
-        this.note = vote.note() == null ? null : vote.note().shortValue();
+        if (vote.note() != null) { this.note = vote.note().shortValue(); }
         this.interpreteDesigneId = vote.interpreteDesigneId();
         this.recueLe = vote.recueLe();
     }

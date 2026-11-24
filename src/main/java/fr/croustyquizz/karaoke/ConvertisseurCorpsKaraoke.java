@@ -12,7 +12,8 @@ import tools.jackson.databind.json.JsonMapper;
 public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverter<Object> {
     private static final Set<String> CHAMPS_NULLABLES = Set.of("avant", "fichier", "motifParolesSeules", "dureeMs");
     /** Champs que le contrat permet d’omettre : les invités de l’inscription (#138). */
-    private static final Set<String> CHAMPS_FACULTATIFS = Set.of("invitesIds");
+    private static final String INVITES = "invitesIds";
+    private static final Set<String> CHAMPS_FACULTATIFS = Set.of(INVITES);
     private static final Set<String> ENTIERS_AVEC_ZERO = Set.of("numeroModification", "numeroModificationCalage", "positionMs", "dureeMs");
     private final JsonMapper json;
     public ConvertisseurCorpsKaraoke(JsonMapper json) { super(MediaType.APPLICATION_JSON, new MediaType("application", "*+json")); this.json = json; }
@@ -38,14 +39,14 @@ public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverte
             return new CorpsPassage.Inscription(corps.envoiId(), corps.chansonId(), null, corps.invitesIds());
         }
         // Freestyle : envoiId et instrumentaleId, puis les invités facultatifs (#74).
-        boolean invites = arbre.has("invitesIds");
+        boolean invites = arbre.has(INVITES);
         if (arbre.size() != (invites ? 3 : 2) || !arbre.has("instrumentaleId")) { CorpsPassage.invalide(); }
         var envoi = uuid(arbre.path("envoiId"));
         var choix = arbre.get("instrumentaleId");
         List<UUID> invitesIds = null;
         if (invites) {
-            if (!arbre.get("invitesIds").isArray()) { CorpsPassage.invalide(); }
-            invitesIds = arbre.get("invitesIds").valueStream().map(ConvertisseurCorpsKaraoke::uuid).toList();
+            if (!arbre.get(INVITES).isArray()) { CorpsPassage.invalide(); }
+            invitesIds = arbre.get(INVITES).valueStream().map(ConvertisseurCorpsKaraoke::uuid).toList();
         }
         return new CorpsPassage.Inscription(envoi, null, choix.isNull() ? null : uuid(choix), invitesIds);
     }
