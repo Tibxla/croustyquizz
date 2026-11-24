@@ -6,8 +6,9 @@ export function monterTalonSalle(talon, { soireeId, chargerQrCode }, { url = URL
 	const adresse = talon.querySelector('[data-adresse]');
 
 	function afficherAdresse(adresseManette) {
-		const { protocol, host, pathname } = new URL(adresseManette);
-		const segments = [...`${protocol}//${host}`.split(/(?=\.)/), ...pathname.split(/(?=\/)/)];
+		// Le schéma n'aide pas à 5 m : le téléphone complète l'adresse tapée, et le QR code porte l'adresse complète.
+		const { host, pathname } = new URL(adresseManette);
+		const segments = [...host.split(/(?=\.)/), ...pathname.split(/(?=\/)/)];
 		adresse.replaceChildren(...segments.flatMap((segment, index) => {
 			const texte = document.createElement('span');
 			texte.textContent = segment;

@@ -66,9 +66,9 @@ test('le talon affiche lâ€™adresse publique du serveur avec des coupures dans lâ
 	assert.equal(adresse.hidden, true);
 	await affichage.afficher(ouverte);
 	assert.equal(adresse.hidden, false);
-	assert.equal(adresse.textContent, adressePublique);
+	assert.equal(adresse.textContent, 'quiz.exemple.test:9443/animations/rejoindre.html');
 	assert.deepEqual(adresse.children.map(element => [element.tagName, element.textContent]), [
-		['SPAN', 'https://quiz'], ['WBR', ''], ['SPAN', '.exemple'], ['WBR', ''], ['SPAN', '.test:9443'],
+		['SPAN', 'quiz'], ['WBR', ''], ['SPAN', '.exemple'], ['WBR', ''], ['SPAN', '.test:9443'],
 		['WBR', ''], ['SPAN', '/animations'], ['WBR', ''], ['SPAN', '/rejoindre.html'],
 	]);
 });
