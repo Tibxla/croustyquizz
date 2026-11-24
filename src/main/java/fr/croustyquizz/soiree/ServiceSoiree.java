@@ -3,6 +3,7 @@ package fr.croustyquizz.soiree;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.hibernate.exception.ConstraintViolationException;
@@ -12,6 +13,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import fr.croustyquizz.manche.Accepte;
+import fr.croustyquizz.manche.Destination;
+import fr.croustyquizz.tempsreel.PublicationDeVues;
+import fr.croustyquizz.tempsreel.VerrousSoiree;
 
 /**
  * Création et ouverture des Soirées, arrivée des Joueurs. Les contrôleurs HTTP
@@ -28,20 +34,31 @@ public class ServiceSoiree {
 
 	/** Index qui garantit qu'un code ne désigne qu'une Soirée qu'on peut rejoindre. */
 	static final String INDEX_CODE_ACTIF = "soiree_code_acces_actif";
+	private static final Accepte SOIREE_OUVERTE = new Accepte(null, Set.of(Destination.CONSOLE), "soiree-ouverte");
+
+	/** Index qui garantit qu'un pseudo ne désigne qu'un Joueur dans une Soirée. */
+	static final String INDEX_PSEUDO = "joueur_pseudo_par_soiree";
 
 	private final DepotDeSoirees depotDeSoirees;
 	private final DepotDeJoueurs depotDeJoueurs;
 	private final Clock horloge;
 	private final TirageDeCode tirage;
+	private final FiltreDePseudos filtre;
 	private final TransactionTemplate nouvelleTransaction;
+	private final VerrousSoiree verrous;
+	private final PublicationDeVues vues;
 	private final SecureRandom hasard = new SecureRandom();
 
 	ServiceSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs, Clock horloge, TirageDeCode tirage,
-			PlatformTransactionManager transactions) {
+			FiltreDePseudos filtre, PlatformTransactionManager transactions, VerrousSoiree verrous,
+			PublicationDeVues vues) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.horloge = horloge;
 		this.tirage = tirage;
+		this.filtre = filtre;
+		this.verrous = verrous;
+		this.vues = vues;
 		this.nouvelleTransaction = new TransactionTemplate(transactions);
 		this.nouvelleTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 	}
@@ -76,11 +93,23 @@ public class ServiceSoiree {
 	 * @throws SoireeDejaLancee  si la Soirée est en cours ou terminée
 	 */
 	public Soiree ouvrir(UUID soireeId) {
+		Ouverture ouverture = enregistrerOuverture(soireeId);
+		if (ouverture.nouvelle()) {
+			// L'ouverture est déjà validée. Capture la Console sous le verrou du programme.
+			verrous.executer(soireeId, () -> {
+				vues.publier(soireeId, SOIREE_OUVERTE);
+				return null;
+			});
+		}
+		return ouverture.soiree();
+	}
+
+	private Ouverture enregistrerOuverture(UUID soireeId) {
 		for (int essai = 1; essai <= ESSAIS_DE_CODE; essai++) {
 			try {
 				return nouvelleTransaction.execute(statut -> ouvrirAvecUnTirage(soireeId));
 			} catch (DataIntegrityViolationException refus) {
-				if (!violeIndexCodeActif(refus)) {
+				if (!violeIndex(refus, INDEX_CODE_ACTIF)) {
 					throw refus;
 				}
 			}
@@ -88,23 +117,25 @@ public class ServiceSoiree {
 		throw new IllegalStateException("Aucun code d'accès libre après " + ESSAIS_DE_CODE + " essais");
 	}
 
-	private Soiree ouvrirAvecUnTirage(UUID soireeId) {
+	private Ouverture ouvrirAvecUnTirage(UUID soireeId) {
 		// Le verrou sérialise les ouvertures d'une même Soirée : la seconde la trouve ouverte et garde son code.
 		Soiree soiree = depotDeSoirees.verrouiller(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
 		if (soiree.getEtat() == EtatSoiree.PREPARATION) {
 			soiree.ouvrir(tirage.tirer(), horloge.instant());
 			// Écrit maintenant, pour qu'une collision lève ici une exception traduite par Spring.
 			depotDeSoirees.flush();
-		} else {
-			soiree.ouvrir(soiree.getCodeAcces(), horloge.instant());
+			return new Ouverture(soiree, true);
 		}
-		return soiree;
+		soiree.ouvrir(soiree.getCodeAcces(), horloge.instant());
+		return new Ouverture(soiree, false);
 	}
 
-	private static boolean violeIndexCodeActif(Throwable refus) {
+	private record Ouverture(Soiree soiree, boolean nouvelle) { }
+
+	private static boolean violeIndex(Throwable refus, String index) {
 		for (Throwable cause = refus; cause != null; cause = cause.getCause()) {
 			if (cause instanceof ConstraintViolationException violation
-					&& INDEX_CODE_ACTIF.equals(violation.getConstraintName())) {
+					&& index.equals(violation.getConstraintName())) {
 				return true;
 			}
 		}
@@ -126,11 +157,16 @@ public class ServiceSoiree {
 
 	/**
 	 * Fait arriver un Joueur dans la Soirée ouverte ou en cours qui porte ce code.
-	 * Le refus des pseudos déjà pris ou injurieux vient avec #10.
+	 * <p>
+	 * L'index {@value #INDEX_PSEUDO} garantit l'unicité du pseudo, même entre deux
+	 * arrivées simultanées ; la vérification préalable évite seulement d'aller
+	 * jusqu'à l'erreur de la base dans le cas courant.
 	 *
 	 * @param saisieDuCode code tel que tapé ou lu dans le QR code ; casse et espaces sont tolérés
 	 * @throws CodeAccesInvalide si aucune Soirée à rejoindre ne porte ce code
 	 * @throws PseudoInvalide    si le pseudo est absent, vide ou trop long
+	 * @throws PseudoRefuse      si le filtre de pseudos l'écarte
+	 * @throws PseudoDejaPris    si un Joueur de la Soirée le porte déjà, même parti ou exclu
 	 */
 	@Transactional
 	public ArriveeDeJoueur rejoindre(String saisieDuCode, String pseudo) {
@@ -139,7 +175,22 @@ public class ServiceSoiree {
 				.filter(Soiree::accepteLesArrivees)
 				.orElseThrow(CodeAccesInvalide::new);
 		JetonDeReconnexion jeton = JetonDeReconnexion.generer(hasard);
-		Joueur joueur = depotDeJoueurs.save(new Joueur(soiree.getId(), pseudo, jeton, horloge.instant()));
+		Joueur joueur = new Joueur(soiree.getId(), pseudo, jeton, horloge.instant());
+		if (!filtre.estAcceptable(joueur.getPseudo())) {
+			throw new PseudoRefuse();
+		}
+		if (depotDeJoueurs.existsBySoireeIdAndPseudoNormalise(soiree.getId(), joueur.getPseudoNormalise())) {
+			throw new PseudoDejaPris();
+		}
+		try {
+			depotDeJoueurs.saveAndFlush(joueur);
+		}
+		catch (DataIntegrityViolationException refus) {
+			if (violeIndex(refus, INDEX_PSEUDO)) {
+				throw new PseudoDejaPris(refus);
+			}
+			throw refus;
+		}
 		return new ArriveeDeJoueur(joueur, jeton, soiree);
 	}
 

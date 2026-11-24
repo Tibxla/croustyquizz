@@ -27,6 +27,12 @@ class PilotageDeSoireeEnregistree implements PilotageDeSoiree {
 				.orElseGet(() -> autre().estAutomatique(soireeId));
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public boolean estModifiable(UUID soireeId) {
+		return !soirees.existsById(soireeId) && autre().estModifiable(soireeId);
+	}
+
 	private PilotageDeSoiree autre() {
 		return pilotages.orderedStream().filter(pilotage -> !(pilotage instanceof PilotageDeSoireeEnregistree))
 				.findFirst().orElseThrow(() -> new IllegalStateException("Aucun Pilotage de repli pour ce profil."));

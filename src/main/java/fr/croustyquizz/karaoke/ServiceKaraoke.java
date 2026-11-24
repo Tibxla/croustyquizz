@@ -33,7 +33,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         this.choixParoles = choixParoles; this.calages = calages;
     }
 
-    @Override public UUID creer(UUID soireeId, Object reglages) {
+    @Override protected ReglagesKaraoke resoudreReglages(Object reglages) {
         JsonNode objet = socle.json().valueToTree(reglages);
         if (!objet.isObject() || objet.propertyNames().stream().anyMatch(n -> !CLE_LIMITE.equals(n))) {
             CorpsKaraoke.invalide();
@@ -47,7 +47,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         if (!valeur.isIntegralNumber() || !valeur.canConvertToLong()) { CorpsKaraoke.invalide(); }
         CorpsKaraoke.limite(valeur.longValue());
         resolus.put(CLE_LIMITE, valeur.longValue());
-        return super.creer(soireeId, resolus);
+        return super.resoudreReglages(resolus);
     }
 
     @Override public ResultatDeCommande demarrer(UUID mancheId, EnvoiDeCommande envoi) {

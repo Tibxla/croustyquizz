@@ -1,8 +1,8 @@
 // WAV PCM mono silencieux de 10 ms. Safari accorde le déblocage à cet élément audio.
 const SILENCE = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
 
-export function creerLecteurLocal({ document, creerUrl, revoquerUrl }) {
-	const audio = document.createElement('audio');
+export function creerLecteurLocal({ document, creerUrl, revoquerUrl, type = 'audio' }) {
+	const audio = document.createElement(type);
 	audio.preload = 'metadata';
 	const fins = new Set(), erreurs = new Set();
 	let sonDebloque = false, libererFichier;
@@ -60,6 +60,7 @@ export function creerLecteurLocal({ document, creerUrl, revoquerUrl }) {
 		pause: () => audio.pause(),
 		reprendre: lire,
 		position: () => Math.round(audio.currentTime * 1000),
+		positionner: ms => { audio.currentTime = ms / 1000; },
 		volume: valeur => { audio.volume = valeur; },
 		surFin: rappel => abonner(fins, rappel),
 		surErreur: rappel => abonner(erreurs, rappel),

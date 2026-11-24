@@ -13,13 +13,11 @@ public class PersistancePassageJpa {
     public EtatFileAttente charger(UUID mancheId) {
         var file = entites.find(FileAttentePersistante.class, mancheId);
         if (file == null) { return null; }
-        var interpretes = entites.createQuery("select i from InterpretePersistant i where i.passageId in "
-                + "(select p.id from PassagePersistant p where p.mancheId = :manche) order by i.ordre", InterpretePersistant.class)
-                .setParameter(PARAMETRE_MANCHE, mancheId).getResultList();
-        Map<UUID, List<UUID>> parPassage = new HashMap<>();
-        interpretes.forEach(i -> parPassage.computeIfAbsent(i.getPassageId(), cle -> new ArrayList<>()).add(i.getJoueurId()));
+        var parPassage = interpretesParPassage(mancheId);
         var passages = entites.createQuery("select p from PassagePersistant p where p.mancheId = :manche order by p.ordreInscription", PassagePersistant.class)
-                .setParameter(PARAMETRE_MANCHE, mancheId).getResultList().stream().map(p -> p.restaurer(parPassage.get(p.getId()))).toList();
+                .setParameter(PARAMETRE_MANCHE, mancheId).getResultList().stream()
+                .map(p -> p.restaurer(parPassage.getOrDefault(p.getId(), List.of()).stream()
+                        .map(InterpretePersistant::getJoueurId).toList())).toList();
         Map<UUID, Long> consommations = new HashMap<>();
         entites.createQuery("select t from TourConsommePersistant t where t.mancheId = :manche", TourConsommePersistant.class)
                 .setParameter(PARAMETRE_MANCHE, mancheId).getResultList().forEach(t -> consommations.put(t.getInterpreteId(), t.getDernierTourConsomme()));
@@ -27,14 +25,42 @@ public class PersistancePassageJpa {
     }
     public void enregistrer(UUID mancheId, EtatFileAttente etat) {
         if (!mancheId.equals(etat.mancheId())) { throw new IllegalArgumentException("File d'une autre Manche."); }
+        var parPassage = interpretesParPassage(mancheId);
+        List<InterpretePersistant> aRetirer = new ArrayList<>();
+        List<InterpretePersistant> aInscrire = new ArrayList<>();
+        for (Passage passage : etat.passages()) {
+            var anciens = parPassage.getOrDefault(passage.id(), List.of());
+            var actuels = passage.interpretes();
+            int ordre = 0;
+            while (ordre < anciens.size() && ordre < actuels.size()
+                    && anciens.get(ordre).getJoueurId().equals(actuels.get(ordre))) {
+                ordre++;
+            }
+            aRetirer.addAll(anciens.subList(ordre, anciens.size()));
+            for (; ordre < actuels.size(); ordre++) {
+                aInscrire.add(new InterpretePersistant(passage.id(), actuels.get(ordre), ordre));
+            }
+        }
+        if (!aRetirer.isEmpty()) {
+            aRetirer.forEach(entites::remove);
+            // Libère les anciennes positions et la contrainte d’unicité par Joueur avant toute réinsertion.
+            entites.flush();
+        }
         entites.merge(new FileAttentePersistante(etat));
         for (Passage passage : etat.passages()) {
             entites.merge(new PassagePersistant(passage));
-            for (int ordre = 0; ordre < passage.interpretes().size(); ordre++) {
-                entites.merge(new InterpretePersistant(passage.id(), passage.interpretes().get(ordre), ordre));
-            }
         }
+        aInscrire.forEach(entites::persist);
         etat.derniersToursConsommes().forEach((id, tour) -> entites.merge(new TourConsommePersistant(mancheId, id, tour)));
+    }
+
+    private Map<UUID, List<InterpretePersistant>> interpretesParPassage(UUID mancheId) {
+        var interpretes = entites.createQuery("select i from InterpretePersistant i where i.passageId in "
+                + "(select p.id from PassagePersistant p where p.mancheId = :manche) order by i.ordre", InterpretePersistant.class)
+                .setParameter(PARAMETRE_MANCHE, mancheId).getResultList();
+        Map<UUID, List<InterpretePersistant>> parPassage = new HashMap<>();
+        interpretes.forEach(i -> parPassage.computeIfAbsent(i.getPassageId(), cle -> new ArrayList<>()).add(i));
+        return parPassage;
     }
     public EtatCyclePassage chargerCycle(UUID mancheId) {
         var cycle = entites.find(CyclePassagePersistant.class, mancheId);
