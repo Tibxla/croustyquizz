@@ -67,6 +67,20 @@ public class ServiceDeManche<R, E> {
 				intervention.appliquer(d, new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))),
 				intervention.etatCible(), false);
 	}
+	ResultatDeCommande refuserPilotage(UUID mancheId, EnvoiDeCommande envoi, Refuse refus) {
+		return sousTransaction(envoi.acteur().soireeId(), mancheId, () -> {
+			var precedent = socle.envois().retrouver(envoi);
+			if (precedent != null) { return precedent; }
+			conserver(envoi, refus);
+			return refus;
+		});
+	}
+
+	/** Clôture interne à la Soirée, quelle que soit l'étape de sa Manche active. */
+	public final ResultatDeCommande terminerPourSoiree(UUID mancheId, EnvoiDeCommande envoi) {
+		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+				d.terminer(new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))), EtatManche.TERMINEE, false);
+	}
 	/** La préparation externe est hors verrou ; sa fonction revalide ensuite le domaine sous verrou. */
 	public ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer) {
 		return executer(mancheId, envoi, preparer, null);
@@ -177,9 +191,10 @@ public class ServiceDeManche<R, E> {
 		EtatManche etatParDefaut = cible == null ? manche.getEtat() : cible;
 		EtatManche etat = d.estTerminee() ? EtatManche.TERMINEE : etatApresAcceptation(etatParDefaut, instantane);
 		manche.changerEtat(etat, recueLe);
+		boolean classementModifie = manche.getMode().compteAuClassementGeneral() && manche.actualiserPoints(d.points());
 		persistance.enregistrer(manche.getMancheId(), instantane);
 		socle.depot().enregistrer(manche);
-		socle.vues().publier(manche.getSoireeId(), accepte);
+		socle.vues().publier(manche.getSoireeId(), accepte, classementModifie);
 	}
 	private <T> T sousTransaction(UUID soireeId, UUID mancheId, Supplier<T> action) {
 		return socle.verrous().executer(soireeId, () -> {

@@ -43,6 +43,8 @@ public class Soiree {
 
 	private Instant debuteeLe;
 
+	private UUID envoiLancement;
+
 	private Instant termineeLe;
 
 	protected Soiree() {
@@ -90,6 +92,22 @@ public class Soiree {
 			}
 		}
 		throw new IllegalStateException("État inconnu : " + etat);
+	}
+
+	/** Retrouve un lancement interrompu entre la validation de la Soirée et celle de sa première Manche. */
+	boolean reprendLancement(UUID cle) {
+		return etat == EtatSoiree.EN_COURS && cle.equals(envoiLancement);
+	}
+
+	void lancer(Instant maintenant, UUID cle) {
+		debuteeLe = maintenant;
+		envoiLancement = cle;
+		etat = EtatSoiree.EN_COURS;
+	}
+
+	void terminer(Instant maintenant) {
+		termineeLe = maintenant;
+		etat = EtatSoiree.TERMINEE;
 	}
 
 	/**
