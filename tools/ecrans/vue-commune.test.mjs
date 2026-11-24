@@ -32,3 +32,23 @@ test('le résumé de la Console affiche le Pilotage de la Soirée', () => {
 	assert.equal(decrireVue({ ...vue, soiree: { ...vue.soiree, pilotage: 'MANUEL' } }).resume,
 		'En cours · Solo · Pilotage manuel');
 });
+
+test('le Palmarès distingue champ absent, champ nul et liste vide', () => {
+	const vue = { soiree: {}, joueurs: [], classement: [] };
+	assert.equal(decrireVue(vue).palmares, null);
+	assert.equal(decrireVue({ ...vue, palmaresKaraoke: null }).palmares, null);
+	assert.deepEqual(decrireVue({ ...vue, palmaresKaraoke: [] }).palmares, []);
+});
+
+test('le Palmarès affiche le rang éventuel, le numéro, les Interprètes et le résultat du vote', () => {
+	const vue = { soiree: {}, joueurs: [], classement: [], palmaresKaraoke: [
+		{ numero: 12, rang: 1, chanson: { titre: 'Les quais' }, interpretes: [{ pseudo: 'Alizé' }, { pseudo: 'Basile' }],
+			nombreVotes: 7, moyenneDixiemes: 43 },
+		{ numero: 9, rang: null, chanson: { titre: 'Le phare' }, interpretes: [{ pseudo: 'Joueur parti' }],
+			nombreVotes: 0, moyenneDixiemes: null },
+	] };
+	assert.deepEqual(decrireVue(vue).palmares, [
+		{ texte: '1. n° 12 · Les quais · Alizé, Basile · 4,3 sur 5 (7 votes)', numero: 12 },
+		{ texte: 'n° 9 · Le phare · Joueur parti · Aucun vote', numero: 9 },
+	]);
+});
