@@ -40,13 +40,15 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 	return {
 		envoyer,
 		async chargerQrCode(soireeId, signal) {
+			if (!jeton || jeton.startsWith('demo:')) return null;
 			const reponse = await requerir('GET', `/api/soirees/${encodeURIComponent(soireeId)}/qrcode`, undefined, {
 				entetes: { Accept: 'image/svg+xml, application/problem+json' }, signal,
 			});
-			if (!reponse.ok || !/^image\/svg\+xml\s*(?:;|$)/i.test(reponse.headers.get('Content-Type') ?? '')) {
-				throw new Error('QR code indisponible.');
+			const adresseManette = reponse.headers.get('Adresse-Manette');
+			if (!reponse.ok || !adresseManette || !/^image\/svg\+xml\s*(?:;|$)/i.test(reponse.headers.get('Content-Type') ?? '')) {
+				return null;
 			}
-			return reponse.blob();
+			return { blob: await reponse.blob(), adresseManette };
 		},
 		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur }) {
 			const url = new URL('/ws', adresse);

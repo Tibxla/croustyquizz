@@ -1,27 +1,36 @@
-export function monterTalonSalle(talon, { soireeId, chargerQrCode }, {
-	hote = globalThis.location.host, url = URL,
-} = {}) {
+export function monterTalonSalle(talon, { soireeId, chargerQrCode }, { url = URL } = {}) {
 	const document = talon.ownerDocument;
 	const code = talon.querySelector('[data-code]');
 	const qr = talon.querySelector('[data-qr]');
 	const image = qr.querySelector('img');
 	const adresse = talon.querySelector('[data-adresse]');
-	const segments = [...hote.split(/(?=\.)/), '/rejoindre.html'];
-	adresse.replaceChildren(...segments.flatMap((segment, index) => {
-		const texte = document.createElement('span');
-		texte.textContent = segment;
-		return index === 0 ? [texte] : [document.createElement('wbr'), texte];
-	}));
+
+	function afficherAdresse(adresseManette) {
+		const { protocol, host, pathname } = new URL(adresseManette);
+		const segments = [...`${protocol}//${host}`.split(/(?=\.)/), ...pathname.split(/(?=\/)/)];
+		adresse.replaceChildren(...segments.flatMap((segment, index) => {
+			const texte = document.createElement('span');
+			texte.textContent = segment;
+			return index === 0 ? [texte] : [document.createElement('wbr'), texte];
+		}));
+	}
 
 	let courant;
+	function retirerImage(demande) {
+		qr.hidden = adresse.hidden = true;
+		image.removeAttribute('src');
+		if (demande.urlImage) {
+			url.revokeObjectURL(demande.urlImage);
+			demande.urlImage = undefined;
+		}
+	}
+
 	function retirerQrCode() {
 		if (!courant) return;
 		const ancien = courant;
 		courant = undefined;
-		qr.hidden = adresse.hidden = true;
-		image.removeAttribute('src');
 		ancien.annulation.abort();
-		if (ancien.adresse) url.revokeObjectURL(ancien.adresse);
+		retirerImage(ancien);
 	}
 
 	async function afficher(soiree) {
@@ -35,16 +44,21 @@ export function monterTalonSalle(talon, { soireeId, chargerQrCode }, {
 
 		const demande = { code: codeAcces, annulation: new AbortController() };
 		courant = demande;
-		try {
-			const blob = await chargerQrCode(soireeId, demande.annulation.signal);
-			if (courant !== demande) return;
-			demande.adresse = url.createObjectURL(blob);
-			image.setAttribute('src', demande.adresse);
-			await image.decode();
-			if (courant === demande) qr.hidden = adresse.hidden = false;
-		} catch {
-			// La prochaine Vue synchronisée pourra réessayer. Le code d'accès reste lisible.
+		const reponse = await chargerQrCode(soireeId, demande.annulation.signal).catch(() => {
+			// Une panne réseau autorise un nouvel essai à la Vue suivante.
 			if (courant === demande) retirerQrCode();
+			return null;
+		});
+		if (courant !== demande || !reponse) return;
+		try {
+			demande.urlImage = url.createObjectURL(reponse.blob);
+			image.setAttribute('src', demande.urlImage);
+			await image.decode();
+			if (courant !== demande) return;
+			afficherAdresse(reponse.adresseManette);
+			qr.hidden = adresse.hidden = false;
+		} catch {
+			if (courant === demande) retirerImage(demande);
 		}
 	}
 

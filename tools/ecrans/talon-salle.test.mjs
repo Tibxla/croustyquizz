@@ -6,8 +6,9 @@ import { creerDocument } from './karaoke-dom-factice.mjs';
 
 const soireeId = '00000001-0000-4000-8000-000000000000';
 const ouverte = { etat: 'OUVERTE', codeAcces: 'K7PQ2M' };
+const adressePublique = 'https://quiz.exemple.test:9443/animations/rejoindre.html';
 const imageSvg = () => new Response('<svg xmlns="http://www.w3.org/2000/svg"/>', {
-	headers: { 'Content-Type': 'image/svg+xml' },
+	headers: { 'Content-Type': 'image/svg+xml', 'Adresse-Manette': adressePublique },
 });
 
 function installerTalon(requete, jeton = 'cle-opaque') {
@@ -35,7 +36,7 @@ function installerTalon(requete, jeton = 'cle-opaque') {
 	const images = [];
 	const adressesRevoquees = [];
 	const affichage = monterTalonSalle(talon, { soireeId, chargerQrCode: transport.chargerQrCode }, {
-		hote: 'croustyquizz-recette.onrender.com:8443', url: {
+		url: {
 			createObjectURL(blob) { images.push(blob); return `blob:qr-${images.length}`; },
 			revokeObjectURL(adresse) { adressesRevoquees.push(adresse); },
 		},
@@ -60,23 +61,23 @@ test('le talon charge le QR code avec la clé d’Écran et l’affiche sans le 
 	assert.equal(code.textContent, 'K7PQ2M');
 });
 
-test('l’adresse affichée sous le QR code peut se couper entre l’hôte et la page', async () => {
+test('le talon affiche l’adresse publique du serveur avec des coupures dans l’hôte et le chemin', async () => {
 	const { affichage, adresse } = installerTalon(imageSvg);
 	assert.equal(adresse.hidden, true);
 	await affichage.afficher(ouverte);
 	assert.equal(adresse.hidden, false);
-	assert.equal(adresse.textContent, 'croustyquizz-recette.onrender.com:8443/rejoindre.html');
+	assert.equal(adresse.textContent, adressePublique);
 	assert.deepEqual(adresse.children.map(element => [element.tagName, element.textContent]), [
-		['SPAN', 'croustyquizz-recette'], ['WBR', ''], ['SPAN', '.onrender'],
-		['WBR', ''], ['SPAN', '.com:8443'], ['WBR', ''], ['SPAN', '/rejoindre.html'],
+		['SPAN', 'https://quiz'], ['WBR', ''], ['SPAN', '.exemple'], ['WBR', ''], ['SPAN', '.test:9443'],
+		['WBR', ''], ['SPAN', '/animations'], ['WBR', ''], ['SPAN', '/rejoindre.html'],
 	]);
 });
 
-test('un refus, une panne réseau ou une réponse non SVG laisse le code visible et réessaie à la vue suivante', async () => {
+test('un refus ou une réponse inutilisable laisse le code visible et attend un nouveau code pour réessayer', async () => {
 	const echecs = [
 		() => new Response(null, { status: 403 }),
-		async () => { throw new Error('Hors ligne'); },
 		() => new Response('<html>Proxy indisponible</html>', { headers: { 'Content-Type': 'text/html' } }),
+		() => new Response('<svg/>', { headers: { 'Content-Type': 'image/svg+xml' } }),
 	];
 	for (const echouer of echecs) {
 		const reponses = [echouer, imageSvg];
@@ -88,24 +89,38 @@ test('un refus, une panne réseau ou une réponse non SVG laisse le code visible
 		assert.equal(code.textContent, 'K7PQ2M');
 		assert.equal(qr.hidden, true);
 		assert.equal(adresse.hidden, true);
-		await affichage.afficher(ouverte);
+		await affichage.afficher({ ...ouverte, etat: 'EN_COURS' });
+		assert.equal(requetes.length, 1);
+		await affichage.afficher({ ...ouverte, codeAcces: 'ABC234' });
 		assert.equal(requetes.length, 2);
 		assert.equal(qr.hidden, false);
 	}
 });
 
-test('un Écran de démonstration garde le code d’accès si la Soirée de démonstration ne fournit pas de QR code', async () => {
-	const jeton = `demo:ECRAN:${soireeId}:00000002-0000-4000-8000-000000000000`;
-	const { affichage, talon, qr, code, requetes } = installerTalon(() => new Response(null, { status: 404 }), jeton);
+test('une panne réseau autorise un nouvel essai à la vue suivante', async () => {
+	const reponses = [async () => { throw new TypeError('Hors ligne'); }, imageSvg];
+	const { affichage, qr, code, requetes } = installerTalon(() => reponses.shift()());
 	await affichage.afficher(ouverte);
-	assert.equal(requetes[0].options.headers.Authorization, `Bearer ${jeton}`);
+	assert.equal(qr.hidden, true);
+	assert.equal(code.textContent, 'K7PQ2M');
+	await affichage.afficher(ouverte);
+	assert.equal(requetes.length, 2);
+	assert.equal(qr.hidden, false);
+});
+
+test('un Écran de démonstration affiche le code d’accès sans requête de QR code', async () => {
+	const jeton = `demo:ECRAN:${soireeId}:00000002-0000-4000-8000-000000000000`;
+	const { affichage, talon, qr, code, requetes } = installerTalon(imageSvg, jeton);
+	await affichage.afficher(ouverte);
+	await affichage.afficher({ ...ouverte, etat: 'EN_COURS' });
+	assert.equal(requetes.length, 0);
 	assert.equal(talon.hidden, false);
 	assert.equal(code.textContent, 'K7PQ2M');
 	assert.equal(qr.hidden, true);
 });
 
-test('une image illisible libère son URL et la vue suivante peut afficher un nouveau QR code', async () => {
-	const { affichage, qr, image, adressesRevoquees } = installerTalon(imageSvg);
+test('une image illisible libère son URL et attend un nouveau code', async () => {
+	const { affichage, qr, image, requetes, adressesRevoquees } = installerTalon(imageSvg);
 	image.decode = async () => { throw new Error('Image illisible'); };
 	await affichage.afficher(ouverte);
 	assert.equal(qr.hidden, true);
@@ -113,8 +128,11 @@ test('une image illisible libère son URL et la vue suivante peut afficher un no
 	assert.deepEqual(adressesRevoquees, ['blob:qr-1']);
 	image.decode = async () => {};
 	await affichage.afficher(ouverte);
+	assert.equal(requetes.length, 1);
+	await affichage.afficher({ ...ouverte, codeAcces: 'ABC234' });
 	assert.equal(qr.hidden, false);
 	assert.equal(image.getAttribute('src'), 'blob:qr-2');
+	assert.deepEqual(adressesRevoquees, ['blob:qr-1']);
 });
 
 test('le remplacement du code et le démontage révoquent les URL des QR codes retirés', async () => {
