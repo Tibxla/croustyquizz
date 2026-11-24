@@ -244,7 +244,8 @@ paths:
       summary: Créer une Soirée avec son Format et son Pilotage
       description: Le serveur affecte id, Lieu et état PREPARATION ; codeAcces est null jusqu’à ouverture. Format
         SOLO ou EQUIPE, Pilotage MANUEL ou AUTOMATIQUE ; les deux sont enregistrés tels quels, le déroulement en Équipe
-        (#26) et l’enchaînement automatique (#25) viennent ensuite. Un titre vide ou trop long donne 422 DONNEES_INVALIDES.
+        (#26) et l’enchaînement automatique (#25) viennent ensuite. Un titre, un Format ou un Pilotage absent viole le
+        schéma et donne 400 REQUETE_INVALIDE. Un titre vide après nettoyage ou trop long donne 422 DONNEES_INVALIDES.
       tags:
       - Soirée
       security:
@@ -833,7 +834,8 @@ paths:
         accessibles (OUVERTE et EN_COURS). Le serveur publie soiree-ouverte sur la Console et sur la salle lors de la transition, pour qu’un Écran ouvert pendant la préparation affiche le code et le QR code.
         Le programme peut être complété pendant l’accueil. La clé d’envoi garantit
         qu’une répétition ne régénère pas le code ; rouvrir une Soirée déjà OUVERTE la rend aussi inchangée. Soirée
-        EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE.
+        EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE. Sans code libre après 20 tirages, 503 SERVICE_INDISPONIBLE ;
+        la Soirée reste en PREPARATION et l’Animateur peut réessayer.
       tags:
       - Soirée
       security:
