@@ -50,6 +50,26 @@ test('la Console règle le son depuis le pilotage commun et attend une vue pour 
 	console.demonter();
 });
 
+test('la Console garde le réglage affiché après un refus sans redemander de capture', async () => {
+	const bouton = new EventTarget();
+	let captures = 0;
+	let etatEnvoi;
+	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree', resynchroniser: () => captures++,
+		envoyer: async () => ({ statut: 409, corps: { code: 'COMMANDE_SANS_EFFET' } }),
+		surEnvoi: etat => { etatEnvoi = etat; },
+	});
+	const console = monterMusiqueDAttenteConsole(bouton, {}, contexte);
+	console.afficher(vue('JOUE', true));
+	changerEtat('synchronisee');
+	bouton.dispatchEvent(new Event('click'));
+	await terminerMicrotaches();
+	assert.equal(etatEnvoi, 'refuse');
+	assert.equal(captures, 0);
+	assert.equal(bouton.textContent, 'Couper la musique');
+	assert.equal(bouton.disabled, false);
+	console.demonter();
+});
+
 test('la salle applique la coupure dès la capture et ne relance qu’après le signal de Manche', async () => {
 	let audible, source;
 	const attente = { name: 'Attente.ogg', webkitRelativePath: 'Musique/Attente/Attente.ogg' };

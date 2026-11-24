@@ -30,12 +30,7 @@ class ServiceMusiqueDAttente {
 	}
 
 	void regler(UUID soireeId, MusiqueDAttente.Etat etat) {
-		modifier(soireeId, courant -> {
-			if (courant.etat() == etat) {
-				throw new Refuse(409, "COMMANDE_SANS_EFFET", "Ce réglage de la Musique d’attente est déjà en vigueur.").exception();
-			}
-			return new MusiqueDAttente(etat, courant.morceauxDisponibles());
-		});
+		modifier(soireeId, courant -> new MusiqueDAttente(etat, courant.morceauxDisponibles()));
 	}
 
 	void signaler(UUID soireeId, boolean morceauxDisponibles) {

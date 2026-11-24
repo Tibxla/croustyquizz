@@ -70,8 +70,9 @@ class MusiqueDAttenteHttpTest {
 		};
 		courtier.subscribe(observer);
 		try {
-			assertThat(regler(soiree, "ANIMATEUR", "COUPEE", 200).path("etat").asString()).isEqualTo("COUPEE");
-			assertThat(regler(soiree, "ANIMATEUR", "COUPEE", 409).path("code").asString()).isEqualTo("COMMANDE_SANS_EFFET");
+			var coupure = regler(soiree, "ANIMATEUR", "COUPEE", 200);
+			assertThat(coupure.path("etat").asString()).isEqualTo("COUPEE");
+			assertThat(regler(soiree, "ANIMATEUR", "COUPEE", 200)).isEqualTo(coupure);
 		} finally {
 			courtier.unsubscribe(observer);
 		}

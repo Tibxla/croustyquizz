@@ -25,8 +25,7 @@ export function monterMusiqueDAttenteConsole(bouton, statut, contexte) {
 		actualiserBouton();
 		try {
 			const reponse = await contexte.envoyer('PUT', route(contexte.soireeId), { etat }, { signal: fin.signal });
-			if (!fin.signal.aborted && musique?.etat !== etat
-					&& (reponse.statut === 200 || reponse.corps?.code === 'COMMANDE_SANS_EFFET')) {
+			if (!fin.signal.aborted && reponse.statut === 200 && musique?.etat !== etat) {
 				contexte.resynchroniser();
 			}
 		} catch {

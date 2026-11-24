@@ -15,19 +15,13 @@ http:
   requete: &coupure { etat: COUPEE }
   statut: 200
   reponse: *coupure
-- nom: Refuser une coupure déjà appliquée
+- nom: Confirmer une coupure déjà appliquée sans nouvel événement
   operationId: reglerMusiqueDAttente
   acteur: animateur
   parametres: *csrf
   requete: *coupure
-  statut: 409
-  reponse:
-    type: about:blank
-    title: Conflit
-    status: 409
-    code: COMMANDE_SANS_EFFET
-    detail: Ce réglage de la Musique d’attente est déjà en vigueur.
-    instance: /api/soirees/14100000-0000-4000-8000-000000000001/musique-attente
+  statut: 200
+  reponse: *coupure
 evenements:
 - nom: Actualiser la Console après le signal du dossier
   canal: console
