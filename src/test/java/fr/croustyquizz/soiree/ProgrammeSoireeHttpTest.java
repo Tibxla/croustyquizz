@@ -129,7 +129,10 @@ class ProgrammeSoireeHttpTest {
 				.path("code").asString()).isEqualTo("REQUETE_INVALIDE");
 		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, animateur(soiree), karaokeInvalide, 400)
 				.path("code").asString()).isEqualTo("REQUETE_INVALIDE");
-		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, "demo:ECRAN:" + soiree + ":" + UUID.randomUUID(), QUIZ, 403)
+		// Sur une Soirée enregistrée, l'Écran de salle n'est reconnu qu'à sa clé (#106).
+		String cleEcran = envoyer("creerAccesEcran", HttpMethod.POST, route(soiree, "/acces-ecran"), animateur(soiree), null, 200)
+				.path("cleEcran").asString();
+		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, cleEcran, QUIZ, 403)
 				.path("code").asString()).isEqualTo("ACCES_REFUSE");
 		assertThat(console(soiree).at("/vue/programme").size()).isZero();
 	}

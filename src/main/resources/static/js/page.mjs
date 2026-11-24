@@ -2,6 +2,7 @@ import { suivreVue, creerTransport } from './tempsreel.js';
 import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
+import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
@@ -46,8 +47,11 @@ function afficherCommun(vue) {
 }
 
 async function demarrer() {
-	const jeton = sessionStorage.getItem('croustyquizz.jeton');
-	const acces = lireAcces(ecran, location.search, jeton);
+	// La Manette d'un vrai Joueur relit l'accès rangé pour sa Soirée par rejoindre.html ; sinon, l'identité de
+	// démonstration de l'onglet (sessionStorage).
+	const accesManette = ecran === 'manette' ? creerAccesManette().lire(new URLSearchParams(location.search).get('soiree')) : null;
+	const jeton = accesManette?.jeton ?? sessionStorage.getItem('croustyquizz.jeton');
+	const acces = lireAcces(ecran, location.search, jeton, accesManette?.joueurId);
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
@@ -55,6 +59,12 @@ async function demarrer() {
 		csrf = reponse.corps.token;
 	}
 	const transport = creerTransport({ jeton, csrf });
+	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
+	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
+		creerAccesManette().oublier(acces.soireeId);
+		location.replace(adresseRetourArrivee(accesManette.codeAcces));
+		return;
+	}
 	const zoneAudio = element('audio-salle');
 	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
 	let suivi;
