@@ -1025,9 +1025,9 @@ $defs:
         format: uuid
       eligiblePourMancheActive:
         type: boolean
-        description: Participation du Joueur à la Manche active. Pour un retardataire, vrai quand le Mode de
-          jeu de cette Manche admet les retardataires (Karaoké, Freestyle), faux sinon (Quiz, Blind test). Jamais
-          une garde du Karaoké, où la présence suffit.
+        description: 'Participation du Joueur à la Manche active. Pour un Joueur arrivé pendant la Manche, vrai
+          quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Karaoké ; Freestyle), faux
+          sinon ; le Blind test tranchera dans #17. Jamais une garde du Karaoké, où la présence suffit.'
       derniereReponse:
         oneOf:
         - $ref: '#/$defs/AccuseReponse'

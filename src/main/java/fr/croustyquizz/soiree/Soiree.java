@@ -94,8 +94,9 @@ public class Soiree {
 
 	/**
 	 * Un Joueur peut arriver dans une Soirée ouverte ou déjà commencée (contrat
-	 * {@code rejoindreSoiree}). S'il arrive en cours de Manche, il attend la
-	 * suivante : c'est le travail de #10.
+	 * {@code rejoindreSoiree}). S'il arrive en cours de Manche, il y joue aussitôt
+	 * quand le Mode de jeu admet les arrivées en cours (Quiz, Karaoké, Freestyle) :
+	 * voir {@code eligiblePourMancheActive} dans {@code docs/api/schemas.yaml}.
 	 */
 	public boolean accepteLesArrivees() {
 		return EtatSoiree.AVEC_CODE_ACTIF.contains(etat);
