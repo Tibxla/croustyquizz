@@ -22,7 +22,7 @@ et à sa destination, et le retire à UNSUBSCRIBE ou déconnexion. Un UUID ambig
 sur plusieurs connexions est inactif. Un UUID neuf est obligatoire à chaque reprise.
 Le prototype est anonyme : l'UUID permet le raccordement au flux, pas l'authentification
 de l'appelant HTTP. En `dev`/`recette`, la seule destination ouverte sans identité est
-`/topic/soirees/{soireeId}/salle`, avec un UUID de Soirée valide. Les destinations
+`/topic/soirees/{soireeId}/salle`, avec un UUID de Soirée valide et absent de la base. Les destinations
 Console et Joueur exigent une identité autorisée dans tous les profils. En production,
 aucun abonnement anonyme n'est accepté.
 Toutes les trames client STOMP SEND sont refusées.

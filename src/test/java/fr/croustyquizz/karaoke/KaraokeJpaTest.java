@@ -238,7 +238,7 @@ class KaraokeJpaTest {
         return avant;
     }
 
-    @Test void conserveUnVoteOuvertFigePuisClosEtLesContraintesDeNote() {
+    @Test void conserveUnVoteOuvertFigePuisClosAvecLeDemarrageSuivantEtLesContraintesDeNote() {
         UUID soiree = UUID.randomUUID(), manche = UUID.randomUUID(), passage = UUID.randomUUID();
         UUID interprete = UUID.randomUUID(), votant = UUID.randomUUID();
         Instant ouverture = Instant.parse("2026-11-18T21:00:00Z");
@@ -254,8 +254,8 @@ class KaraokeJpaTest {
         var transaction = new TransactionTemplate(socle.transactions());
         List<EtatVotePassage> etats = List.of(
                 new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), null, null, List.of(note)),
-                new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), ouverture.plusSeconds(5), null, List.of(note)),
-                new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), null, ouverture.plusSeconds(8), List.of(note)));
+                new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), ouverture.plusSeconds(5), null, List.of(note), true),
+                new EtatVotePassage(passage, ouverture, ouverture.plusSeconds(30), null, ouverture.plusSeconds(8), List.of(note), true));
         for (var etat : etats) {
             var votes = new EtatVoteDuPublic(List.of(etat));
             transaction.executeWithoutResult(suite -> contenus.enregistrer(manche, new InstantaneKaraoke(

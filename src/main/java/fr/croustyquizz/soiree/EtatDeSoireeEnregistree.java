@@ -26,6 +26,11 @@ class EtatDeSoireeEnregistree implements EtatDeSoiree {
 	}
 
 	@Override
+	public boolean estEnregistree(UUID soireeId) {
+		return soirees.existsById(soireeId);
+	}
+
+	@Override
 	@Transactional(readOnly = true)
 	public boolean estEnCours(UUID soireeId) {
 		Optional<Soiree> soiree = soirees.findById(soireeId);

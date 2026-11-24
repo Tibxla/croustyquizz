@@ -1329,8 +1329,9 @@ paths:
     get:
       operationId: consulterClassement
       summary: Consulter le Classement général
-      description: Disponible aux acteurs autorisés de cette Soirée, notamment après sa fin. Ne comprend que les
-        Questions déjà corrigées ; les résultats ne révèlent pas une correction en avance.
+      description: Disponible aux acteurs autorisés de cette Soirée enregistrée, y compris après sa fin.
+        Cumule les Points déjà attribués au Quiz et au Blind test. Au Quiz, les résultats ne révèlent pas
+        de correction en avance.
       tags:
       - Soirée
       security:
@@ -1362,6 +1363,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: soireeId
         in: path
@@ -1651,6 +1654,8 @@ paths:
       description: >-
         Un Joueur présent peut noter une seule fois un Passage dont il n’est pas Interprète.
         Le reçu est immuable et un rejeu identique ne republie aucune vue.
+        Les vues de salle et de Console actualisent le nombre de votes. La moyenne est publiée à la
+        clôture dans les trois vues, avec le nombre de votes, et vaut null si aucun vote n’a été reçu.
         Refus dans l’ordre : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE,
         403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche, portée ou présence),
         409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE
