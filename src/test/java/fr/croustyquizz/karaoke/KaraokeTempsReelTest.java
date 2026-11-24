@@ -440,7 +440,7 @@ class KaraokeTempsReelTest {
         var salle = abonner(ecran, Canaux.salle(soiree), "salle");
         var console = abonner(animateur, Canaux.console(soiree), "console");
         var flux = new ArrayList<>(List.of(salle, console));
-        for (UUID id : ConfigurationTroisJoueurs.JOUEURS) {
+        for (UUID id : ConfigurationTroisJoueurs.joueursDe(soiree)) {
             flux.add(abonner(new Acteur(Acteur.Type.JOUEUR, id, soiree), Canaux.joueur(id), "manette"));
         }
         var revisions = new ArrayList<Long>();
