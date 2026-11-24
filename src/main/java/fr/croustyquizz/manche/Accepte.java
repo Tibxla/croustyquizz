@@ -8,14 +8,15 @@ public record Accepte(Object accuse, Set<Destination> aRepublier, String typeEve
 			"manche-demarree", "question-ouverte", "manche-en-pause", "manche-reprise", "question-corrigee",
 			"file-attente-modifiee", "limite-passages-modifiee", "manche-terminee", "classement-modifie", "soiree-terminee", "buzz-recu", "reponse-enregistree", "resultat-personnel",
 			"passage-appele", "passage-demarre", "passage-termine", "vote-enregistre", "vote-clos", "passage-saute",
-			"lecture-chanson-modifiee", "calage-chanson-modifie");
+			"lecture-chanson-modifiee", "calage-chanson-modifie", "autorisation-enregistrement-modifiee",
+			"accord-enregistrement-modifie");
 	public Accepte(Object accuse, Set<Destination> aRepublier, String typeEvenement) {
 		this(accuse, aRepublier, typeEvenement, accuse == null ? 204 : 200);
 	}
 	public Accepte {
 		aRepublier = Set.copyOf(aRepublier);
 		if (!TYPES.contains(typeEvenement)) { throw new IllegalArgumentException("Type d'événement inconnu."); }
-		if (Set.of("reponse-enregistree", "resultat-personnel").contains(typeEvenement)
+		if (Set.of("reponse-enregistree", "resultat-personnel", "accord-enregistrement-modifie").contains(typeEvenement)
 				&& (aRepublier.contains(Destination.SALLE) || aRepublier.contains(Destination.CONSOLE))) {
 			throw new IllegalArgumentException("Cet événement est réservé aux Manettes.");
 		}

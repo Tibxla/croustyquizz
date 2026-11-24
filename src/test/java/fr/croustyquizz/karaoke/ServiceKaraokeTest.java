@@ -688,6 +688,9 @@ class ServiceKaraokeTest {
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
                     pilotage);
             var persistance = new PersistanceKaraokeJpa(null, json, passages) {
+                @Override AccordsEnregistrement accordsEnregistrement(UUID soireeId, UUID mancheId) {
+                    return new AccordsEnregistrement(true, Map.of());
+                }
                 @Override public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
                 @Override public void enregistrer(UUID id, Object valeur) {
                     var etat = (InstantaneKaraoke) valeur;

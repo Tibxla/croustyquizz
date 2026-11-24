@@ -134,6 +134,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     @Override public ResultatDeCommande recevoir(ActionJoueur action) {
+        if (action instanceof DefinirAccordEnregistrement choix) { return definirAccord(choix); }
         return apres(appliquerAction(action), action == null ? null : action.recueLe());
     }
 
@@ -200,6 +201,29 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
 
     private void apresMinuteur() {
         if (enchainer(contexte.horloge().maintenant())) { derniereCauseMinuteur = PASSAGE_APPELE; }
+    }
+
+    private ResultatDeCommande definirAccord(DefinirAccordEnregistrement choix) {
+        Refuse refus = gardeCommune();
+        if (refus != null) { return refus; }
+        var cible = choix.cible();
+        Passage passage = file.trouver(cible.passageId());
+        if (passage == null) { return introuvable(); }
+        if (!passage.interpretes().contains(choix.joueurId())) {
+            return new Refuse(403, "ACCES_REFUSE", "Seul un Interprète de ce Passage peut donner son accord.");
+        }
+        if (!choix.autorise()) {
+            return new Refuse(409, "ENREGISTREMENT_INTERDIT", "Les Enregistrements sont interdits pour cette Soirée.");
+        }
+        if (passage.numeroModification() != cible.numeroModification()
+                || (passage.etat() != EtatPassage.EN_ATTENTE && passage.etat() != EtatPassage.APPELE)) {
+            return new Refuse(409, "COMMANDE_PERIMEE", "Ce Passage ne permet plus de modifier ton accord.");
+        }
+        var accuse = new AccuseAccordEnregistrement(choix.envoiId(), contexte.soireeId(), contexte.mancheId(),
+                passage.id(), choix.accord(), choix.recueLe());
+        Set<Destination> destinations = choix.accord() == choix.accordPrecedent()
+                ? Set.of() : Set.of(Destination.joueur(choix.joueurId()));
+        return new Accepte(accuse, destinations, "accord-enregistrement-modifie");
     }
 
     private ResultatDeCommande voter(VoterPassage action) {

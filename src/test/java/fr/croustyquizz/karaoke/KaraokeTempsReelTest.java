@@ -121,6 +121,111 @@ class KaraokeTempsReelTest {
         assertThat(reconnecte.messages()).isEmpty();
     }
 
+    @Test void lAccordRestePersonnelEtLInterdictionVautPourTouteLaSoiree() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String passage = json.readTree(inscription.getBody()).path("passageId").asString();
+        String route = racine + "/passages/" + passage;
+        String accord = route + "/accord-enregistrement";
+        String autorisation = racine + "/autorisation-enregistrement";
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        var manette = abonner(joueur, Canaux.joueur(joueur.identifiant()), "manette");
+        var autreManette = abonner(autre, Canaux.joueur(autre.identifiant()), "manette");
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var salle = abonner(ecran, Canaux.salle(soiree), "salle");
+        var flux = List.of(manette, autreManette, console, salle);
+        var revisionSalle = capturer(salle).path("revision");
+        assertThat(capturer(manette).at("/vue/karaoke/enregistrementAutorise").asBoolean()).isTrue();
+        assertThat(capturer(manette).at("/vue/karaoke/mesAccordsEnregistrement").size()).isZero();
+
+        var choix = Map.of("accord", true, "numeroModification", 0);
+        UUID cle = UUID.randomUUID();
+        var recu = envoyer(HttpMethod.PUT, accord, joueur, choix, cle);
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", recu, 200);
+        assertThat(lireEvenement(manette, "accord-enregistrement-modifie")
+                .at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
+        socle.registre().retirer(manche);
+        assertThat(capturer(manette).at("/vue/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
+        assertThat(capturer(autreManette).at("/vue/karaoke/mesAccordsEnregistrement").size()).isZero();
+        assertThat(capturer(console).at("/vue/karaoke").has("mesAccordsEnregistrement")).isFalse();
+        assertThat(capturer(salle).at("/vue/karaoke").has("enregistrementAutorise")).isFalse();
+        verifierRefusAccord(accord, autre, choix, 403, "ACCES_REFUSE");
+        verifierRefusAccord(accord, joueur,
+                Map.of("accord", true, "numeroModification", 0, "audio", "data:audio/webm;base64,AAAA"),
+                400, "REQUETE_INVALIDE");
+
+        KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
+                envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
+        for (var abonne : List.of(manette, autreManette, console)) {
+            var vue = lireEvenement(abonne, "autorisation-enregistrement-modifiee");
+            assertThat(vue.at("/karaoke/enregistrementAutorise").asBoolean()).isFalse();
+        }
+        assertThat(capturer(manette).at("/vue/karaoke/mesAccordsEnregistrement").size()).isZero();
+        assertThat(capturer(salle).path("revision")).isEqualTo(revisionSalle);
+        verifierRefusAccord(accord, joueur, choix, 409, "ENREGISTREMENT_INTERDIT");
+        var rejeu = envoyer(HttpMethod.PUT, accord, joueur, choix, cle);
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", rejeu, 200);
+        assertThat(json.readTree(rejeu.getBody())).isEqualTo(json.readTree(recu.getBody()));
+
+        KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
+                envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", true), UUID.randomUUID()), 200);
+        // L'interdiction suspend l'accord sans l'effacer : il revient avec l'autorisation.
+        assertThat(lireEvenement(manette, "autorisation-enregistrement-modifiee")
+                .at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
+        lireEvenement(autreManette, "autorisation-enregistrement-modifiee");
+        lireEvenement(console, "autorisation-enregistrement-modifiee");
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", envoyer(HttpMethod.PUT, accord, joueur,
+                Map.of("accord", false, "numeroModification", 0), UUID.randomUUID()), 200);
+        assertThat(lireEvenement(manette, "accord-enregistrement-modifie")
+                .at("/karaoke/mesAccordsEnregistrement").size()).isZero();
+        var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        KaraokeHttpTest.verifier("appelerPassage", appel, 200);
+        for (var abonne : flux) { lireEvenement(abonne, "passage-appele"); }
+        // Pendant l'appel, l'accord reste possible avec le numéro de modification du Passage appelé.
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", envoyer(HttpMethod.PUT, accord, joueur,
+                Map.of("accord", true, "numeroModification", 1), UUID.randomUUID()), 200);
+        assertThat(lireEvenement(manette, "accord-enregistrement-modifie")
+                .at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
+        KaraokeHttpTest.verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "etapeId", json.readTree(appel.getBody()).path("etapeId").asString(),
+                        "numeroModification", 1), null), 200);
+        // Le départ garde l'accord : c'est lui qui déclenche la prise sur la Manette.
+        var depart = lireEvenement(manette, "passage-demarre");
+        assertThat(depart.at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
+        assertThat(depart.at("/karaoke/courant/etat").asString()).isEqualTo("EN_COURS");
+        assertThat(lireEvenement(autreManette, "passage-demarre").at("/karaoke/mesAccordsEnregistrement").size()).isZero();
+        lireEvenement(console, "passage-demarre");
+        lireEvenement(salle, "passage-demarre");
+        verifierRefusAccord(accord, joueur, Map.of("accord", false, "numeroModification", 2), 409, "COMMANDE_PERIMEE");
+
+        KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
+                envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
+        // Une interdiction en plein Passage retire l'accord de la vue : la Manette arrête sa prise.
+        assertThat(lireEvenement(manette, "autorisation-enregistrement-modifiee")
+                .at("/karaoke/mesAccordsEnregistrement").size()).isZero();
+        lireEvenement(autreManette, "autorisation-enregistrement-modifiee");
+        lireEvenement(console, "autorisation-enregistrement-modifiee");
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+        for (var abonne : flux) { lireEvenement(abonne, "passage-termine"); }
+        KaraokeHttpTest.verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
+                Map.of("action", "TERMINER"), UUID.randomUUID()), 200);
+        for (var abonne : flux) { lireEvenement(abonne, "manche-terminee"); }
+        UUID suivante = service.creer(soiree, Map.of());
+        service.demarrer(suivante, new EnvoiDeCommande(animateur, "/demarrer-suivante", UUID.randomUUID(), Map.of()));
+        assertThat(lireEvenement(manette, "manche-demarree").at("/karaoke/enregistrementAutorise").asBoolean()).isFalse();
+    }
+
+    private void verifierRefusAccord(String route, Acteur acteur, Map<String, ?> choix, int statut, String code) throws Exception {
+        var refus = envoyer(HttpMethod.PUT, route, acteur, choix, UUID.randomUUID());
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", refus, statut);
+        assertThat(json.readTree(refus.getBody()).path("code").asString()).isEqualTo(code);
+    }
+
     @Test void demarrerUneMancheDansUneAutreSoireeNeChangePasLaRevisionDeLaManette() throws Exception {
         var manette = abonner(joueur, Canaux.joueur(joueur.identifiant()), "manette");
         var revision = capturer(manette).path("revision");

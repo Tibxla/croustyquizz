@@ -112,6 +112,42 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
                 d.recevoir(new VoterPassage(envoi.acteur(), recueLe, envoi.envoiId(),
                         new CiblePassage(passageId, corps.numeroModification()), corps.note().intValue()))));
     }
+    public ResultatDeCommande definirAccordEnregistrement(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.AccordEnregistrement corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+        UUID soireeId = envoi.acteur().soireeId();
+        UUID joueurId = envoi.acteur().identifiant();
+        var cible = new CiblePassage(passageId, corps.numeroModification());
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
+            boolean autorise = persistance.enregistrementAutorise(soireeId);
+            boolean precedent = autorise && persistance.accordEnregistrement(passageId, joueurId);
+            var resultat = d.recevoir(new DefinirAccordEnregistrement(joueurId, recueLe, envoi.envoiId(),
+                    cible, corps.accord(), precedent, autorise));
+            if (resultat instanceof Accepte && precedent != corps.accord()) {
+                persistance.enregistrerAccord(passageId, joueurId, corps.accord());
+            }
+            return resultat;
+        }));
+    }
+
+    public ResultatDeCommande reglerAutorisationEnregistrement(UUID mancheId, EnvoiDeCommande envoi,
+            CorpsKaraoke.AutorisationEnregistrement corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
+        UUID soireeId = envoi.acteur().soireeId();
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
+            boolean autorise = corps.autorise();
+            boolean change = autorise != persistance.enregistrementAutorise(soireeId);
+            if (change) { persistance.reglerAutorisationEnregistrement(soireeId, autorise); }
+            return new Accepte(new AccuseAutorisationEnregistrement(envoi.envoiId(), soireeId, autorise, recueLe),
+                    change ? Set.of(Destination.CONSOLE, Destination.TOUTES_LES_MANETTES) : Set.of(),
+                    "autorisation-enregistrement-modifiee");
+        }));
+    }
+
+    AccordsEnregistrement accordsEnregistrement(UUID soireeId, UUID mancheId) {
+        return persistance.accordsEnregistrement(soireeId, mancheId);
+    }
+
     public ResultatDeCommande retirerPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.RetraitPassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.commander(new RetirerPassage(envoi.acteur(),

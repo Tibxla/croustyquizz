@@ -54,6 +54,28 @@ public class KaraokeControleur {
                 new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service.voterPassage(mancheId, passageId, envoi, corps), route);
     }
+    @PutMapping(path = "/passages/{passageId}/accord-enregistrement", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> definirAccordEnregistrement(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId, @RequestBody CorpsKaraoke.AccordEnregistrement corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/accord-enregistrement";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId,
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
+        return ReponsesDeCommande.http(service.definirAccordEnregistrement(mancheId, passageId, envoi, corps), route);
+    }
+
+    @PutMapping(path = "/autorisation-enregistrement", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> reglerAutorisationEnregistrement(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @RequestBody CorpsKaraoke.AutorisationEnregistrement corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        String route = racine(soireeId, mancheId) + "/autorisation-enregistrement";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId,
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
+        return ReponsesDeCommande.http(service.reglerAutorisationEnregistrement(mancheId, envoi, corps), route);
+    }
+
     @PostMapping("/passages/{passageId}/retrait")
     public ResponseEntity<?> retirerPassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
             @PathVariable UUID passageId,

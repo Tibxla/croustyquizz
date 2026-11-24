@@ -607,6 +607,47 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         accepter(appeler(cible(PASSAGE)), "passage-appele", true);
     }
 
+    @Test
+    void lAccordDEnregistrementVautPourChaqueInterpreteJusquAuDepartSansToucherLInstantane() {
+        refuserSansMutation(() -> accorder(INTERPRETE, new CiblePassage(PASSAGE, 0), true, false, true),
+                409, "ETAPE_INACTIVE", null);
+        deroulement.demarrer();
+        inscrire(PASSAGE);
+        var avant = karaoke().instantane();
+        var accepte = (Accepte) accorder(INTERPRETE, cible(PASSAGE), true, false, true);
+        assertThat(accepte.typeEvenement()).isEqualTo("accord-enregistrement-modifie");
+        assertThat(accepte.aRepublier()).containsExactly(Destination.joueur(JOUEUR));
+        assertThat(accepte.accuse()).isEqualTo(new AccuseAccordEnregistrement(ENVOI, SOIREE, MANCHE, PASSAGE, true,
+                horloge.maintenant()));
+        assertThat(karaoke().instantane()).isEqualTo(avant);
+        // Un choix identique au précédent rend son reçu sans rien republier.
+        assertThat(((Accepte) accorder(INTERPRETE, cible(PASSAGE), true, true, true)).aRepublier()).isEmpty();
+
+        var autre = new Acteur(Acteur.Type.JOUEUR, new UUID(0, 99), SOIREE);
+        refuserSansMutation(() -> accorder(autre, cible(PASSAGE), true, false, true), 403, "ACCES_REFUSE", null);
+        refuserSansMutation(() -> accorder(INTERPRETE, new CiblePassage(INCONNU, 0), true, false, true),
+                404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> accorder(INTERPRETE, cible(PASSAGE), true, false, false),
+                409, "ENREGISTREMENT_INTERDIT", null);
+        refuserSansMutation(() -> accorder(INTERPRETE, new CiblePassage(PASSAGE, 7), true, false, true),
+                409, "COMMANDE_PERIMEE", null);
+
+        accepter(appeler(cible(PASSAGE)), "passage-appele", true);
+        assertThat(accorder(INTERPRETE, cible(PASSAGE), false, true, true)).isInstanceOf(Accepte.class);
+        confirmerCourant();
+        refuserSansMutation(() -> accorder(INTERPRETE, cible(PASSAGE), true, false, true),
+                409, "COMMANDE_PERIMEE", null);
+        deroulement.terminer(pilotage());
+        refuserSansMutation(() -> accorder(INTERPRETE, cible(PASSAGE), true, false, true),
+                409, "ETAT_INCOMPATIBLE", null);
+    }
+
+    private ResultatDeCommande accorder(Acteur joueur, CiblePassage cible, boolean accord, boolean precedent,
+            boolean autorise) {
+        return deroulement.recevoir(new DefinirAccordEnregistrement(joueur.identifiant(), horloge.maintenant(), ENVOI,
+                cible, accord, precedent, autorise));
+    }
+
     private ResultatDeCommande inscrire(UUID id) {
         var contenu = new ContenuKaraoke(new Chanson(id.toString(), 42, "Titre", "Artiste", null, 180_000L,
                 EtatParoles.SYNCHRONISEES), List.of(new LigneParoles(12_000, "Des paroles")));
