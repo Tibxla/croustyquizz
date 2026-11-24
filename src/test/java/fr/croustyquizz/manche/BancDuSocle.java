@@ -29,11 +29,14 @@ public final class BancDuSocle {
 	}
 	/** Permet de forcer une expiration concurrente sans attendre le temps réel. */
 	public BancDuSocle(Horloge horlogeDuSocle) {
+		this(horlogeDuSocle, soireeId -> false);
+	}
+	public BancDuSocle(Horloge horlogeDuSocle, PilotageDeSoiree pilotage) {
 		FournisseurDeBloc bloc = new BlocFacticeDuSocle(this::serviceCourant, stockage);
 		assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
 		var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
 		service = new ServiceDeManche<>(mode, mode, new SocleDeManche(verrous, stockage, stockage, registre,
-				new RegistreDesEnvois(stockage, json), vues, horlogeDuSocle == null ? horloge : horlogeDuSocle, json));
+				new RegistreDesEnvois(stockage, json), vues, horlogeDuSocle == null ? horloge : horlogeDuSocle, json, pilotage));
 	}
 	private ServiceDeManche<?, ?> serviceCourant() { return service; }
 	public UUID creer(UUID soireeId) {

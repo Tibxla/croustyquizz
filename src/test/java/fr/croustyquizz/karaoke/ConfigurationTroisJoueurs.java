@@ -12,7 +12,7 @@ import org.springframework.context.annotation.*;
 public class ConfigurationTroisJoueurs {
     public static final List<UUID> JOUEURS = List.of(UUID.fromString("10000000-0000-4000-8000-000000000001"),
             UUID.fromString("10000000-0000-4000-8000-000000000002"), UUID.fromString("10000000-0000-4000-8000-000000000003"));
-    @Bean @Primary PortsDePassageFactices portsFactices() { return new PortsDePassageFactices(); }
+    @Bean @Primary PortsDePassageFactices portsFactices() { return new PortsDePassageFactices(JOUEURS); }
     @Bean @Primary Horloge horlogeKaraoke() { return new HorlogeFactice(); }
     @Bean @Primary SourceDeParoles sourceKaraoke() {
         return new SourceDeParoles() {

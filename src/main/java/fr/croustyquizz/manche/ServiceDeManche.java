@@ -1,5 +1,8 @@
 package fr.croustyquizz.manche;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -46,20 +49,24 @@ public class ServiceDeManche<R, E> {
 		});
 	}
 	public ResultatDeCommande demarrer(UUID mancheId, EnvoiDeCommande envoi) {
-		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete(d -> {
+		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
 			d.demarrer();
-			return new Accepte(new AccuseCommande(envoi.envoiId(), socle.horloge().maintenant(), envoi.acteur().soireeId()),
+			return new Accepte(new AccuseCommande(envoi.envoiId(), recueLe, envoi.acteur().soireeId()),
 					TOUT, "manche-demarree");
 		}), EtatManche.EN_COURS, true);
 	}
 	public ResultatDeCommande piloter(UUID mancheId, EnvoiDeCommande envoi, InterventionDeManche intervention) {
-		CommandePilotage commande = new CommandePilotage(envoi.acteur(), envoi.envoiId(), socle.horloge().maintenant());
-		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete(d -> intervention.appliquer(d, commande)),
+		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+				intervention.appliquer(d, new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))),
 				intervention.etatCible(), false);
 	}
 	/** La préparation externe est hors verrou ; sa fonction revalide ensuite le domaine sous verrou. */
 	public ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer) {
-		return traiter(mancheId, envoi, preparer, null, false);
+		return executer(mancheId, envoi, preparer, null);
+	}
+	protected ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi,
+			Supplier<PreparationDeCommande> preparer, EtatManche etatApresAcceptation) {
+		return traiter(mancheId, envoi, preparer, etatApresAcceptation, false);
 	}
 	private ResultatDeCommande traiter(UUID id, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer,
 			EtatManche cible, boolean demarrage) {
@@ -85,9 +92,10 @@ public class ServiceDeManche<R, E> {
 				if (resultat == null) { resultat = verifierAvantPreparation(manche, envoi, demarrage); }
 				if (resultat == null) {
 					var deroulement = deroulement(manche);
-					resultat = preparation.appliquer().apply(deroulement);
+					Instant recueLe = socle.horloge().maintenant().truncatedTo(MICROS);
+					resultat = preparation.appliquer().apply(deroulement, recueLe);
 					if (resultat instanceof Accepte accepte) {
-						enregistrer(manche, deroulement, cible, accepte, deroulement.instantane());
+						enregistrer(manche, deroulement, cible, accepte, deroulement.instantane(), recueLe);
 					}
 				}
 			}
@@ -125,8 +133,10 @@ public class ServiceDeManche<R, E> {
 		return socle.registre().obtenir(manche.getMancheId(), () -> {
 			R reglages = socle.json().readValue(manche.getReglages(), fabrique.typeReglages());
 			HorlogeDeManche horloge = new HorlogeDeManche(socle.horloge(), (d, action) -> minuter(manche, d, action));
+			boolean automatique = socle.pilotage().estAutomatique(manche.getSoireeId());
+			// Le service constate estTerminee et persiste la fin naturelle.
 			var contexte = new ContexteDeManche(manche.getSoireeId(), manche.getMancheId(), fabrique.reglagesCommuns(reglages),
-					horloge, () -> { }); // Le service constate estTerminee et persiste la fin naturelle.
+					horloge, () -> { }, automatique);
 			DeroulementDeManche d = manche.getEtat() == EtatManche.PRETE ? fabrique.creer(contexte, reglages)
 					: fabrique.restaurer(contexte, reglages, persistance.charger(manche.getMancheId()), manche.getEtat());
 			horloge.attacher(d);
@@ -144,13 +154,22 @@ public class ServiceDeManche<R, E> {
 			rappel.action().run();
 			Object apres = d.instantane();
 			if (!Objects.equals(avant, apres)) {
-				enregistrer(manche, d, null, new Accepte(null, TOUT, fabrique.typeEvenementMinuteur(d)), apres);
+				enregistrer(manche, d, null, new Accepte(null, TOUT, fabrique.typeEvenementMinuteur(d)), apres,
+						socle.horloge().maintenant());
 			}
 			return null;
 		});
 	}
-	private void enregistrer(ManchePersistante manche, DeroulementDeManche d, EtatManche cible, Accepte accepte, Object instantane) {
-		manche.changerEtat(d.estTerminee() ? EtatManche.TERMINEE : cible == null ? manche.getEtat() : cible, socle.horloge().maintenant());
+	/** Un mode peut exposer son propre état dans son instantané. */
+	protected EtatManche etatApresAcceptation(EtatManche etatParDefaut, Object instantane) {
+		return etatParDefaut;
+	}
+
+	private void enregistrer(ManchePersistante manche, DeroulementDeManche d, EtatManche cible, Accepte accepte,
+			Object instantane, Instant recueLe) {
+		EtatManche etatParDefaut = cible == null ? manche.getEtat() : cible;
+		EtatManche etat = d.estTerminee() ? EtatManche.TERMINEE : etatApresAcceptation(etatParDefaut, instantane);
+		manche.changerEtat(etat, recueLe);
 		persistance.enregistrer(manche.getMancheId(), instantane);
 		socle.depot().enregistrer(manche);
 		socle.vues().publier(manche.getSoireeId(), accepte);

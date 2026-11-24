@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import java.util.concurrent.atomic.AtomicReference;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionSystemException;
@@ -19,6 +21,52 @@ import fr.croustyquizz.tempsreel.DiffuseurFactice;
 class ServiceDeMancheTest {
 	private final BancDuSocle banc = new BancDuSocle();
 	private final UUID soiree = UUID.randomUUID();
+
+	@Test
+	void leDeroulementRecoitLePilotageDeSaSoireeALaCreationEtALaRestauration() {
+		var automatique = new AtomicBoolean(true);
+		var bancPilote = new BancDuSocle(null, id -> soiree.equals(id) && automatique.get());
+		UUID manche = bancPilote.creer(soiree);
+		assertThat(bancPilote.service.demarrer(manche, bancPilote.envoi(soiree, "/demarrer", Map.of())))
+				.isInstanceOf(Accepte.class);
+		ContexteDeManche initial = bancPilote.mode.dernierContexte;
+		assertThat(initial.pilotageAutomatique()).isTrue();
+
+		automatique.set(false);
+		bancPilote.service.instantane(soiree, manche);
+		assertThat(bancPilote.mode.dernierContexte).isSameAs(initial);
+		assertThat(initial.pilotageAutomatique()).isTrue();
+		automatique.set(true);
+		bancPilote.registre.retirer(manche);
+		bancPilote.service.instantane(soiree, manche);
+		assertThat(bancPilote.mode.dernierContexte).isNotSameAs(initial);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isTrue();
+
+		UUID autreSoiree = UUID.randomUUID();
+		UUID autreManche = bancPilote.creer(autreSoiree);
+		assertThat(bancPilote.service.demarrer(autreManche, bancPilote.envoi(autreSoiree, "/demarrer", Map.of())))
+				.isInstanceOf(Accepte.class);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isFalse();
+	}
+
+	@Test
+	void uneRestaurationApresRedemarragePerdLeChoixDeDemonstration() {
+		var choix = new AtomicReference<>(new PilotageDeSoireeDemonstration());
+		choix.get().choisir(soiree, true);
+		var bancPilote = new BancDuSocle(null, id -> choix.get().estAutomatique(id));
+		UUID manche = bancPilote.creer(soiree);
+		assertThat(bancPilote.service.demarrer(manche, bancPilote.envoi(soiree, "/demarrer", Map.of())))
+				.isInstanceOf(Accepte.class);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isTrue();
+
+		choix.set(new PilotageDeSoireeDemonstration());
+		bancPilote.registre.retirer(manche);
+		bancPilote.service.instantane(soiree, manche);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isFalse();
+		var fournisseur = new fr.croustyquizz.tempsreel.FournisseurCommunDemonstration(
+				bancPilote.stockage, bancPilote.json, choix.get());
+		assertThat(fournisseur.fournir(soiree, Destination.CONSOLE).get("soiree")).extracting("pilotage").isEqualTo("MANUEL");
+	}
 
 	@Test
 	void repeterUnPilotageRendLeRecuInitialSansRepublierMemeApresRestauration() {
@@ -41,6 +89,44 @@ class ServiceDeMancheTest {
 		assertThat(banc.service.piloter(manche, banc.envoi(soiree, "/commandes", reprise), reprise)).isInstanceOf(Accepte.class);
 		banc.horloge.avancer(Duration.ofSeconds(20));
 		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+	}
+
+	@Test
+	void laTransitionDemandeeParLeModeNestPersisteeQuePourUneAcceptation() {
+		UUID manche = demarrer();
+		var refus = new Refuse(409, "ETAT_INCOMPATIBLE", "Transition refusée.");
+		var envoiRefuse = banc.envoi(soiree, "/transition", Map.of());
+		assertThat(banc.service.executer(manche, envoiRefuse, () -> PreparationDeCommande.prete(d -> refus),
+				EtatManche.EN_PAUSE)).isEqualTo(refus);
+		assertThat(banc.stockage.charger(manche).getEtat()).isEqualTo(EtatManche.EN_COURS);
+
+		var envoi = banc.envoi(soiree, "/transition", Map.of());
+		assertThat(banc.service.executer(manche, envoi, () -> PreparationDeCommande.prete(d ->
+				d.mettreEnPause(new CommandePilotage(envoi.acteur(), envoi.envoiId(), banc.horloge.maintenant()))),
+				EtatManche.EN_PAUSE)).isInstanceOf(Accepte.class);
+		assertThat(banc.stockage.charger(manche).getEtat()).isEqualTo(EtatManche.EN_PAUSE);
+	}
+
+	@Test
+	void laDatePersistanteEstCelleDeLaCommandeMemeSiLHorlogeAvance() {
+		var temps = new HorlogeFactice(Instant.parse("2026-10-02T20:00:00.123456789Z"));
+		Horloge horloge = new Horloge() {
+			@Override public Instant maintenant() {
+				Instant instant = temps.maintenant();
+				temps.avancer(Duration.ofMillis(2));
+				return instant;
+			}
+			@Override public Minuteur programmer(Duration delai, Runnable action) { return temps.programmer(delai, action); }
+		};
+		var socle = new BancDuSocle(horloge);
+		UUID manche = socle.creer(soiree);
+		socle.service.demarrer(manche, socle.envoi(soiree, "/demarrer", Map.of()));
+
+		var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
+		var resultat = (Accepte) socle.service.piloter(manche, socle.envoi(soiree, "/commandes", pause), pause);
+		Instant recueLe = ((AccuseCommande) resultat.accuse()).recueLe();
+		assertThat(socle.stockage.charger(manche).getModifieLe()).isEqualTo(recueLe);
+		assertThat(recueLe.getNano() % 1_000).isZero();
 	}
 
 	@Test
@@ -270,7 +356,7 @@ class ServiceDeMancheTest {
 		var socle = new SocleDeManche(banc.verrous, banc.stockage, banc.stockage, banc.registre,
 				new RegistreDesEnvois(banc.stockage, banc.json),
 				new fr.croustyquizz.tempsreel.PublicationDeVues(banc.assembleur, banc.commun,
-						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur), banc.horloge, banc.json);
+						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur), banc.horloge, banc.json, soireeId -> false);
 		class ServiceAvecGarde extends ServiceDeManche<ModeFacticeDuSocle.Reglages, DeroulementFactice.Etat> {
 			ServiceAvecGarde() { super(banc.mode, banc.mode, socle); }
 			@Override protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {

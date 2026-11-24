@@ -609,6 +609,10 @@ classDiagram
         +Optional~ContenuKaraoke~ charger(long idLrclib)
     }
     class AdaptateurLrclib
+    class ServiceDeManche {
+        +executer(UUID, EnvoiDeCommande, Supplier~PreparationDeCommande~) ResultatDeCommande
+        #executer(UUID, EnvoiDeCommande, Supplier~PreparationDeCommande~, EtatManche etatApresAcceptation) ResultatDeCommande
+    }
     class ServiceKaraoke {
         +rechercherChansons(Acteur, UUID, UUID, String, UUID) ResultatsChansons
         +consulterChanson(Acteur, UUID, UUID, String) FicheChanson
@@ -618,15 +622,41 @@ classDiagram
         +deplacerPassage(UUID, UUID, EnvoiDeCommande, PlacementPassage) ResultatDeCommande
         +definirPrioritePassage(UUID, EnvoiDeCommande, PrioritePassage) ResultatDeCommande
         +reglerLimitePassages(UUID, EnvoiDeCommande, LimitePassages) ResultatDeCommande
+        +appelerPassage(UUID, UUID, EnvoiDeCommande, AppelPassage) ResultatDeCommande
+        +confirmerPresencePassage(UUID, UUID, EnvoiDeCommande, ConfirmationPresencePassage) ResultatDeCommande
+        +designerLecteurChanson(UUID, EnvoiDeCommande, DesignationLecteur) ResultatDeCommande
+        +declarerLectureChanson(UUID, UUID, EnvoiDeCommande, DeclarationLectureChanson) ResultatDeCommande
+        +signalerFinLectureChanson(UUID, UUID, EnvoiDeCommande, SignalFinLectureChanson) ResultatDeCommande
+        +signalerErreurLectureChanson(UUID, UUID, EnvoiDeCommande, SignalErreurLectureChanson) ResultatDeCommande
+        +releverPositionLecture(UUID, UUID, EnvoiDeCommande, RelevePositionLecture) ResultatDeCommande
+        +reprendreEnParolesSeules(UUID, UUID, EnvoiDeCommande, RepriseParolesSeules) ResultatDeCommande
+        +marquerDebutParoles(UUID, UUID, EnvoiDeCommande, MarqueDebutParoles) ResultatDeCommande
+        +corrigerCalage(UUID, UUID, EnvoiDeCommande, CorrectionCalage) ResultatDeCommande
     }
     class KaraokeControleur
     class ConvertisseurCorpsKaraoke
     class FournisseurDeBlocKaraoke
     class VuesKaraoke
-    class PersistanceKaraokeJpa
+    class PersistanceKaraokeJpa {
+        +charger(UUID) EtatKaraokePersiste
+        +enregistrer(UUID, Object)
+    }
+    class ChoixDeVersionParoles {
+        +choisir(ContenuKaraoke, long) ResultatChoix
+    }
+    class MemoireDeCalageJpa {
+        +lire(String, long, String, long) long
+        +memoriser(String, long, FichierAudioLocal, long, Instant)
+    }
+    class LecteurChansonPersistant
+    class LecturePassagePersistante
+    class CalageChansonPersistant
+    class CyclePassagePersistant
     class PersistancePassageJpa {
         +charger(UUID mancheId) EtatFileAttente
         +enregistrer(UUID mancheId, EtatFileAttente)
+        +chargerCycle(UUID mancheId) EtatCyclePassage
+        +enregistrerCycle(UUID mancheId, EtatCyclePassage)
         +numeroPropose(UUID soireeId) long
         +incrementerNumero(UUID soireeId, long numeroAccepte)
     }
@@ -918,10 +948,17 @@ classDiagram
     ServiceKaraoke --> PorteeDePassage
     ServiceKaraoke --> ParticipantsDePassage
     ServiceKaraoke --> PersistancePassageJpa : numéro sous verrou
-    ServiceKaraoke --> SourceDeParoles : consulte hors verrou
+    ServiceKaraoke --> SourceDeParoles : catalogue hors verrou
+    ServiceKaraoke --> ChoixDeVersionParoles : prépare hors verrou
+    ChoixDeVersionParoles --> SourceDeParoles : sélectionne la version
+    ServiceKaraoke --> MemoireDeCalageJpa : lit et écrit sous verrou
+    MemoireDeCalageJpa --> CalageChansonPersistant
     ServiceKaraoke --> PersistanceKaraokeJpa : transaction commune
     PersistanceKaraokeJpa --> PersistancePassageJpa
     PersistanceKaraokeJpa --> ContenuPassagePersistant
+    PersistanceKaraokeJpa --> LecturePassagePersistante
+    PersistanceKaraokeJpa --> LecteurChansonPersistant
+    PersistancePassageJpa --> CyclePassagePersistant
     PersistancePassageJpa --> FileAttentePersistante
     PersistancePassageJpa --> PassagePersistant
     PersistancePassageJpa --> InterpretePersistant
@@ -935,6 +972,7 @@ classDiagram
     ParticipantsDePassage <|.. ParticipantsDePassageSoiree : soiree, Joueurs en base
     EtatDeSoiree <|.. EtatDeSoireeEnregistree : soiree
     VuesKaraoke --> FileAttente : ordre et estimations
+    VuesKaraoke ..> CycleDePassage : projette le courant
     SourceDeParoles <|.. AdaptateurLrclib
     SourceDeParoles ..> Chanson
     SourceDeParoles ..> ContenuKaraoke

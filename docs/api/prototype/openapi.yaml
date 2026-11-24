@@ -177,6 +177,47 @@ paths:
         '409': {$ref: '#/components/responses/Erreur409'}
         '503': {$ref: '#/components/responses/Erreur503'}
 
+  /api/test/soirees/{soireeId}/pilotage:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    put:
+      operationId: choisirPilotageDeTest
+      description: >-
+        Réservé à l'Animateur de démonstration dans les profils dev et recette.
+        Le choix est possible tant qu'aucune Manche de la Soirée n'a démarré.
+        Il est gardé en mémoire et perdu au redémarrage. Le Pilotage d'une Soirée
+        enregistrée reste celui choisi à sa création.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pilotage]
+              properties:
+                pilotage: {type: string, enum: [MANUEL, AUTOMATIQUE]}
+      responses:
+        '200':
+          description: Choix enregistré pour la démonstration, sans publication.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [soireeId, pilotage]
+                properties:
+                  soireeId: {type: string, format: uuid}
+                  pilotage: {type: string, enum: [MANUEL, AUTOMATIQUE]}
+        '400': {$ref: '#/components/responses/Erreur400'}
+        '401': {$ref: '#/components/responses/Erreur401'}
+        '403': {$ref: '#/components/responses/Erreur403'}
+        '404': {$ref: '#/components/responses/Erreur404'}
+        '409': {$ref: '#/components/responses/Erreur409'}
+
 components:
   responses:
     Erreur400:

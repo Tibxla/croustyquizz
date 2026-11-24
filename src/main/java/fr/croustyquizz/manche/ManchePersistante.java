@@ -1,5 +1,7 @@
 package fr.croustyquizz.manche;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import java.time.Instant;
 import java.util.UUID;
 import jakarta.persistence.Entity;
@@ -24,12 +26,13 @@ public class ManchePersistante {
 	protected ManchePersistante() { }
 	public ManchePersistante(UUID mancheId, UUID soireeId, ModeDeJeu mode, String reglages, Instant maintenant) {
 		this.mancheId = mancheId; this.soireeId = soireeId; this.mode = mode; this.reglages = reglages;
-		this.etat = EtatManche.PRETE; this.creeLe = maintenant; this.modifieLe = maintenant;
+		this.etat = EtatManche.PRETE; this.creeLe = maintenant.truncatedTo(MICROS); this.modifieLe = creeLe;
 	}
 	public UUID getMancheId() { return mancheId; }
 	public UUID getSoireeId() { return soireeId; }
 	public ModeDeJeu getMode() { return mode; }
 	public EtatManche getEtat() { return etat; }
 	public String getReglages() { return reglages; }
-	public void changerEtat(EtatManche valeur, Instant maintenant) { etat = valeur; modifieLe = maintenant; }
+	public Instant getModifieLe() { return modifieLe; }
+	public void changerEtat(EtatManche valeur, Instant maintenant) { etat = valeur; modifieLe = maintenant.truncatedTo(MICROS); }
 }

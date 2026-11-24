@@ -18,16 +18,17 @@ public final class ParticipantsDePassageDemonstration implements ParticipantsDeP
     private final FournisseurPartieCommune commun;
     public ParticipantsDePassageDemonstration(FournisseurPartieCommune commun) { this.commun = commun; }
     @Override public boolean estPresent(UUID soireeId, UUID joueurId) { return commun.joueurs(soireeId).contains(joueurId); }
-    @Override public String pseudo(UUID soireeId, UUID joueurId) {
+    @Override public Map<UUID, String> pseudos(UUID soireeId) {
         Object joueurs = commun.fournir(soireeId, Destination.SALLE).get("joueurs");
+        Map<UUID, String> pseudos = new HashMap<>();
         if (joueurs instanceof List<?> liste) {
             for (Object valeur : liste) {
-                if (valeur instanceof Map<?, ?> joueur && joueurId.toString().equals(String.valueOf(joueur.get("id")))) {
+                if (valeur instanceof Map<?, ?> joueur && joueur.get("id") instanceof UUID id) {
                     Object pseudo = joueur.get("pseudo");
-                    if (pseudo instanceof String texte && !texte.isBlank()) { return texte; }
+                    pseudos.put(id, pseudo instanceof String texte && !texte.isBlank() ? texte : JOUEUR_PARTI);
                 }
             }
         }
-        return JOUEUR_PARTI;
+        return Map.copyOf(pseudos);
     }
 }

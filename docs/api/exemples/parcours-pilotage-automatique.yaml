@@ -1,0 +1,65 @@
+description: Une Soirée fictive en Pilotage Automatique, de la préparation à l'ouverture.
+evenementsComplets: true
+parametresCommuns:
+  soireeId: &soireeId 11900000-0000-4000-8000-000000000001
+http:
+- nom: Lire le Pilotage Automatique dans la Console
+  operationId: retrouverEtatConsole
+  acteur: animateur:11900000-0000-4000-8000-000000000002
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 0
+    heureServeur: 2026-11-23T20:00:00.000Z
+    abonnementId: null
+    vue: &preparation
+      soiree:
+        id: *soireeId
+        titre: Soirée fictive en Pilotage Automatique
+        format: SOLO
+        pilotage: AUTOMATIQUE
+        etat: PREPARATION
+        codeAcces: null
+      mancheActive: null
+      modeEnCours: null
+      joueurs: []
+      classement: []
+      dernierBuzz: null
+      programme: []
+evenements:
+- nom: Ouvrir la Soirée en Pilotage Automatique
+  canal: console
+  message: &ouverture
+    type: soiree-ouverte
+    soireeId: *soireeId
+    revision: 1
+    emisLe: 2026-11-23T20:00:01.000Z
+    donnees: &ouverte
+      soiree:
+        id: *soireeId
+        titre: Soirée fictive en Pilotage Automatique
+        format: SOLO
+        pilotage: AUTOMATIQUE
+        etat: OUVERTE
+        codeAcces: D3M8AB
+      mancheActive: null
+      modeEnCours: null
+      joueurs: []
+      classement: []
+      dernierBuzz: null
+      programme: []
+resynchronisation:
+  destination: /topic/soirees/11900000-0000-4000-8000-000000000001/console
+  routeEtat: /api/soirees/11900000-0000-4000-8000-000000000001/etat/console
+  typeEvenementFinal: soiree-ouverte
+  etat:
+    abonnementId: 11900000-0000-4000-8000-000000000003
+    revision: 0
+    heureServeur: 2026-11-23T20:00:00.000Z
+    vue: *preparation
+  tampon:
+  - *ouverture
+  - *ouverture
+  revisionFinale: 1
+  vueFinale: *ouverte
+cases: []
