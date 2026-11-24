@@ -122,7 +122,7 @@ public class ServiceSoiree {
 				}
 			}
 		}
-		throw new IllegalStateException("Aucun code d'accès libre après " + ESSAIS_DE_CODE + " essais");
+		throw new AucunCodeLibre(ESSAIS_DE_CODE);
 	}
 
 	private Ouverture ouvrirAvecUnTirage(UUID soireeId) {

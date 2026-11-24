@@ -2,6 +2,7 @@ package fr.croustyquizz.soiree;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
 
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
@@ -48,6 +50,8 @@ class SoireeHttpTest {
 
 	@Autowired
 	private ResolveurDActeur resolveur;
+	@MockitoSpyBean
+	private TirageDeCode tirage;
 
 	@AfterEach
 	void effacerLaBase() {
@@ -103,6 +107,9 @@ class SoireeHttpTest {
 		var sansTitre = envoyer(HttpMethod.POST, "/api/soirees",
 				Map.of("titre", "   ", "format", "SOLO", "pilotage", "MANUEL"));
 		verifierRefus("creerSoiree", sansTitre, 422, "DONNEES_INVALIDES");
+		// Un champ requis absent viole le schéma : 400, comme un Format absent.
+		verifierRefus("creerSoiree", envoyer(HttpMethod.POST, "/api/soirees",
+				Map.of("format", "SOLO", "pilotage", "MANUEL")), 400, "REQUETE_INVALIDE");
 
 		Map<String, Object> sansFormat = new HashMap<>(Map.of("titre", "Quiz", "pilotage", "MANUEL"));
 		verifierRefus("creerSoiree", envoyer(HttpMethod.POST, "/api/soirees", sansFormat), 400, "REQUETE_INVALIDE");
@@ -341,6 +348,19 @@ class SoireeHttpTest {
 					assertThat(refus.refus().statutHttp()).isEqualTo(401);
 					assertThat(refus.refus().code()).isEqualTo("AUTHENTIFICATION_REQUISE");
 				});
+	}
+
+	@Test
+	void sansCodeLibreApresTousLesEssaisLOuvertureRepond503EtLaSoireeResteEnPreparation() throws Exception {
+		String pris = soireeOuverte().path("codeAcces").asString();
+		String id = json.readTree(envoyer(HttpMethod.POST, "/api/soirees",
+				Map.of("titre", "Quiz", "format", "SOLO", "pilotage", "MANUEL")).getBody()).path("id").asString();
+		doReturn(pris).when(tirage).tirer();
+
+		verifierRefus("ouvrirSoiree", envoyer(HttpMethod.POST, "/api/soirees/" + id + "/ouverture", null), 503,
+				"SERVICE_INDISPONIBLE");
+		assertThat(json.readTree(envoyer(HttpMethod.GET, "/api/soirees/" + id, null).getBody()).path("etat").asString())
+				.isEqualTo("PREPARATION");
 	}
 
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps) {

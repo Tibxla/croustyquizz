@@ -220,7 +220,7 @@ class ServiceSoireeTest {
 		}
 		UUID seconde = soireeCreee();
 
-		assertThatThrownBy(() -> service.ouvrir(seconde)).isInstanceOf(IllegalStateException.class);
+		assertThatThrownBy(() -> service.ouvrir(seconde)).isInstanceOf(AucunCodeLibre.class);
 		assertThat(service.consulter(seconde).getEtat()).isEqualTo(EtatSoiree.PREPARATION);
 		assertThat(tirage.tirages()).isEqualTo(1 + ServiceSoiree.ESSAIS_DE_CODE);
 	}
