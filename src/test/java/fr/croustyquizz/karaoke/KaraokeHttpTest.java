@@ -31,6 +31,7 @@ class KaraokeHttpTest {
     @Autowired ServiceKaraoke service;
     @Autowired PortsDePassageFactices ports;
     @Autowired DepotDeManches depot;
+    @Autowired PilotageDeSoireeDemonstration pilotage;
     @MockitoSpyBean PersistanceKaraokeJpa persistance;
     final UUID soiree = UUID.randomUUID();
     final Acteur animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
@@ -339,6 +340,78 @@ class KaraokeHttpTest {
                 409, "COMMANDE_PERIMEE");
     }
 
+    @Test void leVoteAppliqueLesRefusCommunsEtMetierEtRejoueLeRecuInitial() throws Exception {
+        UUID manche = demarrer();
+        var votant = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(1), soiree);
+        String chemin = racine(manche) + "/passages/" + inscrire(manche, joueur, 1);
+        String route = chemin + "/vote";
+        UUID cle = UUID.randomUUID();
+        var demande = Map.of("envoiId", cle, "numeroModification", 3, "note", 4);
+
+        for (Object invalide : List.of(0, 6, 4.5, "4", true)) {
+            refuserVote(route, null, Map.of("envoiId", cle, "numeroModification", 3, "note", invalide), 400, "REQUETE_INVALIDE");
+        }
+        for (String champ : List.of("joueurId", "inconnu")) {
+            var invalide = new HashMap<String, Object>(demande);
+            invalide.put(champ, votant.identifiant());
+            refuserVote(route, votant, invalide, 400, "REQUETE_INVALIDE");
+        }
+        refuserVote(route, null, demande, 401, "AUTHENTIFICATION_REQUISE");
+        refuserVote(route, animateur, demande, 403, "ACCES_REFUSE");
+        refuserVote(route.replace(manche.toString(), UUID.randomUUID().toString()), votant, demande, 404, "RESSOURCE_INTROUVABLE");
+        ports.absents.add(votant.identifiant());
+        try {
+            refuserVote(route, votant, demande, 404, "RESSOURCE_INTROUVABLE");
+            assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(votant, route, cle))).isNull();
+        } finally { ports.absents.remove(votant.identifiant()); }
+        ports.inactives.add(manche);
+        try {
+            refuserVote(route, votant, demande, 409, "ETAPE_INACTIVE");
+            assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(votant, route, cle))).isNull();
+        } finally { ports.inactives.remove(manche); }
+
+        socle.registre().retirer(manche);
+        doThrow(new DataAccessResourceFailureException("Stockage indisponible pour ce test")).when(persistance).charger(manche);
+        try {
+            refuserVote(route, votant, demande, 503, "SERVICE_INDISPONIBLE");
+            assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(votant, route, cle))).isNull();
+        } finally { doCallRealMethod().when(persistance).charger(manche); }
+
+        String inconnu = racine(manche) + "/passages/" + UUID.randomUUID() + "/vote";
+        piloter(racine(manche), "METTRE_EN_PAUSE");
+        refuserVote(inconnu, votant, demande, 404, "RESSOURCE_INTROUVABLE");
+        assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(votant, inconnu, cle))).isNotNull();
+        var pause = Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0, "note", 4);
+        refuserVote(route, votant, pause, 409, "ETAT_INCOMPATIBLE");
+        piloter(racine(manche), "REPRENDRE");
+        refuserVote(route, votant, pause, 409, "ETAT_INCOMPATIBLE");
+        refuserVote(route, joueur, Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0, "note", 4), 409, "VOTE_INTERDIT");
+        refuserVote(route, votant, Map.of("envoiId", UUID.randomUUID(), "numeroModification", 1, "note", 4), 409, "COMMANDE_PERIMEE");
+        refuserVote(route, votant, Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0, "note", 4), 409, "VOTE_CLOS");
+
+        var appel = envoyer(HttpMethod.POST, chemin + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        verifier("appelerPassage", appel, 200);
+        var etape = json.readTree(appel.getBody()).path("etapeId").asString();
+        verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, chemin + "/presence", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "etapeId", etape, "numeroModification", 1), null), 200);
+        ((HorlogeFactice) socle.horloge()).avancer(java.time.Duration.ofSeconds(180));
+        var recu = envoyer(HttpMethod.POST, route, votant, demande, null);
+        verifier("voterPassage", recu, 200);
+        assertThat(recu.getHeaders().getLocation()).isNull();
+        assertThat(json.readTree(recu.getBody()).path("note").asInt()).isEqualTo(4);
+        refuserVote(route, votant, Map.of("envoiId", cle, "numeroModification", 3, "note", 5), 409, "ENVOI_REUTILISE");
+        refuserVote(route, votant, Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", 5), 409, "VOTE_DEJA_ENREGISTRE");
+        piloter(racine(manche), "TERMINER");
+        var rejeu = envoyer(HttpMethod.POST, route, votant, demande, null);
+        verifier("voterPassage", rejeu, 200);
+        assertThat(json.readTree(rejeu.getBody())).isEqualTo(json.readTree(recu.getBody()));
+        refuserVote(route, votant, Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", 4), 409, "ETAT_INCOMPATIBLE");
+    }
+
+    private void refuserVote(String route, Acteur acteur, Object corps, int statut, String code) throws Exception {
+        refuser("voterPassage", envoyer(HttpMethod.POST, route, acteur, corps, null), statut, code);
+    }
+
     @Test void lesDixOperationsAppliquentLesRefusCommunsEtConserventSeulementLesRecusDurables() throws Exception {
         UUID manche = demarrer();
         UUID passage = inscrire(manche, joueur, 1);
@@ -392,6 +465,32 @@ class KaraokeHttpTest {
         refuser("appelerPassage", envoyer(HttpMethod.POST, secondAppel, animateur, corps, UUID.randomUUID()), 409, "COMMANDE_PERIMEE");
         verifier("appelerPassage", envoyer(HttpMethod.POST, premierAppel, animateur, corps, UUID.randomUUID()), 200);
         refuser("appelerPassage", envoyer(HttpMethod.POST, secondAppel, animateur, corps, UUID.randomUUID()), 409, "ETAT_INCOMPATIBLE");
+    }
+
+    @Test void leContratConserveLe201EtRefuseLAppelManuelEnAutomatique() throws Exception {
+        pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        String racine = racine(manche);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        verifier("inscrirePassage", inscription, 201);
+        var recu = json.readTree(inscription.getBody());
+        assertThat(recu.path("etatApres").asString()).isEqualTo("EN_ATTENTE");
+        assertThat(recu.path("numeroModification").asInt()).isZero();
+        var avant = (InstantaneKaraoke) service.instantane(soiree, manche);
+        UUID courant = UUID.fromString(recu.path("passageId").asString());
+        assertThat(avant.cycle().passageId()).isEqualTo(courant);
+
+        String route = racine + "/passages/" + courant + "/appel";
+        var corps = Map.of("numeroModification", 0);
+        var refus = envoyer(HttpMethod.POST, route, animateur, corps, UUID.randomUUID());
+        refuser("appelerPassage", refus, 409, "ETAT_INCOMPATIBLE");
+        assertThat(json.readTree(refus.getBody()).path("detail").asString())
+                .isEqualTo("En Pilotage Automatique, le Passage suivant est appelé seul.");
+        refuser("appelerPassage",
+                envoyer(HttpMethod.POST, racine + "/passages/" + UUID.randomUUID() + "/appel", animateur, corps, UUID.randomUUID()),
+                404, "RESSOURCE_INTROUVABLE");
+        assertThat(service.instantane(soiree, manche)).isEqualTo(avant);
     }
 
     private UUID inscrire(UUID manche, Acteur interprete, long chanson) throws Exception {

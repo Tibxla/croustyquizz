@@ -299,6 +299,7 @@ classDiagram
             +courantActif() Passage
             +appeler(CiblePassage, UUID, Instant) ResultatFile
             +appeler(CiblePassage, Instant, Supplier~UUID~) ResultatFile
+            +appelerSuivantSiLibre(Supplier~UUID~, Instant) boolean
             +demarrer(CiblePassage, UUID, Duration, Instant) ResultatFile
             +clore(EtatPassage, String, UUID, Instant) ResultatFile
             +suspendre(Instant)
@@ -390,11 +391,26 @@ classDiagram
             +UUID acteurId
             +Instant instant
         }
-    }
-    class Vote {
-        +UUID id
-        +int note
-        +Instant emisLe
+        class VoteDuPublic
+        class EtatVoteDuPublic {
+            <<record>>
+            +List~EtatVotePassage~ votes
+        }
+        class EtatVotePassage {
+            <<record>>
+            +UUID passageId
+            +Instant ouvertLe
+            +Instant echeanceLe
+            +Instant pauseDepuis
+            +Instant clotureLe
+            +List~VoteRecu~ votes
+        }
+        class VoteRecu {
+            <<record>>
+            +UUID joueurId
+            +int note
+            +Instant recueLe
+        }
     }
 
     Lieu "1" --> "1..*" Animateur : emploie
@@ -457,8 +473,13 @@ classDiagram
     LecturePreparee --> "0..1" MotifParolesSeules
     LecturePreparee --> "0..1" FichierAudioLocal
     LecturePreparee --> LigneParoles
-    Passage "1" *-- "*" Vote
-    Vote "*" --> "1" Joueur : votant
+    MancheKaraoke "1" *-- "1" VoteDuPublic
+    CycleDePassage ..> VoteDuPublic : ouverture à la clôture TERMINE
+    VoteDuPublic ..> EtatVoteDuPublic : capture
+    EtatVoteDuPublic "1" *-- "*" EtatVotePassage
+    EtatVotePassage "0..1" --> "1" Passage : Passage noté
+    EtatVotePassage "1" *-- "*" VoteRecu
+    VoteRecu "*" --> "1" Joueur : votant
 ```
 
 ![Diagramme de classes du domaine](diagramme-classes-domaine.png)
@@ -588,7 +609,7 @@ classDiagram
     class DeroulementBlindTest
     class DeroulementKaraoke {
         +DeroulementKaraoke(ContexteDeManche, ReglagesKaraoke, Duration)
-        +DeroulementKaraoke(ContexteDeManche, ReglagesKaraoke, Duration, Supplier~UUID~)
+        +DeroulementKaraoke(ContexteDeManche, ReglagesKaraoke, Duration, Duration, Supplier~UUID~)
         +recevoir(ActionJoueur) ResultatDeCommande
         +commander(CommandeDeManche) ResultatDeCommande
         +viseEtape(UUID) boolean
@@ -620,6 +641,7 @@ classDiagram
         +consulterChanson(Acteur, UUID, UUID, String) FicheChanson
         +inscrirePassage(UUID, EnvoiDeCommande, InscriptionPassage) ResultatDeCommande
         +desinscrirePassage(UUID, UUID, EnvoiDeCommande, DesinscriptionPassage) ResultatDeCommande
+        +voterPassage(UUID, UUID, EnvoiDeCommande, VotePassage) ResultatDeCommande
         +retirerPassage(UUID, UUID, EnvoiDeCommande, RetraitPassage) ResultatDeCommande
         +deplacerPassage(UUID, UUID, EnvoiDeCommande, PlacementPassage) ResultatDeCommande
         +definirPrioritePassage(UUID, EnvoiDeCommande, PrioritePassage) ResultatDeCommande
@@ -639,6 +661,8 @@ classDiagram
     class ConvertisseurCorpsKaraoke
     class FournisseurDeBlocKaraoke
     class VuesKaraoke
+    class VoteDuPassage
+    class VoteDuPassageManette
     class PersistanceKaraokeJpa {
         +charger(UUID) EtatKaraokePersiste
         +enregistrer(UUID, Object)
@@ -659,6 +683,8 @@ classDiagram
         +enregistrer(UUID mancheId, EtatFileAttente)
         +chargerCycle(UUID mancheId) EtatCyclePassage
         +enregistrerCycle(UUID mancheId, EtatCyclePassage)
+        +chargerVotes(UUID mancheId) EtatVoteDuPublic
+        +enregistrerVotes(UUID mancheId, EtatVoteDuPublic)
         +numeroPropose(UUID soireeId) long
         +incrementerNumero(UUID soireeId, long numeroAccepte)
     }
@@ -691,7 +717,7 @@ classDiagram
     }
     class FabriqueKaraoke {
         +FabriqueKaraoke(Duration)
-        +FabriqueKaraoke(Duration, Supplier~UUID~)
+        +FabriqueKaraoke(Duration, Duration, Supplier~UUID~)
         +creer(ContexteDeManche, ReglagesKaraoke) DeroulementKaraoke
         +restaurer(ContexteDeManche, ReglagesKaraoke, EtatKaraokePersiste, EtatManche) DeroulementKaraoke
         +typeEvenementMinuteur(DeroulementDeManche) String
@@ -707,6 +733,8 @@ classDiagram
         +EtatCyclePassage cycle
         +Map lectures
         +UUID lecteurDesigneId
+        +EtatVoteDuPublic voteDuPublic
+        +boolean pilotageAutomatique
     }
     class EtatKaraokePersiste {
         <<record>>
@@ -715,6 +743,7 @@ classDiagram
         +EtatCyclePassage cycle
         +Map lectures
         +UUID lecteurDesigneId
+        +EtatVoteDuPublic voteDuPublic
     }
     class CommandeDeManche {
         <<interface>>
@@ -835,6 +864,38 @@ classDiagram
         RETARDER
     }
     namespace passage {
+        class VoteDuPublic {
+            +ouvrir(UUID, Instant, boolean)
+            +voter(UUID, CiblePassage, int, Instant, boolean) Optional~Refuse~
+            +suspendre(Instant)
+            +reprendre(Instant)
+            +cloreTout(Instant)
+            +reprogrammer(Instant)
+            +aUnVoteOuvert() boolean
+            +etat() EtatVoteDuPublic
+            +projeter(EtatVotePassage, Instant) ProjectionVote
+        }
+        class VoterPassage {
+            <<record>>
+            +Acteur acteur
+            +Instant recueLe
+            +UUID envoiId
+            +CiblePassage cible
+            +int note
+        }
+        class AccuseVote {
+            <<record>>
+            +UUID envoiId
+            +UUID soireeId
+            +UUID mancheId
+            +UUID passageId
+            +int note
+            +Instant recueLe
+        }
+        class ClotureVote
+        class ProjectionVote
+        class VotePersistant
+        class NotePersistante
         class FileAttente {
             +verifierInscription(UUID, String) Optional~Refuse~
             +inscrire(NouveauPassage) ResultatFile
@@ -922,6 +983,16 @@ classDiagram
     DeroulementKaraoke "1" *-- "1" CycleDePassage
     CycleDePassage --> Horloge
     CycleDePassage --> FileAttente
+    DeroulementKaraoke "1" *-- "1" VoteDuPublic
+    VoteDuPublic --> Horloge
+    VoteDuPublic --> FileAttente
+    VoteDuPublic ..> ClotureVote : notifie le déroulement
+    VoteDuPublic ..> ProjectionVote : projette
+    InstantaneKaraoke --> EtatVoteDuPublic
+    EtatKaraokePersiste --> EtatVoteDuPublic
+    ActionJoueur <|.. VoterPassage
+    VoterPassage --> CiblePassage
+    DeroulementKaraoke ..> AccuseVote
     InstantaneKaraoke --> EtatCyclePassage
     InstantaneKaraoke --> LecturePassage : indexée par passageId
     EtatKaraokePersiste --> EtatCyclePassage
@@ -960,6 +1031,9 @@ classDiagram
     PersistanceKaraokeJpa --> ContenuPassagePersistant
     PersistanceKaraokeJpa --> LecturePassagePersistante
     PersistanceKaraokeJpa --> LecteurChansonPersistant
+    PersistancePassageJpa --> VotePersistant
+    PersistancePassageJpa --> NotePersistante
+    VotePersistant "1" --> "*" NotePersistante : clé du Passage
     PersistancePassageJpa --> CyclePassagePersistant
     PersistancePassageJpa --> FileAttentePersistante
     PersistancePassageJpa --> PassagePersistant
@@ -975,6 +1049,9 @@ classDiagram
     EtatDeSoiree <|.. EtatDeSoireeEnregistree : soiree
     VuesKaraoke --> FileAttente : ordre et estimations
     VuesKaraoke ..> CycleDePassage : projette le courant
+    VuesKaraoke ..> VoteDuPublic : projette le vote
+    VuesKaraoke ..> VoteDuPassage : Console
+    VuesKaraoke ..> VoteDuPassageManette : note personnelle
     SourceDeParoles <|.. AdaptateurLrclib
     SourceDeParoles ..> Chanson
     SourceDeParoles ..> ContenuKaraoke

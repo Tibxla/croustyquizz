@@ -21,7 +21,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Service réel, transactions annulables, source et ports factices. */
 class ServiceKaraokeTest {
-    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30), new ProprietesKaraoke.Karaoke(8000, 10000));
+    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30, 30), new ProprietesKaraoke.Karaoke(8000, 10000));
     static final ProprietesSourceKaraoke SOURCE = new ProprietesSourceKaraoke(URI.create("https://source.invalid"), "Test", 5000, 2000000, 120);
     final BancKaraoke banc = new BancKaraoke();
     final UUID soiree = UUID.randomUUID();
@@ -171,6 +171,57 @@ class ServiceKaraokeTest {
                 verify(banc.passages, times(1)).incrementerNumero(soiree, 1);
             } finally { sortir.countDown(); }
         }
+    }
+
+    @Test void deuxInscriptionsConcurrentesNAppellentQuUnPassagePuisLeMinuteurPublieLeSuivant() throws Exception {
+        banc.pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        var entrees = new CountDownLatch(2);
+        var sortir = new CountDownLatch(1);
+        doAnswer(appel -> {
+            entrees.countDown();
+            attendre(sortir);
+            return Optional.of(contenu(appel.getArgument(0)));
+        }).when(banc.source).charger(anyLong());
+
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            try {
+                var premier = fils.submit(() -> inscrireResultat(manche, 1, UUID.randomUUID()));
+                var second = fils.submit(() -> inscrireResultat(manche, 2, UUID.randomUUID()));
+                assertThat(entrees.await(3, TimeUnit.SECONDS)).isTrue();
+                sortir.countDown();
+                assertThat(List.of(premier.get(3, TimeUnit.SECONDS), second.get(3, TimeUnit.SECONDS)))
+                        .allSatisfy(recu -> assertThat(ReponsesDeCommande.statut(recu)).isEqualTo(201));
+            } finally { sortir.countDown(); }
+        }
+        assertThat(banc.diffuseur.typesSalle())
+                .containsExactly("manche-demarree", "passage-appele", "file-attente-modifiee");
+        var console = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(soiree, Destination.CONSOLE);
+        assertThat(console.courant().etat()).isEqualTo("APPELE");
+        assertThat(console.courant().numero()).isEqualTo(1);
+        assertThat(console.passagesEnAttente()).singleElement().satisfies(passage -> assertThat(passage.numero()).isEqualTo(2));
+        var suivant = console.passagesEnAttente().getFirst();
+        var courant = console.courant();
+        var presence = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), courant.etapeId(),
+                courant.numeroModification());
+        assertThat(banc.service.confirmerPresencePassage(manche, courant.passageId(),
+                envoi(joueur, presence.envoiId(), "POST", "/presence", presence), presence)).isInstanceOf(Accepte.class);
+
+        int avant = banc.diffuseur.envois().size();
+        banc.horloge.avancer(Duration.ofMinutes(3));
+        var envois = banc.diffuseur.envois();
+        var publications = envois.subList(avant, envois.size());
+        assertThat(publications).extracting(DiffuseurFactice.Envoi::cible).containsExactlyInAnyOrder(
+                DiffuseurFactice.Cible.SALLE, DiffuseurFactice.Cible.CONSOLE,
+                DiffuseurFactice.Cible.JOUEUR, DiffuseurFactice.Cible.JOUEUR, DiffuseurFactice.Cible.JOUEUR);
+        assertThat(publications.stream().filter(p -> p.cible() == DiffuseurFactice.Cible.JOUEUR)
+                .map(DiffuseurFactice.Envoi::destinataire)).containsExactlyInAnyOrderElementsOf(ConfigurationTroisJoueurs.joueursDe(soiree));
+        assertThat(publications).allSatisfy(publication -> {
+            assertThat(publication.evenement().type()).isEqualTo("passage-appele");
+            var vue = banc.json.valueToTree(((VueComposee) publication.evenement()).champs());
+            assertThat(vue.at("/karaoke/courant/passageId").asString()).isEqualTo(suivant.passageId().toString());
+            assertThat(vue.at("/karaoke/courant/etat").asString()).isEqualTo("APPELE");
+        });
     }
 
     @Test void deuxPreparationsDeMemeCleNeConsommentQuUnNumeroEtUneAutreEmpreinteEstRefusee() throws Exception {
@@ -454,6 +505,73 @@ class ServiceKaraokeTest {
         verifyNoMoreInteractions(banc.calages);
     }
 
+    @Test void lesVotesConcurrentsSontDurablesEtUnRejeuNeRepubliePas() throws Exception {
+        UUID manche = demarrer(), passage = ouvrirVote(manche);
+        var premier = votant(1);
+        var second = votant(2);
+        var note = new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 4L);
+        var attente = new CountDownLatch(1);
+        int avant = banc.diffuseur.envois().size();
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            var uneNote = fils.submit(() -> { attendre(attente); return voter(manche, passage, premier, note); });
+            var autreNote = fils.submit(() -> { attendre(attente); return voter(manche, passage, second,
+                    new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 5L)); });
+            attente.countDown();
+            assertThat(ReponsesDeCommande.statut(uneNote.get(5, TimeUnit.SECONDS))).isEqualTo(200);
+            assertThat(ReponsesDeCommande.statut(autreNote.get(5, TimeUnit.SECONDS))).isEqualTo(200);
+        }
+        assertThat(banc.diffuseur.envois()).hasSize(avant + 6);
+        banc.registre.retirer(manche);
+        var console = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(soiree, Destination.CONSOLE);
+        assertThat(console.votes().getFirst().nombreVotes()).isEqualTo(2L);
+        assertThat(voter(manche, passage, premier, note)).isInstanceOfSatisfying(Accepte.class,
+                recu -> assertThat(banc.json.valueToTree(recu.accuse()).path("note").asInt()).isEqualTo(4));
+        assertThat(voter(manche, passage, premier, new CorpsKaraoke.VotePassage(note.envoiId(), 3L, 1L)))
+                .isInstanceOfSatisfying(Refuse.class, refus -> assertThat(refus.code()).isEqualTo("ENVOI_REUTILISE"));
+        assertThat(voter(manche, passage, premier, new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 1L)))
+                .isInstanceOfSatisfying(Refuse.class, refus -> assertThat(refus.code()).isEqualTo("VOTE_DEJA_ENREGISTRE"));
+        assertThat(banc.diffuseur.envois()).hasSize(avant + 6);
+    }
+
+    @Test void controleLeRoleEtLaPresencePuisAnnuleUnVoteSiLeCommitEchoue() {
+        UUID manche = demarrer(), passage = ouvrirVote(manche);
+        var votant = votant(1);
+        var corps = new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 4L);
+        assertThatThrownBy(() -> voter(manche, passage, animateur, corps)).isInstanceOfSatisfying(
+                RefusDeCommande.class, refus -> assertThat(refus.refus().statutHttp()).isEqualTo(403));
+        banc.ports.absents.add(votant.identifiant());
+        assertThatThrownBy(() -> voter(manche, passage, votant, corps)).isInstanceOfSatisfying(
+                RefusDeCommande.class, refus -> assertThat(refus.refus().statutHttp()).isEqualTo(404));
+        banc.ports.absents.clear();
+        int publications = banc.diffuseur.envois().size();
+        var avant = banc.service.instantane(soiree, manche);
+        doAnswer(invocation -> {
+            banc.echouerCommit = true;
+            return invocation.callRealMethod();
+        }).when(banc.passages).enregistrer(eq(manche), any());
+        assertThatThrownBy(() -> voter(manche, passage, votant, corps)).isInstanceOf(TransactionSystemException.class);
+        doCallRealMethod().when(banc.passages).enregistrer(eq(manche), any());
+        assertThat(banc.diffuseur.envois()).hasSize(publications);
+        assertThat(banc.service.instantane(soiree, manche)).isEqualTo(avant);
+        assertThat(voter(manche, passage, votant, corps)).isInstanceOf(Accepte.class);
+    }
+
+    UUID ouvrirVote(UUID manche) {
+        UUID passage = inscrire(manche, 1).passageId();
+        assertThat(confirmer(manche, appeler(manche, passage))).isInstanceOf(Accepte.class);
+        banc.horloge.avancer(Duration.ofSeconds(180));
+        return passage;
+    }
+
+    Acteur votant(int index) {
+        return new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(index), soiree);
+    }
+
+    ResultatDeCommande voter(UUID manche, UUID passage, Acteur votant, CorpsKaraoke.VotePassage corps) {
+        var envoi = envoi(votant, corps.envoiId(), "POST", "/passages/" + passage + "/vote", corps);
+        return banc.service.voterPassage(manche, passage, envoi, corps);
+    }
+
     AccuseCyclePassage appeler(UUID manche, UUID passage) {
         var corps = new CorpsKaraoke.AppelPassage(0L);
         return (AccuseCyclePassage) ((Accepte) banc.service.appelerPassage(manche, passage,
@@ -543,6 +661,7 @@ class ServiceKaraokeTest {
         final PortsDePassageFactices ports = new PortsDePassageFactices(ConfigurationTroisJoueurs::joueursDe);
         final ParticipantsDePassage participantsDesVues = mock(ParticipantsDePassage.class, delegatesTo(ports));
         final HorlogeFactice horloge = new HorlogeFactice();
+        final PilotageDeSoireeDemonstration pilotage = new PilotageDeSoireeDemonstration();
         final DiffuseurFactice diffuseur = new DiffuseurFactice();
         final RegistreDesDeroulements registre = new RegistreDesDeroulements();
         final SourceDeParoles source = mock(SourceDeParoles.class);
@@ -567,13 +686,13 @@ class ServiceKaraokeTest {
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
-                    soireeId -> false);
+                    pilotage);
             PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {
                 public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
                 public void enregistrer(UUID id, Object valeur) {
                     var etat = (InstantaneKaraoke) valeur;
                     passages.enregistrer(id, etat.file());
-                    etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId()));
+                    etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId(), etat.voteDuPublic()));
                 }
             };
             service = new ServiceKaraoke(fabrique, persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE,
