@@ -58,6 +58,16 @@ test('une entrée présente sans UUID valide garde le message historique', async
 	}
 });
 
+test('l’Animateur vérifie la Soirée par la capture de la Console, avec son propre jeton', async () => {
+	let appel;
+	const acces = await preparerIdentite('ANIMATEUR', soiree, joueur, async (url, options) => {
+		appel = { url, autorisation: options.headers.Authorization };
+		return Response.json({ vue: {} });
+	});
+	assert.deepEqual(appel, { url: `/api/soirees/${soiree}/etat/console`, autorisation: `Bearer demo:ANIMATEUR:${soiree}:${joueur}` });
+	assert.deepEqual(acces, { jeton: `demo:ANIMATEUR:${soiree}:${joueur}`, page: 'console' });
+});
+
 test('l’Animateur et l’Écran de salle ignorent le rang du Joueur', async () => {
 	const requete = async () => Response.json({ vue: { joueurs: [] } });
 	for (const [role, page] of [['ANIMATEUR', 'console'], ['ECRAN', 'ecran']]) {
