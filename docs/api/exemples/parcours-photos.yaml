@@ -112,6 +112,7 @@ evenements:
         classement: []
         dernierBuzz: null
       programme: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       photos: { ouvertes: true, enAttente: [{ photoId: *photo1, pseudo: Léa }] }
 - nom: Après validation, l’affiche démarre pour huit secondes
   canal: salle
@@ -122,6 +123,7 @@ evenements:
     emisLe: '2026-11-24T20:00:03Z'
     donnees: &affiche
       <<: *commun
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       photos: &photoAffichee { photoId: *photo2, echeance: '2026-11-24T20:00:11Z' }
 - nom: La Manette masque la commande d’envoi
   canal: joueur
@@ -150,6 +152,7 @@ evenements:
         <<: *soiree
         etat: TERMINEE
         codeAcces: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       photos: null
 resynchronisation:
   destination: /topic/soirees/72000000-0000-4000-8000-000000000001/salle
@@ -161,6 +164,7 @@ resynchronisation:
     heureServeur: '2026-11-24T20:00:02Z'
     vue:
       <<: *commun
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       photos: null
   tampon: [*publication, *publication]
   revisionFinale: 1
@@ -171,6 +175,7 @@ cases:
   valide: false
   valeur:
     <<: *commun
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     photos:
       <<: *photoAffichee
       pseudo: Léa
@@ -180,6 +185,7 @@ cases:
   valide: false
   valeur:
     <<: *commun
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     photos:
       <<: *photoAffichee
       enAttente: [{ photoId: *photo1, pseudo: Léa }]
@@ -189,6 +195,7 @@ cases:
   valide: false
   valeur:
     <<: *commun
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     photos:
       <<: *photoAffichee
       jpeg: *jpeg
