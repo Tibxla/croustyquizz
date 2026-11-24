@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +57,9 @@ class MusiqueDAttenteHttpTest {
 	@Test
 	void couperPuisRelancerHorsMancheActualiseLaConsoleEtLaSalle() throws Exception {
 		UUID soiree = creerSoiree();
-		var premiereVue = capturer(soiree, "console", "ANIMATEUR");
+		String animateur = autorisationDeDemonstration(soiree, "ANIMATEUR");
+		String ecran = creerAccesEcran(soiree, animateur);
+		var premiereVue = capturer(soiree, "console", animateur);
 		assertThat(premiereVue.at("/vue/musiqueAttente/etat").asString()).isEqualTo("JOUE");
 		assertThat(premiereVue.at("/vue/musiqueAttente/morceauxDisponibles").isNull()).isTrue();
 
@@ -70,59 +74,69 @@ class MusiqueDAttenteHttpTest {
 		};
 		courtier.subscribe(observer);
 		try {
-			var coupure = regler(soiree, "ANIMATEUR", "COUPEE", 200);
+			var coupure = regler(soiree, animateur, "COUPEE", 200);
 			assertThat(coupure.path("etat").asString()).isEqualTo("COUPEE");
-			assertThat(regler(soiree, "ANIMATEUR", "COUPEE", 200)).isEqualTo(coupure);
+			assertThat(regler(soiree, animateur, "COUPEE", 200)).isEqualTo(coupure);
 		} finally {
 			courtier.unsubscribe(observer);
 		}
 		assertThat(destinations).containsExactlyInAnyOrder(Canaux.salle(soiree), Canaux.console(soiree));
-		var console = capturer(soiree, "console", "ANIMATEUR");
-		var salle = capturer(soiree, "salle", "ECRAN");
+		var console = capturer(soiree, "console", animateur);
+		var salle = capturer(soiree, "salle", ecran);
 		assertThat(console.path("revision").asLong()).isEqualTo(1);
 		assertThat(salle.path("revision").asLong()).isEqualTo(1);
 		assertThat(console.at("/vue/musiqueAttente")).isEqualTo(salle.at("/vue/musiqueAttente"));
 		assertThat(salle.at("/vue/musiqueAttente/etat").asString()).isEqualTo("COUPEE");
 
-		regler(soiree, "ANIMATEUR", "JOUE", 200);
-		assertThat(capturer(soiree, "salle", "ECRAN").at("/vue/musiqueAttente/etat").asString()).isEqualTo("JOUE");
+		regler(soiree, animateur, "JOUE", 200);
+		assertThat(capturer(soiree, "salle", ecran).at("/vue/musiqueAttente/etat").asString()).isEqualTo("JOUE");
 	}
 
 	@Test
 	void seulsLesActeursAutorisesPeuventAgirSurUneSoireeConnue() throws Exception {
 		UUID soiree = creerSoiree();
-		for (String role : new String[] { "JOUEUR", "ECRAN" }) {
-			assertThat(regler(soiree, role, "COUPEE", 403).path("code").asString()).isEqualTo("ACCES_REFUSE");
+		String animateur = autorisationDeDemonstration(soiree, "ANIMATEUR");
+		String joueur = ouvrirEtRejoindreSoiree(soiree, animateur);
+		String ecran = creerAccesEcran(soiree, animateur);
+		long revisionAvantLesRefus = capturer(soiree, "console", animateur).path("revision").asLong();
+		for (String autorisation : List.of(joueur, ecran)) {
+			assertThat(regler(soiree, autorisation, "COUPEE", 403).path("code").asString()).isEqualTo("ACCES_REFUSE");
 		}
-		var autrePortee = http.perform(put(ROUTE, soiree).header("Authorization", jeton(UUID.randomUUID(), "ANIMATEUR"))
+		var autrePortee = http.perform(put(ROUTE, soiree)
+				.header("Authorization", autorisationDeDemonstration(UUID.randomUUID(), "ANIMATEUR"))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"etat\":\"COUPEE\"}"))
 				.andExpect(status().isNotFound()).andReturn();
 		ContratApi.verifier(CONTRAT, REGLEMENT, autrePortee);
 		assertThat(json.readTree(autrePortee.getResponse().getContentAsString()).path("code").asString())
 				.isEqualTo("RESSOURCE_INTROUVABLE");
-		assertThat(signaler(soiree, "ANIMATEUR", "false", 403).path("code").asString()).isEqualTo("ACCES_REFUSE");
-		assertThat(signaler(soiree, "ECRAN", "\"false\"", 400).path("code").asString()).isEqualTo("REQUETE_INVALIDE");
+		assertThat(signaler(soiree, animateur, "false", 403).path("code").asString()).isEqualTo("ACCES_REFUSE");
+		assertThat(signaler(soiree, ecran, "\"false\"", 400).path("code").asString()).isEqualTo("REQUETE_INVALIDE");
 		var reponse = http.perform(put(ROUTE, soiree).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"etat\":\"COUPEE\"}")).andExpect(status().isUnauthorized()).andReturn();
 		ContratApi.verifier(CONTRAT, REGLEMENT, reponse);
-		assertThat(capturer(soiree, "console", "ANIMATEUR").path("revision").asLong()).isZero();
+		assertThat(capturer(soiree, "console", animateur).path("revision").asLong()).isEqualTo(revisionAvantLesRefus);
 	}
 
 	@Test
 	void couperLaMusiqueAvantLaPremiereMancheDuneSoireeDeDemonstration() throws Exception {
 		UUID soiree = UUID.randomUUID();
-		assertThat(regler(soiree, "ANIMATEUR", "COUPEE", 200).path("etat").asString()).isEqualTo("COUPEE");
-		assertThat(capturer(soiree, "salle", "ECRAN").at("/vue/musiqueAttente/etat").asString()).isEqualTo("COUPEE");
+		String animateur = autorisationDeDemonstration(soiree, "ANIMATEUR");
+		String ecran = autorisationDeDemonstration(soiree, "ECRAN");
+		assertThat(regler(soiree, animateur, "COUPEE", 200).path("etat").asString()).isEqualTo("COUPEE");
+		assertThat(capturer(soiree, "salle", ecran).at("/vue/musiqueAttente/etat").asString()).isEqualTo("COUPEE");
 	}
 
 	@Test
 	void leDossierSignaleNeChangePasLeReglageEtLesDeuxSurviventAuRedemarrage() throws Exception {
 		UUID soiree = creerSoiree();
 		UUID autreSoiree = creerSoiree();
-		regler(soiree, "ANIMATEUR", "COUPEE", 200);
-		assertThat(signaler(soiree, "ECRAN", "false", 200).path("morceauxDisponibles").asBoolean()).isFalse();
-		signaler(soiree, "ECRAN", "false", 200);
-		var console = capturer(soiree, "console", "ANIMATEUR");
+		String animateur = autorisationDeDemonstration(soiree, "ANIMATEUR");
+		String ecran = creerAccesEcran(soiree, animateur);
+		String autreEcran = creerAccesEcran(autreSoiree, autorisationDeDemonstration(autreSoiree, "ANIMATEUR"));
+		regler(soiree, animateur, "COUPEE", 200);
+		assertThat(signaler(soiree, ecran, "false", 200).path("morceauxDisponibles").asBoolean()).isFalse();
+		signaler(soiree, ecran, "false", 200);
+		var console = capturer(soiree, "console", animateur);
 		assertThat(console.path("revision").asLong()).isEqualTo(2);
 		assertThat(console.at("/vue/musiqueAttente")).isEqualTo(json.readTree("""
 				{"etat":"COUPEE","morceauxDisponibles":false}
@@ -134,10 +148,10 @@ class MusiqueDAttenteHttpTest {
 						"--spring.datasource.username=" + postgres.getUsername(),
 						"--spring.datasource.password=" + postgres.getPassword())) {
 			http = MockMvcBuilders.webAppContextSetup((WebApplicationContext) redemarrage).build();
-			var nouvelleSalle = capturer(soiree, "salle", "ECRAN");
+			var nouvelleSalle = capturer(soiree, "salle", ecran);
 			assertThat(nouvelleSalle.path("revision").asLong()).isZero();
 			assertThat(nouvelleSalle.at("/vue/musiqueAttente")).isEqualTo(console.at("/vue/musiqueAttente"));
-			assertThat(capturer(autreSoiree, "salle", "ECRAN").at("/vue/musiqueAttente/etat").asString()).isEqualTo("JOUE");
+			assertThat(capturer(autreSoiree, "salle", autreEcran).at("/vue/musiqueAttente/etat").asString()).isEqualTo("JOUE");
 		}
 	}
 
@@ -150,30 +164,50 @@ class MusiqueDAttenteHttpTest {
 		return UUID.fromString(json.readTree(reponse.getResponse().getContentAsString()).path("id").asString());
 	}
 
-	private JsonNode capturer(UUID soiree, String destination, String role) throws Exception {
+	private String creerAccesEcran(UUID soiree, String animateur) throws Exception {
+		var reponse = http.perform(post("/api/soirees/{soireeId}/acces-ecran", soiree)
+				.header("Authorization", animateur)).andExpect(status().isOk()).andReturn();
+		ContratApi.verifier(CONTRAT, "creerAccesEcran", reponse);
+		return "Bearer " + json.readTree(reponse.getResponse().getContentAsString()).path("cleEcran").asString();
+	}
+
+	private String ouvrirEtRejoindreSoiree(UUID soiree, String animateur) throws Exception {
+		var ouverture = http.perform(post("/api/soirees/{soireeId}/ouverture", soiree)
+				.header("Authorization", animateur).header("Idempotency-Key", UUID.randomUUID().toString()))
+				.andExpect(status().isOk()).andReturn();
+		ContratApi.verifier(CONTRAT, "ouvrirSoiree", ouverture);
+		String code = json.readTree(ouverture.getResponse().getContentAsString()).path("codeAcces").asString();
+		var arrivee = http.perform(post("/api/soirees/rejoindre").contentType(MediaType.APPLICATION_JSON)
+				.content(json.writeValueAsString(Map.of("codeAcces", code, "pseudo", "Léa"))))
+				.andExpect(status().isCreated()).andReturn();
+		ContratApi.verifier(CONTRAT, "rejoindreSoiree", arrivee);
+		return "Bearer " + json.readTree(arrivee.getResponse().getContentAsString()).path("jetonReconnexion").asString();
+	}
+
+	private JsonNode capturer(UUID soiree, String destination, String autorisation) throws Exception {
 		var reponse = http.perform(get("/api/soirees/{soireeId}/etat/" + destination, soiree)
-				.header("Authorization", jeton(soiree, role))).andExpect(status().isOk()).andReturn();
+				.header("Authorization", autorisation)).andExpect(status().isOk()).andReturn();
 		ContratApi.verifier(CONTRAT, "console".equals(destination) ? "retrouverEtatConsole" : "retrouverEtatSalle", reponse);
 		return json.readTree(reponse.getResponse().getContentAsString());
 	}
 
-	private JsonNode regler(UUID soiree, String role, String etat, int statut) throws Exception {
-		var reponse = http.perform(put(ROUTE, soiree).header("Authorization", jeton(soiree, role))
+	private JsonNode regler(UUID soiree, String autorisation, String etat, int statut) throws Exception {
+		var reponse = http.perform(put(ROUTE, soiree).header("Authorization", autorisation)
 				.contentType(MediaType.APPLICATION_JSON).content("{\"etat\":\"" + etat + "\"}"))
 				.andExpect(status().is(statut)).andExpect(header().string("Cache-Control", "no-store")).andReturn();
 		ContratApi.verifier(CONTRAT, REGLEMENT, reponse);
 		return json.readTree(reponse.getResponse().getContentAsString());
 	}
 
-	private JsonNode signaler(UUID soiree, String role, String disponibilite, int statut) throws Exception {
-		var reponse = http.perform(put(ROUTE + "/disponibilite", soiree).header("Authorization", jeton(soiree, role))
+	private JsonNode signaler(UUID soiree, String autorisation, String disponibilite, int statut) throws Exception {
+		var reponse = http.perform(put(ROUTE + "/disponibilite", soiree).header("Authorization", autorisation)
 				.contentType(MediaType.APPLICATION_JSON).content("{\"morceauxDisponibles\":" + disponibilite + "}"))
 				.andExpect(status().is(statut)).andExpect(header().string("Cache-Control", "no-store")).andReturn();
 		ContratApi.verifier(CONTRAT, "signalerDisponibiliteMusiqueDAttente", reponse);
 		return json.readTree(reponse.getResponse().getContentAsString());
 	}
 
-	private static String jeton(UUID soiree, String role) {
+	private static String autorisationDeDemonstration(UUID soiree, String role) {
 		return "Bearer demo:" + role + ":" + soiree + ":" + UUID.randomUUID();
 	}
 }
