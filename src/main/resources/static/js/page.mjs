@@ -3,6 +3,7 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { decrireVue } from './vue-commune.mjs';
+import { creerLignePalmaresSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -27,25 +28,6 @@ function lister(nom, valeurs, vide, maximum = Infinity) {
 		return li;
 	}));
 }
-function remplirLignePalmaresSalle(li, { numero, rang, titre, interpretes, note, votes, texte }) {
-	li.dataset.teinte = String(numero % 4);
-	const presentation = document.createElement('div');
-	presentation.className = 'palmares__ligne';
-	presentation.setAttribute('aria-hidden', 'true');
-	for (const [champ, valeur] of [
-		['rang', rang === null ? '' : `${rang}.`], ['numero', `n° ${numero}`],
-		['interpretes', interpretes], ['chanson', titre], ['note', note ?? ''], ['votes', votes],
-	]) {
-		const span = document.createElement('span');
-		span.className = `palmares__${champ}`;
-		span.textContent = valeur;
-		presentation.append(span);
-	}
-	const phrase = document.createElement('span');
-	phrase.className = 'visuellement-cache';
-	phrase.textContent = texte;
-	li.append(presentation, phrase);
-}
 function afficherPalmares(palmares) {
 	const zone = element('zone-palmares');
 	if (!zone) return;
@@ -54,9 +36,9 @@ function afficherPalmares(palmares) {
 	const vide = element('palmares-vide');
 	vide.hidden = palmares?.length !== 0;
 	liste.replaceChildren(...(palmares ?? []).map(ligne => {
+		if (ecran === 'ecran') return creerLignePalmaresSalle(document, ligne);
 		const li = document.createElement('li');
-		if (ecran === 'ecran') remplirLignePalmaresSalle(li, ligne);
-		else li.textContent = ligne.texte;
+		li.textContent = ligne.texte;
 		return li;
 	}));
 }

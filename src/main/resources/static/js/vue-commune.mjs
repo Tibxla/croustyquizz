@@ -8,7 +8,7 @@ export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${no
 
 function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes, moyenneDixiemes }) {
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
-	const pseudos = interpretes.map(interprete => interprete.pseudo).join(', ');
+	const pseudos = interpretes.map(interprete => interprete.pseudo).join(' et ');
 	const votes = formaterNombreVotes(nombreVotes);
 	const note = moyenneDixiemes === null ? null : formaterMoyenne(moyenneDixiemes);
 	const resultat = note === null ? votes : `${note} (${votes})`;

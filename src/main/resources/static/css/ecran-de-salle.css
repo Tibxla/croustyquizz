@@ -303,12 +303,18 @@
 
 .palmares__ligne {
   display: grid;
-  grid-template-columns: 3.4vw 4.6vw minmax(0, 1.4fr) minmax(0, 1fr) max-content 6.2vw;
+  grid-template-areas:
+    "rang interpretes note"
+    "numero chanson votes";
+  grid-template-columns: 4.6vw minmax(0, 1fr) 11vw;
   align-items: center;
-  gap: 1.2vw;
-  white-space: nowrap;
+  gap: 0.2vw 1.2vw;
   line-height: 1.2;
 }
+.palmares__rang { grid-area: rang; }
+.palmares__numero { grid-area: numero; }
+.palmares__note { grid-area: note; }
+.palmares__votes { grid-area: votes; }
 .palmares__rang,
 .palmares__note {
   font: 800 3vw/1 var(--police-chiffres);
@@ -317,10 +323,13 @@
 .palmares__note,
 .palmares__votes { text-align: right; }
 .palmares__interpretes {
+  grid-area: interpretes;
   font-size: 2.15vw;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 .palmares__chanson {
+  grid-area: chanson;
   color: var(--texte-2);
   font-size: 1.55vw;
 }
@@ -331,8 +340,8 @@
   font-variant-numeric: tabular-nums;
 }
 .palmares__numero,
-.palmares__interpretes,
 .palmares__chanson {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
