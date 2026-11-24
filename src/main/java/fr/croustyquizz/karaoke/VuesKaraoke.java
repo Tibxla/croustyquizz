@@ -89,7 +89,8 @@ public final class VuesKaraoke {
                     lecture != null && projection.courant().etat() == EtatPassage.EN_COURS ? lecture.paroles() : null);
             case CONSOLE -> new BlocKaraokeConsole(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                     etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, publics, true, true, true,
-                    instantane.lecteurDesigneId() != null, enCours && !projection.actif() && !publics.isEmpty(),
+                    instantane.lecteurDesigneId() != null,
+                    !instantane.pilotageAutomatique() && enCours && !projection.actif() && !publics.isEmpty(),
                     projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
                             && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
                     lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier(),

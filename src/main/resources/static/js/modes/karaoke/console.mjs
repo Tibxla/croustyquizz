@@ -30,7 +30,7 @@ function installerPassage(ui, commande) {
 		decalage = e('p'), mesure = e('p'), erreur = e('p');
 	erreur.setAttribute('role', 'status');
 	fiche.append(titre, identite, phase, temps, source, lecteur, decalage, mesure, erreur);
-	const votes = e('section', 'panneau karaoke__votes');
+	const votes = e('section', 'karaoke__votes');
 	const titreVotes = e('h2', '', 'Vote du public');
 	titreVotes.id = 'karaoke-votes-console';
 	votes.setAttribute('aria-labelledby', titreVotes.id);
@@ -60,6 +60,7 @@ function installerPassage(ui, commande) {
 		if (p) ui.commande(commande('POST', `/passages/${encodeURIComponent(p.passageId)}/appel`,
 			{ numeroModification: p.numeroModification }, { type: 'APPELER', passageId: p.passageId }));
 	}, 'bouton bouton--action');
+	const appelAutomatique = e('span', 'console__note', 'Appel automatique');
 	const boutonsPilotage = [basculer, passer, terminer, appeler];
 	pilotage.append(...boutonsPilotage);
 	function actionLecture(libelle, type, suffixe, sens) {
@@ -98,7 +99,7 @@ function installerPassage(ui, commande) {
 	}
 	const horloge = setInterval(decompter, 1000);
 	return {
-		rendre() {
+		rendre(automatique) {
 			const bloc = ui.bloc, permis = ui.mutationsPermises, p = bloc.courant, lecture = bloc.lecture;
 			const enPause = bloc.etat === 'EN_PAUSE';
 			const focusPilotage = boutonsPilotage.indexOf(ui.document.activeElement);
@@ -106,7 +107,13 @@ function installerPassage(ui, commande) {
 			basculer.disabled = !permis || !(enPause ? bloc.peutReprendre : bloc.etat === 'EN_COURS');
 			passer.disabled = !permis || !bloc.peutPasser;
 			terminer.disabled = !permis;
-			appeler.disabled = !permis || !bloc.peutAppeler || !prochain();
+			appeler.disabled = automatique || !permis || !bloc.peutAppeler || !prochain();
+			const actionAppel = automatique ? appelAutomatique : appeler;
+			if (!pilotage.contains(actionAppel)) {
+				appeler.remove();
+				appelAutomatique.remove();
+				pilotage.append(actionAppel);
+			}
 			if (focusPilotage !== -1 && boutonsPilotage[focusPilotage].disabled) {
 				const suivant = boutonsPilotage.slice(focusPilotage + 1).find(action => !action.disabled);
 				(suivant ?? titre).focus();
@@ -169,6 +176,7 @@ const estCommandeFile = envoi => !estCommandePassage(envoi);
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton, ecouter } = ui;
+	let automatique = false;
 	const commande = (methode, chemin, corps, metadata) => ({ methode, chemin: `${ui.racine()}${chemin}`, corps,
 		mancheId: ui.bloc.mancheId, acteurType: 'ANIMATEUR', ...metadata });
 	const passage = installerPassage(ui, commande);
@@ -222,7 +230,7 @@ export function monter(zones, contexte) {
 	});
 	ui.surRendu = () => {
 		if (!ui.bloc) return;
-		passage.rendre();
+		passage.rendre(automatique);
 		if (!passages().some(p => p.passageId === selection)) selection = null;
 		const envoiLimite = [...ui.envois.values()].filter(e => e.commande.chemin.endsWith('/limite')).at(-1);
 		if (ui.document.activeElement !== champ && envoiLimite?.etat !== 'en-cours') champ.value = String(ui.bloc.limitePassagesEnAttente);
@@ -268,5 +276,11 @@ export function monter(zones, contexte) {
 	};
 	ui.surManche = () => { selection = null; catalogue.reinitialiser(); message.textContent = ''; };
 	ui.surDestruction = () => { passage.detruire(); catalogue.detruire(); };
-	return { afficher: ui.afficher, demonter: ui.demonter };
+	return {
+		afficher(vue, origine) {
+			automatique = vue.soiree?.pilotage === 'AUTOMATIQUE';
+			ui.afficher(vue, origine);
+		},
+		demonter: ui.demonter,
+	};
 }

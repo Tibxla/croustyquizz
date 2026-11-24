@@ -26,7 +26,10 @@ channels:
       de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
       Soirée. Karaoké : file-attente-modifiee après inscription, désinscription, retrait, placement ou
       priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
-      passage-demarre, passage-termine et passage-saute pour le cycle du Passage ;
+      passage-demarre, passage-termine et passage-saute pour le cycle du Passage.
+      En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une
+      fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le
+      suivant ; la vue montre le nouveau courant APPELE à la place du Passage précédent clos ;
       vote-enregistre et vote-clos pour le Vote du public ;
       lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
       calage-chanson-modifie après geste, demande, relevé ou correction. Vue complète avec bloc karaoke
@@ -46,7 +49,10 @@ channels:
       de commande métier. Une révision est propre à cette destination et à cette Soirée. Karaoké :
       file-attente-modifiee après inscription, désinscription, retrait, placement ou priorité ;
       limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre,
-      passage-termine et passage-saute pour le cycle du Passage ;
+      passage-termine et passage-saute pour le cycle du Passage.
+      En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une fin
+      de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le suivant ;
+      la vue montre le nouveau courant APPELE à la place du Passage précédent clos ;
       vote-enregistre et vote-clos pour le Vote du public ; lecture-chanson-modifiee après
       désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
       geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
@@ -66,7 +72,10 @@ channels:
       propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
       inscription, désinscription, retrait, placement ou priorité ; limite-passages-modifiee après
       changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
-      pour le cycle du Passage ; lecture-chanson-modifiee après erreur ou reprise en paroles seules,
+      pour le cycle du Passage. En Pilotage Automatique, passage-appele est aussi l’unique cause si
+      une inscription, une fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une
+      reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la place du Passage
+      précédent clos. lecture-chanson-modifiee après erreur ou reprise en paroles seules,
       jamais après désignation ou déclaration ; aucun calage-chanson-modifie. Pour ces causes, chaque
       Joueur de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
       Passages. vote-clos est aussi envoyé à toutes les Manettes ; vote-enregistre uniquement à celle

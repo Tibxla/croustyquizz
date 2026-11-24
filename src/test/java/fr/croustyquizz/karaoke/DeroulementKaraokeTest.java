@@ -8,6 +8,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DeroulementKaraokeTest extends ContratDeroulementDeManche {
 	@Override
@@ -232,6 +235,180 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
     private static final Acteur INTERPRETE = new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE);
 
     @Test
+    void appelleLaPremiereInscriptionEnAutomatiqueEtConserveSonAccuse() {
+        demarrerEnAutomatique();
+        assertThat(projection().courant()).isNull();
+        Instant recueLe = horloge.maintenant().minusSeconds(2);
+        var action = (InscrirePassage) uneAction(JOUEUR, recueLe);
+        UUID passageId = action.faits().passageId();
+        assertThat(deroulement.recevoir(action)).isEqualTo(new Accepte(
+                new AccusePassage(action.envoiId(), SOIREE, MANCHE, passageId, 0, "INSCRIRE", recueLe, EtatPassage.EN_ATTENTE),
+                Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES), "passage-appele", 201));
+        assertThat(passage(passageId).etat()).isEqualTo(EtatPassage.APPELE);
+        assertThat(projection().appeleLe()).isEqualTo(recueLe);
+        assertThat(projection().etapeId()).isEqualTo(ETAPE);
+        assertThat(inscrire(SUIVANT)).isInstanceOfSatisfying(Accepte.class,
+                resultat -> assertThat(resultat.typeEvenement()).isEqualTo("file-attente-modifiee"));
+        assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.EN_ATTENTE);
+    }
+
+    private void demarrerEnAutomatique() {
+        deroulement = creer(new ContexteDeManche(SOIREE, MANCHE, reglages(), horloge, () -> finsSignalees++, true));
+        deroulement.demarrer();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void laFinPrevueOuvreLeVoteEtAppelleLaPrioriteEnAutomatique(boolean automatique) {
+        ouvrirPremierPassage(automatique);
+        inscrire(SUIVANT);
+        inscrire(INCONNU);
+        deroulement.commander(new DefinirPrioritePassage(pilotage().acteur(), horloge.maintenant(), ENVOI,
+                cible(INCONNU), true));
+        confirmerCourant();
+
+        horloge.avancer(Duration.ofSeconds(180));
+
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.TERMINE);
+        assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.EN_ATTENTE);
+        assertThat(passage(INCONNU).etat()).isEqualTo(automatique ? EtatPassage.APPELE : EtatPassage.EN_ATTENTE);
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo(automatique ? "passage-appele" : "passage-termine");
+        assertThat(karaoke().instantane().voteDuPublic().votes()).singleElement().satisfies(vote -> {
+            assertThat(vote.passageId()).isEqualTo(PASSAGE);
+            assertThat(vote.ouvert()).isTrue();
+        });
+        if (!automatique) { accepter(appeler(cible(INCONNU)), "passage-appele", true); }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true, false", "true, true", "false, false", "false, true"})
+    void laFinLocaleDevanceLaFinPrevueEtAttendLaRepriseSiBesoin(boolean automatique, boolean enPause) {
+        ouvrirPremierPassage(automatique);
+        designer(LECTEUR);
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+        confirmerCourant();
+        inscrire(SUIVANT);
+        UUID lectureId = lecture().lectureId();
+        horloge.avancer(Duration.ofSeconds(10));
+        if (enPause) { deroulement.mettreEnPause(pilotage()); }
+
+        boolean appelImmediat = automatique && !enPause;
+        var fin = accepter(signaler(Signal.FIN, PASSAGE, ETAPE, lectureId, LECTEUR),
+                appelImmediat ? "passage-appele" : "passage-termine", true);
+        assertThat(fin.accuse()).isEqualTo(new AccuseLectureChanson(ENVOI, SOIREE, MANCHE, LECTEUR, PASSAGE,
+                lectureId, "SIGNALER_FIN_LECTURE", horloge.maintenant()));
+        assertThat(passage(PASSAGE).traceTerminale().motif()).isEqualTo(TraceTerminale.FIN_LECTURE);
+        assertThat(passage(SUIVANT).etat()).isEqualTo(appelImmediat ? EtatPassage.APPELE : EtatPassage.EN_ATTENTE);
+        UUID etapeApresFin = projection().etapeId();
+        if (enPause) {
+            assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_PAUSE);
+            accepter(deroulement.reprendre(pilotage()), automatique ? "passage-appele" : "manche-reprise", true);
+            etapeApresFin = projection().etapeId();
+        }
+        refuserSansMutation(() -> signaler(Signal.FIN, PASSAGE, ETAPE, lectureId, LECTEUR), 409, "COMMANDE_PERIMEE", null);
+        horloge.avancer(Duration.ofMinutes(5));
+        assertThat(projection().etapeId()).isEqualTo(etapeApresFin);
+        assertThat(passage(PASSAGE).traceTerminale().motif()).isEqualTo(TraceTerminale.FIN_LECTURE);
+        assertThat(passage(SUIVANT).etat()).isEqualTo(automatique ? EtatPassage.APPELE : EtatPassage.EN_ATTENTE);
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo("vote-clos");
+    }
+
+    @Test
+    void laFinPrevueRendLeSignalLocalConcurrentPerimeSansSecondAppel() {
+        ouvrirPremierPassage(true);
+        designer(LECTEUR);
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+        confirmerCourant();
+        inscrire(SUIVANT);
+        inscrire(INCONNU);
+        UUID lectureId = lecture().lectureId();
+        horloge.avancer(Duration.ofMinutes(5));
+
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo("passage-appele");
+        assertThat(passage(PASSAGE).traceTerminale().motif()).isEqualTo(TraceTerminale.FIN_PREVUE);
+        assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.APPELE);
+        assertThat(passage(INCONNU).etat()).isEqualTo(EtatPassage.EN_ATTENTE);
+        refuserSansMutation(() -> signaler(Signal.FIN, PASSAGE, ETAPE, lectureId, LECTEUR), 409, "COMMANDE_PERIMEE", null);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void passerHorsPauseAppelleImmediatementSeulementEnAutomatique(boolean automatique) {
+        ouvrirPremierPassage(automatique);
+        inscrire(SUIVANT);
+        var commande = pilotage();
+        var recu = accepter(deroulement.passerEtape(commande), automatique ? "passage-appele" : "passage-saute", true);
+        assertThat(recu.accuse()).isEqualTo(commande.accuse());
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(passage(SUIVANT).etat()).isEqualTo(automatique ? EtatPassage.APPELE : EtatPassage.EN_ATTENTE);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void lErreurEnAutomatiqueGardeLeCourantOuAttendLaRepriseApresPasser(boolean passer) {
+        ouvrirPremierPassage(true);
+        designer(LECTEUR);
+        declarerLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+        confirmerCourant();
+        inscrire(SUIVANT);
+        UUID lectureId = lecture().lectureId();
+        accepter(signaler(Signal.ERREUR, PASSAGE, ETAPE, lectureId, LECTEUR), LECTURE_MODIFIEE, true);
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_PAUSE);
+        refuserSansMutation(() -> deroulement.reprendre(pilotage()), 409, "ETAT_INCOMPATIBLE", null);
+        if (passer) {
+            accepter(deroulement.passerEtape(pilotage()), "passage-saute", true);
+            assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.EN_ATTENTE);
+            accepter(deroulement.reprendre(pilotage()), "passage-appele", true);
+            assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.APPELE);
+        } else {
+            accepter(reprendreEnParoles(PASSAGE, ETAPE, lectureId), LECTURE_MODIFIEE, true);
+            assertThat(lecture().source()).isEqualTo(SourceLecture.PAROLES_SEULES);
+            assertThat(projection().etapeId()).isEqualTo(ETAPE);
+            assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.EN_ATTENTE);
+        }
+        assertThat(karaoke().instantane().etatManche()).isEqualTo(EtatManche.EN_COURS);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void uneInscriptionPendantLeDernierVotePeutAppelerSonPassage(boolean automatique) {
+        ouvrirPremierPassage(automatique);
+        confirmerCourant();
+        horloge.avancer(Duration.ofMinutes(3));
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo("passage-termine");
+        assertThat(projection().courant().id()).isEqualTo(PASSAGE);
+        assertThat(projection().actif()).isFalse();
+        assertThat(deroulement.estTerminee()).isFalse();
+
+        assertThat(inscrire(SUIVANT)).isInstanceOfSatisfying(Accepte.class, accepte ->
+                assertThat(accepte.typeEvenement()).isEqualTo(automatique ? "passage-appele" : "file-attente-modifiee"));
+        assertThat(passage(SUIVANT).etat()).isEqualTo(automatique ? EtatPassage.APPELE : EtatPassage.EN_ATTENTE);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).singleElement()
+                .satisfies(vote -> assertThat(vote.ouvert()).isTrue());
+    }
+
+    @Test
+    void enAutomatiqueLaCibleInconnueEtLaPausePrimentSurLeRefusDeLAppelManuel() {
+        ouvrirPremierPassage(true);
+        inscrire(SUIVANT);
+        refuserSansMutation(() -> appeler(new CiblePassage(INCONNU, 0)), 404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> appeler(new CiblePassage(SUIVANT, 99)), 409, "ETAT_INCOMPATIBLE",
+                "En Pilotage Automatique, le Passage suivant est appelé seul.");
+        deroulement.mettreEnPause(pilotage());
+        refuserSansMutation(() -> appeler(new CiblePassage(INCONNU, 0)), 404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> appeler(cible(SUIVANT)), 409, "ETAT_INCOMPATIBLE", "l’état de la Manche");
+    }
+
+    private void ouvrirPremierPassage(boolean automatique) {
+        if (automatique) {
+            demarrerEnAutomatique();
+            inscrire(PASSAGE);
+        } else {
+            ouvrirPassage();
+        }
+    }
+
+    @Test
     void appelleSelonLOrdreDesRefusEtViseUniquementLEtapeActive() {
         refuserSansMutation(() -> appeler(new CiblePassage(INCONNU, 0)), 409, "ETAPE_INACTIVE", null);
         deroulement.demarrer();
@@ -407,11 +584,13 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         accepter(appeler(cible(PASSAGE)), "passage-appele", true);
     }
 
-    private void inscrire(UUID id) {
+    private ResultatDeCommande inscrire(UUID id) {
         var contenu = new ContenuKaraoke(new Chanson(id.toString(), 42, "Titre", "Artiste", null, 180_000L,
                 EtatParoles.SYNCHRONISEES), List.of(new LigneParoles(12_000, "Des paroles")));
-        assertThat(deroulement.recevoir(new InscrirePassage(INTERPRETE, horloge.maintenant(), ENVOI,
-                new FaitsInscription(id, 1), id.toString(), contenu))).isInstanceOf(Accepte.class);
+        var resultat = deroulement.recevoir(new InscrirePassage(INTERPRETE, horloge.maintenant(), ENVOI,
+                new FaitsInscription(id, 1), id.toString(), contenu));
+        assertThat(resultat).isInstanceOf(Accepte.class);
+        return resultat;
     }
 
     private ResultatDeCommande appeler(CiblePassage cible) {

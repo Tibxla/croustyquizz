@@ -55,6 +55,18 @@ public final class CycleDePassage {
         });
     }
 
+    public boolean appelerSuivantSiLibre(Supplier<UUID> etapes, Instant maintenant) {
+        if (courantActif() != null) { return false; }
+        var ordre = file.ordreEffectif();
+        if (ordre.isEmpty()) { return false; }
+        Passage suivant = ordre.getFirst();
+        var cible = new CiblePassage(suivant.id(), suivant.numeroModification());
+        if (!(appeler(cible, maintenant, etapes) instanceof ResultatFile.Modifiee)) {
+            throw new IllegalStateException("Le premier Passage en attente doit pouvoir être appelé.");
+        }
+        return true;
+    }
+
     public ResultatFile demarrer(CiblePassage cible, UUID etapeId, Duration dureeReference, Instant maintenant) {
         Passage courant = courantActif();
         if (courant == null || courant.etat() != EtatPassage.APPELE || !courant.id().equals(cible.passageId())

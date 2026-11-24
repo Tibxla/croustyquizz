@@ -122,6 +122,47 @@ class FabriqueKaraokeTest {
     private static final UUID LECTURE = new UUID(0, 34);
     private static final UUID PAROLES = new UUID(0, 35);
     private static final UUID DEMANDE = new UUID(0, 36);
+    private static final UUID SUIVANT = new UUID(0, 37);
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void leMinuteurRestaureAppelleLeSuivantSansAppelPendantLaRestauration(boolean voteSeul) {
+        var base = etatAvecCourant(voteSeul ? EtatPassage.TERMINE : EtatPassage.EN_COURS,
+                EtatManche.EN_COURS, EtatLecture.DEMARREE);
+        var file = FileAttente.depuis(base.file());
+        file.inscrire(new NouveauPassage(SUIVANT, soiree, manche, joueur, List.of(joueur), "opaque",
+                Duration.ofMinutes(3), 2, horloge.maintenant()));
+        var votes = base.voteDuPublic();
+        if (voteSeul) {
+            var cloture = base.cycle().clotureLe();
+            votes = new EtatVoteDuPublic(List.of(
+                    new EtatVotePassage(PASSAGE, cloture, cloture.plusSeconds(30), null, null, List.of())));
+        }
+        var persiste = new EtatKaraokePersiste(file.etat(), Map.of(PASSAGE, contenu(), SUIVANT, contenu()),
+                base.cycle(), base.lectures(), base.lecteurDesigneId(), votes);
+        var redemarrage = new HorlogeFactice(horloge.maintenant().plusSeconds(30));
+        var contexteRestaure = new ContexteDeManche(soiree, manche, contexte.reglages(), redemarrage, () -> fins++, true);
+        var restaure = fabrique.restaurer(contexteRestaure, reglages, persiste, EtatManche.EN_COURS);
+        assertThat(restaure.instantane()).isEqualTo(new InstantaneKaraoke(EtatManche.EN_COURS, persiste.file(),
+                persiste.contenus(), persiste.cycle(), persiste.lectures(), LECTEUR, votes, true));
+        assertThat(redemarrage.minuteursEnAttente()).isEqualTo(1);
+
+        int reste = voteSeul ? 20 : 80;
+        redemarrage.avancer(Duration.ofSeconds(reste - 1));
+        assertThat(restaure.instantane().cycle()).isEqualTo(base.cycle());
+        redemarrage.avancer(Duration.ofSeconds(1));
+
+        var apres = restaure.instantane();
+        var courant = CycleDePassage.projeter(apres.file(), apres.cycle(), false, redemarrage.maintenant());
+        assertThat(courant.courant().id()).isEqualTo(SUIVANT);
+        assertThat(courant.courant().etat()).isEqualTo(EtatPassage.APPELE);
+        assertThat(courant.appeleLe()).isEqualTo(redemarrage.maintenant());
+        assertThat(fabrique.typeEvenementMinuteur(restaure)).isEqualTo("passage-appele");
+        assertThat(apres.voteDuPublic().votes()).singleElement().satisfies(vote -> {
+            assertThat(vote.passageId()).isEqualTo(PASSAGE);
+            assertThat(vote.ouvert()).isEqualTo(!voteSeul);
+        });
+    }
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({

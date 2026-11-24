@@ -1,5 +1,6 @@
-description: Une Soirée fictive en Pilotage Automatique, de la préparation à l'ouverture.
-evenementsComplets: true
+description: Extraits d’une Soirée fictive en Pilotage Automatique, de l’ouverture à l’appel du deuxième Passage.
+# Les publications intermédiaires de démarrage, de lecture et de File d’attente sont omises.
+evenementsComplets: false
 parametresCommuns:
   soireeId: &soireeId 11900000-0000-4000-8000-000000000001
 http:
@@ -26,6 +27,152 @@ http:
       classement: []
       dernierBuzz: null
       programme: []
+- nom: La première inscription appelle Alizé
+  operationId: inscrirePassage
+  acteur: joueur:11900000-0000-4000-8000-000000000005
+  parametres:
+    mancheId: 11900000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11900000-0000-4000-8000-000000000020
+    chansonId: ch_quais
+  statut: 201
+  reponse:
+    envoiId: 11900000-0000-4000-8000-000000000020
+    soireeId: 11900000-0000-4000-8000-000000000001
+    mancheId: 11900000-0000-4000-8000-000000000004
+    passageId: 11900000-0000-4000-8000-000000000010
+    action: INSCRIRE
+    recueLe: '2026-11-23T20:00:10.000Z'
+    numeroModification: 0
+    etatApres: EN_ATTENTE
+- nom: Capturer l’appel automatique dans la Console
+  operationId: retrouverEtatConsole
+  acteur: animateur:11900000-0000-4000-8000-000000000002
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 3
+    heureServeur: '2026-11-23T20:00:11.000Z'
+    abonnementId: null
+    vue: &consolePremierAppel
+      soiree: &soireeEnCours
+        id: 11900000-0000-4000-8000-000000000001
+        titre: Soirée fictive en Pilotage Automatique
+        format: SOLO
+        pilotage: AUTOMATIQUE
+        etat: EN_COURS
+        codeAcces: D3M8AB
+      mancheActive: &mancheKaraoke
+        id: 11900000-0000-4000-8000-000000000004
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs: &joueursKaraoke
+      - id: 11900000-0000-4000-8000-000000000005
+        pseudo: Alizé
+        connecte: true
+      - id: 11900000-0000-4000-8000-000000000006
+        pseudo: Basile
+        connecte: true
+      classement: &classementKaraoke []
+      dernierBuzz: null
+      programme:
+      - *mancheKaraoke
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &courantAlize
+          passageId: 11900000-0000-4000-8000-000000000010
+          numero: 1
+          chanson: &chansonAlize
+            chansonId: ch_quais
+            titre: Les quais de papier
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 60000
+            etatParoles: SYNCHRONISEES
+          interpretes: &interpretesAlize
+          - joueurId: 11900000-0000-4000-8000-000000000005
+            pseudo: Alizé
+          numeroModification: 1
+          etapeId: 11900000-0000-4000-8000-000000000012
+          etat: APPELE
+          prochainAppelPrevuLe: '2026-11-23T20:01:40.000Z'
+          appeleLe: '2026-11-23T20:00:10.000Z'
+          echeanceAppelLe: '2026-11-23T20:00:40.000Z'
+          delaiAppelRestantMs: 30000
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-23T20:00:10.000Z'
+          clotureLe: null
+        configurationInterface: &configurationKaraoke
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+        votes: []
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: true
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: Refuser l’appel manuel de Basile en Pilotage Automatique
+  operationId: appelerPassage
+  acteur: animateur:11900000-0000-4000-8000-000000000002
+  parametres:
+    mancheId: 11900000-0000-4000-8000-000000000004
+    passageId: 11900000-0000-4000-8000-000000000011
+    Idempotency-Key: 11900000-0000-4000-8000-000000000021
+    X-CSRF-TOKEN: csrf_session_pilotage_fictif
+  requete:
+    numeroModification: 0
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: En Pilotage Automatique, le Passage suivant est appelé seul.
+    instance: /api/soirees/11900000-0000-4000-8000-000000000001/manches/11900000-0000-4000-8000-000000000004/passages/11900000-0000-4000-8000-000000000011/appel
+- nom: La fin du fichier d’Alizé appelle Basile
+  operationId: signalerFinLectureChanson
+  acteur: ecran:11900000-0000-4000-8000-000000000007
+  parametres:
+    mancheId: 11900000-0000-4000-8000-000000000004
+    passageId: 11900000-0000-4000-8000-000000000010
+    Idempotency-Key: 11900000-0000-4000-8000-000000000022
+  requete:
+    lecteurId: 11900000-0000-4000-8000-000000000008
+    etapeId: 11900000-0000-4000-8000-000000000012
+    lectureId: 11900000-0000-4000-8000-000000000009
+    positionMs: 45000
+  statut: 200
+  reponse:
+    envoiId: 11900000-0000-4000-8000-000000000022
+    soireeId: 11900000-0000-4000-8000-000000000001
+    mancheId: 11900000-0000-4000-8000-000000000004
+    passageId: 11900000-0000-4000-8000-000000000010
+    action: SIGNALER_FIN_LECTURE
+    recueLe: '2026-11-23T20:01:00.000Z'
+    lecteurId: 11900000-0000-4000-8000-000000000008
+    lectureId: 11900000-0000-4000-8000-000000000009
 evenements:
 - nom: Ouvrir la Soirée en Pilotage Automatique
   canal: console
@@ -48,6 +195,308 @@ evenements:
       classement: []
       dernierBuzz: null
       programme: []
+- nom: Premier appel — salle
+  canal: salle
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-23T20:00:10.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantAlize
+        configurationInterface: *configurationKaraoke
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: Premier appel — console
+  canal: console
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-23T20:00:10.000Z'
+    donnees: *consolePremierAppel
+- nom: Premier appel — Alizé
+  canal: joueur
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-23T20:00:10.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      joueurId: 11900000-0000-4000-8000-000000000005
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantAlize
+        configurationInterface: *configurationKaraoke
+        votes: []
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: true
+- nom: Premier appel — Basile
+  canal: joueur
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-23T20:00:10.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      joueurId: 11900000-0000-4000-8000-000000000006
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantAlize
+        configurationInterface: *configurationKaraoke
+        votes: []
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: Appel à la fin de la lecture — salle
+  canal: salle
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: '2026-11-23T20:01:00.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &courantBasile
+          passageId: 11900000-0000-4000-8000-000000000011
+          numero: 2
+          chanson:
+            chansonId: ch_phare
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: null
+            dureeMs: 80000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: 11900000-0000-4000-8000-000000000006
+            pseudo: Basile
+          numeroModification: 1
+          etapeId: 11900000-0000-4000-8000-000000000013
+          etat: APPELE
+          prochainAppelPrevuLe: '2026-11-23T20:02:50.000Z'
+          appeleLe: '2026-11-23T20:01:00.000Z'
+          echeanceAppelLe: '2026-11-23T20:01:30.000Z'
+          delaiAppelRestantMs: 30000
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-23T20:01:00.000Z'
+          clotureLe: null
+        configurationInterface: *configurationKaraoke
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: 11900000-0000-4000-8000-000000000008
+        lecture: null
+        paroles: null
+- nom: Appel à la fin de la lecture — console
+  canal: console
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: '2026-11-23T20:01:00.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      programme:
+      - *mancheKaraoke
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantBasile
+        configurationInterface: *configurationKaraoke
+        votes:
+        - passageId: 11900000-0000-4000-8000-000000000010
+          numero: 1
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-23T20:01:00.000Z'
+          clotureLe: null
+          nombreVotes: 0
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: true
+        peutAppeler: false
+        peutPasser: true
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: Appel à la fin de la lecture — Alizé
+  canal: joueur
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: '2026-11-23T20:01:00.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      joueurId: 11900000-0000-4000-8000-000000000005
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantBasile
+        configurationInterface: *configurationKaraoke
+        votes:
+        - passageId: 11900000-0000-4000-8000-000000000010
+          numero: 1
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-23T20:01:00.000Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: Appel à la fin de la lecture — Basile
+  canal: joueur
+  message:
+    type: passage-appele
+    soireeId: 11900000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: '2026-11-23T20:01:00.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      joueurId: 11900000-0000-4000-8000-000000000006
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantBasile
+        configurationInterface: *configurationKaraoke
+        votes:
+        - passageId: 11900000-0000-4000-8000-000000000010
+          numero: 1
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-23T20:01:00.000Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: true
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: true
 resynchronisation:
   destination: /topic/soirees/11900000-0000-4000-8000-000000000001/console
   routeEtat: /api/soirees/11900000-0000-4000-8000-000000000001/etat/console

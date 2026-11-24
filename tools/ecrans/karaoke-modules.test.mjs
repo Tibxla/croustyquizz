@@ -39,6 +39,36 @@ test('les trois écrans partagent un lien CSS, conservent le talon et libèrent 
 	assert.equal(document.head.childElementCount, 0); assert.equal(talon.textContent, 'DEMO01');
 });
 
+test('Console : la mention Appel automatique remplace la dernière action de pilotage', t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	b.connecter('synchronisee');
+	const manuel = { ...vue({ passagesEnAttente: [{ ...passage(), position: 1 }], peutAppeler: true }),
+		soiree: { pilotage: 'MANUEL' } };
+	b.module.afficher(manuel, capture);
+	const appeler = bouton(b.principale, 'Appeler le suivant');
+	assert.ok(appeler, 'Le bouton est présent en Pilotage Manuel.');
+	const pilotage = appeler.parentNode;
+	const commandes = pilotage.querySelectorAll('button').slice(0, -1).map(bouton => bouton.textContent);
+	appeler.focus();
+
+	b.module.afficher({ ...manuel, soiree: { pilotage: 'AUTOMATIQUE' },
+		karaoke: { ...manuel.karaoke, peutAppeler: false } }, capture);
+	assert.equal(Boolean(bouton(pilotage, 'Appeler le suivant')), false);
+	assert.equal(Boolean(pilotage.querySelector('.bouton--action')), false);
+	const mention = pilotage.querySelector('.console__note');
+	assert.ok(mention, 'La mention est présente en Pilotage Automatique.');
+	assert.equal(mention.textContent, 'Appel automatique');
+	assert.equal(pilotage.children.at(-1) === mention, true);
+	assert.deepEqual(pilotage.querySelectorAll('button').map(bouton => bouton.textContent), commandes);
+	assert.equal(b.document.activeElement.textContent, 'Passage courant');
+
+	b.module.afficher(manuel, capture);
+	assert.equal(Boolean(pilotage.querySelector('.console__note')), false);
+	assert.equal(bouton(pilotage, 'Appeler le suivant') === appeler, true);
+	assert.equal(appeler.disabled, false);
+});
+
 test('Console : sélection unique, placement figé et priorité invalidée si l’ancienne disparaît', () => {
 	const p = passage('p', 12), q = { ...passage('q', 13), position: 1, prioritaire: true };
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.connecter('synchronisee');

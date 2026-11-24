@@ -172,6 +172,57 @@ class ServiceKaraokeTest {
         }
     }
 
+    @Test void deuxInscriptionsConcurrentesNAppellentQuUnPassagePuisLeMinuteurPublieLeSuivant() throws Exception {
+        banc.pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        var entrees = new CountDownLatch(2);
+        var sortir = new CountDownLatch(1);
+        doAnswer(appel -> {
+            entrees.countDown();
+            attendre(sortir);
+            return Optional.of(contenu(appel.getArgument(0)));
+        }).when(banc.source).charger(anyLong());
+
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            try {
+                var premier = fils.submit(() -> inscrireResultat(manche, 1, UUID.randomUUID()));
+                var second = fils.submit(() -> inscrireResultat(manche, 2, UUID.randomUUID()));
+                assertThat(entrees.await(3, TimeUnit.SECONDS)).isTrue();
+                sortir.countDown();
+                assertThat(List.of(premier.get(3, TimeUnit.SECONDS), second.get(3, TimeUnit.SECONDS)))
+                        .allSatisfy(recu -> assertThat(ReponsesDeCommande.statut(recu)).isEqualTo(201));
+            } finally { sortir.countDown(); }
+        }
+        assertThat(banc.diffuseur.typesSalle())
+                .containsExactly("manche-demarree", "passage-appele", "file-attente-modifiee");
+        var console = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(soiree, Destination.CONSOLE);
+        assertThat(console.courant().etat()).isEqualTo("APPELE");
+        assertThat(console.courant().numero()).isEqualTo(1);
+        assertThat(console.passagesEnAttente()).singleElement().satisfies(passage -> assertThat(passage.numero()).isEqualTo(2));
+        var suivant = console.passagesEnAttente().getFirst();
+        var courant = console.courant();
+        var presence = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), courant.etapeId(),
+                courant.numeroModification());
+        assertThat(banc.service.confirmerPresencePassage(manche, courant.passageId(),
+                envoi(joueur, presence.envoiId(), "POST", "/presence", presence), presence)).isInstanceOf(Accepte.class);
+
+        int avant = banc.diffuseur.envois().size();
+        banc.horloge.avancer(Duration.ofMinutes(3));
+        var envois = banc.diffuseur.envois();
+        var publications = envois.subList(avant, envois.size());
+        assertThat(publications).extracting(DiffuseurFactice.Envoi::cible).containsExactlyInAnyOrder(
+                DiffuseurFactice.Cible.SALLE, DiffuseurFactice.Cible.CONSOLE,
+                DiffuseurFactice.Cible.JOUEUR, DiffuseurFactice.Cible.JOUEUR, DiffuseurFactice.Cible.JOUEUR);
+        assertThat(publications.stream().filter(p -> p.cible() == DiffuseurFactice.Cible.JOUEUR)
+                .map(DiffuseurFactice.Envoi::destinataire)).containsExactlyInAnyOrderElementsOf(ConfigurationTroisJoueurs.JOUEURS);
+        assertThat(publications).allSatisfy(publication -> {
+            assertThat(publication.evenement().type()).isEqualTo("passage-appele");
+            var vue = banc.json.valueToTree(((VueComposee) publication.evenement()).champs());
+            assertThat(vue.at("/karaoke/courant/passageId").asString()).isEqualTo(suivant.passageId().toString());
+            assertThat(vue.at("/karaoke/courant/etat").asString()).isEqualTo("APPELE");
+        });
+    }
+
     @Test void deuxPreparationsDeMemeCleNeConsommentQuUnNumeroEtUneAutreEmpreinteEstRefusee() throws Exception {
         UUID manche = demarrer(); UUID id = UUID.randomUUID();
         var entrees = new java.util.concurrent.CountDownLatch(2); var sortir = new java.util.concurrent.CountDownLatch(1);
@@ -608,6 +659,7 @@ class ServiceKaraokeTest {
         final PortsDePassageFactices ports = new PortsDePassageFactices(ConfigurationTroisJoueurs.JOUEURS);
         final ParticipantsDePassage participantsDesVues = mock(ParticipantsDePassage.class, delegatesTo(ports));
         final HorlogeFactice horloge = new HorlogeFactice();
+        final PilotageDeSoireeDemonstration pilotage = new PilotageDeSoireeDemonstration();
         final DiffuseurFactice diffuseur = new DiffuseurFactice();
         final RegistreDesDeroulements registre = new RegistreDesDeroulements();
         final SourceDeParoles source = mock(SourceDeParoles.class);
@@ -632,7 +684,7 @@ class ServiceKaraokeTest {
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
-                    soireeId -> false);
+                    pilotage);
             PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {
                 public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
                 public void enregistrer(UUID id, Object valeur) {
