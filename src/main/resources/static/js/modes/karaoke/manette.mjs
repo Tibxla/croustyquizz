@@ -1,11 +1,14 @@
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi, texteAutresPassages } from './commun.mjs';
 import { installerScene } from '../passage/scene-manette.mjs';
 import { installerVotes } from '../passage/votes-manette.mjs';
+import { installerInvitations } from '../passage/invitations-manette.mjs';
+import { estInscripteur, lignesInvitations, texteDesinscription } from './invitations.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton } = ui;
 	const votes = installerVotes(ui);
 	const scene = installerScene(ui, 'À toi de chanter !');
+	const invitations = installerInvitations(ui);
 	const titre = e('h2', '', 'Tes Passages'); titre.tabIndex = -1;
 	const personnels = e('div', 'karaoke__personnels');
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
@@ -14,27 +17,40 @@ export function monter(zones, contexte) {
 	const ensuite = e('h2', '', 'Ensuite'); ensuite.tabIndex = -1;
 	const file = e('ol', 'rouleau'), autres = e('p'); ui.principale.append(ensuite, file, autres);
 	ui.messageInvalidation = () => { invalidation.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
+	const moi = contexte.acteur.identifiant;
 	function desinscrire(passage, declencheur) {
 		const mancheId = ui.bloc.mancheId, cible = structuredClone(passage);
+		const inscripteur = estInscripteur(cible, moi);
 		const valide = () => ui.bloc.mancheId === mancheId && ui.bloc.mesPassagesEnAttente.some(p =>
 			p.passageId === cible.passageId && p.numeroModification === cible.numeroModification && p.tour === cible.tour);
-		const dialogue = ui.dialogue({ titre: 'Me désinscrire', declencheur, valide, confirmation: {
-			libelle: 'Confirmer la désinscription',
+		const dialogue = ui.dialogue({ titre: inscripteur ? 'Me désinscrire' : 'Quitter ce Passage', declencheur, valide, confirmation: {
+			libelle: inscripteur ? 'Confirmer la désinscription' : 'Confirmer le départ',
 			permise: () => ui.mutationsPermises,
 			executer: () => ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages/${encodeURIComponent(cible.passageId)}/desinscription`,
 				corps: { numeroModification: cible.numeroModification }, mancheId, acteurType: 'JOUEUR', passageId: cible.passageId }),
 		} });
 		dialogue.annuler.textContent = 'Annuler';
-		dialogue.contenu.append(e('p', '', `Retirer ton Passage ${cible.numero} · ${cible.chanson.titre} ?`), dialogue.confirmer);
+		dialogue.contenu.append(e('p', '', texteDesinscription(cible, moi)), dialogue.confirmer);
 	}
 	const horloge = setInterval(() => { scene.decompter(); votes.decompter(); }, 1000);
 	ui.surRendu = origine => {
 		if (!ui.bloc) return;
 		votes.rendre(titre, origine);
 		scene.rendre(origine, titre);
+		invitations.rendre(titre);
 		const tickets = ui.bloc.mesPassagesEnAttente.map(p => {
 			const ticket = creerTicket(ui, p, { personnel: true, estimation: true });
-			const retirer = bouton('Me désinscrire', () => desinscrire(p, retirer), 'bouton bouton--lien');
+			const inscripteur = estInscripteur(p, moi);
+			if (inscripteur) {
+				const lignes = lignesInvitations(ui.bloc.invitationsEmises, p.passageId);
+				if (lignes.length) {
+					const liste = e('ul', 'karaoke__etat-invitations');
+					liste.setAttribute('aria-label', 'Invitations');
+					for (const ligne of lignes) liste.append(e('li', '', ligne));
+					ticket.querySelector('.mon-ticket__bas').append(liste);
+				}
+			}
+			const retirer = bouton(inscripteur ? 'Me désinscrire' : 'Quitter ce Passage', () => desinscrire(p, retirer), 'bouton bouton--lien');
 			retirer.setAttribute('data-passage-id', p.passageId); retirer.disabled = !ui.mutationsPermises;
 			const envoi = [...ui.envois.values()].filter(e => e.commande.passageId === p.passageId).at(-1);
 			if (envoi?.etat === 'en-cours') retirer.disabled = true;

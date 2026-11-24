@@ -50,7 +50,7 @@ public class ServiceKaraoke extends ServiceDePassages<ReglagesKaraoke, EtatKarao
         return ((InstantaneKaraoke) instantane).etatManche();
     }
     @Override public ResultatDeCommande inscrire(UUID mancheId, EnvoiDeCommande envoi, CorpsPassage.Inscription corps) {
-        return inscrirePassage(mancheId, envoi, new CorpsKaraoke.InscriptionPassage(corps.envoiId(), corps.chansonId()));
+        return inscrirePassage(mancheId, envoi, new CorpsKaraoke.InscriptionPassage(corps.envoiId(), corps.chansonId(), corps.invitesIds()));
     }
 
     public ResultatDeCommande inscrirePassage(UUID mancheId, EnvoiDeCommande envoi, CorpsKaraoke.InscriptionPassage corps) {
@@ -60,8 +60,10 @@ public class ServiceKaraoke extends ServiceDePassages<ReglagesKaraoke, EtatKarao
             return PreparationDeCommande.prete((d, recueLe) -> {
                 if (contenu.isEmpty()) { return introuvable(); }
                 long numero = passages.numeroPropose(envoi.acteur().soireeId());
+                boolean invitesPresents = invitesPresents(envoi.acteur().soireeId(), corps.invites());
                 ResultatDeCommande resultat = d.recevoir(new InscrirePassage(envoi.acteur(), recueLe,
-                        envoi.envoiId(), new FaitsInscription(UUID.randomUUID(), numero), corps.chansonId(), contenu.get()));
+                        envoi.envoiId(), new FaitsInscription(UUID.randomUUID(), numero), corps.chansonId(), contenu.get(),
+                        corps.invites(), invitesPresents));
                 if (resultat instanceof Accepte) { passages.incrementerNumero(envoi.acteur().soireeId(), numero); }
                 return resultat;
             });

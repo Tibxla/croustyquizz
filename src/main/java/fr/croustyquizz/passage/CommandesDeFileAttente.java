@@ -2,8 +2,10 @@ package fr.croustyquizz.passage;
 
 import fr.croustyquizz.manche.Accepte;
 import fr.croustyquizz.manche.Destination;
+import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.manche.ResultatDeCommande;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -24,7 +26,19 @@ public final class CommandesDeFileAttente {
     }
 
     public ResultatDeCommande inscrire(NouveauPassage nouveau, UUID envoiId) {
-        ResultatFile resultat = file.inscrire(nouveau);
+        return inscrire(nouveau, List.of(), true, envoiId);
+    }
+
+    /**
+     * Inscrit le Passage avec ses Invitations (#66). Les gardes des invités viennent après celles du contenu et de
+     * l’inscrivant, vérifiées par le Mode ; {@code invitesPresents} vient du service, sous le verrou de Soirée.
+     */
+    public ResultatDeCommande inscrire(NouveauPassage nouveau, List<UUID> invitesIds, boolean invitesPresents, UUID envoiId) {
+        if (invitesIds.contains(nouveau.inscripteurId())) {
+            return new Refuse(422, "DONNEES_INVALIDES", "Tu ne peux pas t’inviter toi-même.");
+        }
+        if (!invitesPresents) { return new Refuse(404, "RESSOURCE_INTROUVABLE", "Un Joueur invité est introuvable."); }
+        ResultatFile resultat = file.inscrire(nouveau, invitesIds);
         if (resultat instanceof ResultatFile.Refus refus) { return refus.refus(); }
         return new Accepte(accusePassage(envoiId, nouveau.recueLe(), nouveau.id(), "INSCRIRE"),
                 ECRANS, FILE_MODIFIEE, 201);
@@ -33,6 +47,11 @@ public final class CommandesDeFileAttente {
     public ResultatDeCommande desinscrire(DesinscrirePassage commande) {
         return resultatPassage(file.desinscrire(commande.joueurId(), commande.cible(), commande.recueLe()),
                 commande.envoiId(), commande.recueLe(), commande.cible(), "DESINSCRIRE");
+    }
+
+    public ResultatDeCommande repondreInvitation(RepondreInvitation reponse) {
+        return resultatPassage(file.repondreInvitation(reponse.joueurId(), reponse.cible(), reponse.accepte()),
+                reponse.envoiId(), reponse.recueLe(), reponse.cible(), reponse.action());
     }
 
     public ResultatDeCommande retirer(RetirerPassage commande) {

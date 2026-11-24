@@ -1,8 +1,11 @@
 package fr.croustyquizz.karaoke;
 
 import fr.croustyquizz.passage.CorpsPassage;
+import java.util.List;
 import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 /** Corps fermés, validés avant la résolution de l'identité HTTP. */
 public final class CorpsKaraoke extends CorpsPassage {
@@ -11,8 +14,11 @@ public final class CorpsKaraoke extends CorpsPassage {
     static void identifiantChanson(String valeur) {
         if (valeur == null || valeur.isEmpty() || valeur.codePointCount(0, valeur.length()) > LONGUEUR_CHANSON_ID_MAX) { invalide(); }
     }
-    public record InscriptionPassage(UUID envoiId, String chansonId) {
-        public InscriptionPassage { obligatoire(envoiId); identifiantChanson(chansonId); }
+    public record InscriptionPassage(UUID envoiId, String chansonId,
+            @JsonInclude(JsonInclude.Include.NON_NULL) List<UUID> invitesIds) {
+        @JsonCreator public InscriptionPassage { obligatoire(envoiId); identifiantChanson(chansonId); verifierInvites(invitesIds); }
+        public InscriptionPassage(UUID envoiId, String chansonId) { this(envoiId, chansonId, null); }
+        public List<UUID> invites() { return invitesIds == null ? List.of() : List.copyOf(invitesIds); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
     public record DesignationLecteur(UUID lecteurId) { }

@@ -1,5 +1,6 @@
 import { appelerSuivant, piloter, prochainPassage } from '../passage/pilotage.mjs';
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
+import { joindrePseudos } from './invitations.mjs';
 import { preparerPlacement } from './placement.mjs';
 import { formaterDecalage, formaterTempsRestant } from './presentation.mjs';
 import { delaiAppelRestant, tempsAvantFinPrevue } from './paroles.mjs';
@@ -233,6 +234,9 @@ export function monter(zones, contexte) {
 		const tickets = [...passages()].sort((a, b) => a.position - b.position).map(p => {
 			const li = e('li');
 			const ticket = creerTicket(ui, p, { estimation: true, details: true, selectionner: id => { selection = id; message.textContent = ''; ui.rendre(); } });
+			// Les Invitations en suspens ne sont pas encore des Interprètes : la Console les nomme à part (#135).
+			const enSuspens = (ui.bloc.invitationsEnAttente ?? []).filter(i => i.passageId === p.passageId).map(i => i.invite.pseudo);
+			if (enSuspens.length) ticket.querySelector('.ticket__corps').append(e('p', 'karaoke__attente', `Invités sans réponse : ${joindrePseudos(enSuspens)}`));
 			ticket.setAttribute('aria-pressed', String(p.passageId === selection)); li.append(ticket); return li;
 		});
 		ui.remplacerListe(file, tickets, titre); vide.hidden = Boolean(tickets.length); file.hidden = !tickets.length;

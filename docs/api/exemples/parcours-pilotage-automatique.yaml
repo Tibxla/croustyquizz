@@ -124,6 +124,7 @@ http:
         votes: []
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -265,6 +266,8 @@ evenements:
         nombreAutresPassages: 0
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -301,6 +304,8 @@ evenements:
         nombreAutresPassages: 0
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -398,6 +403,7 @@ evenements:
         votes: *voteOuvert
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: true
@@ -453,6 +459,8 @@ evenements:
         nombreAutresPassages: 0
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -502,6 +510,8 @@ evenements:
         nombreAutresPassages: 0
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null

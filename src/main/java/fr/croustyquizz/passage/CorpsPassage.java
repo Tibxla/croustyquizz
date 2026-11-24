@@ -1,7 +1,11 @@
 package fr.croustyquizz.passage;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import fr.croustyquizz.manche.Refuse;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /** Corps des routes partagées par les Modes à Passages. */
@@ -52,10 +56,34 @@ public class CorpsPassage {
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
 
+    /** Trois invités au plus, distincts (#66). */
+    public static final int NOMBRE_INVITES_MAX = 3;
+    public static void verifierInvites(List<UUID> invitesIds) {
+        if (invitesIds != null && (invitesIds.size() > NOMBRE_INVITES_MAX || invitesIds.stream().anyMatch(Objects::isNull)
+                || new HashSet<>(invitesIds).size() != invitesIds.size())) { invalide(); }
+    }
+    /** Acceptation ou refus de son Invitation par le Joueur invité (#138). */
+    public record ReponseInvitation(UUID envoiId, Long numeroModification, String reponse) {
+        public ReponseInvitation {
+            obligatoire(envoiId); entier(numeroModification, true);
+            if (!"ACCEPTER".equals(reponse) && !"REFUSER".equals(reponse)) { invalide(); }
+        }
+        public boolean accepte() { return "ACCEPTER".equals(reponse); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
+
     public record AppelPassage(Long numeroModification) { }
     public record ConfirmationPresencePassage(UUID envoiId, UUID etapeId, Long numeroModification) { }
     /** La liaison garantit que seul le champ du Mode choisi apparaît dans le JSON. */
-    public record Inscription(UUID envoiId, String chansonId, UUID instrumentaleId) {
+    /** Sans invité, l’empreinte reste celle d’avant #66. */
+    public record Inscription(UUID envoiId, String chansonId, UUID instrumentaleId,
+            @JsonInclude(JsonInclude.Include.NON_NULL) List<UUID> invitesIds) {
+        public Inscription {
+            verifierInvites(invitesIds);
+            invitesIds = invitesIds == null ? null : List.copyOf(invitesIds);
+        }
+        public Inscription(UUID envoiId, String chansonId, UUID instrumentaleId) { this(envoiId, chansonId, instrumentaleId, null); }
         public boolean concerneLeKaraoke() { return chansonId != null; }
+        public List<UUID> invites() { return invitesIds == null ? List.of() : invitesIds; }
     }
 }

@@ -16,6 +16,7 @@ public final class FileAttente {
     private UUID prioritaire;
     private final List<Passage> passages;
     private final Map<UUID, Long> consommations;
+    private final List<InvitationPassage> invitations;
 
     private FileAttente(EtatFileAttente etat) {
         soireeId = etat.soireeId(); mancheId = etat.mancheId();
@@ -24,13 +25,14 @@ public final class FileAttente {
         prioritaire = etat.passagePrioritaireId();
         passages = new ArrayList<>(etat.passages());
         consommations = new HashMap<>(etat.derniersToursConsommes());
+        invitations = new ArrayList<>(etat.invitations());
     }
 
     public static FileAttente depuis(EtatFileAttente etat) { return new FileAttente(etat); }
 
     public EtatFileAttente etat() {
         return new EtatFileAttente(soireeId, mancheId, limite, tourOuvert,
-                prochainOrdre, prochaineCle, prioritaire, passages, consommations);
+                prochainOrdre, prochaineCle, prioritaire, passages, consommations, invitations);
     }
 
     public Optional<Refuse> verifierInscription(UUID interpreteId, String contenuId) {
@@ -46,6 +48,14 @@ public final class FileAttente {
     }
 
     public ResultatFile inscrire(NouveauPassage nouveau) {
+        return inscrire(nouveau, List.of());
+    }
+
+    /**
+     * Inscrit le Passage puis invite les Joueurs cités, sans qu’ils deviennent Interprètes. La présence des
+     * invités est vérifiée par l’appelant.
+     */
+    public ResultatFile inscrire(NouveauPassage nouveau, List<UUID> invitesIds) {
         long tour = tourOuvert;
         for (UUID interprete : nouveau.interpretes()) {
             Optional<Refuse> refus = verifierInscription(interprete, nouveau.contenuId());
@@ -54,12 +64,18 @@ public final class FileAttente {
                     && p.interpretes().contains(interprete)).mapToLong(Passage::tourNormal).max().orElse(0L);
             tour = Math.max(tour, Math.max(premierTourDisponible(interprete), dernierTourReserve + 1));
         }
+        if (invitesIds.stream().anyMatch(nouveau.interpretes()::contains)) { return new ResultatFile.Refus(autoInvitation()); }
+        if (new HashSet<>(invitesIds).size() != invitesIds.size()
+                || nouveau.interpretes().size() + invitesIds.size() > Passage.NOMBRE_MAX_INTERPRETES) {
+            throw new IllegalArgumentException("Au plus trois invités distincts, vérifiés par le contrat.");
+        }
         passages.add(new Passage(nouveau.id(), nouveau.soireeId(), nouveau.mancheId(),
                 nouveau.inscripteurId(), nouveau.interpretes(), nouveau.contenuId(), nouveau.duree(),
                 nouveau.numero(), 0, EtatPassage.EN_ATTENTE, nouveau.recueLe(), prochainOrdre,
                 tour, prochaineCle, null, null));
         prochainOrdre++;
         prochaineCle++;
+        invitesIds.forEach(id -> invitations.add(new InvitationPassage(nouveau.id(), id, InvitationPassage.Etat.EN_ATTENTE)));
         return new ResultatFile.Modifiee();
     }
 
@@ -97,11 +113,60 @@ public final class FileAttente {
         return new ResultatFile.Modifiee();
     }
 
-    /** Applique le départ ou l’Exclusion du Joueur à tous ses Passages encore en attente. */
+    /**
+     * Réponse d’un invité à son Invitation (#66, #138), dans l’ordre des refus du contrat. Seule l’acceptation fait
+     * de l’invité un Interprète, sous réserve de son doublon personnel et de sa limite ; un refus de ces gardes
+     * laisse l’Invitation en suspens. Le refus ne change ni les Interprètes ni le compteur du Passage.
+     */
+    public ResultatFile repondreInvitation(UUID inviteId, CiblePassage cible, boolean accepte) {
+        Passage passage = trouver(cible.passageId());
+        InvitationPassage invitation = passage == null ? null : invitationDe(passage.id(), inviteId);
+        if (invitation == null) {
+            return new ResultatFile.Refus(new Refuse(404, "RESSOURCE_INTROUVABLE", "Cette Invitation est introuvable."));
+        }
+        Refuse refus = verifierCible(cible, passage, Set.of(EtatPassage.EN_ATTENTE));
+        if (refus != null) { return new ResultatFile.Refus(refus); }
+        if (!invitation.enSuspens()) {
+            return new ResultatFile.Refus(new Refuse(409, "COMMANDE_PERIMEE", "Cette Invitation est déjà close."));
+        }
+        if (!accepte) {
+            changerEtat(invitation, InvitationPassage.Etat.REFUSEE);
+            return new ResultatFile.Modifiee();
+        }
+        ResultatFile resultat = ajouterInterprete(cible, inviteId);
+        if (resultat instanceof ResultatFile.Modifiee) { changerEtat(invitation, InvitationPassage.Etat.ACCEPTEE); }
+        return resultat;
+    }
+
+    private InvitationPassage invitationDe(UUID passageId, UUID inviteId) {
+        return invitations.stream().filter(i -> i.passageId().equals(passageId) && i.inviteId().equals(inviteId))
+                .findFirst().orElse(null);
+    }
+
+    private void changerEtat(InvitationPassage invitation, InvitationPassage.Etat etat) {
+        invitations.set(invitations.indexOf(invitation), invitation.avec(etat));
+    }
+
+    /** Fait expirer les Invitations restées en suspens d’un Passage, ou d’un Joueur parti. */
+    private void expirerInvitations(java.util.function.Predicate<InvitationPassage> cible) {
+        invitations.replaceAll(i -> i.enSuspens() && cible.test(i) ? i.avec(InvitationPassage.Etat.EXPIREE) : i);
+    }
+
+    private void expirerInvitations(UUID passageId) {
+        expirerInvitations(i -> i.passageId().equals(passageId));
+    }
+
+    private static Refuse autoInvitation() {
+        return new Refuse(422, "DONNEES_INVALIDES", "Tu ne peux pas t’inviter toi-même.");
+    }
+
+    /** Applique le départ ou l’Exclusion du Joueur à tous ses Passages encore en attente et à ses invitations. */
     public ResultatFile retirerJoueurParti(UUID joueurId, Instant recueLe) {
         List<Passage> attentes = passages.stream().filter(p -> p.etat() == EtatPassage.EN_ATTENTE
                 && p.interpretes().contains(joueurId)).toList();
-        if (attentes.isEmpty()) { return new ResultatFile.SansEffet(); }
+        boolean invite = invitations.stream().anyMatch(i -> i.enSuspens() && i.inviteId().equals(joueurId));
+        expirerInvitations(i -> i.inviteId().equals(joueurId));
+        if (attentes.isEmpty()) { return invite ? new ResultatFile.Modifiee() : new ResultatFile.SansEffet(); }
         retirerInterpreteDesAttentes(joueurId, recueLe, attentes);
         return new ResultatFile.Modifiee();
     }
@@ -214,12 +279,24 @@ public final class FileAttente {
         }
     }
 
+    /**
+     * L’inscripteur retire tout son Passage ; un Interprète invité le quitte seulement, et le Passage reste dans
+     * la File (#139). Un invité qui a quitté ou dont l’Invitation est close reste dans la portée du Passage.
+     */
     public ResultatFile desinscrire(UUID joueurId, CiblePassage cible, Instant recueLe) {
         Passage passage = trouver(cible.passageId());
-        if (passage == null || !passage.inscripteurId().equals(joueurId)) {
+        if (passage == null || (!passage.interpretes().contains(joueurId) && invitationDe(passage.id(), joueurId) == null)) {
             return new ResultatFile.Refus(new Refuse(404, "RESSOURCE_INTROUVABLE", "Ce Passage est introuvable."));
         }
-        return retirerAvecTrace(joueurId, cible, recueLe, "DESINSCRIPTION");
+        if (passage.inscripteurId().equals(joueurId)) { return retirerAvecTrace(joueurId, cible, recueLe, "DESINSCRIPTION"); }
+        Refuse refus = verifierCible(cible, passage, Set.of(EtatPassage.EN_ATTENTE));
+        if (refus != null) { return new ResultatFile.Refus(refus); }
+        if (!passage.interpretes().contains(joueurId)) { return new ResultatFile.Refus(perimee()); }
+        retirerInterpreteDesAttentes(joueurId, recueLe, List.of(passage));
+        // Quitter le Passage revient à retirer son accord : l’inscripteur le voit comme un refus.
+        InvitationPassage invitation = invitationDe(passage.id(), joueurId);
+        if (invitation != null) { changerEtat(invitation, InvitationPassage.Etat.REFUSEE); }
+        return new ResultatFile.Modifiee();
     }
 
     public ResultatFile retirer(UUID acteurId, CiblePassage cible, Instant recueLe) {
@@ -235,6 +312,7 @@ public final class FileAttente {
     }
 
     private void retirerPassage(Passage passage, TraceTerminale trace) {
+        expirerInvitations(passage.id());
         remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.RETIRE,
                 null, trace, true));
         if (passage.id().equals(prioritaire)) { leverPriorite(); }
@@ -306,6 +384,8 @@ public final class FileAttente {
             tour = Math.max(tour, tourInterprete);
         }
         Passage appele = modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.APPELE, tour, null, true);
+        // À l’appel, les invitations restées en suspens expirent sans erreur (#66).
+        expirerInvitations(passage.id());
         remplacer(appele);
         if (estPrioritaire) { leverPriorite(); }
         recalculerReservations(Set.of());
@@ -361,6 +441,7 @@ public final class FileAttente {
         boolean modifiee = false;
         for (Passage passage : List.copyOf(passages)) {
             if (passage.etat() == EtatPassage.EN_ATTENTE) {
+                expirerInvitations(passage.id());
                 remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.ANNULE,
                         null, new TraceTerminale(TraceTerminale.MANCHE_TERMINEE, acteurId, recueLe), true));
                 modifiee = true;
