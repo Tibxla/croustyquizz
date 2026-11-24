@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.*;
@@ -24,7 +25,7 @@ class ServiceKaraokeTest {
     static final ProprietesSourceKaraoke SOURCE = new ProprietesSourceKaraoke(URI.create("https://source.invalid"), "Test", 5000, 2000000, 120);
     final BancKaraoke banc = new BancKaraoke();
     final UUID soiree = UUID.randomUUID();
-    final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+    final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
     final Acteur animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
 
     @Test void inscriptionEtRejeu201NeConsommentQuUnNumero() {
@@ -82,7 +83,7 @@ class ServiceKaraokeTest {
     @Test void uneAttenteConnueDAutruiEstRefuseeAvantLeRecuSansRestaurerLeDeroulement() {
         UUID manche = demarrer();
         UUID passage = inscrire(manche, 1).passageId();
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
         var corps = new CorpsKaraoke.DesinscriptionPassage(UUID.randomUUID(), 0L);
         var envoi = envoi(autre, corps.envoiId(), "POST", "/passages/" + passage + "/desinscription", corps);
         banc.registre.retirer(manche);
@@ -582,6 +583,7 @@ class ServiceKaraokeTest {
         Map<UUID, EnvoiDeManche> recus = new HashMap<>();
         public ManchePersistante charger(UUID id) { return manches.get(id); }
         public void enregistrer(ManchePersistante manche) { manches.put(manche.getMancheId(), manche); }
+        public void retirer(ManchePersistante manche) { manches.remove(manche.getMancheId()); }
         public List<ManchePersistante> deLaSoiree(UUID id) { return manches.values().stream().filter(m -> m.getSoireeId().equals(id)).toList(); }
         public EnvoiDeManche retrouverEnvoi(UUID id) { return recus.get(id); }
         public void enregistrerEnvoi(EnvoiDeManche recu) { recus.put(recu.getId(), recu); }
@@ -605,7 +607,7 @@ class ServiceKaraokeTest {
         final DepotDeManchesMemoire depot = new DepotDeManchesMemoire();
         final PersistancePassageMemoire passages = spy(new PersistancePassageMemoire());
         Map<UUID, EtatKaraokePersiste> etats = new HashMap<>();
-        final PortsDePassageFactices ports = new PortsDePassageFactices(ConfigurationTroisJoueurs.JOUEURS);
+        final PortsDePassageFactices ports = new PortsDePassageFactices(ConfigurationTroisJoueurs::joueursDe);
         final ParticipantsDePassage participantsDesVues = mock(ParticipantsDePassage.class, delegatesTo(ports));
         final HorlogeFactice horloge = new HorlogeFactice();
         final DiffuseurFactice diffuseur = new DiffuseurFactice();

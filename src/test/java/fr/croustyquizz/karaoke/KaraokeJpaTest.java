@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static org.assertj.core.api.Assertions.*;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
@@ -53,10 +54,49 @@ class KaraokeJpaTest {
         });
         transaction.executeWithoutResult(s -> assertThat(passages.numeroPropose(soiree)).isEqualTo(2));
     }
+
+    @Test void restaureLesInterpretesOrdonnesEtLeNouvelInscripteurApresEviction() {
+        UUID soiree = UUID.randomUUID();
+        UUID ana = joueursDe(soiree).getFirst();
+        UUID boris = joueursDe(soiree).get(1);
+        UUID celia = joueursDe(soiree).get(2);
+        var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
+        UUID passage = inscrire(manche, new Acteur(Acteur.Type.JOUEUR, ana, soiree), 1);
+        var solo = (InstantaneKaraoke) service.instantane(soiree, manche);
+        var file = FileAttente.depuis(solo.file());
+        file.ajouterInterprete(new CiblePassage(passage, 0), celia);
+        file.ajouterInterprete(new CiblePassage(passage, 1), boris);
+        var trio = enregistrerFilePuisRestaurer(file.etat());
+        assertThat(trio.passages().getFirst().interpretes()).containsExactly(ana, celia, boris);
+
+        var restauree = FileAttente.depuis(trio);
+        restauree.retirerJoueurParti(ana, socle.horloge().maintenant());
+        var duo = enregistrerFilePuisRestaurer(restauree.etat()).passages().getFirst();
+        assertThat(duo.interpretes()).containsExactly(celia, boris);
+        assertThat(duo.inscripteurId()).isEqualTo(celia);
+
+        var appel = new CorpsKaraoke.AppelPassage(duo.numeroModification());
+        assertThat(service.appelerPassage(manche, passage, envoi(animateur, "/appel", appel), appel))
+                .isInstanceOf(Accepte.class);
+        assertThat(verifierRestauration(soiree, manche).file().derniersToursConsommes())
+                .containsExactlyInAnyOrderEntriesOf(Map.of(celia, 1L, boris, 1L));
+    }
+
+    private EtatFileAttente enregistrerFilePuisRestaurer(EtatFileAttente file) {
+        UUID manche = file.mancheId();
+        new TransactionTemplate(socle.transactions()).executeWithoutResult(s -> passages.enregistrer(manche, file));
+        socle.registre().retirer(manche);
+        var restauree = (InstantaneKaraoke) service.instantane(file.soireeId(), manche);
+        assertThat(restauree.file()).isEqualTo(file);
+        return restauree.file();
+    }
+
     @Test void restaurePausePrioriteReservationsEtRecusPuisContinueLesNumerosSurUneAutreManche() {
         UUID soiree = UUID.randomUUID();
         var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
-        var joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+        var joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
         UUID manche = service.creer(soiree, Map.of("limitePassagesEnAttente", 2));
         service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
         var premierCorps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1));
@@ -95,7 +135,7 @@ class KaraokeJpaTest {
     @Test void restaureLeCycleLaLectureEtLeLecteurSansRejouerLeDepart() {
         UUID soiree = UUID.randomUUID();
         var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
-        var joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+        var joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
         UUID manche = service.creer(soiree, Map.of());
         service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
         var inscription = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1));
@@ -128,7 +168,7 @@ class KaraokeJpaTest {
         UUID soiree = UUID.randomUUID();
         var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
         var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
-        var joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+        var joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
         UUID manche = service.creer(soiree, Map.of("limitePassagesEnAttente", 2));
         service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
         UUID premier = inscrire(manche, joueur, 1);

@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mockingDetails;
@@ -40,7 +41,7 @@ class FournisseurDeBlocKaraokeTest {
         var premier = parcours.inscrire(manche, 1);
         var second = parcours.inscrire(manche, 2);
         var troisieme = parcours.inscrire(manche, 3);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), parcours.soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(parcours.soiree).get(1), parcours.soiree);
         var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(4));
         banc.service.inscrirePassage(manche, parcours.envoi(autre, corps.envoiId(), "POST", "/passages", corps), corps);
         var priorite = new CorpsKaraoke.PrioritePassage(new CorpsKaraoke.Cible(troisieme.passageId(), 0L), true);
@@ -83,7 +84,7 @@ class FournisseurDeBlocKaraokeTest {
 
     @Test void retardataireAutoriseEtJoueurAbsentSousQuotaRefuse() {
         UUID manche = parcours.demarrer();
-        UUID joueur = ConfigurationTroisJoueurs.JOUEURS.get(2);
+        UUID joueur = joueursDe(parcours.soiree).get(2);
         // Fournisseur commun : eligiblePourMancheActive=false pour tous les Joueurs.
         var retardataire = (VuesKaraoke.BlocKaraokeManette) banc.bloc.fournir(parcours.soiree, Destination.joueur(joueur));
         assertThat(retardataire.peutInscrire() && retardataire.peutRechercher()).isTrue();
@@ -98,7 +99,7 @@ class FournisseurDeBlocKaraokeTest {
     @Test void estimationVientDeLHorlogeEtLePseudoDepartEstConserveSansAccesALaSource() {
         UUID manche = parcours.demarrer();
         var premier = parcours.inscrire(manche, 1);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), parcours.soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(parcours.soiree).get(1), parcours.soiree);
         var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(2));
         banc.service.inscrirePassage(manche, parcours.envoi(autre, corps.envoiId(), "POST", "/passages", corps), corps);
         banc.ports.absents.add(parcours.joueur.identifiant());
@@ -144,7 +145,7 @@ class FournisseurDeBlocKaraokeTest {
     @Test void lAppelAlimenteLeCourantLesEstimationsEtLesCapacites() throws Exception {
         UUID manche = parcours.demarrer();
         var premier = parcours.inscrire(manche, 1);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), parcours.soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(parcours.soiree).get(1), parcours.soiree);
         var inscription = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(2));
         banc.service.inscrirePassage(manche, parcours.envoi(autre, inscription.envoiId(), "POST", "/passages", inscription), inscription);
         var appel = new CorpsKaraoke.AppelPassage(0L);

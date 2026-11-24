@@ -334,9 +334,10 @@ Bearer de démonstration n'utilisent pas de session ni de cookie d'authentificat
 Les trois routes temporaires de création, de démarrage et de choix du Pilotage sont
 réservées aux profils `dev`/`recette` et à l'Animateur de démonstration.
 La création et le démarrage d'une Manche nécessitent un service du mode installé.
-Le choix du Pilotage se fait avant le démarrage de toute Manche de la Soirée.
-Il est perdu au redémarrage du serveur. Le Pilotage d'une Soirée enregistrée reste
-celui choisi à sa création. Le Buzz de test et son format historique restent disponibles.
+Le choix du Pilotage d'une Soirée de démonstration se fait avant le démarrage de toute Manche.
+Il est perdu au redémarrage du serveur. Si une Manche a démarré ou si la Soirée est
+enregistrée, la route répond `409 ETAT_INCOMPATIBLE`. Le Pilotage d'une Soirée enregistrée
+reste celui choisi à sa création. Le Buzz de test et son format historique restent disponibles.
 Voir [le contrat du prototype](prototype/openapi.yaml).
 Le cycle interne `PRETE` apparaît sous le nom HTTP existant `EN_ATTENTE` dans le programme.
 Les schémas des Manches restent limités au Quiz jusqu'aux contrats des autres modes.

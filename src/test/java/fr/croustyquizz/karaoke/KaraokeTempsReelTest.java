@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static org.assertj.core.api.Assertions.*;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.*;
@@ -51,7 +52,7 @@ class KaraokeTempsReelTest {
     final List<StompSession> sessions = new ArrayList<>();
     final UUID soiree = UUID.randomUUID();
     final Acteur animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
-    final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+    final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
 
     @AfterEach void fermer() {
         sessions.stream().filter(StompSession::isConnected).forEach(StompSession::disconnect);
@@ -68,7 +69,7 @@ class KaraokeTempsReelTest {
         List<Abonnement> flux = new ArrayList<>();
         flux.add(abonner(animateur, Canaux.console(soiree), "console"));
         flux.add(abonner(new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree), Canaux.salle(soiree), "salle"));
-        for (UUID id : ConfigurationTroisJoueurs.JOUEURS) { flux.add(abonner(new Acteur(Acteur.Type.JOUEUR, id, soiree), Canaux.joueur(id), "manette")); }
+        for (UUID id : joueursDe(soiree)) { flux.add(abonner(new Acteur(Acteur.Type.JOUEUR, id, soiree), Canaux.joueur(id), "manette")); }
         Map<Abonnement, Long> revisionsInitiales = new HashMap<>();
         for (var f : flux) {
             long revision = capturer(f).path("revision").asLong();
@@ -117,6 +118,19 @@ class KaraokeTempsReelTest {
         assertThat(capture.path("revision").asLong()).isEqualTo(revisionsInitiales.get(flux.getFirst()) + 2);
         assertThat(capture.at("/vue/karaoke/limitePassagesEnAttente").asLong()).isEqualTo(2);
         assertThat(reconnecte.messages()).isEmpty();
+    }
+
+    @Test void demarrerUneMancheDansUneAutreSoireeNeChangePasLaRevisionDeLaManette() throws Exception {
+        var manette = abonner(joueur, Canaux.joueur(joueur.identifiant()), "manette");
+        var revision = capturer(manette).path("revision");
+
+        UUID autreSoiree = UUID.randomUUID();
+        var autreAnimateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), autreSoiree);
+        UUID manche = service.creer(autreSoiree, Map.of());
+        assertThat(service.demarrer(manche, new EnvoiDeCommande(autreAnimateur, "/demarrer", UUID.randomUUID(), Map.of())))
+                .isInstanceOf(Accepte.class);
+
+        assertThat(capturer(manette).path("revision")).isEqualTo(revision);
     }
 
     @Test
@@ -226,11 +240,14 @@ class KaraokeTempsReelTest {
         socle.registre().retirer(manche);
         var restaure = (InstantaneKaraoke) service.instantane(soiree, manche);
         assertThat(restaure.lectures().get(passage).motifParolesSeules()).isEqualTo(MotifParolesSeules.ERREUR_LECTURE);
+        Map<Abonnement, Long> revisionsAvantFin = new HashMap<>();
+        for (var abonne : flux) {
+            revisionsAvantFin.put(abonne, capturer(abonne).path("revision").asLong());
+        }
         ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
         for (var abonne : flux) {
             var terminee = lireEvenement(abonne, "passage-termine");
             assertThat(terminee.at("/karaoke/courant/etat").asString()).isEqualTo("TERMINE");
-            assertThat(abonne.messages()).isEmpty();
         }
         var signalTardif = envoyer(HttpMethod.POST, route + "/fin-lecture", ecran,
                 Map.of("lecteurId", lecteur, "etapeId", etape, "lectureId", lecture, "positionMs", 180_000), UUID.randomUUID());
@@ -238,7 +255,7 @@ class KaraokeTempsReelTest {
         assertThat(json.readTree(signalTardif.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
         assertThat(capturer(salle).at("/vue/karaoke/lecture").isNull()).isTrue();
         for (var abonne : flux) {
-            assertThat(abonne.messages().poll(250, TimeUnit.MILLISECONDS)).isNull();
+            assertThat(capturer(abonne).path("revision").asLong()).isEqualTo(revisionsAvantFin.get(abonne) + 1);
         }
     }
 
@@ -283,6 +300,7 @@ class KaraokeTempsReelTest {
     private JsonNode lireEvenement(Abonnement abonne, String cause) throws Exception {
         var evenement = abonne.messages().poll(3, TimeUnit.SECONDS);
         assertThat(evenement).isNotNull();
+        assertThat(evenement.path("soireeId").asString()).isEqualTo(soiree.toString());
         assertThat(evenement.path("type").asString()).isEqualTo(cause);
         var capture = capturer(abonne);
         assertThat(capture.path("revision")).isEqualTo(evenement.path("revision"));

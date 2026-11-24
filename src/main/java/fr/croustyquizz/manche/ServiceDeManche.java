@@ -39,14 +39,21 @@ public class ServiceDeManche<R, E> {
 	}
 	public ModeDeJeu mode() { return fabrique.mode(); }
 	public UUID creer(UUID soireeId, Object reglages) {
-		R valeurs = socle.json().convertValue(reglages, fabrique.typeReglages());
-		fabrique.reglagesCommuns(valeurs); // Validation avant toute écriture.
-		UUID id = UUID.randomUUID();
-		return sousTransaction(soireeId, id, () -> {
-			socle.depot().enregistrer(new ManchePersistante(id, soireeId, mode(), socle.json().writeValueAsString(valeurs),
-					socle.horloge().maintenant()));
-			return id;
+		ManchePersistante manche = preparer(soireeId, reglages);
+		return sousTransaction(soireeId, manche.getMancheId(), () -> {
+			socle.depot().enregistrer(manche);
+			return manche.getMancheId();
 		});
+	}
+	/** Construit une Manche prête à enregistrer dans la transaction qui compose le programme. */
+	public ManchePersistante preparer(UUID soireeId, Object reglages) {
+		R valeurs = resoudreReglages(reglages);
+		fabrique.reglagesCommuns(valeurs);
+		return new ManchePersistante(UUID.randomUUID(), soireeId, mode(), socle.json().writeValueAsString(valeurs),
+				socle.horloge().maintenant());
+	}
+	protected R resoudreReglages(Object reglages) {
+		return socle.json().convertValue(reglages, fabrique.typeReglages());
 	}
 	public ResultatDeCommande demarrer(UUID mancheId, EnvoiDeCommande envoi) {
 		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
