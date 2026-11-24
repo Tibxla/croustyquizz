@@ -1648,6 +1648,8 @@ paths:
       description: >-
         Un Joueur présent peut noter une seule fois un Passage dont il n’est pas Interprète.
         Le reçu est immuable et un rejeu identique ne republie aucune vue.
+        Les vues de salle et de Console actualisent le nombre de votes. La moyenne est publiée à la
+        clôture dans les trois vues, avec le nombre de votes, et vaut null si aucun vote n’a été reçu.
         Refus dans l’ordre : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE,
         403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche, portée ou présence),
         409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE

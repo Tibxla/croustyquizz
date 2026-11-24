@@ -120,6 +120,7 @@ http:
           delaiConfirmationNavigateurMs: 10000
           delaiAppelMs: 30000
           dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
         votes: []
         passagesEnAttente: []
         peutGererFile: true
@@ -218,6 +219,7 @@ evenements:
         passagePrioritaireId: null
         courant: *courantAlize
         configurationInterface: *configurationKaraoke
+        votes: []
         prochainsPassages: []
         nombreAutresPassages: 0
         lecteurDesigneId: null
@@ -351,6 +353,18 @@ evenements:
           calculeLe: '2026-11-23T20:01:00.000Z'
           clotureLe: null
         configurationInterface: *configurationKaraoke
+        votes: &voteOuvert
+        - passageId: 11900000-0000-4000-8000-000000000010
+          numero: 1
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-23T20:01:00.000Z'
+          clotureLe: null
+          nombreVotes: 0
+          suivantDemarre: false
+          moyenneDixiemes: null
         prochainsPassages: []
         nombreAutresPassages: 0
         lecteurDesigneId: 11900000-0000-4000-8000-000000000008
@@ -381,16 +395,7 @@ evenements:
         passagePrioritaireId: null
         courant: *courantBasile
         configurationInterface: *configurationKaraoke
-        votes:
-        - passageId: 11900000-0000-4000-8000-000000000010
-          numero: 1
-          chanson: *chansonAlize
-          interpretes: *interpretesAlize
-          etat: OUVERT
-          delaiRestantMs: 30000
-          calculeLe: '2026-11-23T20:01:00.000Z'
-          clotureLe: null
-          nombreVotes: 0
+        votes: *voteOuvert
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -442,6 +447,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         prochainsPassages: []
         nombreAutresPassages: 0
         mesPassagesEnAttente: []
@@ -489,6 +496,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: true
+          moyenneDixiemes: null
+          nombreVotes: null
         prochainsPassages: []
         nombreAutresPassages: 0
         mesPassagesEnAttente: []
