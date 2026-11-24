@@ -103,15 +103,12 @@
   color: var(--encre-2);
 }
 /* On t'appelle : le corps du ticket se détache, comme sur l'Écran de salle. */
-.mon-ticket--appele {
-  --teinte: var(--orange);
-}
 .mon-ticket--appele .mon-ticket__bas {
   transform: translate(-4px, 14px) rotate(-3deg);
   border-top-color: transparent;
   box-shadow: var(--ombre);
-  animation: detacher-bas 900ms var(--sortie) both;
 }
+.mon-ticket--detachement .mon-ticket__bas { animation: detacher-bas 900ms var(--sortie) both; }
 @keyframes detacher-bas {
   0% { transform: none; box-shadow: none; }
   30% { transform: translate(0, 2px) rotate(-0.4deg); }

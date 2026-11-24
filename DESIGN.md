@@ -277,13 +277,13 @@ Un fond chaud et sourd, quatre teintes de ticket vives et une couleur d'action u
 - **Encre de perforation** (encre-perforation): l'encre brune à 55 %, en pointillé de 3 px, pour toutes les perforations. À ne pas confondre avec `--perforation`, la largeur de la souche.
 
 ### Named Rules
-**La règle du Citron.** Le jaune citron ne marque que ce qu'on touche (bouton d'action, Réponse choisie, champ actif) et le focus, plus le talon d'accès. Sur l'Écran de salle, il n'apparaît nulle part ailleurs que sur le talon.
+**La règle du Citron.** Le jaune citron ne marque que ce qu'on touche (bouton d'action, Réponse choisie, champ actif) et le focus, plus le talon d'accès. Sur l'Écran de salle, le talon d'accès porte le seul aplat citron. Les commandes du lecteur gardent le contour de focus citron.
 
 **La règle des Aplats.** Un ticket est un aplat franc portant de l'encre brune : jamais de dégradé de couleur, jamais de texte clair sur une teinte de ticket.
 
 **La règle de la Couleur jamais seule.** Une teinte ne porte jamais seule une information : chaque Réponse a sa lettre et son texte, chaque état d'envoi a son libellé, la bonne Réponse est dite en toutes lettres.
 
-**La règle de la Teinte du Passage.** La partie déjà chantée de la ligne en cours prend la teinte du ticket du Passage en cours, transmise par la variable `--teinte-passage` (repli : orange).
+**La règle de la Teinte du Passage.** Sans minutage par mot, toute la ligne en cours reçoit `.paroles__chante` et la teinte du ticket du Passage, transmise par `--teinte-passage` (repli : orange).
 
 ## Typography
 
@@ -319,11 +319,11 @@ L'Écran de salle a sa propre échelle, entièrement en largeur d'écran (base 1
 Trois mises en page pour un seul monde, sur une échelle d'espacement de 4 px (4, 8, 12, 16, 24, 32, 48).
 
 - **Écran de salle** : plein écran sans défilement, deux colonnes (contenu principal à gauche, colonne de 30vw à droite sur le brun comptoir). Le Karaoké met les paroles sur la gauche et le rouleau de la File d'attente à droite, ticket en cours détaché en tête, talon d'accès en bas. Le Quiz met l'énoncé, les quatre Réponses en grille 2 × 2 et le minuteur à gauche, les souches des Joueurs qui ont répondu à droite. Toutes les mesures sont en vw.
-- **Manette** : une colonne pleine hauteur (100svh), marges de 16 et 24 px, zone de sécurité du bas respectée. Le ticket du Joueur en haut ; quand l'écran a une action unique, elle est pleine largeur et poussée en bas, à portée du pouce. La File d'attente du Karaoké garde les tickets personnels en haut et la recherche dessous ; seule l'inscription dans la fiche est une action citron.
+- **Manette** : une colonne pleine hauteur (100svh), marges de 16 et 24 px, zone de sécurité du bas respectée. Le ticket du Joueur en haut ; quand l'écran a une action unique, elle est pleine largeur et poussée en bas, à portée du pouce. Au Karaoké, « En scène » précède les tickets personnels et la recherche. « Je suis prêt » est l’action citron du ticket appelé. L’inscription est l’action citron de la fiche de Chanson.
 - **Console d'animation** : barre de pilotage collée en haut, puis un plan en deux colonnes (File d'attente de 360 à 440 px, catalogue à droite). À 1200 px et moins, la colonne passe de 300 à 360 px et les marges se resserrent ; à 860 px et moins, une seule colonne.
 
 ### Named Rules
-**La règle de la Barre sur une ligne.** À la largeur tablette (1200 px et moins), la barre de pilotage reste sur une ligne : Pause en icône seule, « Passer » en libellé court, et chaque commande garde son nom accessible.
+**La règle de la Barre sur une ligne.** À la largeur tablette (1200 px et moins), la barre de pilotage reste sur une ligne : Pause en icône seule, « Passer » en libellé court, et chaque commande garde son nom accessible. La barre du Passage du Karaoké emploie des boutons texte et peut passer à la ligne.
 
 **La règle de l'Adresse insécable.** L'adresse d'accès ne se coupe jamais sur un trait d'union : chaque segment est insécable et la seule coupure permise tombe avant le point.
 
@@ -353,7 +353,7 @@ Des boutons francs, à bordure épaisse, qui se laissent viser debout et d'une m
 - **Action:** fond et bordure citron, texte encre. Un seul par écran, pour ce qui fait avancer la Soirée ou l'action du Joueur.
 - **Grand format:** pleine largeur, 64 px de haut, coins de 18 px, libellé Barlow 800 en capitales à 1.75rem. Sur la Manette, quand l'écran a une action unique, le bouton grand format la porte.
 - **Lien:** sans bordure, texte crème fanée souligné, pour l'action de repli (« Me désinscrire », « Lancer maintenant »).
-- **Hover / Focus:** survol en brun banquette avec une bordure crème usée ; l'action passe en citron appuyé ; enfoncement de 1 px à l'appui ; transitions de 120 ms sur la courbe de sortie. Le focus est un contour citron de 3 px décalé de 3 px, sur tout élément.
+- **Hover / Focus:** le bouton ordinaire prend un fond brun banquette et une bordure crème usée au survol. L'action passe en citron appuyé. L'appui enfonce le bouton de 1 px, avec une transition de 120 ms sur la courbe de sortie. Le focus est un contour citron de 3 px décalé de 3 px. Sur le ticket appelé, « Je suis prêt » utilise l'encre brune pour rendre ce contour visible sur les quatre teintes.
 - **Désactivé:** texte crème usée et bordure brun bois ; l'action désactivée passe sur brun bois.
 - **Icône:** icônes Lucide à trait de 2 px, 1.25em, dans la couleur du texte ; un bouton qui n'a que son icône porte un nom accessible.
 
@@ -368,7 +368,7 @@ Des boutons francs, à bordure épaisse, qui se laissent viser debout et d'une m
 `<dialog class="dialogue" aria-labelledby="titre-dialogue">` : fond `--fond-2`, texte `--texte`, ombre `--ombre`, coins `--rayon-grand`, marge intérieure de 24 px. Le voile reprend le brun tabac à 80 %. Donner un titre, un contrôle de fermeture et une action nommée. Utiliser `ouvrirDialogue` (`js/dialogue.mjs`) : ouverture par `showModal()`, focus sur le contrôle `autofocus` ou le premier contrôle (à défaut, rendre le dialogue focalisable avec `tabindex="-1"`), fermeture native par Échap ou `close()`, puis retour au contrôle d'origine s'il existe encore. Le focus conserve son contour citron visible.
 
 ### Navigation
-- **Barre de pilotage (Console):** collée en haut, brun banquette, filet brun bois et ombre de barre collée. À gauche le mot-symbole et la Soirée, au centre le Mode de jeu en Barlow 800 avec la progression et les indicateurs, à droite les commandes, l'action citron en dernier.
+- **Barre de pilotage (Console):** collée en haut, brun banquette, filet brun bois et ombre de barre collée. À gauche le mot-symbole et la Soirée, au centre le Mode de jeu en Barlow 800 avec la progression et les indicateurs, à droite les commandes, l'action citron en dernier. Au Karaoké, le module place une seconde barre en tête de sa zone principale. Elle pilote le Passage et regroupe le calage. « Appeler le suivant », dernière commande du groupe de pilotage, est l’action citron.
 
 ### Ticket
 La pièce maîtresse. Une souche numérotée (4.5rem de large, numéro Barlow 800) et un corps (nom en Atkinson 700 à 1.125rem, détail en encre délavée), chacun dans la teinte du ticket, séparés par la perforation. L'état éventuel s'imprime dans le coin haut droit du corps, en étiquette. Le ticket de la Manette est la même pièce posée à la verticale : numéro géant en haut, détail en bas, encoches sur les côtés.
@@ -407,11 +407,11 @@ Le seul aplat citron de l'Écran de salle : QR code sur carré blanc, phrase d'i
 - **Do** composer en Barlow Condensed 800 les chiffres et les libellés courts imprimés sur un ticket, et tout le reste en Atkinson Hyperlegible.
 - **Do** régler `--fond-encoche` sur le fond de la surface qui porte un ticket.
 - **Do** attendre la réponse du serveur avant d'annoncer un envoi réussi, et afficher la valeur validée d'un score avant de l'animer.
-- **Do** garder la barre de pilotage sur une ligne à 1200 px et moins, avec Pause en icône seule et « Passer » en libellé court.
+- **Do** garder la barre de pilotage sur une ligne à 1200 px et moins, avec Pause en icône seule et « Passer » en libellé court. Laisser la barre du Passage du Karaoké se répartir sur plusieurs lignes, avec des boutons texte.
 - **Do** n'utiliser que des données de démonstration fictives et des ressources auto-hébergées.
 
 ### Don't:
-- **Don't** mettre du citron sur l'Écran de salle ailleurs que sur le talon d'accès.
+- **Don't** ajouter d’aplat citron hors du talon d’accès de l’Écran de salle. Les commandes du lecteur gardent leur contour de focus citron.
 - **Don't** composer du texte courant, une phrase ou un surtitre en Barlow Condensed.
 - **Don't** laisser une couleur porter seule une information.
 - **Don't** poser un dégradé de couleur sur un ticket.

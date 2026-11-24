@@ -1,6 +1,6 @@
 const INCONNU = "Confirmation indisponible : vérifie l'état affiché.";
 
-export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, surEnvoi = () => {} }) {
+export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, maintenantServeur, surEnvoi = () => {} }) {
 	let etat = 'synchronisation';
 	let dernierEnvoi = 0;
 	const abonnes = new Set();
@@ -10,7 +10,7 @@ export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, surEn
 			for (const rappel of abonnes) rappel(etat);
 		},
 		contexte: {
-			acteur, soireeId, resynchroniser,
+			acteur, soireeId, resynchroniser, maintenantServeur,
 			surEtatConnexion(rappel) {
 				abonnes.add(rappel);
 				rappel(etat);

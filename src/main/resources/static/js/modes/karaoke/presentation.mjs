@@ -6,6 +6,17 @@ export function formaterDuree(dureeMs) {
 	return `${Math.floor(secondes / 60)}:${String(secondes % 60).padStart(2, '0')}`;
 }
 
+export function formaterTempsRestant(ms) {
+	const secondes = Math.ceil(ms / 1000);
+	return secondes < 60 ? `${secondes} s` : formaterDuree(secondes * 1000);
+}
+
+export function formaterDecalage(ms) {
+	const dixiemes = Math.round(ms / 100);
+	const signe = dixiemes < 0 ? '−' : dixiemes > 0 ? '+' : '';
+	return `${signe}${(Math.abs(dixiemes) / 10).toFixed(1).replace('.', ',')} s`;
+}
+
 export function formaterAttente(attente, personnel = false) {
 	if (attente.etat === 'SUSPENDUE') return 'Attente suspendue';
 	if (attente.etat !== 'ESTIMEE') return 'Attente à confirmer';
@@ -30,3 +41,7 @@ export function etatInscription(fiche, bloc, synchronisee) {
 	return { possible: Boolean(!code && fiche.inscriptionPossible && bloc.peutInscrire && synchronisee),
 		motif: code ? (Object.hasOwn(tableMotifsKaraoke, code) ? tableMotifsKaraoke[code] : code) : null };
 }
+
+export const passageActif = courant => courant && ['APPELE', 'EN_COURS', 'EN_PAUSE'].includes(courant.etat) ? courant : null;
+
+export const libelleEtatTicketPublic = courant => passageActif(courant) ? 'Sur scène' : courant.etat === 'TERMINE' ? 'Terminé' : 'Sauté';
