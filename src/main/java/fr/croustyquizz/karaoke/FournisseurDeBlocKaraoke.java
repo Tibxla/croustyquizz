@@ -4,6 +4,7 @@ import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.ParticipantsDePassage;
 import fr.croustyquizz.tempsreel.FournisseurDeBloc;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.beans.factory.ObjectProvider;
 
 /** Projection de la seule Manche Karaoké active, sous le verrou de l'assembleur. */
@@ -21,10 +22,14 @@ public final class FournisseurDeBlocKaraoke implements FournisseurDeBloc {
     }
     @Override public ModeDeJeu mode() { return ModeDeJeu.KARAOKE; }
     @Override public Object fournir(UUID soireeId, Destination destination) {
+        return preparer(soireeId).apply(destination);
+    }
+    @Override public Function<Destination, Object> preparer(UUID soireeId) {
         var active = depot.deLaSoiree(soireeId).stream().filter(m -> m.getMode() == mode()
                 && (m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE)).findFirst();
-        if (active.isEmpty()) { return null; }
+        if (active.isEmpty()) { return destination -> null; }
         var instantane = (InstantaneKaraoke) service.getObject().instantane(soireeId, active.get().getMancheId());
-        return VuesKaraoke.projeter(instantane, destination, participants, horloge.maintenant(), proprietes, source);
+        var pseudos = participants.pseudos(soireeId);
+        return destination -> VuesKaraoke.projeter(instantane, destination, pseudos, horloge.maintenant(), proprietes, source);
     }
 }

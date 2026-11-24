@@ -50,10 +50,10 @@ public final class VuesKaraoke {
     }
     public record FichierAudioLocal(String nom, long tailleOctets, Long dureeMs) { }
 
-    public static Object projeter(InstantaneKaraoke instantane, Destination destination, ParticipantsDePassage participants,
+    public static Object projeter(InstantaneKaraoke instantane, Destination destination, Map<UUID, String> pseudos,
             Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
         var etat = instantane.file();
-        if (destination.type() == Destination.Type.JOUEUR && !participants.estPresent(etat.soireeId(), destination.joueurId())) {
+        if (destination.type() == Destination.Type.JOUEUR && !pseudos.containsKey(destination.joueurId())) {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Joueur introuvable.").exception();
         }
         var file = FileAttente.depuis(etat);
@@ -63,7 +63,7 @@ public final class VuesKaraoke {
                 Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()));
         List<PassageEnAttentePublic> publics = ordre.stream().map(p -> new PassageEnAttentePublic(p.id(), p.numeroModification(),
                 p.numero(), ResumeChanson.de(instantane.contenus().get(p.id()).chanson()),
-                p.interpretes().stream().map(id -> new InterpretePublic(id, participants.pseudo(etat.soireeId(), id))).toList(),
+                p.interpretes().stream().map(id -> new InterpretePublic(id, pseudos.getOrDefault(id, ParticipantsDePassage.JOUEUR_PARTI))).toList(),
                 positions.get(p.id()), p.tourNormal(), p.id().equals(etat.passagePrioritaireId()), attentes.get(p.id()))).toList();
         var configuration = new ConfigurationInterfaceKaraoke(source.longueurRechercheMax(),
                 proprietes.karaoke().delaiConsultationNavigateurMs(), proprietes.karaoke().delaiConfirmationNavigateurMs(),

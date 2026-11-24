@@ -62,7 +62,7 @@ class PortsDePassageSoireeTest {
 	void unJoueurPresentEntreEtGardeSonPseudo() {
 		portee.verifier(joueur(soiree, lea), soiree, karaoke);
 		assertThat(participants.estPresent(soiree, lea)).isTrue();
-		assertThat(participants.pseudo(soiree, lea)).isEqualTo("Léa");
+		assertThat(participants.pseudos(soiree)).containsOnlyKeys(lea).containsEntry(lea, "Léa");
 		assertThat(portee.estActive(soiree, karaoke)).isTrue();
 	}
 
@@ -72,7 +72,7 @@ class PortsDePassageSoireeTest {
 		entites.clear();
 		assertThatThrownBy(() -> portee.verifier(joueur(soiree, lea), soiree, karaoke)).isInstanceOf(RefusDeCommande.class);
 		assertThat(participants.estPresent(soiree, lea)).isFalse();
-		assertThat(participants.pseudo(soiree, lea)).isEqualTo(ParticipantsDePassage.JOUEUR_PARTI);
+		assertThat(participants.pseudos(soiree)).doesNotContainKey(lea);
 	}
 
 	@Test
@@ -81,7 +81,7 @@ class PortsDePassageSoireeTest {
 		UUID tom = joueurs.saveAndFlush(new Joueur(autre, "Tom", JetonDeReconnexion.generer(new java.security.SecureRandom()), MAINTENANT)).getId();
 		assertThatThrownBy(() -> portee.verifier(joueur(soiree, tom), soiree, karaoke)).isInstanceOf(RefusDeCommande.class);
 		assertThat(participants.estPresent(soiree, tom)).isFalse();
-		assertThat(participants.pseudo(soiree, tom)).isEqualTo(ParticipantsDePassage.JOUEUR_PARTI);
+		assertThat(participants.pseudos(soiree)).doesNotContainKey(tom);
 	}
 
 	@Test
@@ -122,7 +122,7 @@ class PortsDePassageSoireeTest {
 				.isInstanceOf(RefusDeCommande.class);
 		assertThat(portee.estActive(inconnue, karaoke)).isFalse();
 		assertThat(participants.estPresent(inconnue, lea)).isFalse();
-		assertThat(participants.pseudo(inconnue, UUID.randomUUID())).isEqualTo(ParticipantsDePassage.JOUEUR_PARTI);
+		assertThat(participants.pseudos(inconnue)).isEmpty();
 	}
 
 	private UUID manche(UUID soireeId, ModeDeJeu mode, EtatManche etat) {

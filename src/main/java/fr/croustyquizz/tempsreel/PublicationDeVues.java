@@ -2,8 +2,6 @@ package fr.croustyquizz.tempsreel;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.Map;
-import java.util.LinkedHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.UUID;
@@ -28,10 +26,7 @@ public final class PublicationDeVues {
 		if (destinations.remove(Destination.TOUTES_LES_MANETTES)) {
 			commun.joueurs(soireeId).forEach(id -> destinations.add(Destination.joueur(id)));
 		}
-		Map<Destination, Evenement> captures = new LinkedHashMap<>();
-		for (var destination : destinations) {
-			captures.put(destination, assembleur.assembler(soireeId, destination, resultat.typeEvenement()));
-		}
+		var captures = assembleur.assembler(soireeId, destinations, resultat.typeEvenement());
 		apresCommit.publier(() -> captures.forEach((destination, vue) -> {
 			try { envoyer(soireeId, destination, vue); }
 			catch (RuntimeException erreur) {
