@@ -22,17 +22,24 @@
 	<main id="scene" class="salle__scene" hidden>
 		<section class="salle__principal" aria-labelledby="titre">
 			<h1 id="titre" class="accueil__titre"></h1>
-			<p class="accueil__aide">Scanne le QR code ou tape le code sur ton téléphone pour jouer.</p>
-			<h2 class="accueil__aide">Joueurs arrivés · <span id="nombre" class="chiffres">0</span></h2>
-			<ul id="joueurs" class="arrivees" aria-live="polite"></ul>
-			<p id="vide" class="accueil__vide">Personne pour l’instant. À toi de jouer !</p>
+			<div class="accueil__joueurs" id="accueil-joueurs">
+				<p class="accueil__aide">Scanne le QR code ou tape le code sur ton téléphone pour jouer.</p>
+				<h2 class="accueil__aide">Joueurs arrivés · <span id="nombre" class="chiffres">0</span></h2>
+				<ul id="joueurs" class="arrivees" aria-live="polite"></ul>
+				<p id="vide" class="accueil__vide">Personne pour l’instant. À toi de jouer !</p>
+			</div>
+			<section class="salle__classement" aria-labelledby="titre-classement" id="classement-salle" hidden>
+				<h2 id="titre-classement">Classement général</h2>
+				<ol class="commun__liste" role="list"></ol>
+				<p hidden>Aucun point attribué.</p>
+			</section>
 			<footer class="salle__pied">
 				<span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
 				<span id="etat"></span>
 			</footer>
 		</section>
 		<aside class="salle__cote" aria-label="Rejoindre la Soirée">
-			<div class="talon">
+			<div class="talon" id="talon">
 				<div class="talon__qr"><img id="qr" alt="QR code pour rejoindre la Soirée" hidden></div>
 				<div>
 					<span class="talon__aide">Rejoins la Soirée</span>
@@ -45,6 +52,7 @@
 
 	<script type="module">
 		import { appeler, memoire } from '/js/api.js';
+		import { afficherClassementDeSalle } from '/js/vue-commune.mjs';
 
 		const CLE = 'croustyquizz.cleEcran';
 		const SOIREE = 'croustyquizz.soireeEcran';
@@ -69,12 +77,15 @@
 			probleme.hidden = false;
 		}
 
-		function afficher({ soiree, joueurs }) {
+		function afficher(vue) {
+			const { soiree, joueurs } = vue;
 			document.getElementById('probleme').hidden = true;
 			document.getElementById('scene').hidden = false;
 			document.title = `${soiree.titre} · Écran de salle`;
 			document.getElementById('titre').textContent = soiree.titre;
 			document.getElementById('etat').textContent = ETATS[soiree.etat] ?? '';
+			document.getElementById('accueil-joueurs').hidden = afficherClassementDeSalle(document.getElementById('classement-salle'), vue);
+			document.getElementById('talon').hidden = soiree.etat === 'TERMINEE';
 			document.getElementById('code').textContent = soiree.codeAcces ?? '';
 			// Comme sur la maquette : l'adresse peut passer à la ligne entre l'hôte et la page.
 			const hote = document.createElement('span');
@@ -82,7 +93,7 @@
 			const page = document.createElement('span');
 			page.textContent = '/rejoindre.html';
 			document.getElementById('adresse').replaceChildren(hote, document.createElement('wbr'), page);
-			if (soiree.codeAcces) chargerQrCode(soiree.id);
+			if (soiree.codeAcces && soiree.etat !== 'TERMINEE') chargerQrCode(soiree.id);
 			const liste = document.getElementById('joueurs');
 			liste.replaceChildren(...joueurs.map((joueur) => {
 				const element = document.createElement('li');

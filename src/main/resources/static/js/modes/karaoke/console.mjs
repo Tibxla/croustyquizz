@@ -2,7 +2,7 @@ import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commu
 import { preparerPlacement } from './placement.mjs';
 import { formaterDecalage, formaterTempsRestant, passageActif } from './presentation.mjs';
 import { delaiAppelRestant, tempsAvantFinPrevue } from './paroles.mjs';
-import { delaiVoteRestant, formaterNombreVotes } from './vote.mjs';
+import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes } from './vote.mjs';
 
 // Bornes du contrat : limitePassagesEnAttente vaut de 1 à 20 (docs/api/README.md, File d'attente).
 const LIMITE_PASSAGES_MAX = 20;
@@ -156,7 +156,8 @@ function installerPassage(ui, commande) {
 				const identite = `n° ${vote.numero} · ${vote.chanson.titre}`;
 				const nombre = formaterNombreVotes(vote.nombreVotes);
 				if (vote.etat === 'CLOS') {
-					ligne.textContent = `${identite} · Vote clos · ${nombre}`;
+					const resultat = vote.moyenneDixiemes == null ? nombre : `${formaterMoyenne(vote.moyenneDixiemes)} · ${nombre}`;
+					ligne.textContent = `${identite} · Vote clos · ${resultat}`;
 				} else {
 					const delai = e('span', 'chiffres');
 					ligne.append(e('span', '', `${identite} · ${nombre} · `), delai);
