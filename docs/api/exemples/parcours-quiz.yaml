@@ -479,7 +479,7 @@ http:
   statut: 200
   requete:
     envoiId: 00000258-0000-4000-8000-000000000000
-  reponse:
+  reponse: &buzzDuSocle
     envoiId: 00000258-0000-4000-8000-000000000000
     joueurId: 00000003-0000-4000-8000-000000000000
     pseudo: Alpha
@@ -578,7 +578,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -774,7 +774,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -879,7 +879,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
 - nom: Passer à la Question 2
@@ -988,7 +988,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
 - nom: Passer à la Question 3
@@ -1097,7 +1097,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
 - nom: Terminer la Manche après la dernière correction
@@ -1192,7 +1192,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       programme:
       - id: 00000002-0000-4000-8000-000000000000
         ordre: 0
@@ -1285,12 +1285,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz:
-        envoiId: 00000258-0000-4000-8000-000000000000
-        joueurId: 00000003-0000-4000-8000-000000000000
-        pseudo: Alpha
-        recuLe: '2026-11-10T20:00:05Z'
-        rang: 1
+      dernierBuzz: *buzzDuSocle
 - nom: Ouverture de la Question
   canal: salle
   message:
@@ -1358,7 +1353,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
 - nom: Projection privée de la Console
   canal: console
   message:
@@ -1426,7 +1421,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       programme:
       - id: 00000002-0000-4000-8000-000000000000
         ordre: 0
@@ -1502,7 +1497,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -1573,7 +1568,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -1645,7 +1640,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -1717,7 +1712,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -1803,7 +1798,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
 - nom: Résultat personnel après révélation
   canal: joueur
   message:
@@ -1880,7 +1875,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -1960,7 +1955,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
 - nom: Question suivante 3
   canal: salle
   message:
@@ -2028,7 +2023,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
 - nom: Fin de Soirée et Classement général
   canal: salle
   message:
@@ -2075,7 +2070,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
 cases:
 - nom: Une commande périmée utilise le corps Probleme commun
   schema: Probleme
@@ -2670,7 +2665,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -2748,7 +2743,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -2831,7 +2826,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -2908,7 +2903,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -2977,7 +2972,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -3043,7 +3038,7 @@ resynchronisation:
       points: 0
       bonnesReponses: 0
       tempsCumuleMs: 0
-    dernierBuzz: null
+    dernierBuzz: *buzzDuSocle
     joueurId: 00000003-0000-4000-8000-000000000000
     eligiblePourMancheActive: true
     derniereReponse: null
