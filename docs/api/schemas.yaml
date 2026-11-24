@@ -883,6 +883,35 @@ $defs:
                 enum:
                 - EN_COURS
                 - EN_PAUSE
+  ReglageMusiqueDAttente:
+    type: object
+    additionalProperties: false
+    properties:
+      etat:
+        $ref: '#/$defs/EtatMusiqueDAttente'
+    required: [etat]
+  EtatMusiqueDAttente:
+    type: string
+    enum: [JOUE, COUPEE]
+    description: Choix de l’Animateur pour la Soirée, JOUE par défaut.
+  DisponibiliteMusiqueDAttente:
+    type: object
+    additionalProperties: false
+    properties:
+      morceauxDisponibles:
+        type: boolean
+        description: Le dossier choisi contient au moins un fichier audio dans Attente.
+    required: [morceauxDisponibles]
+  MusiqueDAttente:
+    type: object
+    additionalProperties: false
+    properties:
+      etat:
+        $ref: '#/$defs/EtatMusiqueDAttente'
+      morceauxDisponibles:
+        type: [boolean, 'null']
+        description: Dernier signal du dossier de l’Écran de salle ; null avant le premier signal.
+    required: [etat, morceauxDisponibles]
   VueSalle:
     allOf:
     - $ref: '#/$defs/BlocsDeMode'
@@ -891,6 +920,8 @@ $defs:
     properties:
       soiree:
         $ref: '#/$defs/Soiree'
+      musiqueAttente:
+        $ref: '#/$defs/MusiqueDAttente'
       mancheActive:
         oneOf:
         - $ref: '#/$defs/Manche'
@@ -925,6 +956,7 @@ $defs:
         - type: 'null'
     required:
     - soiree
+    - musiqueAttente
     - mancheActive
     - modeEnCours
     - joueurs
@@ -938,6 +970,8 @@ $defs:
     properties:
       soiree:
         $ref: '#/$defs/Soiree'
+      musiqueAttente:
+        $ref: '#/$defs/MusiqueDAttente'
       mancheActive:
         oneOf:
         - $ref: '#/$defs/Manche'
@@ -976,6 +1010,7 @@ $defs:
           $ref: '#/$defs/Manche'
     required:
     - soiree
+    - musiqueAttente
     - mancheActive
     - modeEnCours
     - joueurs
@@ -1173,6 +1208,7 @@ $defs:
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
+        - musique-attente-modifiee
       soireeId:
         type: string
         format: uuid
@@ -1220,6 +1256,7 @@ $defs:
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
+        - musique-attente-modifiee
       soireeId:
         type: string
         format: uuid
@@ -1323,6 +1360,7 @@ $defs:
         - ETAT_INCOMPATIBLE
         - ETAPE_INACTIVE
         - COMMANDE_PERIMEE
+        - COMMANDE_SANS_EFFET
         - PROGRAMME_INCOMPLET
         - REPONSE_DEJA_ENREGISTREE
         - ENVOI_REUTILISE

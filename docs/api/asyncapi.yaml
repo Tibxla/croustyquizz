@@ -24,7 +24,8 @@ channels:
     description: "Écran avec capacité pour cette Soirée, Joueur de la Soirée ou Animateur du Lieu.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier, les commandes du lecteur
       de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
-      Soirée. Karaoké : file-attente-modifiee après inscription, désinscription, retrait, placement ou
+      Soirée. musique-attente-modifiee après changement du réglage de l’Animateur ou de la disponibilité
+      signalée par l’Écran de salle, y compris hors Manche. Karaoké : file-attente-modifiee après inscription, désinscription, retrait, placement ou
       priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
       passage-demarre, passage-termine et passage-saute pour le cycle du Passage ;
       lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
@@ -42,7 +43,9 @@ channels:
   console:
     address: /topic/soirees/{soireeId}/console
     description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND
-      de commande métier. Une révision est propre à cette destination et à cette Soirée. Karaoké :
+      de commande métier. Une révision est propre à cette destination et à cette Soirée.
+      musique-attente-modifiee transporte la vue complète après changement du réglage de l’Animateur
+      ou de la disponibilité signalée par l’Écran de salle, y compris hors Manche. Karaoké :
       file-attente-modifiee après inscription, désinscription, retrait, placement ou priorité ;
       limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre,
       passage-termine et passage-saute pour le cycle du Passage ; lecture-chanson-modifiee après

@@ -24,6 +24,7 @@ http:
       modeEnCours: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: []
 evenements:
@@ -46,6 +47,7 @@ evenements:
       modeEnCours: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: []
 resynchronisation:

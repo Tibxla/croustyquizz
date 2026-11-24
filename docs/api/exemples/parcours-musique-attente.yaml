@@ -1,0 +1,88 @@
+description: L’Écran de salle signale son dossier, puis l’Animateur coupe la Musique d’attente hors Manche.
+parametresCommuns:
+  soireeId: &soireeId 14100000-0000-4000-8000-000000000001
+http:
+- nom: Signaler un dossier sans morceau dans Attente
+  operationId: signalerDisponibiliteMusiqueDAttente
+  acteur: ecran
+  requete: &disponibilite { morceauxDisponibles: false }
+  statut: 200
+  reponse: *disponibilite
+- nom: Couper la Musique d’attente
+  operationId: reglerMusiqueDAttente
+  acteur: animateur
+  parametres: &csrf { X-CSRF-TOKEN: exemple-csrf-fictif }
+  requete: &coupure { etat: COUPEE }
+  statut: 200
+  reponse: *coupure
+- nom: Refuser une coupure déjà appliquée
+  operationId: reglerMusiqueDAttente
+  acteur: animateur
+  parametres: *csrf
+  requete: *coupure
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Conflit
+    status: 409
+    code: COMMANDE_SANS_EFFET
+    detail: Ce réglage de la Musique d’attente est déjà en vigueur.
+    instance: /api/soirees/14100000-0000-4000-8000-000000000001/musique-attente
+evenements:
+- nom: Actualiser la Console après le signal du dossier
+  canal: console
+  message:
+    type: musique-attente-modifiee
+    soireeId: *soireeId
+    revision: 1
+    emisLe: 2026-11-24T20:00:01.000Z
+    donnees:
+      soiree: &soiree
+        id: *soireeId
+        titre: Soirée fictive
+        format: SOLO
+        pilotage: MANUEL
+        etat: OUVERTE
+        codeAcces: D3M8AB
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: false }
+      mancheActive: null
+      modeEnCours: null
+      joueurs: []
+      classement: []
+      dernierBuzz: null
+      programme: []
+- nom: Actualiser l’Écran de salle après la coupure
+  canal: salle
+  message: &coupureSalle
+    type: musique-attente-modifiee
+    soireeId: *soireeId
+    revision: 2
+    emisLe: 2026-11-24T20:00:02.000Z
+    donnees: &salleCoupee
+      soiree: *soiree
+      musiqueAttente: { etat: COUPEE, morceauxDisponibles: false }
+      mancheActive: null
+      modeEnCours: null
+      joueurs: []
+      classement: []
+      dernierBuzz: null
+resynchronisation:
+  destination: /topic/soirees/14100000-0000-4000-8000-000000000001/salle
+  routeEtat: /api/soirees/14100000-0000-4000-8000-000000000001/etat/salle
+  typeEvenementFinal: musique-attente-modifiee
+  etat:
+    abonnementId: 14100000-0000-4000-8000-000000000002
+    revision: 1
+    heureServeur: 2026-11-24T20:00:01.500Z
+    vue:
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: false }
+      mancheActive: null
+      modeEnCours: null
+      joueurs: []
+      classement: []
+      dernierBuzz: null
+  tampon: [*coupureSalle, *coupureSalle]
+  revisionFinale: 2
+  vueFinale: *salleCoupee
+cases: []
