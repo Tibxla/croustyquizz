@@ -10,6 +10,12 @@ spring:
     hibernate:
       # Le schéma appartient à Flyway : Hibernate vérifie, il ne crée rien.
       ddl-auto: validate
+  web:
+    resources:
+      cache:
+        use-last-modified: true
+        cachecontrol:
+          no-cache: true
 server:
   # Render et Tailscale Funnel terminent le HTTPS puis relaient en HTTP : Tomcat reprend le schéma
   # et l'hôte publics de X-Forwarded-Proto et X-Forwarded-Host, sans quoi le QR code de l'Écran de
