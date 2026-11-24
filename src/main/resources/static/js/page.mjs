@@ -7,6 +7,8 @@ import { afficherClassementDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { monterPilotage } from './pilotage-console.mjs';
+import { memoire } from './api.js';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -40,19 +42,52 @@ function afficherCommun(vue) {
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
 	if (talon) {
-		talon.hidden = !description.codeAcces;
+		talon.hidden = !description.codeAcces || vue.soiree.etat === 'TERMINEE';
 		texte('code', description.codeAcces ?? '');
 	}
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
 
+function chargerQr(soireeId, jeton, signal) {
+	const qr = element('qr');
+	let occupe = false;
+	return async vue => {
+		if (!qr || !jeton || jeton.startsWith('demo:') || occupe || !vue.soiree.codeAcces
+			|| vue.soiree.etat === 'TERMINEE') return;
+		occupe = true;
+		try {
+			const reponse = await fetch(`/api/soirees/${soireeId}/qrcode`, {
+				headers: { Authorization: `Bearer ${jeton}` }, cache: 'no-store', signal,
+			});
+			if (!reponse.ok) throw new Error('QR code indisponible');
+			const adresse = URL.createObjectURL(await reponse.blob());
+			const image = qr.querySelector('img');
+			image.addEventListener('load', () => URL.revokeObjectURL(adresse), { once: true });
+			image.src = adresse;
+			qr.hidden = false;
+		} catch {
+			occupe = false;
+		}
+	};
+}
+
 async function demarrer() {
-	// La Manette d'un vrai Joueur relit l'accès rangé pour sa Soirée par rejoindre.html ; sinon, l'identité de
-	// démonstration de l'onglet (sessionStorage).
-	const accesManette = ecran === 'manette' ? creerAccesManette().lire(new URLSearchParams(location.search).get('soiree')) : null;
-	const jeton = accesManette?.jeton ?? sessionStorage.getItem('croustyquizz.jeton');
-	const acces = lireAcces(ecran, location.search, jeton, accesManette?.joueurId);
+	const soireeId = new URLSearchParams(location.search).get('soiree');
+	const stockageManette = ecran === 'manette' ? creerAccesManette() : null;
+	const accesManette = stockageManette?.lire(soireeId);
+	const cleEnMemoire = ecran === 'ecran' && memoire.lire('croustyquizz.soireeEcran') === soireeId
+		? memoire.lire('croustyquizz.cleEcran') : null;
+	const jetonEnMemoire = accesManette?.jeton ?? cleEnMemoire ?? memoire.lire('croustyquizz.jeton');
+	const { cleEcran, ...acces } = lireAcces(ecran, location.search, jetonEnMemoire, accesManette?.joueurId, location.hash);
+	const jeton = cleEcran ?? jetonEnMemoire;
+	if (cleEcran !== null) {
+		memoire.ecrire('croustyquizz.cleEcran', cleEcran);
+		memoire.ecrire('croustyquizz.soireeEcran', soireeId);
+		history.replaceState(null, '', location.pathname + location.search);
+	}
+	const annulation = new AbortController();
+	const chargerQrSiNecessaire = chargerQr(soireeId, jeton, annulation.signal);
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
@@ -62,7 +97,7 @@ async function demarrer() {
 	const transport = creerTransport({ jeton, csrf });
 	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
 	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
-		creerAccesManette().oublier(acces.soireeId);
+		stockageManette.oublier(acces.soireeId);
 		location.replace(adresseRetourArrivee(accesManette.codeAcces));
 		return;
 	}
@@ -94,12 +129,15 @@ async function demarrer() {
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
+	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
+			void chargerQrSiNecessaire(vue);
 			programme?.afficher(vue);
+			pilotage?.afficher(vue);
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
 			musiqueSalle?.afficher(vue, modeAffiche);
@@ -114,7 +152,9 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
+		annulation.abort();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
+		pilotage?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
 	});

@@ -10,6 +10,7 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-quiz.yaml](exemples/parcours-quiz.yaml) | Échanges fictifs, événements, refus de données sensibles et exemple de reconnexion |
 | [exemples/parcours-karaoke.yaml](exemples/parcours-karaoke.yaml) | Recherche, inscription, File d’attente, refus, reçus et reconnexion du Karaoké |
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
+| [exemples/parcours-pilotage-manuel.yaml](exemples/parcours-pilotage-manuel.yaml) | Lancement, enchaînement des Manches et fin de la Soirée sur les trois écrans |
 | [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
 | [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console d’une Soirée en Pilotage Automatique |
 | [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) | Blind test : extrait, Buzz, brouillon et Proposition de titre, partie trouvée, blocage, Révélation, refus, confidentialité et reconnexion de la salle |
@@ -21,6 +22,8 @@ Les opérations HTTP sont identifiées par leur `operationId` : les exemples uti
 Le premier parcours est : inscription du premier Animateur d’un Lieu, connexion, création d’une Soirée **Solo / Manuel**, préparation d’une Manche de **Quiz**, ouverture aux Joueurs, lancement, trois Questions et Classement général final. Les Questions de ce parcours sont rédigées par l’Animateur ; la banque française et l’import relèvent des extensions du Quiz.
 
 Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions : `preparerQuestions` sur une telle Manche répond `409 ETAT_INCOMPATIBLE`, sans modification. Chaque Question a quatre propositions distinctes et une seule solution.
+
+Le [parcours de pilotage manuel](exemples/parcours-pilotage-manuel.yaml) illustre le refus d’un programme vide, la répétition d’un envoi, l’enchaînement de deux Manches dans l’ordre du programme et la fin de la Soirée. La fin publie `soiree-terminee` aux trois types d’écran. La vue finale ne porte aucune Manche active.
 
 La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut être créée en Format `EQUIPE` et en Pilotage `AUTOMATIQUE` (#6), qui sont enregistrés et restitués tels quels : le déroulement en Équipe relève de #26 et l’enchaînement automatique de #25. Le Blind test étend aussi ce parcours ci-dessous. Le Freestyle, les invitations d’Animateurs, la modération et le serveur MCP étendront ce contrat. Le Buzz sert au scénario du socle #7/#8, avant le lancement d’une Manche, et au Blind test ; il est refusé pendant le Quiz. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
 
@@ -34,7 +37,7 @@ La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut 
 
 Les jetons sont opaques. Le serveur en déduit l’identité et la portée ; une route ou un corps contenant un UUID ne confère aucun droit. Un Joueur ne peut agir pour un autre, un Animateur ne peut accéder à un autre Lieu et une clé d’Écran n’envoie que les commandes de son lecteur (désignation, déclaration, fin, erreur et relevé de position), sans aucune action de jeu. Les ressources hors de la portée autorisée répondent `404`, les identités absentes ou expirées `401`.
 
-Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée ; sa durée de conservation après la fin sera précisée avec l’implémentation des accès. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès créé depuis la Console. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. Le transfert initial d’une clé d’Écran peut utiliser un fragment URL, retiré par la page après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
+Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée. La page d’arrivée conserve le jeton et l’UUID du Joueur renvoyés par le serveur pour la Soirée concernée. La Manette utilise le jeton pour ses requêtes HTTP et le CONNECT STOMP, et l’UUID pour choisir son canal. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès depuis la préparation. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. La préparation ouvre `ecran.html?soiree=<UUID>#cle=<clé>` ; l’Écran de salle conserve sa clé dans le stockage de l’onglet et retire le fragment après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
 
 Pour la session Animateur, obtenir un jeton par `GET /api/csrf`, puis envoyer `X-CSRF-TOKEN` avec les opérations mutantes. L’inscription et la connexion sont également protégées contre les requêtes intersites. Après connexion/déconnexion, récupérer un nouveau jeton. Le cookie de session est `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS.
 
@@ -370,21 +373,21 @@ pour le rang 1, et de `croustyquizz:demo:joueur:<soireeId>:<rang>` pour les rang
 `joueurId(soireeId)` renvoie toujours le rang 1. Sur la page d’identité de démonstration,
 le Joueur choisit son rang. La page lit l’UUID correspondant dans la projection et
 l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
-Ces identités fictives ne sont pas
-une authentification ; en production le résolveur refuse systématiquement avec `401`.
-Elles ne visent que des Soirées fictives : un jeton `demo:JOUEUR` ou `demo:ECRAN` dont la Soirée
-est enregistrée est refusé : en HTTP par `401 AUTHENTIFICATION_REQUISE`, au CONNECT STOMP par une
-trame `ERROR` suivie de la fermeture de la connexion, sans statut HTTP. Le canal
-d'une Manette et sa dernière vue ne dépendant que de l'UUID du Joueur, un jeton `demo:JOUEUR` qui
-porte l'UUID d'un vrai Joueur est refusé de même, quelle que soit la Soirée déclarée. Sur une Soirée
-enregistrée, le Joueur doit présenter son jeton de reconnexion et l'Écran de salle sa clé.
-`demo:ANIMATEUR` reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5),
-pour les routes de test des Manches. Le [prototype #7](prototype/README.md) peut s'abonner
-anonymement au canal de salle uniquement en `dev` et `recette`, pour un UUID de Soirée absent
-de la base (#181). Le serveur vérifie cette absence à chaque `SUBSCRIBE` anonyme. Si la Soirée
-est enregistrée, le broker n'installe aucun abonnement pour ce `SUBSCRIBE`. La coquille STOMP
-`/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la clé
-dans le stockage de l'onglet, pour cette seule Soirée.
+
+En production, le résolveur refuse les jetons de démonstration avec `401`. En `dev` et `recette`,
+`demo:JOUEUR` et `demo:ECRAN` sont réservés aux Soirées fictives. Sur une Soirée enregistrée, ces jetons
+reçoivent `401 AUTHENTIFICATION_REQUISE` en HTTP et une trame `ERROR` suivie de la fermeture de la
+connexion au CONNECT STOMP. Le canal de la Manette et sa dernière vue dépendent de l’UUID du Joueur.
+Un jeton `demo:JOUEUR` qui porte l’UUID d’un vrai Joueur reçoit le même refus, quelle que soit la Soirée
+déclarée. Pour une Soirée enregistrée, la Manette utilise son jeton de reconnexion et l’Écran de salle sa clé.
+L’Animateur de démonstration vérifie son jeton par la capture de la Console. `demo:ANIMATEUR` reste accepté
+sur une Soirée enregistrée jusqu’à la connexion du Lieu (#5), pour les routes de test des Manches et le pilotage.
+Le [prototype #7](prototype/README.md) peut s’abonner anonymement au canal de salle uniquement en `dev`
+et `recette`, pour un UUID de Soirée absent de la base (#181). Le serveur vérifie cette absence à chaque
+`SUBSCRIBE` anonyme. Si la Soirée est enregistrée, le broker n’installe aucun abonnement pour ce `SUBSCRIBE`.
+La coquille STOMP `/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la
+clé dans le stockage de l’onglet, pour cette seule Soirée.
+
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 

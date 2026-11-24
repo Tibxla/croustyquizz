@@ -1166,17 +1166,8 @@ http:
         pilotage: MANUEL
         etat: TERMINEE
         codeAcces: QUIZ42
-      mancheActive:
-        id: 00000002-0000-4000-8000-000000000000
-        ordre: 0
-        mode: QUIZ
-        etat: TERMINEE
-        reglages:
-          nombreEtapes: 3
-          tempsParEtapeSecondes: 20
-      modeEnCours: QUIZ
-      quiz:
-        phase: TERMINEE
+      mancheActive: null
+      modeEnCours: null
       joueurs:
       - id: 00000003-0000-4000-8000-000000000000
         pseudo: Alpha
