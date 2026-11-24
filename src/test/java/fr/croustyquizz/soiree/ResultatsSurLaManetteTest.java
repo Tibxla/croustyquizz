@@ -1,6 +1,7 @@
 package fr.croustyquizz.soiree;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
@@ -52,12 +53,33 @@ class ResultatsSurLaManetteTest {
 	@Autowired
 	private FauxResultats resultats;
 
+	@Autowired
+	private ServiceSoiree service;
+
 	@AfterEach
 	void effacer() {
 		resultats.vider();
 		jdbc.update("delete from acces_ecran");
 		jdbc.update("delete from joueur");
 		jdbc.update("delete from soiree");
+	}
+
+	@Test
+	void unEchecDAssemblageAnnuleLArriveeEtLibereLePseudo() {
+		JsonNode soiree = soireeOuverte();
+		UUID soireeId = UUID.fromString(soiree.path("id").asString());
+		String code = soiree.path("codeAcces").asString();
+		resultats.soireeIndisponible = soireeId;
+
+		assertThatThrownBy(() -> service.rejoindre(code, "Léa"))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessage("Classement indisponible");
+		assertThat(service.joueurs(soireeId)).isEmpty();
+
+		resultats.soireeIndisponible = null;
+		ArriveeDeJoueur arrivee = service.rejoindre(code, "Léa");
+		assertThat(arrivee.jeton()).isNotNull();
+		assertThat(service.joueurs(soireeId)).extracting(Joueur::getId).containsExactly(arrivee.joueur().getId());
 	}
 
 	@Test
@@ -73,6 +95,8 @@ class ResultatsSurLaManetteTest {
 		var resultat = new ResultatsDeSoiree.ResultatPersonnel(accuse.etapeId(), true, 87);
 		var ligne = new ResultatsDeSoiree.LigneClassement(leaId, "Léa", 1, 87, 1, 2_750);
 		resultats.donner(soireeId, leaId, accuse, resultat, List.of(ligne));
+		// L'arrivée suivante publie de nouvelles vues avec les résultats fournis ci-dessus.
+		rejoindre(soiree.path("codeAcces").asString(), "Camille");
 
 		String route = "/api/soirees/" + soireeId + "/etat/manette";
 		var vueDeLea = envoyer(HttpMethod.GET, route, null, lea.path("jetonReconnexion").asString());
@@ -101,6 +125,7 @@ class ResultatsSurLaManetteTest {
 		private final Map<UUID, List<LigneClassement>> classements = new ConcurrentHashMap<>();
 		private final Map<UUID, AccuseReponse> accuses = new ConcurrentHashMap<>();
 		private final Map<UUID, ResultatPersonnel> resultats = new ConcurrentHashMap<>();
+		private volatile UUID soireeIndisponible;
 
 		void donner(UUID soireeId, UUID joueurId, AccuseReponse accuse, ResultatPersonnel resultat,
 				List<LigneClassement> classement) {
@@ -113,10 +138,14 @@ class ResultatsSurLaManetteTest {
 			classements.clear();
 			accuses.clear();
 			resultats.clear();
+			soireeIndisponible = null;
 		}
 
 		@Override
 		public List<LigneClassement> classement(UUID soireeId) {
+			if (soireeId.equals(soireeIndisponible)) {
+				throw new IllegalStateException("Classement indisponible");
+			}
 			return classements.getOrDefault(soireeId, List.of());
 		}
 

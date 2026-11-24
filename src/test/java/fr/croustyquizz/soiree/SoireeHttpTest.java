@@ -31,7 +31,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Les routes de Soirée sur un vrai serveur et un vrai PostgreSQL, chaque réponse validée par le contrat. */
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "server.servlet.context-path=/quiz")
 @Import(TestcontainersConfiguration.class)
 class SoireeHttpTest {
 
@@ -214,7 +214,7 @@ class SoireeHttpTest {
 		assertThat(qrCode.getHeaders().getContentType()).hasToString("image/svg+xml");
 		assertThat(qrCode.getHeaders().getCacheControl()).isEqualTo("no-store");
 		assertThat(QrCodeSvgTest.relire(qrCode.getBody()))
-				.isEqualTo("http://localhost:" + port + "/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
+				.isEqualTo(adresseServeur() + "/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
 	}
 
 	@Test
@@ -222,14 +222,17 @@ class SoireeHttpTest {
 		JsonNode ouverte = soireeOuverte();
 		String id = ouverte.path("id").asString();
 
-		var qrCode = RestClient.create("http://localhost:" + port).get().uri("/api/soirees/" + id + "/qrcode")
+		var qrCode = RestClient.create(adresseServeur()).get().uri("/api/soirees/" + id + "/qrcode")
 				.header("Authorization", "Bearer " + cleEcran(id))
 				.header("X-Forwarded-Proto", "https")
 				.header("X-Forwarded-Host", "croustyquizz.example")
 				.retrieve().toEntity(String.class);
 
+		ContratApi.verifier(CONTRAT, "consulterQrCodeSoiree", qrCode);
+		String adresse = "https://croustyquizz.example/quiz/rejoindre.html";
+		assertThat(qrCode.getHeaders().getFirst("Adresse-Manette")).isEqualTo(adresse);
 		assertThat(QrCodeSvgTest.relire(qrCode.getBody()))
-				.isEqualTo("https://croustyquizz.example/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
+				.isEqualTo(adresse + "#code=" + ouverte.path("codeAcces").asString());
 	}
 
 	@Test
@@ -345,7 +348,7 @@ class SoireeHttpTest {
 	}
 
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps, String secret) {
-		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
+		var requete = RestClient.create(adresseServeur()).method(methode).uri(route);
 		if (secret != null) {
 			requete.header("Authorization", "Bearer " + secret);
 		}
@@ -357,6 +360,10 @@ class SoireeHttpTest {
 		}
 		return requete.retrieve().onStatus(statut -> statut.isError(), (demande, reponse) -> { })
 				.toEntity(String.class);
+	}
+
+	private String adresseServeur() {
+		return "http://localhost:" + port + "/quiz";
 	}
 
 }

@@ -84,10 +84,22 @@ class DeroulementSoireeTempsReelTest {
 		var ouverture = lire(salle, "soiree-ouverte");
 		assertThat(ouverture.at("/donnees/soiree/etat").asString()).isEqualTo("OUVERTE");
 
-		envoyer("rejoindreSoiree", HttpMethod.POST, "/api/soirees/rejoindre", null,
-				Map.of("codeAcces", ouverture.at("/donnees/soiree/codeAcces").asString(), "pseudo", "Camille"), null, 201);
+		String code = ouverture.at("/donnees/soiree/codeAcces").asString();
+		var camille = envoyer("rejoindreSoiree", HttpMethod.POST, "/api/soirees/rejoindre", null,
+				Map.of("codeAcces", code, "pseudo", "Camille"), null, 201);
 		assertThat(lire(salle, "joueurs-modifies").at("/donnees/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
 		assertThat(capturer(racine, salle).at("/vue/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
+
+		String joueurId = camille.at("/joueur/id").asString();
+		var manette = abonner(camille.path("jetonReconnexion").asString(), Canaux.joueur(UUID.fromString(joueurId)),
+				"manette", "retrouverEtatManette");
+		assertThat(capturer(racine, manette).at("/vue/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
+
+		envoyer("rejoindreSoiree", HttpMethod.POST, "/api/soirees/rejoindre", null,
+				Map.of("codeAcces", code, "pseudo", "Sacha"), null, 201);
+		var vueManette = lire(manette, "joueurs-modifies").path("donnees");
+		assertThat(vueManette.path("joueurId").asString()).isEqualTo(joueurId);
+		assertThat(vueManette.path("joueurs").findValuesAsString("pseudo")).containsExactlyInAnyOrder("Camille", "Sacha");
 	}
 
 	@Test
