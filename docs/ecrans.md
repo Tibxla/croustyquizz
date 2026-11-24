@@ -196,3 +196,13 @@ Côté Console, couper puis rouvrir les envois et valider des photos dans un ord
 autre que celui de leur arrivée. Sur deux Écrans de salle, recharger l’un d’eux
 au milieu d’un affichage. Vérifier la même photo et la même fin d’affichage,
 puis démarrer et terminer une Manche. Vérifier le portrait et le paysage à 5 m.
+
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans
+interface : Soirée enregistrée et ouverte, deux Écrans de salle ouverts par leur clé, deux
+Manettes arrivées par le code, et la Console. Une image illisible est refusée sous le champ,
+puis un nouvel essai passe sans recharger. Un paysage de 3000 × 2000 et un portrait de
+1200 × 1800 arrivent en 1600 × 1066 et 1066 × 1600. La photo de Sam, acceptée avant celle
+de Léa, passe la première sur les deux Écrans, et un Écran rechargé retrouve la même photo.
+L'affiche se vide après le dernier créneau. Couper les envois retire le champ des Manettes.
+Aucun des écrans ne déborde. Restent l'orientation EXIF, le HEIC, l'appareil photo sur
+téléphone et la lecture à 5 m.
