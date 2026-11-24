@@ -71,8 +71,9 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 		}
 		if (soirees.existsById(acteur.soireeId())
 				|| acteur.type() == Acteur.Type.JOUEUR && joueurs.existsById(acteur.identifiant())) {
-			throw new Refuse(401, "AUTHENTIFICATION_REQUISE",
-					"Cette Soirée n'accepte pas d'identité de démonstration : rejoins-la avec son code.").exception();
+			throw new Refuse(401, "AUTHENTIFICATION_REQUISE", acteur.type() == Acteur.Type.ECRAN
+					? "Cette Soirée n'accepte pas d'Écran de démonstration : ouvre l'Écran de salle avec la clé créée depuis la Console."
+					: "Cette Soirée n'accepte pas d'identité de démonstration : rejoins-la avec son code.").exception();
 		}
 		return acteur;
 	}

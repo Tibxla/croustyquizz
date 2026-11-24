@@ -287,8 +287,9 @@ class SoireeHttpTest {
 
 		verifierRefus("retrouverEtatManette",
 				envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/manette", null, joueur), 401, "AUTHENTIFICATION_REQUISE");
-		verifierRefus("retrouverEtatSalle",
-				envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/salle", null, ecran), 401, "AUTHENTIFICATION_REQUISE");
+		var salle = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/salle", null, ecran);
+		verifierRefus("retrouverEtatSalle", salle, 401, "AUTHENTIFICATION_REQUISE");
+		assertThat(json.readTree(salle.getBody()).path("detail").asString()).contains("clé créée depuis la Console");
 		for (String jeton : List.of(joueur, ecran)) {
 			verifierRefusAuConnect(jeton);
 		}
