@@ -170,6 +170,8 @@ Le serveur gère déjà un accord par Interprète dans un Passage à plusieurs, 
 - le niveau du son dans un Lieu bruyant, près des enceintes, et la durée d’une prise de quatre minutes ;
 - le mode silencieux de l’iPhone et un casque Bluetooth branché pendant la prise.
 
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans interface, avec le faux micro de Chromium (`--use-fake-device-for-media-stream`). Le Joueur 1 s'inscrit, donne son accord, puis autorise le micro (« Micro prêt »). « Je suis prêt » lance la prise (« Enregistrement en cours »). La pause de la Manche la suspend, et la reprise la relance. Après « Passer », la Manette propose « Télécharger mon Enregistrement » : un WebM d'environ 97 Ko, nommé `Metro Station - Shake It - 2026-11-24.webm`, avec « Écouter ». « Interdire les Enregistrements » retire l'option des Manettes. Rien ne déborde à 390 px. Le format MP4 de Safari, le micro réel et le téléchargement sur iOS restent à vérifier sur téléphone.
+
 ### Recharger l’Écran pendant l’appel (#144)
 
 1. Appeler un Passage dont la Chanson correspond à un fichier audio lisible. Pendant l’appel, recharger l’Écran de salle.
