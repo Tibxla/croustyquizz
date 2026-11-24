@@ -6595,7 +6595,6 @@ cases:
         votes: []
         prochainsPassages: *a81
         nombreAutresPassages: 0
-        votes: []
         mesPassagesEnAttente: *a212
         nombrePersonnelEnAttente: 1
         peutRechercher: true

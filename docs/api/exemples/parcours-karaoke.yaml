@@ -5262,7 +5262,6 @@ cases:
       votes: []
       prochainsPassages: *a84
       nombreAutresPassages: 1
-      votes: []
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
       peutRechercher: true
