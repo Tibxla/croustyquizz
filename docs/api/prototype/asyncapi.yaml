@@ -3,8 +3,8 @@ info:
   title: Diffusion technique de démonstration CroustyQuizz
   version: 0.2.0
   description: >-
-    Prototype sans authentification, avec capture révisée de la salle. Les événements métier de
-    ../asyncapi.yaml seront ajoutés avec les accès et les projections du Quiz.
+    Prototype avec capture révisée de la salle. L’abonnement anonyme est réservé aux profils
+    dev et recette et aux Soirées absentes de la base. Le contrat métier est dans ../asyncapi.yaml.
 servers:
   local:
     host: localhost:8080
