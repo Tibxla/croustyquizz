@@ -4,6 +4,7 @@ import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
+import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -71,6 +72,10 @@ async function demarrer() {
 		},
 	});
 	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	const boutonMusique = element('musique-attente');
+	const musiqueConsole = boutonMusique
+		? monterMusiqueDAttenteConsole(boutonMusique, element('musique-attente-statut'), contexte) : null;
+	const musiqueSalle = audioSalle ? monterMusiqueDAttenteSalle(audioSalle, contexte) : null;
 	// Alias de recette explicite : le serveur continue à publier son vrai mode et son bloc.
 	const factice = jeton?.startsWith('demo:') && new URLSearchParams(location.search).get('factice') === '1';
 	const gestionnaire = creerGestionnaireDeMode({ ecran, zones, contexte,
@@ -82,7 +87,9 @@ async function demarrer() {
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
-			void gestionnaire.afficher(vue, origine);
+			const modeAffiche = gestionnaire.afficher(vue, origine);
+			musiqueConsole?.afficher(vue);
+			musiqueSalle?.afficher(vue, modeAffiche);
 		},
 		surEtat(etat) {
 			changerEtat(etat);
@@ -95,10 +102,14 @@ async function demarrer() {
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		suivi.arreter(); gestionnaire.demonter();
+		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {
-		if (evenement.persisted) audioSalle?.suspendre(false);
+		if (evenement.persisted && audioSalle) {
+			suivi.resynchroniser();
+			audioSalle.suspendre(false);
+		}
 	});
 }
 

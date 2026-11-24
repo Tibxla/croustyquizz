@@ -56,8 +56,21 @@
 .pilotage__commandes {
   margin-left: auto;
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--espace-2);
+}
+
+.pilotage__musique {
+  display: grid;
+  justify-items: start;
+  gap: var(--espace-1);
+}
+
+.pilotage__musique p {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: 0.875rem;
 }
 
 .indicateurs {
