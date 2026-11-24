@@ -49,7 +49,7 @@ paths:
       description: >-
         Inscription initiale atomique d’un Lieu et de son premier Animateur. L’e-mail est unique sans distinction
         de casse (409 EMAIL_DEJA_UTILISE). Le mot de passe est haché côté serveur et absent des réponses.
-        L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une extension de #5.
+        L’Animateur se connecte ensuite via connecterAnimateur.
       tags:
       - Accès
       security: []
@@ -199,6 +199,152 @@ paths:
         schema:
           type: string
           minLength: 16
+  /api/animateurs/invitations:
+    post:
+      operationId: creerInvitationAnimateur
+      summary: Créer un lien d’invitation au Lieu de l’Animateur connecté
+      description: >-
+        La session détermine le Lieu. La clé n’est remise qu’à la création. La Console compose le lien
+        /invitation.html#cle=… et l’Animateur le transmet lui-même. La clé expire après sept jours.
+        Un e-mail déjà associé à un compte, quelle que soit sa casse, entraîne 409 EMAIL_DEJA_UTILISE.
+      tags:
+      - Accès
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans la session courante.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/CreationInvitationAnimateur
+      responses:
+        '201':
+          description: Invitation créée.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/InvitationAnimateurCreee
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/animateurs/invitations/consultation:
+    post:
+      operationId: consulterInvitationAnimateur
+      summary: Afficher le Lieu et l’e-mail de l’invitation
+      description: >-
+        Consultation accessible sans session ni CSRF. POST garde la clé dans le seul corps JSON.
+        L’invitation reste utilisable après consultation. Une clé inconnue, expirée ou déjà utilisée
+        entraîne 404 INVITATION_INVALIDE.
+      tags:
+      - Accès
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ConsultationInvitationAnimateur
+      responses:
+        '200':
+          description: Invitation disponible.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/InvitationAnimateur
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/animateurs/invitations/acceptation:
+    post:
+      operationId: accepterInvitationAnimateur
+      summary: Rejoindre le Lieu et ouvrir la session du nouvel Animateur
+      description: >-
+        La clé désigne le Lieu et l’e-mail du nouveau compte. La création du compte et l’utilisation unique
+        de la clé sont atomiques. Une clé inconnue, expirée ou déjà utilisée entraîne 404 INVITATION_INVALIDE.
+        Si l’e-mail a été inscrit entre-temps, la réponse est 409 EMAIL_DEJA_UTILISE. La réussite ouvre une
+        session Animateur et renouvelle JSESSIONID. Récupérer ensuite un nouveau CSRF.
+      tags:
+      - Accès
+      security: []
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf, accessible avant connexion.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/AcceptationInvitationAnimateur
+      responses:
+        '201':
+          description: Compte créé et session ouverte.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Location:
+              description: URI de la session, sans secret.
+              schema:
+                type: string
+                const: /api/animateurs/session
+            Set-Cookie:
+              description: JSESSIONID renouvelé, HttpOnly, SameSite=Lax, Secure en HTTPS.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Animateur
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/heure:
     get:
       operationId: consulterHeure

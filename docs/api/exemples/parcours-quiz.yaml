@@ -70,6 +70,52 @@ http:
   statut: 200
   reponse:
     maintenant: '2026-11-10T20:00:00Z'
+- nom: Créer un lien d’invitation au Lieu
+  operationId: creerInvitationAnimateur
+  acteur: animateur
+  statut: 201
+  requete:
+    email: invite@example.test
+  reponse:
+    cle: &cleInvitation abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG
+    expireLe: '2026-11-17T20:00:00Z'
+- nom: Consulter le Lieu de l’invitation
+  operationId: consulterInvitationAnimateur
+  acteur: public
+  statut: 200
+  requete:
+    cle: *cleInvitation
+  reponse:
+    nomLieu: Lieu de démonstration
+    ville: Ville de démonstration
+    email: invite@example.test
+- nom: Rejoindre le Lieu depuis l’invitation
+  operationId: accepterInvitationAnimateur
+  acteur: public
+  statut: 201
+  requete:
+    cle: *cleInvitation
+    nom: Animateur invité
+    motDePasse: Exemple-fictif-uniquement-43
+  parametres:
+    X-CSRF-TOKEN: csrf_invite_fictif_000000000000
+  reponse:
+    id: 0000000d-0000-4000-8000-000000000000
+    nom: Animateur invité
+    lieuId: 0000000b-0000-4000-8000-000000000000
+- nom: Refuser une invitation déjà acceptée
+  operationId: consulterInvitationAnimateur
+  acteur: public
+  statut: 404
+  requete:
+    cle: *cleInvitation
+  reponse:
+    type: about:blank
+    title: INVITATION_INVALIDE
+    status: 404
+    code: INVITATION_INVALIDE
+    detail: Ce lien d’invitation est invalide, expiré ou déjà utilisé.
+    instance: /api/animateurs/invitations/consultation
 - nom: Créer la Soirée
   operationId: creerSoiree
   acteur: animateur
