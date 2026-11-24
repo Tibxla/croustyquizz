@@ -44,6 +44,7 @@ class ProgrammeSoireeControleur {
 		ModeDeJeu mode = switch (demande.path("mode").asString("")) {
 			case "QUIZ" -> ModeDeJeu.QUIZ;
 			case "KARAOKE" -> ModeDeJeu.KARAOKE;
+			case "FREESTYLE" -> ModeDeJeu.FREESTYLE;
 			default -> throw reglagesInvalides();
 		};
 		if (mode == ModeDeJeu.QUIZ && (reglages.size() != 2 || !entierPositif(reglages.path("nombreEtapes"), 100)

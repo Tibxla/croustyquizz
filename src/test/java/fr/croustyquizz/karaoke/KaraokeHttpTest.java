@@ -603,7 +603,8 @@ class KaraokeHttpTest {
         void lesSixCorpsInvalidesSontRefusesAvantDeResoudreLIdentite(String typeContenu) throws Exception {
             var banc = new ServiceKaraokeTest.BancKaraoke();
             var resolution = new java.util.concurrent.atomic.AtomicInteger();
-            var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new KaraokeControleur(banc.service))
+            var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new KaraokeControleur(banc.service),
+                            new fr.croustyquizz.passage.PassagesControleur((soiree, mancheId) -> banc.service))
                     .setControllerAdvice(new ErreursHttp())
                     .setMessageConverters(new ConvertisseurCorpsKaraoke(banc.json), new org.springframework.http.converter.json.JacksonJsonHttpMessageConverter(banc.json))
                     .setCustomArgumentResolvers(new org.springframework.web.method.support.HandlerMethodArgumentResolver() {
@@ -637,7 +638,8 @@ class KaraokeHttpTest {
             var parcours = new ServiceKaraokeTest();
             UUID manche = parcours.demarrer();
             var banc = parcours.banc;
-            var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new KaraokeControleur(banc.service))
+            var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new KaraokeControleur(banc.service),
+                            new fr.croustyquizz.passage.PassagesControleur((soiree, mancheId) -> banc.service))
                     .setControllerAdvice(new ErreursHttp())
                     .setMessageConverters(new ConvertisseurCorpsKaraoke(banc.json), new org.springframework.http.converter.json.JacksonJsonHttpMessageConverter(banc.json))
                     .setCustomArgumentResolvers(new org.springframework.web.method.support.HandlerMethodArgumentResolver() {

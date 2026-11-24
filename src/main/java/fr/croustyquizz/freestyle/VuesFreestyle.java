@@ -32,6 +32,20 @@ public final class VuesFreestyle {
         return Optional.of(projection.bloc(destination, disponibles));
     }
 
+    static LignePalmares lignePalmares(RangPassage ligne, Map<UUID, EtatFreestyle.Contenu> contenus, Map<UUID, String> pseudos) {
+        var resultat = ligne.resultat();
+        return new LignePalmares(resultat.passageId(), resultat.numero(), ligne.rang(),
+                contenus.get(resultat.passageId()).instrumentale(), interprete(resultat.interpretes().getFirst(), pseudos),
+                resultat.nombreVotes(), resultat.moyenneDixiemes());
+    }
+
+    private static Map<String, Object> interprete(UUID joueur, Map<UUID, String> pseudos) {
+        return Map.of("joueurId", joueur, "pseudo", pseudos.getOrDefault(joueur, ParticipantsDePassage.JOUEUR_PARTI));
+    }
+
+    record LignePalmares(UUID passageId, long numero, Long rang, Instrumentale instrumentale,
+            Map<String, Object> interprete, long nombreVotes, Integer moyenneDixiemes) { }
+
     private static final class Projection {
         private final InstantaneFreestyle instantane;
         private final Map<UUID, String> pseudos;
@@ -140,9 +154,7 @@ public final class VuesFreestyle {
             donnees.put("numeroModification", passage.numeroModification());
             donnees.put("numero", passage.numero());
             donnees.put("instrumentale", instantane.etat().contenus().get(passage.id()).instrumentale());
-            UUID interprete = passage.interpretes().getFirst();
-            donnees.put("interprete", Map.of("joueurId", interprete,
-                    "pseudo", pseudos.getOrDefault(interprete, ParticipantsDePassage.JOUEUR_PARTI)));
+            donnees.put("interprete", interprete(passage.interpretes().getFirst(), pseudos));
             return donnees;
         }
     }

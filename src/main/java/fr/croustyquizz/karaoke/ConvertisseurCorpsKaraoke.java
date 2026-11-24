@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import fr.croustyquizz.passage.CorpsPassage;
 import java.io.IOException;
 import java.util.*;
 import org.springframework.http.*;
@@ -14,16 +15,40 @@ public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverte
     private final JsonMapper json;
     public ConvertisseurCorpsKaraoke(JsonMapper json) { super(MediaType.APPLICATION_JSON, new MediaType("application", "*+json")); this.json = json; }
     @Override protected boolean supports(Class<?> type) {
-        return type.getEnclosingClass() == CorpsKaraoke.class && type != CorpsKaraoke.EmpreinteHttp.class;
+        return type.getEnclosingClass() == CorpsKaraoke.class
+                || (type.getEnclosingClass() == CorpsPassage.class && type != CorpsPassage.EmpreinteHttp.class);
     }
     @Override protected Object readInternal(Class<?> type, HttpInputMessage entree) throws IOException {
         try {
             JsonNode arbre = json.readTree(entree.getBody());
+            if (type == CorpsPassage.Inscription.class) { return inscription(arbre); }
             verifier(arbre, type);
             return json.treeToValue(arbre, type);
         } catch (tools.jackson.core.JacksonException erreur) {
             throw new org.springframework.http.converter.HttpMessageNotReadableException("Corps Karaoké invalide.", erreur, entree);
         }
+    }
+    private CorpsPassage.Inscription inscription(JsonNode arbre) {
+        if (arbre == null || !arbre.isObject() || arbre.size() != 2) { CorpsPassage.invalide(); }
+        if (arbre.has("chansonId")) {
+            verifier(arbre, CorpsKaraoke.InscriptionPassage.class);
+            var corps = json.treeToValue(arbre, CorpsKaraoke.InscriptionPassage.class);
+            return new CorpsPassage.Inscription(corps.envoiId(), corps.chansonId(), null);
+        }
+        if (!arbre.has("instrumentaleId")) { CorpsPassage.invalide(); }
+        var envoi = uuid(arbre.path("envoiId"));
+        var choix = arbre.get("instrumentaleId");
+        return new CorpsPassage.Inscription(envoi, null, choix.isNull() ? null : uuid(choix));
+    }
+    private static UUID uuid(JsonNode valeur) {
+        String texte = valeur.asString("");
+        try {
+            if (valeur.isString()) {
+                UUID id = UUID.fromString(texte);
+                if (id.toString().equalsIgnoreCase(texte)) { return id; }
+            }
+        } catch (IllegalArgumentException erreur) { CorpsPassage.invalide(); }
+        throw new fr.croustyquizz.manche.Refuse(400, "REQUETE_INVALIDE", "Identifiant invalide.").exception();
     }
     private void verifier(JsonNode arbre, Class<?> type) {
         if (arbre == null || !arbre.isObject()) { CorpsKaraoke.invalide(); }
@@ -44,9 +69,7 @@ public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverte
             } else {
                 if (!valeur.isString() || valeur.asString().isEmpty()) { CorpsKaraoke.invalide(); }
                 if (champ.getType() == UUID.class) {
-                    try {
-                        if (!UUID.fromString(valeur.asString()).toString().equalsIgnoreCase(valeur.asString())) { CorpsKaraoke.invalide(); }
-                    } catch (IllegalArgumentException erreur) { CorpsKaraoke.invalide(); }
+                    uuid(valeur);
                 }
             }
         }

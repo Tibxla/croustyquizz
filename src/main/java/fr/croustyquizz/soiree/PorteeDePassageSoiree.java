@@ -10,13 +10,12 @@ import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.manche.DepotDeManches;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
-import fr.croustyquizz.manche.ModeDeJeu;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.passage.PorteeDePassage;
 import fr.croustyquizz.tempsreel.AccesAuxVues;
 
 /**
- * Portée des Passages d'une Soirée enregistrée (#111) : la Manche de Karaoké doit
+ * Portée des Passages d'une Soirée enregistrée (#111) : la Manche de Karaoké ou de Freestyle doit
  * appartenir à la Soirée. {@code passage}
  * ne dépend pas de {@code soiree} : c'est {@code soiree} qui implémente son port.
  * <p>
@@ -46,7 +45,7 @@ class PorteeDePassageSoiree implements PorteeDePassage {
 		}
 		AccesAuxVues.verifier(acteur, soireeId, null);
 		ManchePersistante manche = manches.charger(mancheId);
-		if (manche == null || !soireeId.equals(manche.getSoireeId()) || manche.getMode() != ModeDeJeu.KARAOKE) {
+		if (manche == null || !soireeId.equals(manche.getSoireeId()) || !PorteeDePassage.accepte(manche.getMode())) {
 			throw introuvable();
 		}
 	}
