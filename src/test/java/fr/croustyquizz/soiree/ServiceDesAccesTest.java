@@ -19,21 +19,27 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Acteur;
+import fr.croustyquizz.tempsreel.PublicationDeVues;
+import fr.croustyquizz.tempsreel.VerrousSoiree;
 
 /** Clés d'Écran de salle et reconnaissance des secrets, sur un vrai PostgreSQL. */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceDesAcces.class, TirageAuHasard.class,
-		ServiceDesAccesTest.Reglages.class })
+		ServiceDesAccesTest.Reglages.class, VerrousSoiree.class })
 class ServiceDesAccesTest {
 
 	static final Instant DEBUT = Instant.parse("2026-11-12T19:30:00Z");
+
+	@MockitoBean
+	private PublicationDeVues vues;
 
 	/** Horloge que le test fait avancer. */
 	static final class HorlogeReglable extends Clock {

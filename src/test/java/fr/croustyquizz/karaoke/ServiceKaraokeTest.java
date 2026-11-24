@@ -515,6 +515,7 @@ class ServiceKaraokeTest {
         Map<UUID, EnvoiDeManche> recus = new HashMap<>();
         public ManchePersistante charger(UUID id) { return manches.get(id); }
         public void enregistrer(ManchePersistante manche) { manches.put(manche.getMancheId(), manche); }
+        public void retirer(ManchePersistante manche) { manches.remove(manche.getMancheId()); }
         public List<ManchePersistante> deLaSoiree(UUID id) { return manches.values().stream().filter(m -> m.getSoireeId().equals(id)).toList(); }
         public EnvoiDeManche retrouverEnvoi(UUID id) { return recus.get(id); }
         public void enregistrerEnvoi(EnvoiDeManche recu) { recus.put(recu.getId(), recu); }
