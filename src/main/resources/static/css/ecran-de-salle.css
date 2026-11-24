@@ -269,6 +269,27 @@
 .salle--coquille .mode__contenu { font-size: 1.5vw; max-height: 48vh; overflow: auto; }
 .salle--coquille .coquille__note { font-size: 1.2vw; }
 .salle--coquille .salle__pied { gap: 1vw; }
+.accueil__joueurs { display: grid; gap: 2.2vw; }
+.salle__classement h2 {
+  margin: 0 0 0.8vw;
+  font: 800 2.6vw/1.1 var(--police-chiffres);
+}
+.salle__classement .commun__liste {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 2vw;
+  max-block-size: 36vh;
+  overflow: auto;
+}
+.salle__classement li {
+  padding-block: 0.45vw;
+  border-top: 1px solid var(--fond-4);
+  font-size: 1.65vw;
+  font-variant-numeric: tabular-nums;
+}
+.salle__classement--podium .commun__liste { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.salle__classement--podium li { font-weight: 700; }
+.salle__classement p { font-size: 1.65vw; color: var(--texte-2); }
 .salle__audio:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
 .salle__audio .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
 .salle__audio p:empty { display: none; }

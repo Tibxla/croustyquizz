@@ -26,7 +26,7 @@ public class PersistanceKaraokeJpa implements PersistanceDuMode<EtatKaraokePersi
         lectures(mancheId).forEach(l -> lectures.put(l.getPassageId(), l.restaurer(json)));
         var lecteur = entites.find(LecteurChansonPersistant.class, mancheId);
         return new EtatKaraokePersiste(file, contenus, passages.chargerCycle(mancheId), lectures,
-                lecteur == null ? null : lecteur.getLecteurId());
+                lecteur == null ? null : lecteur.getLecteurId(), passages.chargerVotes(mancheId));
     }
     @Override public void enregistrer(UUID mancheId, Object instantane) {
         var etat = (InstantaneKaraoke) instantane;
@@ -43,6 +43,7 @@ public class PersistanceKaraokeJpa implements PersistanceDuMode<EtatKaraokePersi
             var ancien = entites.find(LecteurChansonPersistant.class, mancheId);
             if (ancien != null) { entites.remove(ancien); }
         }
+        passages.enregistrerVotes(mancheId, etat.voteDuPublic());
     }
 
     private List<LecturePassagePersistante> lectures(UUID mancheId) {

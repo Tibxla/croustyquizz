@@ -70,6 +70,60 @@ Recette exécutée en Chromium sans interface graphique sur le port 18113, avec 
 
 Le test constate le décodage, la progression et la fin du WAV dans Chromium. L’audibilité sur le matériel du Lieu, la lecture à cinq mètres, le tactile physique et l’intégration des routes #99 et #100 restent à vérifier en situation.
 
+### Recette du Vote du public (#115)
+
+Reprendre la Soirée de démonstration du ticket #114 avec la Console, l’Écran de salle et deux
+Manettes distinctes. Sur la Manette du Joueur 1, inscrire une Chanson. L’appeler depuis la Console,
+confirmer « Je suis prêt » depuis sa Manette et laisser le Passage se terminer.
+
+1. Vérifier que « Vote du public » apparaît avant « En scène » et que la Manette de l’Interprète
+   indique que le public vote pour son Passage. La Manette du Joueur 2 propose les cinq notes.
+2. Sur la Manette du Joueur 2, choisir 4, puis envoyer. Vérifier la sélection au clavier,
+   le bouton désactivé avant le choix et la confirmation « Ta note est enregistrée : 4 sur 5. »
+   après le reçu HTTP. La Console compte un vote. Recharger la Manette et vérifier sa note.
+3. Rejouer le parcours en mettant la Manche en pause avant l’envoi. Vérifier « en pause » dans
+   la Console et l’indication de reprise sur la Manette. Après la reprise, vérifier que le temps
+   restant repart de sa valeur au moment de la pause.
+4. Terminer deux Passages à moins de trente secondes d’intervalle. Vérifier que la Console
+   suit les deux délais, puis que chaque vote se clôt à son échéance. Si le Joueur 2 est appelé
+   entre-temps, « Je suis prêt » prend l’action citron. Avec deux votes accessibles, le plus récent
+   porte cette action.
+5. Dans une autre Manche, choisir « Terminer la Manche » pendant un vote. Vérifier la disparition
+   des commandes de vote et l’absence de nouveaux Points dans le Classement général.
+
+Les tests automatisés couvrent le rendu des modules, les reçus et les destinations STOMP. Cette
+recette décrit les vérifications à réaliser dans le navigateur.
+
+### Recette de la note moyenne du Karaoké (#116)
+
+Vérification navigateur à réaliser à 1920 × 1080 puis à 1280 × 720, avec l’Écran de salle
+visible à cinq mètres. Reprendre la Soirée de démonstration et ouvrir deux Manettes de votants
+en plus de celle de l’Interprète.
+
+1. Terminer un Passage et envoyer les notes 4 et 5. La salle affiche le numéro, la Chanson,
+   les Interprètes, le nombre de votes et le temps restant dans le bandeau au-dessus du rouleau.
+   Pendant le vote, vérifier l’absence de moyenne sur les trois écrans et de nombre de votes
+   sur la Manette. Le changement du nombre garde le bandeau en place et l’appel ou les paroles
+   restent dans la zone principale.
+2. Laisser le vote se clore. Vérifier « 4,5 sur 5 » et « 2 votes » sur les trois écrans, la note
+   personnelle sur la Manette et une seule annonce du résultat au lecteur d’écran. Recharger
+   la Manette et vérifier que le résultat reste lisible sans nouvelle annonce. Refaire la
+   clôture sans voter et vérifier « Aucun vote ».
+3. Démarrer un Passage suivant avant la clôture, puis mettre la Manche en pause après la
+   clôture. La moyenne reste dix secondes après la clôture, délai qui continue pendant la
+   pause. Refaire avec un Passage suivant simplement appelé. La moyenne reste au-delà des
+   dix secondes et s’efface dès « Je suis prêt ». Sauter alors ce Passage, en appeler un autre
+   et recharger la salle. Le bandeau échu reste masqué. Refaire en sautant le Passage dès
+   l’appel, avant « Je suis prêt ». Ce saut laisse la moyenne affichée.
+4. Terminer deux Passages en moins de trente secondes pour obtenir deux votes ouverts et
+   mettre la Manche en pause. Vérifier les deux bandeaux au-dessus du rouleau, le plus récent
+   en haut, les temps figés sous « Pause », les textes lisibles, le talon visible et la colonne
+   latérale sans débordement aux deux résolutions. En terminant la Manche pendant un vote,
+   vérifier que les bandeaux disparaissent.
+5. En Pilotage Automatique, provoquer une clôture qui appelle le Passage suivant. Vérifier
+   que la Manette annonce aussi la moyenne à cette clôture et que la salle garde le bandeau
+   jusqu’au démarrage du Passage ou à l’expiration de l’affichage, selon le dernier des deux.
+
 ### Musique d'attente (#140)
 
 Sur `/ecran.html`, choisir le dossier de musique depuis la coquille. Les MP3, M4A, OGG et WAV du sous-dossier `Attente`, y compris dans ses sous-dossiers, alimentent la Musique d'attente. La casse et les accents du nom `Attente` sont ignorés. La recherche locale des Chansons écarte ces fichiers. Le navigateur garde le dossier en mémoire le temps de l'ouverture de la page.
@@ -79,6 +133,15 @@ Sur l'Écran de salle, les modules appellent `contexte.signalerSonDeManche(true)
 La coordination locale utilise `BroadcastChannel` et les Web Locks. La fenêtre ouverte le plus récemment parmi celles dont le son est activé prend la main. Un Passage déjà démarré garde son lecteur désigné jusqu'à sa clôture.
 
 Pour la recette, ouvrir deux fenêtres du même profil de navigateur en HTTPS ou sur `localhost`. Choisir dans la première un dossier avec plusieurs morceaux dans `Attente`. Vérifier l'enchaînement puis l'appel d'un Passage de Karaoké. Confirmer le départ, vérifier le silence de la Musique d'attente puis sa reprise à la clôture. Choisir le dossier dans la deuxième fenêtre et vérifier qu'elle prend la main. Fermer la deuxième, puis rouvrir ou recharger l'Écran de salle et choisir à nouveau le dossier. À chaque relais, écouter la fin de la première lecture avant la suivante. Refaire l'essai avec un dossier sans `Attente`, puis avec une Chanson présente uniquement dans `Attente`.
+
+### Pilotage de la Musique d’attente (#141)
+
+La Console coupe ou relance la Musique d’attente depuis la barre de pilotage, y compris sans Manche en cours. La Musique d’attente se tait pendant la resynchronisation puis suit le réglage de la Soirée. La Console affiche « Aucun morceau dans Attente » lorsque le dernier dossier signalé est vide. Le serveur ne reçoit que la présence ou l’absence de morceaux.
+
+1. En `dev` ou `recette`, utiliser un UUID neuf pour une Soirée de démonstration sans Manche. Ouvrir la Console et l’Écran de salle avec les identités correspondantes. La même recette s’applique à une Soirée enregistrée.
+2. Hors Manche, choisir un dossier avec des morceaux dans `Attente`. Vérifier leur lecture et l’état affiché dans la Console. Couper la musique, recharger l’Écran de salle et choisir de nouveau le dossier. Vérifier le silence, puis relancer depuis la Console.
+3. Couper de nouveau et redémarrer le serveur avec la même base. Après resynchronisation, vérifier que la Console propose toujours de relancer et que la salle reste silencieuse. Choisir un dossier sans morceaux dans `Attente` et vérifier le message dans la Console.
+4. Avec un dossier contenant des morceaux, vérifier que la relance pendant un Passage laisse la Chanson audible seule et que la Musique d’attente reprend à la clôture.
 
 ### Recharger l’Écran pendant l’appel (#144)
 
@@ -97,3 +160,12 @@ L’échéance de l’appel sert de repère. Tant que le Passage est appelé, l�
 4. Après redémarrage du serveur, rouvrir la Console avec le choix par défaut. Son résumé doit afficher « Pilotage manuel », y compris si la Manche est restaurée.
 
 Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le champ « Pilotage de la Soirée » n'apparaît que pour l'Animateur, « Automatique » donne « Pilotage automatique » sur la Console, « Manuel » après le démarrage d'une Manche affiche le refus sans quitter la page, focus sur le champ, et la Soirée repasse en Pilotage manuel après un redémarrage du serveur.
+
+## Recette navigateur de l’appel automatique des Passages (#120)
+
+1. Choisir « Automatique » sur la page d’identité de l’Animateur pour une Soirée neuve. Ouvrir la Console, l’Écran de salle et les Manettes des Joueurs 1 et 2 avec le même UUID, puis créer et démarrer une Manche de Karaoké comme dans la recette #114.
+2. Inscrire une Chanson depuis la première Manette. Vérifier que les trois écrans affichent aussitôt le Passage appelé et que seul le Joueur 1 peut cliquer sur « Je suis prêt ». La barre de la Console affiche « Appel automatique » à la dernière place.
+3. Inscrire une Chanson différente depuis la deuxième Manette. Vérifier que le Joueur 2 attend son Tour. Désigner l’Écran de salle comme lecteur et choisir un dossier qui contient les deux fichiers audio nommés selon la recette #112.
+4. Confirmer le premier Passage après la préparation de son fichier. À la fin de lecture, vérifier que le Joueur 2 est appelé, que l’Écran de salle prépare son fichier et que le Vote du public du premier Passage s’ouvre sur sa Manette. Confirmer le deuxième Passage une fois préparé et vérifier que le fichier local démarre.
+5. Rejouer avec une pause pendant un Passage alors que le Joueur 2 attend. Cliquer sur « Passer » et vérifier que le Joueur 2 reste en attente jusqu’à « Reprendre ».
+6. Rejouer dans une Soirée neuve en Manuel. Vérifier que « Appeler le suivant » est disponible quand la File d’attente est libre et que l’Animateur doit l’utiliser après la première inscription et après la fin du Passage.

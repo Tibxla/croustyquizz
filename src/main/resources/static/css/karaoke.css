@@ -8,6 +8,20 @@
 .karaoke [hidden] { display: none; }
 .karaoke h2 { font-size: 1.375rem; }
 .karaoke h2:focus { outline-offset: 4px; }
+.karaoke__votes, .karaoke__liste-votes { display: grid; gap: var(--espace-3); }
+.karaoke__liste-votes { margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
+.karaoke__ticket-vote .mon-ticket__bas { display: grid; gap: var(--espace-2); }
+.karaoke__ticket-vote .karaoke__etat-vote { font-weight: 700; }
+.karaoke__ticket-vote p:empty { margin: 0; padding: 0; }
+.karaoke__notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--espace-1); }
+.karaoke .karaoke__notes .bouton { padding-inline: 0; font-variant-numeric: tabular-nums; }
+.karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"] {
+  background: var(--encre);
+  color: var(--teinte);
+}
+.karaoke .karaoke__ticket-vote .bouton:focus-visible { outline-color: var(--encre); }
+.karaoke .karaoke__ticket-vote .bouton--action:hover:not(:disabled) { background: var(--citron-appuye); }
+.karaoke .karaoke__ticket-vote .bouton--action:disabled { background: var(--teinte); }
 .karaoke__personnels { display: grid; gap: var(--espace-5); }
 .karaoke__resultats {
   margin: 0;
@@ -114,6 +128,41 @@
 .salle__cote .karaoke .karaoke__priorite { font-size: 1.1vw; }
 .salle__cote .karaoke__courant-salle { margin: 0 0.8vw 0.4vw 0; }
 .salle__cote .karaoke__etat-ticket { font-size: 1.1vw; font-weight: 700; }
+.karaoke__bandeaux-vote { display: grid; gap: 0.5vw; }
+.bandeau-vote {
+  display: grid;
+  grid-template-columns: 4.6vw minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--fond-3);
+  border-radius: var(--rayon);
+  background: var(--fond-2);
+  color: var(--texte);
+  font: 400 1.15vw/1.12 var(--police-texte);
+}
+.bandeau-vote__numero {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--teinte);
+  color: var(--encre);
+  font: 800 2.8vw/1 var(--police-chiffres);
+}
+.bandeau-vote__corps { display: grid; gap: 0.1vw; padding: 0.45vw 0.65vw; }
+.bandeau-vote__corps p { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bandeau-vote__chanson { font-weight: 700; }
+.bandeau-vote__donnees {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6vw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.bandeau-vote__donnees > :last-child { margin-left: auto; }
+.bandeau-vote__moyenne {
+  flex: none;
+  font: 800 2.5vw/1 var(--police-chiffres);
+}
 @media (max-width: 860px) {
   .karaoke__commandes .bouton { flex-grow: 1; }
 }

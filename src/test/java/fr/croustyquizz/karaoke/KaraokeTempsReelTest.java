@@ -44,6 +44,7 @@ class KaraokeTempsReelTest {
     @Autowired ServiceKaraoke service;
     @Autowired Horloge horloge;
     @Autowired SocleDeManche socle;
+    @Autowired PilotageDeSoireeDemonstration pilotage;
     @Autowired MemoireDeCalageJpa calages;
     @MockitoSpyBean PersistanceKaraokeJpa persistance;
     final WsWebSocketContainer conteneur = new WsWebSocketContainer();
@@ -256,6 +257,102 @@ class KaraokeTempsReelTest {
         assertThat(capturer(salle).at("/vue/karaoke/lecture").isNull()).isTrue();
         for (var abonne : flux) {
             assertThat(capturer(abonne).path("revision").asLong()).isEqualTo(revisionsAvantFin.get(abonne) + 1);
+        }
+    }
+
+    @Test void leNombreVaALaSalleEtALaConsoleEtLaMoyenneAtoutesLesDestinationsALaCloture() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString();
+        var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        KaraokeHttpTest.verifier("appelerPassage", appel, 200);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        var votant = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(1), soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(2), soiree);
+        var salle = abonner(ecran, Canaux.salle(soiree), "salle");
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var interprete = abonner(joueur, Canaux.joueur(joueur.identifiant()), "manette");
+        var manette = abonner(votant, Canaux.joueur(votant.identifiant()), "manette");
+        var autreManette = abonner(autre, Canaux.joueur(autre.identifiant()), "manette");
+        var flux = List.of(salle, console, interprete, manette, autreManette);
+        KaraokeHttpTest.verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "etapeId", json.readTree(appel.getBody()).path("etapeId").asString(),
+                        "numeroModification", 1), null), 200);
+        for (var abonne : flux) { lireEvenement(abonne, "passage-demarre"); }
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+        for (var abonne : flux) { lireEvenement(abonne, "passage-termine"); }
+
+        var corps = Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", 4);
+        KaraokeHttpTest.verifier("voterPassage", envoyer(HttpMethod.POST, route + "/vote", votant, corps, null), 200);
+        for (var abonne : List.of(salle, console)) {
+            var vote = lireEvenement(abonne, "vote-enregistre").at("/karaoke/votes/0");
+            assertThat(vote.path("nombreVotes").asInt()).isEqualTo(1);
+            assertThat(vote.path("moyenneDixiemes").isNull()).isTrue();
+        }
+        var voteManette = lireEvenement(manette, "vote-enregistre").at("/karaoke/votes/0");
+        assertThat(voteManette.path("maNote").asInt()).isEqualTo(4);
+        assertThat(voteManette.path("nombreVotes").isNull()).isTrue();
+        assertThat(voteManette.path("moyenneDixiemes").isNull()).isTrue();
+        socle.registre().retirer(manche);
+        assertThat(service.instantane(soiree, manche)).isInstanceOf(InstantaneKaraoke.class);
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(30));
+        for (var abonne : flux) {
+            var vote = lireEvenement(abonne, "vote-clos").at("/karaoke/votes/0");
+            assertThat(vote.path("moyenneDixiemes").asInt()).isEqualTo(40);
+            assertThat(vote.path("nombreVotes").asInt()).isEqualTo(1);
+        }
+        assertThat(capturer(autreManette).at("/vue/karaoke/votes/0/maNote").isNull()).isTrue();
+    }
+
+    @Test void laFinPrevueEnAutomatiquePublieUnSeulAppelAToutesLesDestinations() throws Exception {
+        pilotage.choisir(soiree, true);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(1), soiree);
+        var premiere = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        var seconde = envoyer(HttpMethod.POST, racine + "/passages", autre,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(2)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", premiere, 201);
+        KaraokeHttpTest.verifier("inscrirePassage", seconde, 201);
+        String premier = json.readTree(premiere.getBody()).path("passageId").asString();
+        String suivant = json.readTree(seconde.getBody()).path("passageId").asString();
+        var instantane = (InstantaneKaraoke) service.instantane(soiree, manche);
+        KaraokeHttpTest.verifier("confirmerPresencePassage",
+                envoyer(HttpMethod.POST, racine + "/passages/" + premier + "/presence", joueur,
+                        Map.of("envoiId", UUID.randomUUID(), "etapeId", instantane.cycle().etapeId(), "numeroModification", 1), null), 200);
+
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        var salle = abonner(ecran, Canaux.salle(soiree), "salle");
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var flux = new ArrayList<>(List.of(salle, console));
+        for (UUID joueurId : ConfigurationTroisJoueurs.joueursDe(soiree)) {
+            var manette = new Acteur(Acteur.Type.JOUEUR, joueurId, soiree);
+            flux.add(abonner(manette, Canaux.joueur(joueurId), "manette"));
+        }
+        var revisions = new ArrayList<Long>();
+        for (var abonne : flux) { revisions.add(capturer(abonne).path("revision").asLong()); }
+        var avantEviction = service.instantane(soiree, manche);
+        socle.registre().retirer(manche);
+        assertThat(service.instantane(soiree, manche)).isEqualTo(avantEviction);
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+
+        for (int i = 0; i < flux.size(); i++) {
+            var abonne = flux.get(i);
+            var vue = lireEvenement(abonne, "passage-appele");
+            assertThat(vue.at("/karaoke/courant/passageId").asString()).isEqualTo(suivant);
+            assertThat(vue.at("/karaoke/courant/etat").asString()).isEqualTo("APPELE");
+            assertThat(capturer(abonne).path("revision").asLong()).isEqualTo(revisions.get(i) + 1);
+            assertThat(abonne.messages()).isEmpty();
+            if (abonne == console) {
+                assertThat(vue.at("/karaoke/votes/0/passageId").asString()).isEqualTo(premier);
+                assertThat(vue.at("/karaoke/votes/0/etat").asString()).isEqualTo("OUVERT");
+            }
         }
     }
 

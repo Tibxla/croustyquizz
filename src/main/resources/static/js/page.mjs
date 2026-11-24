@@ -3,8 +3,9 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
-import { decrireVue } from './vue-commune.mjs';
+import { afficherClassementDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
+import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
@@ -37,9 +38,10 @@ function afficherCommun(vue) {
 	const description = decrireVue(vue);
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
-	lister('classement', description.classement, 'Aucun point attribué.', ecran === 'ecran' ? 3 : Infinity);
+	lister('classement', description.classement, 'Aucun point attribué.');
+	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
-	texte('attente', vue.modeEnCours === null && vue.soiree.etat !== 'TERMINEE' ? 'La prochaine Manche s’affichera ici.' : '');
+	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
 
@@ -89,6 +91,10 @@ async function demarrer() {
 		},
 	});
 	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	const boutonMusique = element('musique-attente');
+	const musiqueConsole = boutonMusique
+		? monterMusiqueDAttenteConsole(boutonMusique, element('musique-attente-statut'), contexte) : null;
+	const musiqueSalle = audioSalle ? monterMusiqueDAttenteSalle(audioSalle, contexte) : null;
 	// Alias de recette explicite : le serveur continue à publier son vrai mode et son bloc.
 	const factice = jeton?.startsWith('demo:') && new URLSearchParams(location.search).get('factice') === '1';
 	const gestionnaire = creerGestionnaireDeMode({ ecran, zones, contexte,
@@ -105,7 +111,9 @@ async function demarrer() {
 			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
 			pilotage?.afficher(vue);
-			void gestionnaire.afficher(vue, origine);
+			const modeAffiche = gestionnaire.afficher(vue, origine);
+			musiqueConsole?.afficher(vue);
+			musiqueSalle?.afficher(vue, modeAffiche);
 		},
 		surEtat(etat) {
 			changerEtat(etat);
@@ -120,10 +128,14 @@ async function demarrer() {
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
 		pilotage?.demonter();
+		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {
-		if (evenement.persisted) audioSalle?.suspendre(false);
+		if (evenement.persisted && audioSalle) {
+			suivi.resynchroniser();
+			audioSalle.suspendre(false);
+		}
 	});
 }
 

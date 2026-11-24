@@ -46,11 +46,41 @@ test('les trois écrans partagent un lien CSS, conservent le talon et libèrent 
 	assert.equal(document.head.childElementCount, 0); assert.equal(talon.textContent, 'DEMO01');
 });
 
+test('Console : la mention Appel automatique remplace la dernière action de pilotage', t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	b.connecter('synchronisee');
+	const manuel = { ...vue({ passagesEnAttente: [{ ...passage(), position: 1 }], peutAppeler: true }),
+		soiree: { pilotage: 'MANUEL' } };
+	b.module.afficher(manuel, capture);
+	const appeler = bouton(b.principale, 'Appeler le suivant');
+	assert.ok(appeler, 'Le bouton est présent en Pilotage Manuel.');
+	const pilotage = appeler.parentNode;
+	const commandes = pilotage.querySelectorAll('button').slice(0, -1).map(bouton => bouton.textContent);
+	appeler.focus();
+
+	b.module.afficher({ ...manuel, soiree: { pilotage: 'AUTOMATIQUE' },
+		karaoke: { ...manuel.karaoke, peutAppeler: false } }, capture);
+	assert.equal(Boolean(bouton(pilotage, 'Appeler le suivant')), false);
+	assert.equal(Boolean(pilotage.querySelector('.bouton--action')), false);
+	const mention = pilotage.querySelector('.console__note');
+	assert.ok(mention, 'La mention est présente en Pilotage Automatique.');
+	assert.equal(mention.textContent, 'Appel automatique');
+	assert.equal(pilotage.children.at(-1) === mention, true);
+	assert.deepEqual(pilotage.querySelectorAll('button').map(bouton => bouton.textContent), commandes);
+	assert.equal(b.document.activeElement.textContent, 'Passage courant');
+
+	b.module.afficher(manuel, capture);
+	assert.equal(Boolean(pilotage.querySelector('.console__note')), false);
+	assert.equal(bouton(pilotage, 'Appeler le suivant') === appeler, true);
+	assert.equal(appeler.disabled, false);
+});
+
 test('Console : sélection unique, placement figé et priorité invalidée si l’ancienne disparaît', () => {
 	const p = passage('p', 12), q = { ...passage('q', 13), position: 1, prioritaire: true };
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.connecter('synchronisee');
 	b.module.afficher(vue({ passagesEnAttente: [p, q], passagePrioritaireId: 'q' }), evenement);
-	assert.equal(b.principale.querySelector('[aria-pressed=true]'), null);
+	assert.ok(b.principale.querySelector('[aria-pressed=true]') === null);
 	b.principale.querySelector('button[data-passage-id=p]').click();
 	assert.equal(b.principale.querySelector('[aria-pressed=true]').getAttribute('data-passage-id'), 'p');
 	bouton(b.principale, 'Priorité').click();
@@ -58,7 +88,7 @@ test('Console : sélection unique, placement figé et priorité invalidée si l�
 	b.module.afficher(vue({ passagesEnAttente: [p, q, passage('etranger', 16)], passagePrioritaireId: 'q' }), evenement);
 	assert.equal(b.principale.querySelector('dialog').open, true);
 	b.module.afficher(vue({ passagesEnAttente: [p], passagePrioritaireId: null }), evenement);
-	assert.equal(b.principale.querySelector('dialog'), null); assert.match(b.principale.textContent, /Le Passage a changé/); assert.equal(b.appels.length, 0);
+	assert.ok(b.principale.querySelector('dialog') === null); assert.match(b.principale.textContent, /Le Passage a changé/); assert.equal(b.appels.length, 0);
 	b.module.afficher(vue({ passagesEnAttente: [p, passage('r', 15), passage('s', 16)] }), capture);
 	bouton(b.principale, 'Descendre').click();
 	assert.deepEqual(b.appels[0].args[2], { numeroModification: 2, tour: 1, avant: { passageId: 's', numeroModification: 2 } });
@@ -82,10 +112,10 @@ test('une priorité apparue pendant la confirmation et un changement de Manche i
 	b.module.afficher(vue({ passagesEnAttente: [p, q], passagePrioritaireId: null }), capture); b.connecter('synchronisee');
 	b.principale.querySelector('button[data-passage-id=p]').click(); bouton(b.principale, 'Priorité').click();
 	b.module.afficher(vue({ passagesEnAttente: [p, { ...q, prioritaire: true }], passagePrioritaireId: 'q' }), evenement);
-	assert.equal(b.principale.querySelector('dialog'), null); assert.match(b.principale.textContent, /Le Passage a changé/);
+	assert.ok(b.principale.querySelector('dialog') === null); assert.match(b.principale.textContent, /Le Passage a changé/);
 	bouton(b.principale, 'Retirer').click();
 	b.module.afficher(vue({ mancheId: 'suivante', passagesEnAttente: [] }), capture);
-	assert.equal(b.principale.querySelector('dialog'), null); assert.match(b.principale.textContent, /Le Passage a changé/);
+	assert.ok(b.principale.querySelector('dialog') === null); assert.match(b.principale.textContent, /Le Passage a changé/);
 	assert.equal(b.appels.length, 0); b.module.demonter();
 });
 
@@ -102,7 +132,7 @@ for (const [nom, monter, acteur, action, confirmation] of [
 		bouton(b.principale, action).click();
 		const dialogue = b.principale.querySelector('dialog');
 		const confirmer = bouton(dialogue, confirmation);
-		assert.equal(b.document.activeElement, bouton(dialogue, 'Annuler'));
+		assert.ok(b.document.activeElement === bouton(dialogue, 'Annuler'));
 		confirmer.textContent = 'Valider';
 		b.connecter('coupure');
 		assert.equal(confirmer.disabled, true);
@@ -144,9 +174,9 @@ test('Console : un seul réessai manuel après capture puis synchronisée, conte
 	const p = passage(), b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue({ passagesEnAttente: [p] }), evenement); b.connecter('synchronisee');
 	b.principale.querySelector('button.ticket').click(); bouton(b.principale, 'Retirer').click(); bouton(b.principale, 'Confirmer').click();
 	b.appels[0].resolve({ statut: 503, corps: { detail: 'Panne de démonstration' } }); await terminerMicrotaches();
-	assert.equal(b.captures(), 1); assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	assert.equal(b.captures(), 1); assert.ok(bouton(b.principale, 'Réessayer le même envoi') === undefined);
 	b.connecter('synchronisation'); b.module.afficher(vue({ passagesEnAttente: [{ ...p, numeroModification: 4 }] }), capture);
-	assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	assert.ok(bouton(b.principale, 'Réessayer le même envoi') === undefined);
 	b.connecter('synchronisee'); const reessai = bouton(b.principale, 'Réessayer le même envoi'); reessai.click(); reessai.click();
 	assert.equal(b.appels.length, 2); assert.deepEqual(b.appels[1].args[2], b.appels[0].args[2]);
 	assert.equal(b.appels[1].args[3].entetes['Idempotency-Key'], b.appels[0].args[3].entetes['Idempotency-Key']);
@@ -155,7 +185,7 @@ test('Console : un seul réessai manuel après capture puis synchronisée, conte
 	assert.equal(bouton(b.principale, 'Appliquer').disabled, true);
 	b.module.afficher(vue({ passagesEnAttente: [p] }), evenement);
 	assert.equal(bouton(b.principale, 'Appliquer').disabled, true);
-	b.module.afficher(vue({ passagesEnAttente: [p] }), capture); assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	b.module.afficher(vue({ passagesEnAttente: [p] }), capture); assert.ok(bouton(b.principale, 'Réessayer le même envoi') === undefined);
 	assert.equal(bouton(b.principale, 'Appliquer').disabled, false);
 	b.module.demonter();
 });
@@ -183,7 +213,7 @@ test('le réessai Animateur vise le dernier échec même après un succès, et u
 	b.appels[2].resolve({ statut: 503, corps: { detail: 'Panne' } }); await terminerMicrotaches(); b.module.afficher(vue(), capture);
 	champ.value = '7'; formulaire.dispatchEvent({ type: 'submit' });
 	b.appels[3].resolve({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail: 'Refus définitif' } }); await terminerMicrotaches();
-	assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined); b.module.demonter();
+	assert.ok(bouton(b.principale, 'Réessayer le même envoi') === undefined); b.module.demonter();
 });
 
 test('Manette : deux tickets, désinscription confirmée en pause, refus sans disparition et oubli par vue', async () => {
@@ -215,7 +245,7 @@ test('Manette : recherche par composition, validation accessible, vidage silenci
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
 	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 404, corps: { detail: 'Source disparue' } }); await terminerMicrotaches();
 	assert.match(b.principale.querySelector('dialog').textContent, /Cette Chanson n'est plus disponible/);
-	assert.match(b.principale.querySelector('dialog').textContent, /Source disparue/); assert.equal(bouton(b.principale, "M'inscrire"), undefined);
+	assert.match(b.principale.querySelector('dialog').textContent, /Source disparue/); assert.ok(bouton(b.principale, "M'inscrire") === undefined);
 	b.module.demonter();
 });
 
@@ -305,7 +335,7 @@ test('changer de Manche ou démonter annule les lectures et ignore toute répons
 	const champ = b.principale.querySelector('input'); champ.value = 'ancien'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.module.afficher(vue({ mancheId: 'nouvelle' }), capture); assert.equal(b.appels[0].args[3].signal.aborted, true); assert.equal(champ.value, '');
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	assert.equal(bouton(b.principale, chanson.titre), undefined);
+	assert.ok(bouton(b.principale, chanson.titre) === undefined);
 	champ.value = 'nouveau'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.module.demonter(); assert.equal(b.appels[1].args[3].signal.aborted, true);
 	b.appels[1].reject(new Error()); await terminerMicrotaches(); assert.equal(b.principale.childElementCount, 0);
@@ -324,7 +354,7 @@ test('changer de Manche annule les mutations précédentes et leurs réponses ta
 	b.appels[0].resolve({ statut: 503, corps: {} });
 	await terminerMicrotaches();
 	assert.equal(b.captures(), 0);
-	assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	assert.ok(bouton(b.principale, 'Réessayer le même envoi') === undefined);
 	formulaire.dispatchEvent({ type: 'submit' });
 	assert.match(b.appels[1].args[1], /\/manches\/nouvelle\//);
 	assert.notEqual(b.appels[1].args[3].entetes['Idempotency-Key'], b.appels[0].args[3].entetes['Idempotency-Key']);
@@ -398,10 +428,10 @@ test('Manette : l’appel personnel garde son ticket et permet la confirmation t
 	assert.notEqual(b.appels[1].args[2].envoiId, premiereCle);
 	b.module.afficher(vue({ courant: courant('EN_COURS') }), evenement);
 	assert.match(b.principale.textContent, /À toi de chanter/);
-	assert.equal(b.principale.querySelector('.mon-ticket--appele'), null);
+	assert.ok(b.principale.querySelector('.mon-ticket--appele') === null);
 	b.module.afficher(vue({ courant: courant('SAUTE', { interpretes: [{ joueurId: 'autre', pseudo: 'Alizé' }] }) }), capture);
 	assert.ok(b.principale.querySelector('.ticket--bleu'));
-	assert.equal(bouton(b.principale, 'Je suis prêt'), undefined);
+	assert.ok(bouton(b.principale, 'Je suis prêt') === undefined);
 });
 
 test('Console : capacités et corps du Passage, calage affiché uniquement après la vue', async t => {
@@ -628,4 +658,194 @@ test('un appel sur capture restaure les quatre teintes personnelles sans détach
 		assert.equal(ticket.style.getPropertyValue('--teinte'), `var(--${teinte})`);
 		assert.equal(ticket.classList.contains('mon-ticket--detachement'), false);
 	}
+});
+
+function voteDuPublic(id = 'p', numero = 14) {
+	return { ...passage(id, numero), etat: 'OUVERT', interpretes: [{ joueurId: 'autre', pseudo: 'Lou' }],
+		numeroModification: 3, maNote: null, peutVoter: true, calculeLe: '2026-11-18T21:00:00Z',
+		delaiRestantMs: 30_000, clotureLe: null, moyenneDixiemes: null, nombreVotes: null };
+}
+
+function voteClos(vote, champs = {}) {
+	return { ...vote, etat: 'CLOS', peutVoter: false, delaiRestantMs: 0, clotureLe: '2026-11-18T21:00:30Z',
+		moyenneDixiemes: 43, nombreVotes: 7, ...champs };
+}
+
+test('Manette : cinq notes, une seule action citron et confirmation après le 200', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const vote = voteDuPublic();
+	const votes = [vote, voteDuPublic('q', 13)];
+	const appel = { ...passage('appel', 15), etat: 'APPELE', etapeId: 'e', delaiAppelRestantMs: 30_000,
+		calculeLe: vote.calculeLe };
+	b.module.afficher(vue({ votes, courant: appel, peutConfirmerPresence: true }), capture);
+	const section = b.principale.querySelector('.karaoke__votes');
+	const premier = section.querySelector('article[data-passage-id=p]');
+	assert.equal(b.principale.querySelector('h2').textContent, 'Vote du public');
+	assert.deepEqual(premier.querySelectorAll('[aria-pressed=false]').map(action => action.textContent), ['1', '2', '3', '4', '5']);
+	b.connecter('synchronisee');
+	assert.equal(b.principale.querySelectorAll('.bouton--action').filter(action => !action.hidden).length, 1);
+	assert.equal(bouton(b.principale, 'Je suis prêt').classList.contains('bouton--action'), true);
+	b.module.afficher(vue({ votes }), evenement);
+	assert.equal(section.querySelectorAll('.bouton--action').length, 1);
+	const envoyer = bouton(premier, 'Envoyer ma note');
+	assert.equal(envoyer.classList.contains('bouton--grand'), true);
+	assert.equal(envoyer.disabled, true);
+	bouton(premier, '4').click();
+	assert.equal(bouton(premier, '4').getAttribute('aria-pressed'), 'true');
+	b.connecter('coupure');
+	assert.equal(envoyer.disabled, true);
+	b.connecter('synchronisee');
+	envoyer.click();
+	assert.equal(envoyer.disabled, true);
+	const [methode, chemin, corps, options] = b.appels[0].args;
+	assert.equal(methode, 'POST');
+	assert.equal(chemin, '/api/soirees/s/manches/m/passages/p/vote');
+	assert.deepEqual(corps, { envoiId: options.entetes['Idempotency-Key'], numeroModification: 3, note: 4 });
+	assert.equal(options.annoncer, false);
+	assert.equal(premier.querySelector('.envoi--en-cours').textContent, 'Envoi de ta note…');
+	b.module.afficher(vue({ votes: [{ ...vote, maNote: 4, peutVoter: false }, votes[1]] }), evenement);
+	assert.ok(premier.querySelector('.envoi--accepte') === null);
+	b.appels[0].resolve({ statut: 200, corps: { ...corps } });
+	await terminerMicrotaches();
+	assert.equal(premier.querySelector('.envoi--accepte').textContent, 'Ta note est enregistrée : 4 sur 5. Résultat à la fin du vote.');
+});
+
+test('Manette : après un refus définitif le détail est visible et une nouvelle tentative a une autre clé', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const votes = [voteDuPublic()];
+	b.module.afficher(vue({ votes }), capture);
+	b.connecter('synchronisee');
+	const ticket = b.principale.querySelector('.karaoke__ticket-vote');
+	bouton(ticket, '4').click();
+	bouton(ticket, 'Envoyer ma note').click();
+	b.appels[0].resolve({ statut: 409, corps: { code: 'VOTE_CLOS', detail: 'Le vote de ce Passage est clos.' } });
+	await terminerMicrotaches();
+	b.module.afficher(vue({ votes }), capture);
+	assert.equal(ticket.querySelector('.envoi--refuse').textContent, 'Le vote de ce Passage est clos.');
+	bouton(ticket, 'Envoyer ma note').click();
+	assert.equal(b.appels.length, 2);
+	assert.notEqual(b.appels[1].args[2].envoiId, b.appels[0].args[2].envoiId);
+});
+
+test('Console : les votes et le délai figurent sous le Passage courant, le délai est remplacé en pause', t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => Date.parse('2026-11-18T21:00:12Z');
+	const vote = { ...voteDuPublic(), nombreVotes: 7 };
+	b.module.afficher(vue({ votes: [vote] }), capture);
+	const section = b.principale.querySelector('.karaoke__votes');
+	assert.match(section.textContent, /n° 14 · Titre de démonstration · 7 votes · 18 s/);
+	const titres = b.principale.querySelectorAll('h2').map(titre => titre.textContent);
+	assert.equal(titres[titres.indexOf('Passage courant') + 1], 'Vote du public');
+	b.module.afficher(vue({ votes: [vote], etat: 'EN_PAUSE' }), evenement);
+	assert.match(section.textContent, /7 votes · en pause/);
+	assert.doesNotMatch(section.textContent, /18 s/);
+	b.module.afficher(vue({ votes: [voteClos(vote)] }), evenement);
+	assert.match(section.textContent, /Vote clos · 4,3 sur 5 · 7 votes/);
+	b.module.afficher(vue({ votes: [voteClos(vote, { moyenneDixiemes: null, nombreVotes: 0 })] }), capture);
+	assert.match(section.textContent, /Vote clos · Aucun vote$/);
+});
+
+test('Manette : la clôture annonce la moyenne une fois par Passage, même à l’appel automatique', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const vote = { ...voteDuPublic(), maNote: 4, peutVoter: false };
+	const autre = voteDuPublic('q', 15);
+	const section = b.principale.querySelector('.karaoke__votes');
+	const annonce = b.principale.querySelector('.karaoke__annonce-vote');
+	assert.equal(annonce.getAttribute('role'), 'status');
+	const affichage = vue({ votes: [vote, autre] });
+	b.module.afficher(affichage, capture);
+	assert.doesNotMatch(section.textContent, /Moyenne|\d+ votes|Aucun vote/);
+	const resultat = voteClos(vote);
+	const apres = vue({ votes: [resultat, autre] });
+	b.module.afficher(apres, { source: 'evenement', type: 'passage-appele' });
+	assert.match(section.textContent, /Moyenne : 4,3 sur 5 \(7 votes\)\.Ta note : 4 sur 5\./);
+	assert.equal(annonce.textContent, 'Passage 14. Moyenne : 4,3 sur 5 (7 votes).');
+	assert.equal(b.principale.querySelectorAll('[role=status]').filter(p => p.textContent.includes('7 votes')).length, 1);
+	b.module.afficher(apres, capture);
+	assert.equal(annonce.textContent, '');
+	assert.match(section.textContent, /4,3 sur 5/);
+	b.module.afficher(affichage, capture);
+	b.module.afficher(apres, { source: 'evenement', type: 'vote-clos' });
+	assert.equal(annonce.textContent, '');
+	const sansVote = voteClos(autre, { moyenneDixiemes: null, nombreVotes: 0 });
+	b.module.afficher(vue({ votes: [sansVote] }), { source: 'evenement', type: 'vote-clos' });
+	assert.equal(annonce.textContent, 'Passage 15. Aucun vote.');
+	assert.match(section.textContent, /Aucun vote\./);
+});
+
+test('Manette : une clôture découverte en capture affiche la moyenne sans annoncer de résultat', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const vote = voteDuPublic();
+	b.module.afficher(vue({ votes: [vote] }), capture);
+	const apres = vue({ votes: [voteClos(vote)] });
+	b.module.afficher(apres, capture);
+	b.module.afficher(apres, { source: 'evenement', type: 'vote-clos' });
+	assert.match(b.principale.querySelector('.karaoke__votes').textContent, /Moyenne : 4,3 sur 5 \(7 votes\)\./);
+	assert.equal(b.principale.querySelector('.karaoke__annonce-vote').textContent, '');
+});
+
+test('Salle : deux bandeaux stables au-dessus du rouleau, avec compte des votes et temps figé sous Pause', t => {
+	const b = creerBanc(ecran, 'ECRAN');
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => Date.parse('2026-11-18T21:00:12Z');
+	const a = { ...voteDuPublic('a', 14), nombreVotes: 0, suivantDemarre: false };
+	const vote = voteDuPublic('b', 15);
+	const recent = { ...vote, chanson: { ...vote.chanson, titre: '<Chanson>' }, nombreVotes: 1, suivantDemarre: false };
+	const courantAppele = courant('APPELE', { passageId: 'c' });
+	const prochainsPassages = [passage('d', 16)];
+	b.module.afficher(vue({ votes: [recent, a], courant: courantAppele, prochainsPassages }), capture);
+	const bandeaux = b.laterale.querySelectorAll('.bandeau-vote');
+	assert.deepEqual(bandeaux.map(p => p.getAttribute('data-passage-id')), ['b', 'a']);
+	const [premier, second] = bandeaux;
+	const rouleau = b.laterale.querySelector('.rouleau');
+	assert.ok(rouleau && rouleau.parentNode.children[0] === premier.parentNode);
+	assert.equal(premier.style.getPropertyValue('--teinte'), 'var(--rose)');
+	assert.match(b.principale.querySelector('.karaoke__invitation').textContent, /Prépare-toi/);
+	assert.match(premier.textContent, /15.*<Chanson>.*Lou.*Note ce Passage sur ta Manette.*1 vote.*18 s/);
+	assert.match(second.textContent, /Aucun vote/);
+	assert.equal(b.laterale.querySelectorAll('[role=status]').length, 0);
+	assert.ok(!premier.querySelector('.bouton--action'));
+	b.module.afficher(vue({ votes: [{ ...recent, nombreVotes: 7 }, a], courant: courantAppele, prochainsPassages,
+		etat: 'EN_PAUSE' }), { source: 'evenement', type: 'vote-enregistre' });
+	assert.ok(b.laterale.querySelector('.bandeau-vote') === premier);
+	assert.match(premier.textContent, /7 votes.*Pause.*30 s/);
+	assert.doesNotMatch(premier.textContent, /sur 5/);
+});
+
+test('Salle : la boucle masque le résultat à l’échéance, même en pause et sans Passage en cours', t => {
+	const audio = bancLecteur();
+	const b = creerBanc((zones, contexte) => ecran(zones, contexte, audio), 'ECRAN');
+	t.after(() => b.module.demonter());
+	const cloture = Date.parse('2026-11-18T21:00:30Z');
+	let maintenant = cloture + 9999;
+	b.contexte.maintenantServeur = () => maintenant;
+	const resultat = voteClos(voteDuPublic(), { suivantDemarre: true });
+	const configurationInterface = { ...vue().karaoke.configurationInterface, dureeAffichageMoyenneMs: 10_000 };
+	b.module.afficher(vue({ etat: 'EN_PAUSE', votes: [resultat], configurationInterface }), capture);
+	assert.match(b.laterale.querySelector('.bandeau-vote').textContent, /4,3 sur 5.*7 votes/);
+	assert.equal(audio.trames.size, 1);
+	const [[id, trame]] = audio.trames;
+	audio.trames.delete(id);
+	maintenant++;
+	trame();
+	assert.equal(b.laterale.querySelectorAll('.bandeau-vote').length, 0);
+	assert.equal(audio.trames.size, 0);
+});
+
+test('Salle : « Aucun vote » seul à la clôture, en Atkinson et sans aplat citron', async t => {
+	const b = creerBanc(ecran, 'ECRAN');
+	t.after(() => b.module.demonter());
+	const resultat = voteClos(voteDuPublic(), { moyenneDixiemes: null, nombreVotes: 0, suivantDemarre: false });
+	b.module.afficher(vue({ votes: [resultat] }), capture);
+	const bandeau = b.laterale.querySelector('.bandeau-vote');
+	assert.equal(bandeau.querySelector('.bandeau-vote__nombre').textContent, 'Aucun vote');
+	assert.ok(bandeau.querySelector('.bandeau-vote__moyenne').hidden);
+	const css = await readFile(new URL('../../src/main/resources/static/css/karaoke.css', import.meta.url), 'utf8');
+	assert.match(css, /\.bandeau-vote\s*\{[^}]*var\(--police-texte\)/s);
+	assert.doesNotMatch(css.match(/[^{}]*\.bandeau-vote[^{}]*\{[^}]*\}/g).join(''), /var\(--citron/);
 });

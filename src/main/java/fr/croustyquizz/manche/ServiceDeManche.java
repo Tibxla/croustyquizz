@@ -191,9 +191,10 @@ public class ServiceDeManche<R, E> {
 		EtatManche etatParDefaut = cible == null ? manche.getEtat() : cible;
 		EtatManche etat = d.estTerminee() ? EtatManche.TERMINEE : etatApresAcceptation(etatParDefaut, instantane);
 		manche.changerEtat(etat, recueLe);
+		boolean classementModifie = manche.getMode().compteAuClassementGeneral() && manche.actualiserPoints(d.points());
 		persistance.enregistrer(manche.getMancheId(), instantane);
 		socle.depot().enregistrer(manche);
-		socle.vues().publier(manche.getSoireeId(), accepte);
+		socle.vues().publier(manche.getSoireeId(), accepte, classementModifie);
 	}
 	private <T> T sousTransaction(UUID soireeId, UUID mancheId, Supplier<T> action) {
 		return socle.verrous().executer(soireeId, () -> {

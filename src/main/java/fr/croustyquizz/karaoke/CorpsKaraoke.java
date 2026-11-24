@@ -2,6 +2,7 @@ package fr.croustyquizz.karaoke;
 
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.passage.CiblePassage;
+import fr.croustyquizz.passage.VoteRecu;
 import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 
@@ -38,6 +39,15 @@ public final class CorpsKaraoke {
     }
     public record DesinscriptionPassage(UUID envoiId, Long numeroModification) {
         public DesinscriptionPassage { obligatoire(envoiId); entier(numeroModification, true); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
+    public record VotePassage(UUID envoiId, Long numeroModification, Long note) {
+        public VotePassage {
+            obligatoire(envoiId);
+            entier(numeroModification, true);
+            entier(note, false);
+            if (note > VoteRecu.NOTE_MAXIMALE) { invalide(); }
+        }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
     public record RetraitPassage(Long numeroModification) {
