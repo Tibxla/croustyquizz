@@ -143,7 +143,7 @@ Liste ordonnée des Passages à venir d'une Manche de Karaoké ou de Freestyle. 
 _Éviter_ : playlist, queue
 
 **Tour** :
-Cycle de la File d'attente au cours duquel chaque Interprète a au plus un Passage. Un Passage à plusieurs compte pour chacun de ses Interprètes, et un Passage placé en priorité compte pour leur Tour.
+Cycle de la File d'attente au cours duquel chaque Interprète a au plus un Passage. Un Passage à plusieurs compte pour chacun de ses Interprètes, et un Passage placé en priorité compte pour le Tour de ses Interprètes.
 _Éviter_ : round, rotation (pour le cycle), tour de chant
 
 **Vote du public** :
