@@ -33,11 +33,11 @@ channels:
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une
       fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le
       suivant ; la vue montre le nouveau courant APPELE à la place du Passage précédent clos ;
-      vote-enregistre et vote-clos pour le Vote du public ;
+      vote-enregistre actualise le nombre de votes de la salle, vote-clos apporte la moyenne à la clôture ;
       lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
       calage-chanson-modifie après geste, demande, relevé ou correction. Vue complète avec bloc karaoke
       (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
-      et paroles du Passage démarré), sans fichier local ni secret ; pause, reprise et fin de Manche par
+      et paroles du Passage démarré, votes), sans fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
       Aucun événement par seconde."
     parameters:
@@ -56,7 +56,8 @@ channels:
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une fin
       de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le suivant ;
       la vue montre le nouveau courant APPELE à la place du Passage précédent clos ;
-      vote-enregistre et vote-clos pour le Vote du public ; lecture-chanson-modifiee après
+      vote-enregistre actualise le nombre de votes sur la Console et la salle, vote-clos apporte la moyenne
+      à la clôture ; lecture-chanson-modifiee après
       désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
       geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
       la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
@@ -81,9 +82,10 @@ channels:
       précédent clos. lecture-chanson-modifiee après erreur ou reprise en paroles seules,
       jamais après désignation ou déclaration ; aucun calage-chanson-modifie. Pour ces causes, chaque
       Joueur de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
-      Passages. vote-clos est aussi envoyé à toutes les Manettes ; vote-enregistre uniquement à celle
-      du votant. Vue complète avec bloc karaoke (BlocKaraokeManette : courant, trois prochains Passages,
-      ses Passages en attente, « Je suis prêt » et ses notes personnelles), sans lecture, paroles, fichier local ni secret ;
+      Passages. vote-clos apporte la moyenne à la salle, à la Console et à toutes les Manettes ;
+      vote-enregistre atteint la salle, la Console et la Manette du votant. Vue complète avec bloc karaoke
+      (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »
+      et ses votes), sans lecture, paroles, fichier local ni secret ;
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde."
     parameters:
