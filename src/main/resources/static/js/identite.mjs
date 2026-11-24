@@ -52,3 +52,16 @@ export async function preparerIdentite(type, soireeId, acteurId, requete, rangJo
 	}
 	return { jeton: `demo:${type}:${soireeId}:${identifiant}`, page: { JOUEUR: 'manette', ANIMATEUR: 'console', ECRAN: 'ecran' }[type] };
 }
+
+export async function choisirPilotage(soireeId, jeton, pilotage, requete) {
+	const reponse = await requete(`/api/test/soirees/${soireeId}/pilotage`, {
+		method: 'PUT',
+		headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
+		cache: 'no-store', credentials: 'same-origin',
+		body: JSON.stringify({ pilotage }),
+	});
+	if (!reponse.ok) {
+		const { corps } = await lireCorps(reponse);
+		throw new Error(corps?.detail ?? `Pilotage refusé (HTTP ${reponse.status}).`);
+	}
+}

@@ -17,7 +17,7 @@ import fr.croustyquizz.tempsreel.AccesAuxVues;
 
 /**
  * Portée des Passages d'une Soirée enregistrée (#111) : la Manche de Karaoké doit
- * appartenir à la Soirée, et un Joueur y être présent, non exclu. {@code passage}
+ * appartenir à la Soirée. {@code passage}
  * ne dépend pas de {@code soiree} : c'est {@code soiree} qui implémente son port.
  * <p>
  * Une Soirée absente de la base est confiée à l'autre portée du profil, la
@@ -27,14 +27,12 @@ import fr.croustyquizz.tempsreel.AccesAuxVues;
 class PorteeDePassageSoiree implements PorteeDePassage {
 
 	private final DepotDeSoirees soirees;
-	private final DepotDeJoueurs joueurs;
 	private final DepotDeManches manches;
 	private final ObjectProvider<PorteeDePassage> portees;
 
-	PorteeDePassageSoiree(DepotDeSoirees soirees, DepotDeJoueurs joueurs, DepotDeManches manches,
+	PorteeDePassageSoiree(DepotDeSoirees soirees, DepotDeManches manches,
 			ObjectProvider<PorteeDePassage> portees) {
 		this.soirees = soirees;
-		this.joueurs = joueurs;
 		this.manches = manches;
 		this.portees = portees;
 	}
@@ -48,9 +46,7 @@ class PorteeDePassageSoiree implements PorteeDePassage {
 		}
 		AccesAuxVues.verifier(acteur, soireeId, null);
 		ManchePersistante manche = manches.charger(mancheId);
-		boolean joueurAbsent = acteur.type() == Acteur.Type.JOUEUR
-				&& !ParticipantsDePassageSoiree.present(joueurs, soireeId, acteur.identifiant());
-		if (manche == null || !soireeId.equals(manche.getSoireeId()) || manche.getMode() != ModeDeJeu.KARAOKE || joueurAbsent) {
+		if (manche == null || !soireeId.equals(manche.getSoireeId()) || manche.getMode() != ModeDeJeu.KARAOKE) {
 			throw introuvable();
 		}
 	}

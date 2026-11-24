@@ -1,5 +1,7 @@
 package fr.croustyquizz.manche;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,7 +22,7 @@ final class HorlogeDeManche implements Horloge {
 	}
 	void attacher(DeroulementDeManche valeur) { deroulement = valeur; }
 	@Override
-	public Instant maintenant() { return horloge.maintenant(); }
+	public Instant maintenant() { return horloge.maintenant().truncatedTo(MICROS); }
 	@Override
 	public Minuteur programmer(Duration delai, Runnable action) {
 		AtomicBoolean annule = new AtomicBoolean();

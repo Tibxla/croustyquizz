@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { lireAcces, preparerIdentite } from '../../src/main/resources/static/js/identite.mjs';
+import { choisirPilotage, lireAcces, preparerIdentite } from '../../src/main/resources/static/js/identite.mjs';
 
 const soiree = '00000001-0000-4000-8000-000000000000';
 const joueur = '65c5618c-10e0-357e-8f8e-eb7295ba6c74';
@@ -76,4 +76,26 @@ test('une page d’erreur HTML ou un Probleme donnent un refus lisible, jamais u
 	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, async () => probleme), { message: 'Soirée introuvable.' });
 	const vide = { ok: false, status: 401, headers: new Headers(), text: async () => '' };
 	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, async () => vide), { message: 'Identité refusée (HTTP 401).' });
+});
+
+test('le choix du Pilotage est envoyé avec le jeton Animateur et le corps prévu', async () => {
+	const jeton = `demo:ANIMATEUR:${soiree}:${joueur}`;
+	await choisirPilotage(soiree, jeton, 'AUTOMATIQUE', async (url, options) => {
+		assert.equal(url, `/api/test/soirees/${soiree}/pilotage`);
+		assert.equal(options.method, 'PUT');
+		assert.deepEqual(options.headers, {
+			Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json',
+		});
+		assert.equal(options.body, '{"pilotage":"AUTOMATIQUE"}');
+		return Response.json({ soireeId: soiree, pilotage: 'AUTOMATIQUE' });
+	});
+});
+
+test('le refus du Pilotage reprend le détail du serveur ou le statut HTTP', async () => {
+	const detail = 'La Soirée a commencé : son Pilotage ne change plus.';
+	await assert.rejects(choisirPilotage(soiree, 'jeton', 'MANUEL', async () => Response.json({ detail }, {
+		status: 409, headers: { 'Content-Type': 'application/problem+json' },
+	})), { message: detail });
+	await assert.rejects(choisirPilotage(soiree, 'jeton', 'MANUEL', async () => new Response(null, { status: 502 })),
+		{ message: 'Pilotage refusé (HTTP 502).' });
 });

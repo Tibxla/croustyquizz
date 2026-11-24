@@ -10,4 +10,4 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public record SocleDeManche(VerrousSoiree verrous, PlatformTransactionManager transactions,
 		DepotDeManches depot, RegistreDesDeroulements registre, RegistreDesEnvois envois,
-		PublicationDeVues vues, Horloge horloge, JsonMapper json) { }
+		PublicationDeVues vues, Horloge horloge, JsonMapper json, PilotageDeSoiree pilotage) { }
