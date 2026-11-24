@@ -21,6 +21,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     private final Duration delaiAppel;
     private final Supplier<UUID> identifiants;
     private final FileAttente file;
+    private final CommandesDeFileAttente commandesDeFile;
     private final CycleDePassage cycle;
     private final VoteDuPublic vote;
     private final Map<UUID, ContenuKaraoke> contenus = new HashMap<>();
@@ -83,6 +84,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         this.delaiAppel = delaiAppel;
         this.identifiants = Objects.requireNonNull(identifiants);
         this.file = FileAttente.depuis(persiste.file());
+        this.commandesDeFile = new CommandesDeFileAttente(file, contexte.soireeId(), contexte.mancheId());
         this.contenus.putAll(persiste.contenus());
         this.lectures.putAll(persiste.lectures());
         this.lecteurDesigneId = persiste.lecteurDesigneId();
@@ -140,11 +142,10 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     private ResultatDeCommande appliquerAction(ActionJoueur action) {
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
-        if (action instanceof VoterPassage notation) { return voter(notation); }
+        if (action instanceof VoterPassage notation) { return vote.recevoir(notation, etat == EtatManche.EN_PAUSE); }
         if (action instanceof ConfirmerPresencePassage confirmation) { return confirmer(confirmation); }
         if (action instanceof DesinscrirePassage desinscription) {
-            return resultatPassage(file.desinscrire(desinscription.joueurId(), desinscription.cible(), desinscription.recueLe()),
-                    desinscription.envoiId(), desinscription.recueLe(), desinscription.cible(), "DESINSCRIRE");
+            return commandesDeFile.desinscrire(desinscription);
         }
         if (!(action instanceof InscrirePassage inscription)) { return incompatible(); }
         Chanson chanson = inscription.contenu().chanson();
@@ -161,14 +162,12 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
                     || raison == MotifIndisponibilite.PAROLES_NON_SYNCHRONISEES || raison == MotifIndisponibilite.DUREE_INCONNUE;
             return new Refuse(indisponible ? 422 : 409, indisponible ? "CHANSON_INDISPONIBLE" : raison.name(), raison.name());
         }
-        ResultatFile resultat = file.inscrire(new NouveauPassage(inscription.faits().passageId(),
+        var nouveau = new NouveauPassage(inscription.faits().passageId(),
                 contexte.soireeId(), contexte.mancheId(), inscription.joueurId(), List.of(inscription.joueurId()),
-                inscription.chansonId(), Duration.ofMillis(chanson.dureeMs()), inscription.faits().numeroPropose(), inscription.recueLe()));
-        if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
-        contenus.put(inscription.faits().passageId(), inscription.contenu());
-        return new Accepte(new AccusePassage(inscription.envoiId(), contexte.soireeId(), contexte.mancheId(),
-                inscription.faits().passageId(), 0, "INSCRIRE", inscription.recueLe(), EtatPassage.EN_ATTENTE),
-                ECRANS, "file-attente-modifiee", 201);
+                inscription.chansonId(), Duration.ofMillis(chanson.dureeMs()), inscription.faits().numeroPropose(), inscription.recueLe());
+        var resultat = commandesDeFile.inscrire(nouveau, inscription.envoiId());
+        if (resultat instanceof Accepte) { contenus.put(nouveau.id(), inscription.contenu()); }
+        return resultat;
     }
 
     private ResultatDeCommande apres(ResultatDeCommande resultat, Instant maintenant) {
@@ -202,15 +201,6 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (enchainer(contexte.horloge().maintenant())) { derniereCauseMinuteur = PASSAGE_APPELE; }
     }
 
-    private ResultatDeCommande voter(VoterPassage action) {
-        var refus = vote.voter(action.joueurId(), action.cible(), action.note(), action.recueLe(), etat == EtatManche.EN_PAUSE);
-        if (refus.isPresent()) { return refus.get(); }
-        var accuse = new AccuseVote(action.envoiId(), contexte.soireeId(), contexte.mancheId(),
-                action.cible().passageId(), action.note(), action.recueLe());
-        return new Accepte(accuse, Set.of(Destination.SALLE, Destination.CONSOLE, Destination.joueur(action.joueurId())),
-                "vote-enregistre", 200);
-    }
-
     @Override public ResultatDeCommande commander(CommandeDeManche commande) {
         return apres(appliquerCommande(commande), commande == null ? null : commande.recueLe());
     }
@@ -222,28 +212,11 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (commande instanceof AppelerPassage appel) { return appeler(appel); }
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
-        if (commande instanceof RetirerPassage retrait) {
-            return resultatPassage(file.retirer(retrait.acteur().identifiant(), retrait.cible(), retrait.recueLe()),
-                    retrait.envoiId(), retrait.recueLe(), retrait.cible(), "RETIRER");
-        }
-        if (commande instanceof DeplacerPassage placement) {
-            return resultatPassage(file.deplacer(placement.cible(), placement.tour(), placement.avant()),
-                    placement.envoiId(), placement.recueLe(), placement.cible(), "DEPLACER");
-        }
-        if (commande instanceof DefinirPrioritePassage priorite) {
-            ResultatFile resultat = file.definirPriorite(priorite.passage(), priorite.prioritaire());
-            if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
-            Passage passage = passage(priorite.passage());
-            return accepter(resultat, new AccuseFileAttente(priorite.envoiId(), contexte.soireeId(), contexte.mancheId(),
-                    "DEFINIR_PRIORITE", priorite.recueLe(), new CiblePassage(passage.id(), passage.numeroModification())),
-                    "file-attente-modifiee");
-        }
-        if (commande instanceof ReglerLimitePassages limite) {
-            ResultatFile resultat = file.reglerLimite(limite.limitePassagesEnAttente());
-            return accepter(resultat, new AccuseFileAttente(limite.envoiId(), contexte.soireeId(), contexte.mancheId(),
-                    "REGLER_LIMITE", limite.recueLe(), null), "limite-passages-modifiee");
-        }
         return switch (commande) {
+            case RetirerPassage retrait -> commandesDeFile.retirer(retrait);
+            case DeplacerPassage placement -> commandesDeFile.deplacer(placement);
+            case DefinirPrioritePassage priorite -> commandesDeFile.definirPriorite(priorite);
+            case ReglerLimitePassages limite -> commandesDeFile.reglerLimite(limite);
             case DesignerLecteurChanson designation -> designer(designation);
             case DeclarerLectureChanson declaration -> declarer(declaration);
             case SignalerFinLectureChanson fin -> signalerFin(fin);
@@ -267,7 +240,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         ResultatFile resultat = cycle.appeler(cible, commande.recueLe(), identifiants);
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
         lectures.clear();
-        return accepterCycle(commande.envoiId(), commande.recueLe(), "APPELER", PASSAGE_APPELE);
+        return cycle.acquitter(commande.envoiId(), commande.recueLe(), "APPELER", PASSAGE_APPELE);
     }
 
     private ResultatDeCommande confirmer(ConfirmerPresencePassage action) {
@@ -282,7 +255,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
                 Duration.ofMillis(demarree.dureeReferenceMs()), action.recueLe());
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
         lectures.put(passage.id(), demarree);
-        return accepterCycle(action.envoiId(), action.recueLe(), "CONFIRMER_PRESENCE", "passage-demarre");
+        return cycle.acquitter(action.envoiId(), action.recueLe(), "CONFIRMER_PRESENCE", "passage-demarre");
     }
 
     private boolean viseAppel(CiblePassage cible, UUID etapeId) {
@@ -298,12 +271,6 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         return new LecturePassage(lectureId, passageId, null, EtatLecture.DEMARREE, SourceLecture.PAROLES_SEULES,
                 null, MotifParolesSeules.ECRAN_NON_PRET, OrigineParoles.INSCRIPTION,
                 paroles, contenu.chanson().idLrclib(), 0, 0, null, null);
-    }
-
-    private Accepte accepterCycle(UUID envoiId, Instant recueLe, String action, String cause) {
-        Passage courant = cycle.courantActif();
-        return new Accepte(new AccuseCyclePassage(envoiId, contexte.soireeId(), contexte.mancheId(), courant.id(),
-                cycle.etat().etapeId(), courant.numeroModification(), action, recueLe, courant.etat()), ECRANS, cause);
     }
 
     private ResultatDeCommande designer(DesignerLecteurChanson commande) {
@@ -369,7 +336,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (lecture.etat() != EtatLecture.EN_ERREUR) { return incompatible(); }
         lectures.put(lecture.passageId(), lecture.reprendreEnParolesSeules());
         reprendreManche(commande.recueLe());
-        return accepterCycle(commande.envoiId(), commande.recueLe(), "REPRENDRE_EN_PAROLES_SEULES", LECTURE_MODIFIEE);
+        return cycle.acquitter(commande.envoiId(), commande.recueLe(), "REPRENDRE_EN_PAROLES_SEULES", LECTURE_MODIFIEE);
     }
 
     private LecturePassage lectureCourante(UUID passageId, UUID etapeId, UUID lectureId) {
@@ -469,22 +436,6 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         return new Accepte(new AccuseCalage(envoiId, contexte.soireeId(), contexte.mancheId(), cale.passageId(),
                 cale.lectureId(), action, recueLe, demandeId, cale.numeroModificationCalage()),
                 change ? SALLE_ET_CONSOLE : Set.of(), CALAGE_MODIFIE);
-    }
-
-    private Passage passage(CiblePassage cible) {
-        return file.etat().passages().stream().filter(p -> p.id().equals(cible.passageId())).findFirst().orElseThrow();
-    }
-
-    private ResultatDeCommande resultatPassage(ResultatFile resultat, UUID envoiId, Instant recueLe,
-            CiblePassage cible, String action) {
-        if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
-        Passage passage = passage(cible);
-        return accepter(resultat, new AccusePassage(envoiId, contexte.soireeId(), contexte.mancheId(), passage.id(),
-                passage.numeroModification(), action, recueLe, passage.etat()), "file-attente-modifiee");
-    }
-
-    private Accepte accepter(ResultatFile resultat, Object accuse, String typeEvenement) {
-        return new Accepte(accuse, resultat instanceof ResultatFile.Modifiee ? ECRANS : Set.of(), typeEvenement, 200);
     }
 
     @Override public ResultatDeCommande mettreEnPause(CommandePilotage commande) {

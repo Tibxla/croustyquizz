@@ -1,11 +1,14 @@
 package fr.croustyquizz.passage;
 
+import fr.croustyquizz.manche.Accepte;
+import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.Horloge;
 import fr.croustyquizz.manche.Minuteur;
 import fr.croustyquizz.manche.Refuse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -81,6 +84,14 @@ public final class CycleDePassage {
             reprogrammerFin();
         }
         return resultat;
+    }
+
+    /** Construit le reçu d’un appel ou d’un démarrage déjà accepté. */
+    public Accepte acquitter(UUID envoiId, Instant recueLe, String action, String cause) {
+        Passage courant = courantActif();
+        var accuse = new AccuseCyclePassage(envoiId, courant.soireeId(), courant.mancheId(), courant.id(),
+                chronologie.etapeId(), courant.numeroModification(), action, recueLe, courant.etat());
+        return new Accepte(accuse, Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES), cause);
     }
 
     public ResultatFile clore(EtatPassage etatTerminal, String motif, UUID acteurId, Instant maintenant) {
