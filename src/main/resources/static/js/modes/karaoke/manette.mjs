@@ -1,4 +1,5 @@
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi, texteAutresPassages } from './commun.mjs';
+import { installerEnregistrementsManette } from './enregistrement-manette.mjs';
 import { peutReessayer } from './envois.mjs';
 import { formaterTempsRestant } from './presentation.mjs';
 import { delaiAppelRestant } from './paroles.mjs';
@@ -10,6 +11,7 @@ export function monter(zones, contexte) {
 	const titreScene = e('h2', '', 'En scène'); titreScene.tabIndex = -1;
 	const scene = e('div', 'karaoke__scene-manette'); scene.hidden = true;
 	ui.principale.append(scene);
+	const enregistrements = installerEnregistrementsManette(ui);
 	const titre = e('h2', '', 'Tes Passages'); titre.tabIndex = -1;
 	const personnels = e('div', 'karaoke__personnels');
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
@@ -86,6 +88,7 @@ export function monter(zones, contexte) {
 				scene.append(titreScene, ticketCourant);
 			}
 		}
+		if (personnel && ticketCourant) enregistrements.placer(p, ticketCourant.querySelector('.mon-ticket__bas'));
 		dernierCourant = p?.passageId;
 		if (origine?.source === 'capture') ticketCourant?.classList.remove('mon-ticket--detachement');
 		const envoi = envoiPresence();
@@ -109,18 +112,22 @@ export function monter(zones, contexte) {
 	ui.surRendu = origine => {
 		if (!ui.bloc) return;
 		votes.rendre(titre, origine);
+		enregistrements.rendre(origine);
 		rendreScene(origine);
 		const tickets = ui.bloc.mesPassagesEnAttente.map(p => {
 			const ticket = creerTicket(ui, p, { personnel: true, estimation: true });
 			const retirer = bouton('Me désinscrire', () => desinscrire(p, retirer), 'bouton bouton--lien');
 			retirer.setAttribute('data-passage-id', p.passageId); retirer.disabled = !ui.mutationsPermises;
-			const envoi = [...ui.envois.values()].filter(e => e.commande.passageId === p.passageId).at(-1);
+			const envoi = ui.dernierEnvoi(e => e.commande.passageId === p.passageId && e.commande.type !== 'ACCORD_ENREGISTREMENT');
 			if (envoi?.etat === 'en-cours') retirer.disabled = true;
 			const commandes = e('div', 'karaoke__commandes'); commandes.append(retirer);
 			const etat = e('p', '', texteEnvoi(envoi)); etat.setAttribute('role', 'status'); commandes.append(etat);
 			if (ui.reessaiPossible(envoi)) commandes.append(bouton('Réessayer le même envoi', () => ui.reessayer(envoi.cle)));
 			// Le lien de désinscription reste sur le ticket, avec l'encre du ticket.
-			ticket.querySelector('.mon-ticket__bas').append(commandes); return ticket;
+			const bas = ticket.querySelector('.mon-ticket__bas');
+			bas.append(commandes);
+			enregistrements.placer(p, bas);
+			return ticket;
 		});
 		ui.remplacerListe(personnels, tickets.length ? tickets : [e('p', '', "Tu n'attends aucun Passage.")], titre);
 		ui.remplacerListe(file, ui.bloc.prochainsPassages.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }), ensuite);
@@ -131,10 +138,11 @@ export function monter(zones, contexte) {
 	};
 	ui.surManche = () => {
 		votes.reinitialiser();
+		enregistrements.detruire();
 		dernierCourant = undefined; descriptionTicket = undefined;
 		catalogue.reinitialiser(); invalidation.textContent = '';
 	};
-	ui.surDestruction = () => { clearInterval(horloge); catalogue.detruire(); };
+	ui.surDestruction = () => { clearInterval(horloge); catalogue.detruire(); enregistrements.detruire(); };
 	return { afficher: ui.afficher, demonter: ui.demonter };
 }
 
