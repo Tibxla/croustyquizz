@@ -78,7 +78,11 @@ V202610011430__karaoke_file_attente.sql
 
 Ne jamais modifier une migration déjà fusionnée dans `develop` : en écrire une nouvelle.
 
-Le profil `dev`, actif par défaut sur vos machines, active `spring.flyway.out-of-order=true`. Sans ça, après la fusion d'une migration plus ancienne que la dernière appliquée sur ta base locale, Flyway refuse de démarrer (`Detected resolved migration not applied to database`).
+`spring.flyway.out-of-order=true` est actif dans tous les profils, recette et production comprises : les branches ne fusionnent pas dans l'ordre de leurs horodatages, et une migration plus ancienne que la dernière appliquée doit quand même passer. Sans ça, Flyway refuse de démarrer (`Detected resolved migration not applied to database`). La contrepartie :
+
+- une migration ne dépend que de migrations déjà fusionnées dans `develop`, jamais d'une autre migration encore en attente sur une autre branche ;
+- elle ne modifie pas une table créée par une migration encore ouverte ailleurs ;
+- en cas de doute, renommer sa migration avec un horodatage plus récent au rebase final.
 
 Si Flyway refuse quand même de démarrer (migration modifiée après coup, base locale abîmée), repartir d'une base vide : `docker compose down -v`, puis relancer l'application.
 

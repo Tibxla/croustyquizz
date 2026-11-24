@@ -55,7 +55,7 @@ class FournisseurPalmaresKaraokeTest {
         var seconde = UUID.randomUUID();
         manche(premiere, ModeDeJeu.KARAOKE, EtatManche.TERMINEE, FIN.minusSeconds(60));
         manche(seconde, ModeDeJeu.KARAOKE, EtatManche.TERMINEE, FIN);
-        UUID parti = UUID.randomUUID(), present = ConfigurationTroisJoueurs.JOUEURS.getFirst();
+        UUID parti = UUID.randomUUID(), present = ConfigurationTroisJoueurs.joueursDe(soiree).getFirst();
         var transaction = new TransactionTemplate(socle.transactions());
         transaction.executeWithoutResult(statut -> {
             enregistrer(premiere, 1, List.of(parti, present), 4, 5);

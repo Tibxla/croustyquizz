@@ -267,6 +267,9 @@
 .salle--coquille .mode__contenu { font-size: 1.5vw; max-height: 48vh; overflow: auto; }
 .salle--coquille .coquille__note { font-size: 1.2vw; }
 .salle--coquille .salle__pied { gap: 1vw; }
+.salle__audio:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
+.salle__audio .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
+.salle__audio p:empty { display: none; }
 
 .salle--coquille .palmares h2 {
   margin: 0 0 1vw;

@@ -20,7 +20,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Partie commune des vues tirée de la Soirée enregistrée : la Soirée, ses
  * Joueurs non exclus, sa Manche active et, pour la Console, son programme.
- * Classement général et dernier Buzz restent vides jusqu'à leurs issues.
+ * Classement général, dernière Réponse et résultat personnel viennent de
+ * {@link ResultatsDeSoiree} ; le dernier Buzz reste vide jusqu'à son issue.
  * <p>
  * Une Soirée absente de la base est confiée à l'autre fournisseur du profil,
  * s'il y en a un : la démonstration du prototype en dev et recette (#80).
@@ -34,14 +35,17 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 	private final DepotDeJoueurs depotDeJoueurs;
 	private final DepotDeManches depotDeManches;
 	private final JsonMapper json;
+	private final ResultatsDeSoiree resultats;
 	private final ObjectProvider<FournisseurPartieCommune> fournisseurs;
 
 	FournisseurCommunSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs,
-			DepotDeManches depotDeManches, JsonMapper json, ObjectProvider<FournisseurPartieCommune> fournisseurs) {
+			DepotDeManches depotDeManches, JsonMapper json, ResultatsDeSoiree resultats,
+			ObjectProvider<FournisseurPartieCommune> fournisseurs) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.depotDeManches = depotDeManches;
 		this.json = json;
+		this.resultats = resultats;
 		this.fournisseurs = fournisseurs;
 	}
 
@@ -58,23 +62,23 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 				.findFirst().orElse(null);
 		Map<String, Object> vue = new LinkedHashMap<>();
 		vue.put("soiree", ProjectionSoiree.de(soiree));
-		vue.put("mancheActive", active == null ? null : decrire(active, programme.indexOf(active)));
+		vue.put("mancheActive", active == null ? null : ProjectionManche.de(active, json));
 		vue.put("modeEnCours", active == null ? null : active.getMode());
 		vue.put("joueurs", presents(soireeId).stream()
 				// Le suivi de présence arrive avec #7 et #47 : un Joueur présent est réputé connecté.
 				.map(joueur -> new ProjectionAccesJoueur.JoueurPublic(joueur.getId(), joueur.getPseudo(), true))
 				.toList());
-		vue.put("classement", List.of());
+		vue.put("classement", resultats.classement(soireeId));
 		vue.put("dernierBuzz", null);
 		if (destination.type() == Destination.Type.CONSOLE) {
-			vue.put("programme", programme.stream().map(manche -> decrire(manche, programme.indexOf(manche))).toList());
+			vue.put("programme", programme.stream().map(manche -> ProjectionManche.de(manche, json)).toList());
 		}
 		if (destination.type() == Destination.Type.JOUEUR) {
 			vue.put("joueurId", destination.joueurId());
 			// L'éligibilité d'un retardataire à la Manche en cours relève de #10.
 			vue.put("eligiblePourMancheActive", active != null);
-			vue.put("derniereReponse", null);
-			vue.put("resultatPersonnel", null);
+			vue.put("derniereReponse", resultats.derniereReponse(soireeId, destination.joueurId()).orElse(null));
+			vue.put("resultatPersonnel", resultats.resultatPersonnel(soireeId, destination.joueurId()).orElse(null));
 		}
 		return vue;
 	}
@@ -92,13 +96,6 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 		return depotDeJoueurs.findBySoireeIdOrderByArriveLeAsc(soireeId).stream()
 				.filter(joueur -> !joueur.isExclu())
 				.toList();
-	}
-
-	/** {@code Manche} dans schemas.yaml ; une Manche prête attend son tour. */
-	private Map<String, Object> decrire(ManchePersistante manche, int ordre) {
-		return Map.of("id", manche.getMancheId(), "ordre", ordre, "mode", manche.getMode(),
-				"etat", manche.getEtat() == EtatManche.PRETE ? "EN_ATTENTE" : manche.getEtat().name(),
-				"reglages", json.readTree(manche.getReglages()));
 	}
 
 	private FournisseurPartieCommune autre() {

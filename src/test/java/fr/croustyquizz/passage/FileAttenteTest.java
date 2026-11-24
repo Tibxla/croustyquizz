@@ -388,14 +388,8 @@ class FileAttenteTest {
     }
 
     @Test
-    void refuseLeCollectifDansCetteTrancheEtCopieLesLectures() {
-        assertThatThrownBy(() -> new NouveauPassage(UUID.randomUUID(), SOIREE, MANCHE, ANA, List.of(ANA, BORIS),
-                "1", Duration.ofSeconds(1), 1, RECU)).isInstanceOf(IllegalArgumentException.class);
+    void copieLesLectures() {
         Passage p = inscrire(ANA, "1");
-        Passage collectif = new Passage(p.id(), SOIREE, MANCHE, ANA, List.of(ANA, BORIS), "1", p.duree(), 1, 0,
-                p.etat(), RECU, 1, 1, 1, null, null);
-        assertThatThrownBy(() -> FileAttente.depuis(new EtatFileAttente(SOIREE, MANCHE, 1, 1, 1, 1, null,
-                List.of(collectif), Map.of()))).isInstanceOf(IllegalArgumentException.class);
         var capture = file.etat(); var copie = FileAttente.depuis(capture);
         copie.retirer(BORIS, cible("1"), RECU);
         assertThat(file.etat()).isEqualTo(capture);

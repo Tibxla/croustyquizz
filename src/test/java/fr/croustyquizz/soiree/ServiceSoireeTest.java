@@ -27,10 +27,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import fr.croustyquizz.TestcontainersConfiguration;
+import fr.croustyquizz.tempsreel.PublicationDeVues;
+import fr.croustyquizz.tempsreel.VerrousSoiree;
 
 /**
  * Le service sur un vrai PostgreSQL, avec une heure figée. Chaque appel du
@@ -40,10 +43,13 @@ import fr.croustyquizz.TestcontainersConfiguration;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceSoireeTest.Reglages.class })
+@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceSoireeTest.Reglages.class, VerrousSoiree.class })
 class ServiceSoireeTest {
 
 	static final Instant MAINTENANT = Instant.parse("2026-11-12T19:30:00Z");
+
+	@MockitoBean
+	private PublicationDeVues vues;
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class Reglages {
@@ -58,6 +64,11 @@ class ServiceSoireeTest {
 		@Bean
 		TirageDeTest tirageDeTest() {
 			return new TirageDeTest();
+		}
+
+		@Bean
+		FiltreDeTest filtreDeTest() {
+			return new FiltreDeTest();
 		}
 
 	}
@@ -107,8 +118,36 @@ class ServiceSoireeTest {
 
 	}
 
+	/** Le vrai filtre, que deux arrivées simultanées peuvent être forcées de passer ensemble. */
+	static final class FiltreDeTest implements FiltreDePseudos {
+
+		private final FiltreParListe vrai = new FiltreParListe();
+		private volatile CyclicBarrier rendezVous;
+
+		void retenir(CyclicBarrier barriere) {
+			this.rendezVous = barriere;
+		}
+
+		@Override
+		public boolean estAcceptable(String pseudo) {
+			CyclicBarrier barriere = rendezVous;
+			if (barriere != null) {
+				try {
+					barriere.await(10, TimeUnit.SECONDS);
+				} catch (Exception interruption) {
+					throw new IllegalStateException("Les arrivées simultanées ne se sont pas rejointes", interruption);
+				}
+			}
+			return vrai.estAcceptable(pseudo);
+		}
+
+	}
+
 	@Autowired
 	private ServiceSoiree service;
+
+	@Autowired
+	private FiltreDeTest filtre;
 
 	@Autowired
 	private DepotDeJoueurs joueurs;
@@ -122,6 +161,7 @@ class ServiceSoireeTest {
 	@AfterEach
 	void effacerLaBase() {
 		tirage.oublier();
+		filtre.retenir(null);
 		jdbc.update("delete from acces_ecran");
 		jdbc.update("delete from joueur");
 		jdbc.update("delete from soiree");
@@ -264,6 +304,58 @@ class ServiceSoireeTest {
 
 		assertThatThrownBy(() -> service.rejoindre(soiree.getCodeAcces(), "   ")).isInstanceOf(PseudoInvalide.class);
 		assertThat(joueurs.count()).isZero();
+	}
+
+	@Test
+	void unPseudoInjurieuxEstRefuse() {
+		Soiree soiree = soireeOuverte();
+
+		assertThatThrownBy(() -> service.rejoindre(soiree.getCodeAcces(), "C0nn4rd")).isInstanceOf(PseudoRefuse.class);
+		assertThat(joueurs.count()).isZero();
+	}
+
+	@Test
+	void unPseudoDejaPrisEstRefuseMemeEcritAutrement() {
+		Soiree soiree = soireeOuverte();
+		service.rejoindre(soiree.getCodeAcces(), "Léa");
+
+		assertThatThrownBy(() -> service.rejoindre(soiree.getCodeAcces(), " LEA ")).isInstanceOf(PseudoDejaPris.class);
+		assertThat(service.rejoindre(soireeOuverte().getCodeAcces(), "Léa").joueur().getPseudo()).isEqualTo("Léa");
+	}
+
+	@Test
+	void lePseudoDUnJoueurExcluResteRefuse() {
+		Soiree soiree = soireeOuverte();
+		UUID exclu = service.rejoindre(soiree.getCodeAcces(), "Tom").joueur().getId();
+		jdbc.update("update joueur set exclu = true where id = ?", exclu);
+
+		assertThatThrownBy(() -> service.rejoindre(soiree.getCodeAcces(), "tom")).isInstanceOf(PseudoDejaPris.class);
+	}
+
+	@Test
+	void deuxArriveesSimultaneesAvecLeMemePseudoNeDonnentQuUnJoueur() throws Exception {
+		String code = soireeOuverte().getCodeAcces();
+		// Les deux arrivées passent le filtre ensemble, donc la vérification préalable avant toute écriture.
+		filtre.retenir(new CyclicBarrier(2));
+
+		ExecutorService deuxManettes = Executors.newFixedThreadPool(2);
+		try {
+			Future<?> premiere = deuxManettes.submit(() -> service.rejoindre(code, "Léa"));
+			Future<?> seconde = deuxManettes.submit(() -> service.rejoindre(code, "léa"));
+			List<Throwable> refus = new java.util.ArrayList<>();
+			for (Future<?> arrivee : List.of(premiere, seconde)) {
+				try {
+					arrivee.get(30, TimeUnit.SECONDS);
+				} catch (java.util.concurrent.ExecutionException echec) {
+					refus.add(echec.getCause());
+				}
+			}
+
+			assertThat(refus).singleElement().isInstanceOf(PseudoDejaPris.class);
+		} finally {
+			deuxManettes.shutdownNow();
+		}
+		assertThat(joueurs.count()).isOne();
 	}
 
 	@Test

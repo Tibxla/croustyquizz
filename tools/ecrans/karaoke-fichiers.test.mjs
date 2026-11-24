@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normaliserNomAudio, trouverFichierDeChanson } from '../../src/main/resources/static/js/modes/karaoke/fichiers.mjs';
+import { fichiersDeMusiqueDAttente, normaliserNomAudio, trouverFichierDeChanson } from '../../src/main/resources/static/js/modes/karaoke/fichiers.mjs';
 
 test('normalise les extensions audio, les accents, la casse et la ponctuation Unicode', () => {
 	assert.equal(normaliserNomAudio('  Beyoncé—ＨＡＬＯ (東京 ２).MP3'), 'beyonce halo 東京 2');
@@ -20,4 +20,17 @@ test('trouve une correspondance exacte dans les deux ordres et refuse les doublo
 		const fichier = { name: 'Halo · Beyonce.' + ext };
 		assert.deepEqual(trouverFichierDeChanson([fichier], chanson), { etat: 'unique', fichier });
 	}
+});
+
+test('les fichiers du sous-dossier Attente sont réservés à la Musique d’attente', () => {
+	const chanson = { artiste: 'Beyoncé', titre: 'Halo' };
+	const fichier = dossier => ({ name: 'Beyoncé - Halo.mp3', webkitRelativePath: `${dossier}/Beyoncé - Halo.mp3` });
+	const attente = fichier('Dossier/ÀTTÉNTE/Sous-dossier');
+	const habituel = fichier('Attente/Chansons/Attente');
+	const ponctuation = fichier('Dossier/Attente!');
+	const image = { name: 'pochette.png', webkitRelativePath: 'Dossier/Attente/pochette.png' };
+	assert.deepEqual(fichiersDeMusiqueDAttente([habituel, ponctuation, attente, image]), [attente]);
+	assert.deepEqual(fichiersDeMusiqueDAttente([habituel, ponctuation]), []);
+	assert.deepEqual(trouverFichierDeChanson([attente, habituel], chanson), { etat: 'unique', fichier: habituel });
+	assert.deepEqual(trouverFichierDeChanson([attente], chanson), { etat: 'absent' });
 });

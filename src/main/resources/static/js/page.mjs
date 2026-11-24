@@ -2,7 +2,10 @@ import { suivreVue, creerTransport } from './tempsreel.js';
 import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
+import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { decrireVue } from './vue-commune.mjs';
+import { monterAudioSalle } from './audio-salle.mjs';
+import { monterProgramme } from './programme-console.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -46,7 +49,6 @@ function afficherCommun(vue) {
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.', ecran === 'ecran' ? 3 : Infinity);
-	lister('programme', description.programme, 'Aucune Manche préparée.');
 	afficherPalmares(description.palmares);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
@@ -59,8 +61,11 @@ function afficherCommun(vue) {
 }
 
 async function demarrer() {
-	const jeton = sessionStorage.getItem('croustyquizz.jeton');
-	const acces = lireAcces(ecran, location.search, jeton);
+	// La Manette d'un vrai Joueur relit l'accès rangé pour sa Soirée par rejoindre.html ; sinon, l'identité de
+	// démonstration de l'onglet (sessionStorage).
+	const accesManette = ecran === 'manette' ? creerAccesManette().lire(new URLSearchParams(location.search).get('soiree')) : null;
+	const jeton = accesManette?.jeton ?? sessionStorage.getItem('croustyquizz.jeton');
+	const acces = lireAcces(ecran, location.search, jeton, accesManette?.joueurId);
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
@@ -68,6 +73,14 @@ async function demarrer() {
 		csrf = reponse.corps.token;
 	}
 	const transport = creerTransport({ jeton, csrf });
+	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
+	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
+		creerAccesManette().oublier(acces.soireeId);
+		location.replace(adresseRetourArrivee(accesManette.codeAcces));
+		return;
+	}
+	const zoneAudio = element('audio-salle');
+	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
 	let suivi;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
@@ -82,17 +95,20 @@ async function demarrer() {
 			envoi.textContent = detail;
 		},
 	});
+	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
 	// Alias de recette explicite : le serveur continue à publier son vrai mode et son bloc.
 	const factice = jeton?.startsWith('demo:') && new URLSearchParams(location.search).get('factice') === '1';
 	const gestionnaire = creerGestionnaireDeMode({ ecran, zones, contexte,
 		...(factice ? { charger: () => import(`./modes/factice/${ecran}.mjs`) } : {}),
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
+	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
+			programme?.afficher(vue);
 			void gestionnaire.afficher(vue, origine);
 		},
 		surEtat(etat) {
@@ -104,9 +120,13 @@ async function demarrer() {
 		},
 	}, { transport });
 	addEventListener('pagehide', evenement => {
-		if (evenement.persisted) return;
-		suivi.arreter(); gestionnaire.demonter();
-	}, { once: true });
+		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
+		void audioSalle?.detruire();
+	});
+	addEventListener('pageshow', evenement => {
+		if (evenement.persisted) audioSalle?.suspendre(false);
+	});
 }
 
 demarrer().catch(erreur => {
