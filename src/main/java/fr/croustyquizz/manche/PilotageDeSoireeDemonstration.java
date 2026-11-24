@@ -29,4 +29,9 @@ public final class PilotageDeSoireeDemonstration implements PilotageDeSoiree {
 	public boolean estAutomatique(UUID soireeId) {
 		return soireesAutomatiques.contains(soireeId);
 	}
+
+	@Override
+	public boolean estModifiable(UUID soireeId) {
+		return true;
+	}
 }

@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.tempsreel.FournisseurCommunDemonstration.joueurId;
 import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.*;
 import fr.croustyquizz.tempsreel.*;
@@ -10,9 +11,12 @@ import org.springframework.context.annotation.*;
 /** Trois Manettes et source locale : aucune requête Internet. */
 @TestConfiguration(proxyBeanMethods = false)
 public class ConfigurationTroisJoueurs {
-    public static final List<UUID> JOUEURS = List.of(UUID.fromString("10000000-0000-4000-8000-000000000001"),
-            UUID.fromString("10000000-0000-4000-8000-000000000002"), UUID.fromString("10000000-0000-4000-8000-000000000003"));
-    @Bean @Primary PortsDePassageFactices portsFactices() { return new PortsDePassageFactices(JOUEURS); }
+    static List<UUID> joueursDe(UUID soireeId) {
+        return List.of(joueurId(soireeId, 1), joueurId(soireeId, 2), joueurId(soireeId, 3));
+    }
+    @Bean @Primary PortsDePassageFactices portsFactices() {
+        return new PortsDePassageFactices(ConfigurationTroisJoueurs::joueursDe);
+    }
     @Bean @Primary Horloge horlogeKaraoke() { return new HorlogeFactice(); }
     @Bean @Primary SourceDeParoles sourceKaraoke() {
         return new SourceDeParoles() {
@@ -32,10 +36,10 @@ public class ConfigurationTroisJoueurs {
     static class Commun implements FournisseurPartieCommune {
         private final DepotDeManches depot;
         Commun(DepotDeManches depot) { this.depot = depot; }
-        public List<UUID> joueurs(UUID id) { return JOUEURS; }
+        public List<UUID> joueurs(UUID id) { return joueursDe(id); }
         public Map<String, Object> fournir(UUID id, Destination destination) {
             var vue = new LinkedHashMap<>(new FournisseurCommunDemonstration(depot, tools.jackson.databind.json.JsonMapper.builder().build()).fournir(id, destination));
-            vue.put("joueurs", JOUEURS.stream().map(j -> Map.of("id", j, "pseudo", "Joueur " + j, "connecte", true)).toList());
+            vue.put("joueurs", joueurs(id).stream().map(j -> Map.of("id", j, "pseudo", "Joueur " + j, "connecte", true)).toList());
             if (destination.type() == Destination.Type.JOUEUR) { vue.put("eligiblePourMancheActive", false); }
             return vue;
         }

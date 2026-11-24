@@ -13,10 +13,21 @@ public class DepotDeManchesJpa implements DepotDeManches {
 	@Override
 	public ManchePersistante charger(UUID id) { return entites.find(ManchePersistante.class, id); }
 	@Override
-	public void enregistrer(ManchePersistante manche) { entites.merge(manche); }
+	public void enregistrer(ManchePersistante manche) {
+		if (manche.getPositionProgramme() == null) {
+			int dernierePosition = entites.createQuery("""
+					select coalesce(max(m.positionProgramme), -1)
+					from ManchePersistante m where m.soireeId = :soiree
+					""", Integer.class).setParameter("soiree", manche.getSoireeId()).getSingleResult();
+			manche.placerDansLeProgramme(dernierePosition + 1);
+		}
+		entites.merge(manche);
+	}
+	@Override
+	public void retirer(ManchePersistante manche) { entites.remove(manche); }
 	@Override
 	public List<ManchePersistante> deLaSoiree(UUID soireeId) {
-		return entites.createQuery("select m from ManchePersistante m where m.soireeId = :soiree order by m.creeLe, m.mancheId",
+		return entites.createQuery("select m from ManchePersistante m where m.soireeId = :soiree order by m.positionProgramme",
 				ManchePersistante.class).setParameter("soiree", soireeId).getResultList();
 	}
 	@Override

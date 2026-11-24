@@ -27,10 +27,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import fr.croustyquizz.TestcontainersConfiguration;
+import fr.croustyquizz.tempsreel.PublicationDeVues;
+import fr.croustyquizz.tempsreel.VerrousSoiree;
 
 /**
  * Le service sur un vrai PostgreSQL, avec une heure figée. Chaque appel du
@@ -40,10 +43,13 @@ import fr.croustyquizz.TestcontainersConfiguration;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceSoireeTest.Reglages.class })
+@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceSoireeTest.Reglages.class, VerrousSoiree.class })
 class ServiceSoireeTest {
 
 	static final Instant MAINTENANT = Instant.parse("2026-11-12T19:30:00Z");
+
+	@MockitoBean
+	private PublicationDeVues vues;
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class Reglages {
