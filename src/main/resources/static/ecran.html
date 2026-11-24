@@ -19,7 +19,7 @@
     <p class="coupure" role="status" data-connexion>Synchronisation…</p><p class="envoi envoi--refuse" role="alert" data-erreur hidden></p><p class="envoi" role="status" data-envoi hidden></p>
     <div class="coquille__mode" data-principale></div>
     <section class="palmares" data-zone-palmares aria-labelledby="titre-palmares" hidden>
-      <h2 id="titre-palmares">Palmarès du Karaoké</h2>
+      <h2 id="titre-palmares" data-titre-palmares></h2>
       <ul data-palmares role="list"></ul>
       <p data-palmares-vide hidden>Aucun Passage noté.</p>
     </section>
@@ -28,6 +28,8 @@
       <button class="bouton" type="button" data-choisir-dossier>Choisir le dossier de musique</button>
       <input type="file" webkitdirectory multiple hidden>
       <p data-aide-son role="status"></p>
+      <p data-etat-instrumentales role="status"></p>
+      <button class="bouton" type="button" data-redeclarer-instrumentales hidden>Réessayer la déclaration des Instrumentales</button>
       <p data-son-bloque hidden>Son bloqué</p>
       <button class="bouton" type="button" data-activer-son hidden>Activer le son</button>
     </div>

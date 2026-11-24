@@ -6,6 +6,7 @@ import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { monterCatalogueInstrumentales } from './modes/freestyle/catalogue-salle.mjs';
 import { creerLignePalmaresSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -50,6 +51,7 @@ function afficherCommun(vue) {
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.', ecran === 'ecran' ? 3 : Infinity);
+	texte('titre-palmares', vue.palmaresFreestyle != null ? 'Palmarès du Freestyle' : 'Palmarès du Karaoké');
 	afficherPalmares(description.palmares);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
@@ -96,7 +98,9 @@ async function demarrer() {
 			envoi.textContent = detail;
 		},
 	});
-	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	const catalogueInstrumentales = audioSalle ? monterCatalogueInstrumentales(audioSalle, contexte,
+		element('etat-instrumentales'), element('redeclarer-instrumentales')) : null;
+	if (audioSalle) Object.assign(contexte, { audioSalle, catalogueInstrumentales, signalerSonDeManche: audioSalle.signalerSonDeManche });
 	// Alias de recette explicite : le serveur continue à publier son vrai mode et son bloc.
 	const factice = jeton?.startsWith('demo:') && new URLSearchParams(location.search).get('factice') === '1';
 	const gestionnaire = creerGestionnaireDeMode({ ecran, zones, contexte,
@@ -122,7 +126,7 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); catalogueInstrumentales?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {

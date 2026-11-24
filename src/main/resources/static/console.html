@@ -24,7 +24,7 @@
     </div>
       <div class="coquille__mode" data-principale></div>
       <section class="palmares" data-zone-palmares aria-labelledby="titre-palmares" hidden>
-        <h2 id="titre-palmares">Palmarès du Karaoké</h2>
+        <h2 id="titre-palmares" data-titre-palmares></h2>
         <ul data-palmares role="list"></ul>
         <p data-palmares-vide hidden>Aucun Passage noté.</p>
       </section>
@@ -44,6 +44,7 @@
             <select id="mode-manche" name="mode" data-mode-manche>
               <option value="QUIZ">Quiz</option>
               <option value="KARAOKE">Karaoké</option>
+              <option value="FREESTYLE">Freestyle</option>
             </select>
           </div>
           <fieldset class="programme__reglages" data-reglages-communs>
@@ -55,6 +56,44 @@
               <label for="temps-par-etape">Temps par étape (s)</label>
               <input id="temps-par-etape" type="number" min="1" max="3600" value="20" required data-temps-par-etape>
             </div>
+          </fieldset>
+          <fieldset class="programme__reglages" data-reglages-freestyle hidden disabled>
+            <legend>Réglages du Freestyle</legend>
+            <div class="champ">
+              <label for="theme-rimes">Thème</label>
+              <select id="theme-rimes" data-theme-rimes>
+                <option value="SOIREE">Soirée</option>
+                <option value="VILLE">Ville</option>
+                <option value="SPORT">Sport</option>
+              </select>
+            </div>
+            <div class="champ">
+              <label for="schema-rimes">Schéma de rimes</label>
+              <select id="schema-rimes" data-schema-rimes>
+                <option>AABB</option><option>ABAB</option><option>AAAA</option>
+              </select>
+            </div>
+            <div class="champ">
+              <label for="difficulte-rimes">Mots visibles par famille de rimes</label>
+              <select id="difficulte-rimes" data-difficulte-rimes>
+                <option value="TOUS">Tous</option>
+                <option value="PREMIER">Le premier</option>
+                <option value="DERNIER">Le dernier</option>
+                <option value="AUCUN">Aucun</option>
+              </select>
+            </div>
+            <div class="champ">
+              <label for="nombre-mesures">Nombre de mesures</label>
+              <select id="nombre-mesures" data-nombre-mesures>
+                <option>8</option><option>16</option><option>32</option>
+              </select>
+            </div>
+            <fieldset class="programme__instrumentales">
+              <legend>Instrumentales de la Manche</legend>
+              <div data-instrumentales></div>
+              <p data-catalogue-etat role="status"></p>
+              <button class="bouton" type="button" data-catalogue-actualiser>Actualiser le catalogue</button>
+            </fieldset>
           </fieldset>
           <button class="bouton bouton--action" type="submit" data-soumettre-manche aria-disabled="true">Ajouter une Manche</button>
         </form>

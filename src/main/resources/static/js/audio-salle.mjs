@@ -7,7 +7,7 @@ import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 
 export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 	const abonnes = new Set();
-	let fichiers = null, sonDebloque = false, suspendu = false, detruit = false;
+	let selectionLocale = null, fichiers = null, sonDebloque = false, suspendu = false, detruit = false;
 	const etat = () => ({ fichiers, sonDebloque });
 	function notifier() { for (const rappel of abonnes) rappel(etat()); }
 	const musique = creerMusiqueDAttente({ lecteur, surSonBloque() {
@@ -20,8 +20,10 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		lecteurId,
 		lecteur: creerLecteurDePassage({ lecteur, sonde, attendreSonDeManche: coordination.attendreSonDeManche }),
 		etat,
+		selection: () => selectionLocale,
 		surChangement(rappel) { abonnes.add(rappel); return () => abonnes.delete(rappel); },
 		choisirDossier(selection) {
+			selectionLocale = selection;
 			fichiers = selection.filter(estFichierAudio);
 			musique.choisirFichiers(fichiersDeMusiqueDAttente(fichiers));
 			notifier();

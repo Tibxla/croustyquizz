@@ -4,7 +4,7 @@ Source : PRD (issue #2). Les noms de classes sont ceux du code Java, sans accent
 
 ## Domaine
 
-Les objets du domaine ; les captures immuables du Karaoké sont persistées par son service.
+Les objets du domaine ; les services du Karaoké et du Freestyle persistent leurs captures immuables.
 
 ```mermaid
 classDiagram
@@ -96,6 +96,7 @@ classDiagram
         QUIZ
         BLIND_TEST
         KARAOKE
+        FREESTYLE
     }
     class EtatManche {
         <<enumeration>>
@@ -280,6 +281,43 @@ classDiagram
         ECRAN_NON_PRET
         ERREUR_LECTURE
     }
+    namespace freestyle {
+        class ReglagesFreestyle {
+            +ThemeDeRimes theme
+            +SchemaDeRimes schemaDeRimes
+            +DifficulteFreestyle difficulte
+            +int nombreMesures
+            +List~UUID~ instrumentaleIds
+        }
+        class Instrumentale {
+            +UUID instrumentaleId
+            +String titre
+            +int tempoBpm
+            +long departBeatMs
+        }
+        class GrilleDeRimes {
+            +int nombreMesures
+            +List~Mot~ mots
+        }
+        class Mot {
+            +int mesure
+            +int temps
+            +long positionMs
+            +Famille famille
+            +String mot
+        }
+        class EtatFreestyle {
+            +EtatFileAttente file
+            +EtatCyclePassage cycle
+            +EtatVoteDuPublic voteDuPublic
+            +Map contenus
+        }
+        class Contenu {
+            +Instrumentale instrumentale
+            +GrilleDeRimes grille
+        }
+    }
+
     namespace passage {
         class FileAttente {
             +depuis(EtatFileAttente) FileAttente
@@ -460,6 +498,17 @@ classDiagram
     MorceauDeManche "1" *-- "*" Buzz
     Buzz "*" --> "1" Joueur : auteur
     Buzz "1" --> "0..1" PropositionDeTitre
+
+    Manche ..> ReglagesFreestyle : réglages du mode
+    ReglagesFreestyle ..> Instrumentale : sélection
+    EtatFreestyle --> EtatFileAttente
+    EtatFreestyle --> EtatCyclePassage
+    EtatFreestyle --> EtatVoteDuPublic
+    EtatFreestyle "1" *-- "*" Contenu : indexé par passageId
+    Contenu --> Instrumentale : fiche figée
+    Contenu "1" *-- "1" GrilleDeRimes
+    GrilleDeRimes "1" *-- "8..32" Mot
+    Soiree "1" ..> "*" Instrumentale : fiches déclarées
 
     MancheKaraoke "1" *-- "1" FileAttente
     MancheKaraoke "1" *-- "1" CycleDePassage
@@ -895,7 +944,27 @@ classDiagram
         AVANCER
         RETARDER
     }
+    namespace freestyle {
+        class FreestyleControleur
+        class ServiceFreestyle
+        class FabriqueFreestyle
+        class DeroulementFreestyle
+        class PersistanceFreestyleJpa
+        class CatalogueFreestylePersistant
+        class ContenuFreestylePersistant
+        class CompositeurDeGrille
+        class DictionnaireDeRimes {
+            <<interface>>
+        }
+        class FournisseurDeBlocFreestyle
+        class FournisseurPalmaresFreestyle
+        class VuesFreestyle
+    }
     namespace passage {
+        class PassagesControleur
+        class ServiceDePassages {
+            <<abstract>>
+        }
         class VoteDuPublic {
             +ouvrir(UUID, Instant, boolean)
             +voter(UUID, CiblePassage, int, Instant, boolean) Optional~Refuse~
@@ -1048,7 +1117,13 @@ classDiagram
     DeroulementKaraoke ..> AccuseCyclePassage
     DeroulementKaraoke ..> AccuseLectureChanson
     DeroulementKaraoke ..> AccuseCalage
-    ServiceDeManche <|-- ServiceKaraoke
+    ServiceDeManche <|-- ServiceDePassages
+    ServiceDePassages <|-- ServiceKaraoke
+    ServiceDePassages <|-- ServiceFreestyle
+    PassagesControleur --> ServiceDePassages : route selon le mode
+    ServiceDePassages --> PorteeDePassage
+    ServiceDePassages --> ParticipantsDePassage
+    ServiceDePassages --> PersistancePassageJpa
     KaraokeControleur --> ServiceKaraoke
     KaraokeControleur ..> ConvertisseurCorpsKaraoke : liaison avant identité
     ServiceKaraoke --> PorteeDePassage
@@ -1098,6 +1173,25 @@ classDiagram
     FabriqueKaraoke ..> DeroulementKaraoke : crée ou restaure
     DeroulementKaraoke ..> InstantaneKaraoke : capture
     DeroulementKaraoke ..> Accepte : rend
+    FreestyleControleur --> ServiceFreestyle : fiches de la Soirée
+    ServiceFreestyle --> PersistanceFreestyleJpa
+    PersistanceFreestyleJpa --> PersistancePassageJpa
+    PersistanceFreestyleJpa --> CatalogueFreestylePersistant
+    PersistanceFreestyleJpa --> ContenuFreestylePersistant
+    FabriqueDeDeroulement <|.. FabriqueFreestyle
+    FabriqueFreestyle ..> DeroulementFreestyle : crée ou restaure
+    DeroulementDeManche <|.. DeroulementFreestyle
+    DeroulementFreestyle --> FileAttente
+    DeroulementFreestyle --> CycleDePassage
+    DeroulementFreestyle --> VoteDuPublic
+    DeroulementFreestyle --> CompositeurDeGrille
+    CompositeurDeGrille --> DictionnaireDeRimes
+    FournisseurDeBloc <|.. FournisseurDeBlocFreestyle
+    FournisseurDeBlocFreestyle --> ServiceFreestyle : instantané
+    FournisseurDeBlocFreestyle --> VuesFreestyle
+    FournisseurDeChampCommun <|.. FournisseurPalmaresFreestyle
+    FournisseurPalmaresFreestyle --> ClassementParVote
+    FournisseurPalmaresFreestyle --> VuesFreestyle
     DeroulementDeManche ..> CommandeDeManche : reçoit
     FileAttente ..> CiblePassage
     FileAttente ..> ResultatFile
@@ -1112,13 +1206,15 @@ Depuis la racine, extraire les deux blocs Mermaid dans des fichiers temporaires 
 ```sh
 python3 - <<'PYTHON'
 from pathlib import Path
+dossier = Path("target/diagrammes")
+dossier.mkdir(parents=True, exist_ok=True)
 source = Path("docs/conception/diagrammes-de-classes.md").read_text()
 blocs = [partie.split("```", 1)[0].strip() for partie in source.split("```mermaid\n")[1:]]
 for nom, bloc in zip(("domaine", "services"), blocs):
-    Path(f"/tmp/croustyquizz-{nom}.mmd").write_text(bloc + "\n")
+    (dossier / f"{nom}.mmd").write_text(bloc + "\n")
 PYTHON
-npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-domaine.mmd -o docs/conception/diagramme-classes-domaine.png
-npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-services.mmd -o docs/conception/diagramme-classes-services.png
+npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 --size 3000 -b transparent -i target/diagrammes/domaine.mmd -o docs/conception/diagramme-classes-domaine.png
+npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 --size 3500 -b transparent -i target/diagrammes/services.mmd -o docs/conception/diagramme-classes-services.png
 ```
 
-Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
+Si le bac à sable impose un Chrome sans sandbox, ajouter `-p target/diagrammes/puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
