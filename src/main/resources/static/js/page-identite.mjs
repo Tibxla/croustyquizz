@@ -2,10 +2,18 @@ import { preparerIdentite } from './identite.mjs';
 
 const formulaire = document.querySelector('form');
 const soiree = formulaire.elements.soiree;
+const role = formulaire.elements.role;
+const champJoueur = document.getElementById('champ-joueur');
 const erreur = document.getElementById('erreur-identite');
 const envoi = document.querySelector('[data-envoi]');
 const bouton = formulaire.querySelector('button');
 soiree.value = new URLSearchParams(location.search).get('soiree') ?? '';
+function afficherChoixDuJoueur() {
+	champJoueur.hidden = role.value !== 'JOUEUR';
+}
+role.addEventListener('change', afficherChoixDuJoueur);
+afficherChoixDuJoueur();
+
 formulaire.addEventListener('submit', async evenement => {
 	evenement.preventDefault();
 	erreur.hidden = true;
@@ -21,7 +29,7 @@ formulaire.addEventListener('submit', async evenement => {
 		const hex = Array.from(octets, octet => octet.toString(16).padStart(2, '0')).join('');
 		const acteurId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 		const soireeId = soiree.value.trim().toLowerCase();
-		const acces = await preparerIdentite(formulaire.elements.role.value, soireeId, acteurId, fetch);
+		const acces = await preparerIdentite(role.value, soireeId, acteurId, fetch, Number(formulaire.elements.joueur.value));
 		sessionStorage.setItem('croustyquizz.jeton', acces.jeton);
 		const parametres = new URLSearchParams({ soiree: soireeId });
 		if (formulaire.elements.factice.checked) parametres.set('factice', '1');
