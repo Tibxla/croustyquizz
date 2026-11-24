@@ -213,7 +213,8 @@ test('la salle affiche l’ordre des Couplets, le Couplet courant et l’annonce
 	try {
 		banc.connecter('synchronisee');
 		banc.module.afficher(vue({ courant: enScene(false), grille }), capture);
-		const texte = classe => banc.principale.querySelector(`.${classe}`);
+		// L'ordre et le Couplet sont dans la zone latérale, l'annonce reste près de la Grille.
+		const texte = classe => banc.principale.querySelector(`.${classe}`) ?? banc.laterale.querySelector(`.${classe}`);
 		assert.equal(texte('freestyle__interprete').textContent, 'Zoé');
 		assert.equal(texte('freestyle__ordre').textContent, 'Ordre des Couplets : Zoé · Jo · Inès');
 		assert.equal(texte('freestyle__couplet').textContent, 'Couplet 1 sur 4 · mesures 1 à 2');

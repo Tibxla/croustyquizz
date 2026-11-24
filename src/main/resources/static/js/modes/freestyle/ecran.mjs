@@ -36,12 +36,13 @@ export function monter(zones, contexte) {
 	const coupletCourant = e('p', 'freestyle__couplet');
 	const annonceSuivant = e('p', 'freestyle__annonce');
 	annonceSuivant.setAttribute('role', 'status');
-	ui.principale.append(interprete, phase, ordreCouplets, coupletCourant, annonceSuivant, rythme, etatLecture);
+	// La Grille doit rester entière à 1080 px : l'ordre et le Couplet courant vont dans la zone latérale.
+	ui.principale.append(interprete, phase, annonceSuivant, rythme, etatLecture);
 	const titresVotes = e('h2', '', 'Vote du public');
 	const votes = e('ul', 'karaoke__liste-votes');
 	const file = e('ol', 'rouleau a-venir');
 	const autres = e('p');
-	ui.laterale.append(titresVotes, votes, e('h2', '', 'À venir'), file, autres);
+	ui.laterale.append(ordreCouplets, coupletCourant, titresVotes, votes, e('h2', '', 'À venir'), file, autres);
 
 	let source, image, positionConnue = null, derniersTemps, dernierMot, dernierPassage, recaler = false;
 	const actif = () => ui.bloc?.grille && ui.bloc.courant?.etapeId;
