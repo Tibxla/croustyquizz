@@ -2216,6 +2216,129 @@ evenements:
         peutInscrire: true
         motifInscriptionRefusee: null
         peutConfirmerPresence: false
+- nom: Palmarès à la fin de la Manche de Karaoké — salle
+  canal: salle
+  message:
+    type: manche-terminee
+    soireeId: 11700000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-18T21:15:00Z'
+    donnees:
+      soiree: &soireePalmares
+        id: 11700000-0000-4000-8000-000000000001
+        titre: Soirée fictive du Palmarès
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: VOTES7
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *id005
+      classement: []
+      dernierBuzz: null
+      karaoke: null
+      palmaresKaraoke:
+      - &premierPalmares
+        passageId: 11700000-0000-4000-8000-000000000042
+        numero: 2
+        rang: 1
+        chanson: *id012
+        interpretes: *id013
+        nombreVotes: 1
+        moyenneDixiemes: 50
+      - &deuxiemePalmares
+        passageId: 11700000-0000-4000-8000-000000000041
+        numero: 1
+        rang: 2
+        chanson: *id010
+        interpretes: *id011
+        nombreVotes: 1
+        moyenneDixiemes: 40
+      - &troisiemePalmares
+        passageId: 11700000-0000-4000-8000-000000000044
+        numero: 4
+        rang: 3
+        chanson: *id012
+        interpretes: *id011
+        nombreVotes: 1
+        moyenneDixiemes: 30
+- nom: Palmarès complet à la fin de la Manche de Karaoké — console
+  canal: console
+  message:
+    type: manche-terminee
+    soireeId: 11700000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-18T21:15:00Z'
+    donnees:
+      soiree: *soireePalmares
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *id005
+      classement: []
+      dernierBuzz: null
+      karaoke: null
+      programme:
+      - &mancheFiniePalmares
+        id: 11700000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: TERMINEE
+        reglages: *id004
+      - id: 11700000-0000-4000-8000-000000000003
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages: *id004
+      palmaresKaraoke:
+      - *premierPalmares
+      - *deuxiemePalmares
+      - *troisiemePalmares
+      - &sansVotePalmares
+        passageId: 11700000-0000-4000-8000-000000000043
+        numero: 3
+        rang: null
+        chanson: *id010
+        interpretes: *id013
+        nombreVotes: 0
+        moyenneDixiemes: null
+- nom: Palmarès masqué au démarrage de la Manche suivante — salle
+  canal: salle
+  message:
+    type: manche-demarree
+    soireeId: 11700000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-18T21:16:00Z'
+    donnees:
+      soiree: *soireePalmares
+      mancheActive: &mancheSuivantePalmares
+        id: 11700000-0000-4000-8000-000000000003
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: []
+      dernierBuzz: null
+      karaoke: null
+      palmaresKaraoke: null
+- nom: Palmarès masqué au démarrage de la Manche suivante — console
+  canal: console
+  message:
+    type: manche-demarree
+    soireeId: 11700000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-18T21:16:00Z'
+    donnees:
+      soiree: *soireePalmares
+      mancheActive: *mancheSuivantePalmares
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: []
+      dernierBuzz: null
+      karaoke: null
+      palmaresKaraoke: null
+      programme: [*mancheFiniePalmares, *mancheSuivantePalmares]
 cases:
 - nom: 'Note refusée : zéro'
   schema: VotePassage
@@ -2511,6 +2634,89 @@ cases:
       suivantDemarre: false
       moyenneDixiemes: 40
   valide: true
+- nom: Quatre Passages classés refusés sur la salle
+  schema: VueSalle
+  valeur:
+    soiree: *soireePalmares
+    mancheActive: null
+    modeEnCours: null
+    joueurs: *id005
+    classement: []
+    dernierBuzz: null
+    karaoke: null
+    palmaresKaraoke:
+    - *premierPalmares
+    - *deuxiemePalmares
+    - *troisiemePalmares
+    - passageId: 11700000-0000-4000-8000-000000000043
+      numero: 3
+      chanson: *id010
+      interpretes: *id013
+      rang: 4
+      nombreVotes: 1
+      moyenneDixiemes: 20
+  valide: false
+  correction:
+    chemin: [palmaresKaraoke]
+    valeur: [*premierPalmares, *deuxiemePalmares, *troisiemePalmares]
+- nom: Passage sans rang refusé sur la salle
+  schema: VueSalle
+  valeur:
+    soiree: *soireePalmares
+    mancheActive: null
+    modeEnCours: null
+    joueurs: *id005
+    classement: []
+    dernierBuzz: null
+    karaoke: null
+    palmaresKaraoke: [*premierPalmares, *sansVotePalmares]
+  valide: false
+  correction:
+    chemin: [palmaresKaraoke]
+    valeur: [*premierPalmares]
+- nom: Rang refusé sans vote
+  schema: LignePalmaresKaraoke
+  valeur:
+    passageId: 11700000-0000-4000-8000-000000000043
+    numero: 3
+    chanson: *id010
+    interpretes: *id013
+    rang: 1
+    nombreVotes: 0
+    moyenneDixiemes: null
+  valide: false
+  correction:
+    chemin: [rang]
+    valeur: null
+- nom: Moyenne refusée sans vote dans le Palmarès
+  schema: LignePalmaresKaraoke
+  valeur:
+    passageId: 11700000-0000-4000-8000-000000000043
+    numero: 3
+    chanson: *id010
+    interpretes: *id013
+    rang: null
+    nombreVotes: 0
+    moyenneDixiemes: 30
+  valide: false
+  correction:
+    chemin: [moyenneDixiemes]
+    valeur: null
+- nom: Palmarès interdit sur une Manette
+  schema: VueManette
+  valeur:
+    soiree: *soireePalmares
+    mancheActive: null
+    modeEnCours: null
+    joueurs: *id005
+    classement: []
+    dernierBuzz: null
+    joueurId: 98000000-0000-4000-8000-000000000003
+    eligiblePourMancheActive: false
+    derniereReponse: null
+    resultatPersonnel: null
+    palmaresKaraoke: [*premierPalmares]
+  valide: false
 resynchronisation:
   destination: /topic/joueurs/98000000-0000-4000-8000-000000000004
   routeEtat: /api/soirees/98000000-0000-4000-8000-000000000001/etat/manette
