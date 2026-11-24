@@ -303,6 +303,11 @@ le Joueur choisit son rang. La page lit l’UUID correspondant dans la projectio
 l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
 Ces identités fictives ne sont pas
 une authentification ; en production le résolveur refuse systématiquement avec `401`.
+Elles ne visent que des Soirées fictives : un jeton `demo:JOUEUR` ou `demo:ECRAN` dont la Soirée
+est enregistrée est refusé en `401 AUTHENTIFICATION_REQUISE`, en HTTP comme au CONNECT STOMP. Seuls
+le jeton de reconnexion du Joueur et la clé de l'Écran de salle y donnent accès. `demo:ANIMATEUR`
+reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5) : les routes de test
+des Manches en dépendent.
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
