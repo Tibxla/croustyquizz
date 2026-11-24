@@ -13,8 +13,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -54,7 +55,7 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 
 	@Override
 	public List<Morceau> morceauxDePlaylist(long playlistId) {
-		List<Morceau> morceaux = new ArrayList<>();
+		Map<Long, Morceau> morceaux = new LinkedHashMap<>();
 		int index = 0;
 		for (int page = 0; page < PAGES_MAX; page++) {
 			JsonNode racine = consulter("playlist/" + playlistId + "/tracks?index=" + index + "&limit=" + TAILLE_PAGE);
@@ -65,14 +66,14 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 				break;
 			}
 		}
-		return List.copyOf(morceaux);
+		return List.copyOf(morceaux.values());
 	}
 
 	@Override
 	public List<Morceau> morceauxDuGenre(long genreId) {
-		List<Morceau> morceaux = new ArrayList<>();
+		Map<Long, Morceau> morceaux = new LinkedHashMap<>();
 		retenirJouables(donnees(consulter("chart/" + genreId + "/tracks?limit=" + TAILLE_PAGE)), morceaux);
-		return List.copyOf(morceaux);
+		return List.copyOf(morceaux.values());
 	}
 
 	@Override
@@ -92,14 +93,18 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 		return donnees;
 	}
 
-	/** Garde les Morceaux lisibles qui ont un extrait ; un candidat mal formé est écarté sans faire échouer la liste. */
-	private static void retenirJouables(JsonNode donnees, List<Morceau> morceaux) {
+	/**
+	 * Garde les Morceaux lisibles qui ont un extrait, une seule fois chacun et dans l'ordre de Deezer : une playlist
+	 * peut contenir deux fois le même Morceau. Un candidat mal formé est écarté sans faire échouer la liste.
+	 */
+	private static void retenirJouables(JsonNode donnees, Map<Long, Morceau> morceaux) {
 		for (JsonNode candidat : donnees) {
 			if (extrait(candidat).isEmpty()) {
 				continue;
 			}
 			try {
-				morceaux.add(morceau(candidat));
+				Morceau morceau = morceau(candidat);
+				morceaux.putIfAbsent(morceau.idDeezer(), morceau);
 			} catch (IllegalArgumentException mal) {
 				continue;
 			}
@@ -180,7 +185,10 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 			consultation.cancel(true);
 			throw new SourceMusicaleIndisponible("Le délai de Deezer est dépassé.", erreur);
 		} catch (ExecutionException erreur) {
-			throw new SourceMusicaleIndisponible("Deezer est injoignable.", erreur);
+			// Une réponse trop volumineuse a déjà sa panne dédiée : garder son message, et la pile complète.
+			String message = erreur.getCause() instanceof SourceMusicaleIndisponible panne ? panne.getMessage()
+					: "Deezer est injoignable.";
+			throw new SourceMusicaleIndisponible(message, erreur);
 		} catch (IOException | JacksonException erreur) {
 			throw new SourceMusicaleIndisponible("Réponse Deezer mal formée.", erreur);
 		} catch (InterruptedException erreur) {

@@ -2,6 +2,7 @@ package fr.croustyquizz.blindtest;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,8 +20,8 @@ public class ConfigurationCatalogueMusical {
 	}
 
 	@Bean
-	CatalogueMusical catalogueMusical(ProprietesCatalogueMusical proprietes, HttpClient clientCatalogueMusical,
-			JsonMapper json) {
+	CatalogueMusical catalogueMusical(ProprietesCatalogueMusical proprietes,
+			@Qualifier("clientCatalogueMusical") HttpClient clientCatalogueMusical, JsonMapper json) {
 		return new AdaptateurDeezer(proprietes, clientCatalogueMusical, json);
 	}
 

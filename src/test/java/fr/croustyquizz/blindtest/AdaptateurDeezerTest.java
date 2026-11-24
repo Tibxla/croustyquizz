@@ -108,9 +108,19 @@ class AdaptateurDeezerTest {
 		serveur.createContext("/", echange -> envoyer(echange, new Reponse(200,
 				pagePleine.getBytes(StandardCharsets.UTF_8))));
 
-		assertThat(adaptateur().morceauxDePlaylist(PLAYLIST))
-				.hasSize(AdaptateurDeezer.PAGES_MAX * AdaptateurDeezer.TAILLE_PAGE);
+		// Le même Morceau répété n'est gardé qu'une fois ; seules les pages demandées comptent ici.
+		assertThat(adaptateur().morceauxDePlaylist(PLAYLIST)).hasSize(1);
 		assertThat(demandes).hasSize(AdaptateurDeezer.PAGES_MAX);
+	}
+
+	@Test
+	void unMorceauPresentDeuxFoisDansUnePlaylistNEstGardeQuUneFois() {
+		servir("playlist/908622995/tracks?index=0&limit=100", "playlist-page-1.json");
+		servir("playlist/908622995/tracks?index=3&limit=100",
+				lu("playlist-page-2.json").replace("\"id\":2114295", "\"id\":3135556"));
+
+		assertThat(adaptateur().morceauxDePlaylist(PLAYLIST)).extracting(Morceau::idDeezer)
+				.containsExactly(3135556L, 67238735L);
 	}
 
 	@Test
@@ -209,7 +219,8 @@ class AdaptateurDeezerTest {
 		servir("track/3135556", "track-3135556.json");
 
 		assertThatExceptionOfType(SourceMusicaleIndisponible.class)
-				.isThrownBy(() -> adaptateur(2000, 64).lienExtrait(3135556));
+				.isThrownBy(() -> adaptateur(2000, 64).lienExtrait(3135556))
+				.withMessageContaining("taille maximale");
 	}
 
 	@Test
