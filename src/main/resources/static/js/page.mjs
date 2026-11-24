@@ -6,6 +6,7 @@ import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
+import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
 
 const ecran = document.body.dataset.ecran;
@@ -37,36 +38,8 @@ function afficherCommun(vue) {
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.', ecran === 'ecran' ? 3 : Infinity);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
-	const talon = element('talon');
-	if (talon) {
-		talon.hidden = !description.codeAcces || vue.soiree.etat === 'TERMINEE';
-		texte('code', description.codeAcces ?? '');
-	}
 	texte('attente', vue.modeEnCours === null && vue.soiree.etat !== 'TERMINEE' ? 'La prochaine Manche s’affichera ici.' : '');
 	zoneErreur.hidden = true;
-}
-
-function chargerQr(soireeId, jeton, signal) {
-	const qr = element('qr');
-	let occupe = false;
-	return async vue => {
-		if (!qr || !jeton || jeton.startsWith('demo:') || occupe || !vue.soiree.codeAcces
-			|| vue.soiree.etat === 'TERMINEE') return;
-		occupe = true;
-		try {
-			const reponse = await fetch(`/api/soirees/${soireeId}/qrcode`, {
-				headers: { Authorization: `Bearer ${jeton}` }, cache: 'no-store', signal,
-			});
-			if (!reponse.ok) throw new Error('QR code indisponible');
-			const adresse = URL.createObjectURL(await reponse.blob());
-			const image = qr.querySelector('img');
-			image.addEventListener('load', () => URL.revokeObjectURL(adresse), { once: true });
-			image.src = adresse;
-			qr.hidden = false;
-		} catch {
-			occupe = false;
-		}
-	};
 }
 
 async function demarrer() {
@@ -74,8 +47,6 @@ async function demarrer() {
 	const jeton = lireJeton(ecran, soireeId, { location, history, memoire });
 	const joueurId = memoire.lire('croustyquizz.soiree') === soireeId ? memoire.lire('croustyquizz.joueurId') : null;
 	const acces = lireAcces(ecran, location.search, jeton, joueurId);
-	const annulation = new AbortController();
-	const chargerQrSiNecessaire = chargerQr(soireeId, jeton, annulation.signal);
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
@@ -83,6 +54,8 @@ async function demarrer() {
 		csrf = reponse.corps.token;
 	}
 	const transport = creerTransport({ jeton, csrf });
+	const zoneTalon = element('talon');
+	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
 	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
 	let suivi;
@@ -113,7 +86,7 @@ async function demarrer() {
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
-			void chargerQrSiNecessaire(vue);
+			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
 			pilotage?.afficher(vue);
 			void gestionnaire.afficher(vue, origine);
@@ -128,7 +101,7 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		annulation.abort();
+		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
 		pilotage?.demonter();
 		void audioSalle?.detruire();

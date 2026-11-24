@@ -22,6 +22,5 @@ export function decrireVue(vue) {
 		personnel: joueur ? [`${joueur.pseudo}`, vue.mancheActive && !vue.eligiblePourMancheActive ?
 			'Tu participeras à la prochaine Manche.' : '', vue.resultatPersonnel ?
 			`${vue.resultatPersonnel.pointsGagnes} points à la dernière correction` : ''].filter(Boolean).join(' · ') : '',
-		codeAcces: vue.soiree.codeAcces,
 	};
 }
