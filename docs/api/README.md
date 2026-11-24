@@ -304,10 +304,16 @@ l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
 Ces identités fictives ne sont pas
 une authentification ; en production le résolveur refuse systématiquement avec `401`.
 Elles ne visent que des Soirées fictives : un jeton `demo:JOUEUR` ou `demo:ECRAN` dont la Soirée
-est enregistrée est refusé en `401 AUTHENTIFICATION_REQUISE`, en HTTP comme au CONNECT STOMP. Seuls
-le jeton de reconnexion du Joueur et la clé de l'Écran de salle y donnent accès. `demo:ANIMATEUR`
+est enregistrée est refusé en `401 AUTHENTIFICATION_REQUISE`, en HTTP comme au CONNECT STOMP. Le canal
+d'une Manette et sa dernière vue ne dépendant que de l'UUID du Joueur, un jeton `demo:JOUEUR` qui
+porte l'UUID d'un vrai Joueur est refusé de même, quelle que soit la Soirée déclarée. Seuls
+le jeton de reconnexion du Joueur et la clé de l'Écran de salle donnent accès à une Soirée enregistrée.
+Au CONNECT STOMP, le client ne reçoit pas de statut HTTP : le refus arrive dans une trame `ERROR`,
+suivie de la fermeture de la connexion. `demo:ANIMATEUR`
 reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5) : les routes de test
-des Manches en dépendent.
+des Manches en dépendent. Reste ouvert en `dev` et `recette` : un abonnement STOMP anonyme au canal
+de salle n'est contrôlé que sur la forme de sa destination, pour le [prototype #7](prototype/README.md) :
+il ne protège pas encore la salle d'une Soirée enregistrée et reste à réserver aux canaux du prototype.
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
