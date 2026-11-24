@@ -78,6 +78,21 @@ test('sans stockage durable, l’accès se range dans l’onglet et se relit, se
 	assert.equal(onglet.valeurs.size, 0);
 });
 
+test('un stockage durable devenu lecture seule ne masque pas la dernière Soirée rangée dans l’onglet', () => {
+	let heure = 1_000;
+	const durable = stockageFactice();
+	const onglet = stockageFactice();
+	const maintenant = () => heure;
+	creerAccesManette([durable, onglet], { maintenant }).ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' });
+	// Le stockage durable garde la Soirée A mais refuse désormais d'écrire : la Soirée B va dans l'onglet.
+	durable.setItem = () => { throw new DOMException('plein', 'QuotaExceededError'); };
+	heure = 2_000;
+	const acces = creerAccesManette([durable, onglet], { maintenant });
+	acces.ranger(autre, { jeton: 'b'.repeat(43), joueurId: joueur, codeAcces: 'ZZZZZZ' });
+
+	assert.equal(acces.derniere().soireeId, autre);
+});
+
 test('aucun stockage utilisable : l’accès le dit avant l’arrivée, et ranger échoue sans lever', () => {
 	const acces = creerAccesManette([stockagePlein(), stockagePlein()]);
 	assert.equal(acces.disponible(), false);

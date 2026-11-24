@@ -64,13 +64,22 @@ export function creerAccesManette(stockages = stockagesDuNavigateur(), { mainten
 	}
 
 	// La dernière Soirée est rangée avec son heure ; une valeur sans heure vient d'une version précédente.
-	function derniereRangee() {
+	function analyserDerniere(brut) {
 		try {
-			const { soireeId, rangeeLe } = JSON.parse(lireBrut(DERNIERE)) ?? {};
+			const { soireeId, rangeeLe } = JSON.parse(brut) ?? {};
 			return { soireeId, rangeeLe: Number.isFinite(rangeeLe) ? rangeeLe : null };
 		} catch {
-			return { soireeId: lireBrut(DERNIERE), rangeeLe: null };
+			return { soireeId: brut, rangeeLe: null };
 		}
+	}
+
+	// Chaque stockage peut garder sa propre dernière Soirée : un stockage durable devenu lecture seule garde
+	// l'ancienne pendant que la nouvelle va dans l'onglet. La plus récente l'emporte.
+	function derniereRangee() {
+		const rangees = liste.map((stockage) => lireDans(stockage, DERNIERE)).filter((brut) => brut != null).map(analyserDerniere);
+		const heure = ({ rangeeLe }) => rangeeLe ?? -Infinity;
+		return rangees.reduce((plusRecente, rangee) => (heure(rangee) > heure(plusRecente) ? rangee : plusRecente),
+			rangees[0] ?? { soireeId: null, rangeeLe: null });
 	}
 
 	function soirees() {
