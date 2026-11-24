@@ -399,7 +399,7 @@ paths:
         distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; un pseudo
         injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
         pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
-        409 PSEUDO_DEJA_PRIS.
+        409 PSEUDO_DEJA_PRIS. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes.
       tags:
       - Soirée
       security: []
@@ -493,8 +493,10 @@ paths:
       summary: QR code qui mène à la Manette de la Soirée
       description: Image SVG générée par le serveur (sans bibliothèque JavaScript, ADR 0001), affichée par l’Écran de
         salle. Elle encode l’adresse de la Manette avec le code d’accès dans un fragment, /rejoindre.html#code=K7PQ2M ;
-        le code d’accès n’est pas un secret. L’adresse reprend le schéma et l’hôte publics vus par le relais HTTPS. Une
-        Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409 SOIREE_NON_OUVERTE. Sans clé, 401
+        le code d’accès n’est pas un secret. L’adresse reprend le schéma et l’hôte publics vus par le relais HTTPS,
+        ainsi que le chemin de contexte de l’application. L’en-tête Adresse-Manette fournit cette adresse sans le
+        fragment pour le talon. Une Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409
+        SOIREE_NON_OUVERTE. Sans clé, 401
         AUTHENTIFICATION_REQUISE ; la clé d’une autre Soirée donne 404 RESSOURCE_INTROUVABLE ; un jeton de Joueur, 403
         ACCES_REFUSE. L’image se charge avec la clé dans Authorization, jamais dans l’URL.
       tags:
@@ -511,6 +513,12 @@ paths:
               schema:
                 type: string
                 const: no-store
+            Adresse-Manette:
+              description: Adresse publique de la page d’arrivée de la Manette, sans fragment.
+              required: true
+              schema:
+                type: string
+                format: uri
           content:
             image/svg+xml:
               schema:
@@ -822,7 +830,7 @@ paths:
       operationId: ouvrirSoiree
       summary: Ouvrir la Soirée aux Joueurs
       description: PREPARATION vers OUVERTE ; le serveur génère un code de 6 caractères unique parmi les Soirées
-        accessibles (OUVERTE et EN_COURS). Le serveur publie soiree-ouverte sur la Console lors de la transition.
+        accessibles (OUVERTE et EN_COURS). Le serveur publie soiree-ouverte sur la Console et sur la salle lors de la transition, pour qu’un Écran ouvert pendant la préparation affiche le code et le QR code.
         Le programme peut être complété pendant l’accueil. La clé d’envoi garantit
         qu’une répétition ne régénère pas le code ; rouvrir une Soirée déjà OUVERTE la rend aussi inchangée. Soirée
         EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE.
