@@ -53,12 +53,22 @@ public class ManchesDeTestControleur {
 			@Valid @RequestBody ChoixPilotage choix, Acteur acteur) {
 		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
 		return socle.verrous().executer(soireeId, () -> {
-			lecture.executeWithoutResult(statut -> {
-				if (socle.depot().deLaSoiree(soireeId).stream().anyMatch(manche -> manche.getEtat() != EtatManche.PRETE)) {
+			var manchesPretes = lecture.execute(statut -> {
+				if (!socle.pilotage().estModifiable(soireeId)) {
+					throw new Refuse(409, "ETAT_INCOMPATIBLE",
+							"Le Pilotage d'une Soirée enregistrée est celui choisi à sa création.").exception();
+				}
+				var manches = socle.depot().deLaSoiree(soireeId);
+				if (manches.stream().anyMatch(manche -> manche.getEtat() != EtatManche.PRETE)) {
 					throw new Refuse(409, "ETAT_INCOMPATIBLE", "La Soirée a commencé : son Pilotage ne change plus.").exception();
 				}
+				return manches.stream().map(ManchePersistante::getMancheId).toList();
 			});
-			pilotage.choisir(soireeId, "AUTOMATIQUE".equals(choix.pilotage()));
+			boolean automatique = "AUTOMATIQUE".equals(choix.pilotage());
+			if (pilotage.estAutomatique(soireeId) != automatique) {
+				pilotage.choisir(soireeId, automatique);
+				manchesPretes.forEach(socle.registre()::retirer);
+			}
 			return ResponseEntity.ok().cacheControl(CacheControl.noStore())
 					.body(Map.of("soireeId", soireeId, "pilotage", choix.pilotage()));
 		});

@@ -24,6 +24,7 @@ import fr.croustyquizz.manche.ModeFacticeDuSocle;
 import fr.croustyquizz.manche.PilotageDeSoireeDemonstration;
 import fr.croustyquizz.manche.ServiceDeManche;
 import fr.croustyquizz.manche.SocleDeManche;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Le socle reçoit le Pilotage choisi à la création d'une Soirée sur PostgreSQL. */
 class PilotageDeSoireeEnregistreeTest {
@@ -34,15 +35,16 @@ class PilotageDeSoireeEnregistreeTest {
 	@ActiveProfiles("dev")
 	class Developpement extends AvecPostgreSQL {
 		@Autowired private PilotageDeSoireeDemonstration demonstration;
+		@Autowired private JsonMapper json;
 
 		@Test
-		void lesChoixDeDemonstrationNeChangentPasLePilotageEnregistre() throws Exception {
+		void leChoixDeDemonstrationEstRefusePourUneSoireeEnregistree() throws Exception {
 			UUID automatique = creerSoiree(Pilotage.AUTOMATIQUE);
 			UUID manuelle = creerSoiree(Pilotage.MANUEL);
 
-			choisir(automatique, "MANUEL");
-			choisir(manuelle, "AUTOMATIQUE");
-			assertThat(demonstration.estAutomatique(manuelle)).isTrue();
+			verifierRefus(automatique, "MANUEL");
+			verifierRefus(manuelle, "AUTOMATIQUE");
+			assertThat(demonstration.estAutomatique(manuelle)).isFalse();
 			verifierPilotageDuDeroulement(automatique, true);
 			verifierPilotageDuDeroulement(manuelle, false);
 		}
@@ -51,14 +53,20 @@ class PilotageDeSoireeEnregistreeTest {
 		void uneSoireeAbsenteDeLaBaseSuitLeChoixDeDemonstration() throws Exception {
 			UUID soiree = UUID.randomUUID();
 			verifierPilotageDuDeroulement(soiree, false);
-			choisir(soiree, "AUTOMATIQUE");
+			var reponse = demanderPilotage(soiree, "AUTOMATIQUE");
+			assertThat(reponse.getStatusCode().value()).isEqualTo(200);
+			ContratApi.verifier(PROTOTYPE, "choisirPilotageDeTest", reponse);
 			verifierPilotageDuDeroulement(soiree, true);
 		}
 
-		private void choisir(UUID soiree, String pilotage) throws Exception {
+		private void verifierRefus(UUID soiree, String pilotage) throws Exception {
 			var reponse = demanderPilotage(soiree, pilotage);
-			assertThat(reponse.getStatusCode().value()).isEqualTo(200);
+			assertThat(reponse.getStatusCode().value()).isEqualTo(409);
 			ContratApi.verifier(PROTOTYPE, "choisirPilotageDeTest", reponse);
+			var probleme = json.readTree(reponse.getBody());
+			assertThat(probleme.path("code").asString()).isEqualTo("ETAT_INCOMPATIBLE");
+			assertThat(probleme.path("detail").asString())
+					.isEqualTo("Le Pilotage d'une Soirée enregistrée est celui choisi à sa création.");
 		}
 	}
 

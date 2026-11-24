@@ -33,7 +33,32 @@
     </section>
     <aside class="panneau commun" aria-label="Programme et Joueurs">
       <div class="coquille__mode" data-laterale></div>
-      <h2>Programme</h2><ol class="commun__liste commun__programme" data-programme></ol>
+      <section class="programme" aria-labelledby="titre-programme" data-edition-programme>
+        <h2 id="titre-programme" tabindex="-1">Programme</h2>
+        <ol class="commun__liste commun__programme" role="list" data-programme></ol>
+        <p class="console__note" data-programme-vide hidden>Aucune Manche préparée.</p>
+        <p class="console__note" data-programme-fige hidden>Le programme est figé.</p>
+        <form class="programme__ajout" data-ajout-manche hidden>
+          <div class="champ">
+            <label for="mode-manche">Mode de jeu</label>
+            <select id="mode-manche" name="mode" data-mode-manche>
+              <option value="QUIZ">Quiz</option>
+              <option value="KARAOKE">Karaoké</option>
+            </select>
+          </div>
+          <fieldset class="programme__reglages" data-reglages-communs>
+            <div class="champ">
+              <label for="nombre-etapes">Nombre d’étapes</label>
+              <input id="nombre-etapes" type="number" min="1" max="100" value="3" required data-nombre-etapes>
+            </div>
+            <div class="champ">
+              <label for="temps-par-etape">Temps par étape (s)</label>
+              <input id="temps-par-etape" type="number" min="1" max="3600" value="20" required data-temps-par-etape>
+            </div>
+          </fieldset>
+          <button class="bouton bouton--action" type="submit" data-soumettre-manche aria-disabled="true">Ajouter une Manche</button>
+        </form>
+      </section>
       <details><summary data-nombre-joueurs>Joueurs</summary><ul class="commun__liste" data-joueurs></ul></details>
       <details><summary>Classement général</summary><ol class="commun__liste" data-classement></ol></details>
       <p data-buzz>Aucun Buzz reçu</p>

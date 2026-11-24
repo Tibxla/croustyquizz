@@ -3,16 +3,18 @@ import assert from 'node:assert/strict';
 import { creerBanc, creerDocument, terminerMicrotaches, chanson, passage, vue } from './karaoke-dom-factice.mjs';
 import { monter as manette } from '../../src/main/resources/static/js/modes/karaoke/manette.mjs';
 import { monter as consoleKaraoke } from '../../src/main/resources/static/js/modes/karaoke/console.mjs';
-import { creerEcranKaraoke, reinitialiserEtatEcranPourTests, etatEcranKaraoke } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
+import { creerEcranKaraoke } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
+import { creerAudioSalle } from '../../src/main/resources/static/js/audio-salle.mjs';
 import { readFile } from 'node:fs/promises';
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'karaoke-file-modifiee' };
 const bouton = (zone, texte) => zone.querySelectorAll('button').find(b => b.textContent === texte);
 
 function bancLecteur() {
-	const appels = [], trames = new Map();
+	const appels = [], sonsDeManche = [], trames = new Map();
 	let numero = 0;
+	let sonDebloque = false;
 	const lecteur = {
-		debloquer: async () => { appels.push('son'); },
+		debloquer: async () => { if (!sonDebloque) appels.push('son'); sonDebloque = true; },
 		charger: async () => { appels.push('charger'); return { dureeMs: 2000 }; },
 		lire: async () => { appels.push('lire'); },
 		pause: () => appels.push('pause'),
@@ -22,13 +24,18 @@ function bancLecteur() {
 		surErreur: () => () => {},
 		detruire: () => appels.push('libérer'),
 	};
-	return { lecteur, appels, trames,
-		dependances: { lecteur, requestAnimationFrame(f) { trames.set(++numero, f); return numero; },
-			cancelAnimationFrame: id => trames.delete(id), setTimeout, clearTimeout, performance } };
+	const audioSalle = creerAudioSalle({ lecteur, lecteurId: 'lecteur',
+		sonde: { charger: async () => ({ dureeMs: 2000 }), detruire() {} },
+		coordonner: () => ({ activer() {}, signalerSonDeManche: actif => sonsDeManche.push(actif),
+			attendreSonDeManche: async () => sonsDeManche.at(-1), detruire() {} }),
+	});
+	return { audioSalle, appels, sonsDeManche, trames,
+		dependances: { requestAnimationFrame(f) { trames.set(++numero, f); return numero; },
+			cancelAnimationFrame: id => trames.delete(id), performance } };
 }
-function ecran(zones, contexte) {
-	reinitialiserEtatEcranPourTests();
-	return creerEcranKaraoke(zones, contexte, { ...bancLecteur().dependances, document: zones.principale.ownerDocument });
+function ecran(zones, contexte, { audioSalle, dependances } = bancLecteur()) {
+	Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	return creerEcranKaraoke(zones, contexte, { ...dependances, document: zones.principale.ownerDocument });
 }
 
 test('les trois écrans partagent un lien CSS, conservent le talon et libèrent zones et abonnement', () => {
@@ -300,7 +307,7 @@ test('la Manette conserve la recherche au quota, consulte par GET puis attend le
 	b.module.demonter();
 });
 
-test('salle : le premier Passage en grand, seulement les suivants dans « Ensuite », seul le choix du dossier est proposé', () => {
+test('salle : le premier Passage en grand, seulement les suivants dans « Ensuite »', () => {
 	const b = creerBanc(ecran, 'ECRAN');
 	b.module.afficher(vue({ prochainsPassages: [passage(), passage('p2', 15)], nombreAutresPassages: 1 }), capture);
 	assert.match(b.principale.textContent, /Prépare-toi/); assert.equal(b.principale.querySelectorAll('.ticket').length, 1);
@@ -308,7 +315,6 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 	assert.match(b.laterale.textContent, /et 1 autre$/);
 	b.module.afficher(vue({ prochainsPassages: [passage()], nombreAutresPassages: 2 }), capture);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 0); assert.match(b.laterale.textContent, /et 2 autres/);
-	assert.deepEqual(b.document.body.querySelectorAll('button').filter(b => !b.hidden).map(b => b.textContent), ['Choisir le dossier de musique']);
 	assert.equal(b.document.body.querySelectorAll('.ticket--detache').length, 0);
 	b.module.demonter(); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
 });
@@ -564,15 +570,15 @@ test('Manette : le ticket public du courant indique son état sans bouton', t =>
 });
 
 test('salle : tickets actifs, animation unique, calage des lignes et reprise de la boucle', t => {
-	reinitialiserEtatEcranPourTests();
 	const lecteur = bancLecteur();
-	const b = creerBanc((z, c) => creerEcranKaraoke(z, c, { ...lecteur.dependances, document: z.principale.ownerDocument }), 'ECRAN');
+	const b = creerBanc((z, c) => ecran(z, c, lecteur), 'ECRAN');
 	t.after(() => b.module.demonter());
 	b.contexte.maintenantServeur = () => heureAppel;
 	const prochainsPassages = [passage('a'), passage('b'), passage('c')];
 	const principaux = () => b.principale.querySelector('.karaoke__prochain');
 	const afficher = (courant, origine, champs = {}) => b.module.afficher(vue({ courant, prochainsPassages, nombreAutresPassages: 2, ...champs }), origine);
 	afficher(courant(), { source: 'evenement', type: 'passage-appele' });
+	assert.equal(lecteur.sonsDeManche.at(-1), false);
 	assert.ok(principaux().hidden);
 	assert.equal(principaux().childElementCount, 0);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 4);
@@ -587,6 +593,7 @@ test('salle : tickets actifs, animation unique, calage des lignes et reprise de 
 	const paroles = { parolesId: 'v1', dureeMs: 6000, lignes };
 	const lecture = { lectureId: 'l', source: 'PAROLES_SEULES', decalageMs: 0 };
 	afficher(courant('EN_COURS', { positionChronologiqueMs: 2300 }), capture, { paroles, lecture });
+	assert.equal(lecteur.sonsDeManche.at(-1), true);
 	assert.deepEqual(b.principale.querySelectorAll('.paroles__ligne').map(p => p.textContent), ['Prélude', '<Chant>', 'Suivante', 'Dernière']);
 	assert.equal(b.principale.querySelector('.paroles__chante').textContent, '<Chant>');
 	assert.equal(b.principale.querySelector('.paroles__chante').childElementCount, 0);
@@ -598,6 +605,7 @@ test('salle : tickets actifs, animation unique, calage des lignes et reprise de 
 	b.document.hidden = false; b.document.dispatchEvent({ type: 'visibilitychange' });
 	assert.equal(lecteur.trames.size, 1);
 	afficher(courant('TERMINE'), capture);
+	assert.equal(lecteur.sonsDeManche.at(-1), false);
 	assert.ok(!principaux().hidden);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 3);
 	assert.match(b.laterale.textContent, /Terminé/);
@@ -609,64 +617,53 @@ test('salle : tickets actifs, animation unique, calage des lignes et reprise de 
 	assert.equal(lecteur.trames.size, 0);
 });
 
-test('salle : zéro fichier au singulier et activation sonore locale pendant une coupure', async t => {
-	reinitialiserEtatEcranPourTests();
+test('salle : activation sonore locale pendant une coupure avec un dossier vide', async t => {
 	const audio = bancLecteur();
-	etatEcranKaraoke.dossier = 'Dossier vide';
-	const b = creerBanc((z, c) => creerEcranKaraoke(z, c, { ...audio.dependances, document: z.principale.ownerDocument }), 'ECRAN');
+	audio.audioSalle.choisirDossier([]);
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
 	t.after(() => b.module.demonter());
 	b.contexte.maintenantServeur = () => heureAppel;
-	const appel = vue({ courant: courant(), lecteurDesigneId: etatEcranKaraoke.lecteurId });
+	const appel = vue({ courant: courant(), lecteurDesigneId: audio.audioSalle.lecteurId });
 	b.module.afficher(appel, capture);
 	b.connecter('coupure');
-	assert.match(b.principale.textContent, /0 fichier audio/);
-	const activer = bouton(b.principale, 'Activer le son');
-	assert.ok(!activer.hidden && !activer.disabled);
-	activer.focus();
-	activer.click();
+	await audio.audioSalle.activerSon();
 	await terminerMicrotaches();
 	assert.deepEqual(audio.appels, ['son']);
 	assert.equal(b.appels.length, 0);
-	assert.ok(activer.hidden && b.document.activeElement === activer.parentNode);
+	assert.ok(audio.audioSalle.etat().sonDebloque);
 	b.module.afficher(appel, capture);
 	assert.equal(b.appels[0].args[2].motifParolesSeules, 'FICHIER_ABSENT');
 });
 
 test('salle : dossier et lecteur vivent entre les Manches, les commandes restent silencieuses et uniques', async t => {
-	reinitialiserEtatEcranPourTests();
 	const audio = bancLecteur();
-	const b = creerBanc((z, c) => creerEcranKaraoke(z, c, { ...audio.dependances, document: z.principale.ownerDocument }), 'ECRAN');
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
 	t.after(() => b.module.demonter());
 	b.connecter('synchronisee');
 	b.contexte.maintenantServeur = () => heureAppel;
 	b.module.afficher(vue({ lecteurDesigneId: null }), capture);
-	const choisir = bouton(b.principale, 'Choisir le dossier de musique');
-	choisir.click();
+	await audio.audioSalle.activerSon();
 	assert.deepEqual(audio.appels, ['son']);
-	const input = b.principale.querySelector('input[webkitdirectory]');
-	input.files = [{ name: 'Artiste fictif - Titre de démonstration.wav', size: 600, webkitRelativePath: 'privé/essai.wav' }];
-	input.dispatchEvent({ type: 'change' });
-	assert.equal(etatEcranKaraoke.dossier, 'privé');
+	const fichier = { name: 'Artiste fictif - Titre de démonstration.wav', size: 600, webkitRelativePath: 'privé/essai.wav' };
+	audio.audioSalle.choisirDossier([fichier]);
 	await terminerMicrotaches();
-	const id = etatEcranKaraoke.lecteurId;
+	const id = audio.audioSalle.lecteurId;
 	assert.deepEqual(b.appels[0].args.slice(0, 3), ['PUT', '/api/soirees/s/manches/m/lecteur', { lecteurId: id }]);
 	b.module.afficher(vue({ courant: courant(), lecteurDesigneId: id }), evenement);
 	await terminerMicrotaches();
 	assert.equal(b.appels[1].args[1], '/api/soirees/s/manches/m/passages/p/lecture');
-	assert.equal(b.appels[1].args[2].fichier.nom, input.files[0].name);
+	assert.equal(b.appels[1].args[2].fichier.nom, fichier.name);
 	assert.doesNotMatch(b.principale.textContent, /privé|\.wav|Envoi/);
 	const nouveauFichier = { name: 'Autre.wav', size: 715, webkitRelativePath: 'nouveau/Autre.wav' };
-	input.files = [nouveauFichier]; input.dispatchEvent({ type: 'change' });
-	assert.equal(etatEcranKaraoke.dossier, 'nouveau');
-	assert.deepEqual(etatEcranKaraoke.fichiers, [nouveauFichier]);
+	audio.audioSalle.choisirDossier([nouveauFichier]);
+	assert.deepEqual(audio.audioSalle.etat().fichiers, [nouveauFichier]);
 	assert.equal(b.appels.length, 2, 'le cycle diffère le choix pour le Passage déjà préparé');
 	b.module.afficher(vue({ courant: courant('EN_COURS'), lecteurDesigneId: id,
 		lecture: { lecteurId: id, lectureId: 'local', source: 'FICHIER_LOCAL', etat: 'DEMARREE' } }), { source: 'evenement', type: 'passage-demarre' });
 	await terminerMicrotaches();
 	assert.ok(audio.appels.includes('lire'));
 	b.module.afficher(vue({ mancheId: 'm2', lecteurDesigneId: null }), capture);
-	assert.equal(etatEcranKaraoke.lecteur, audio.lecteur);
-	assert.equal(etatEcranKaraoke.lecteurId, id);
+	assert.equal(audio.sonsDeManche.at(-1), false);
 	assert.equal(audio.appels.at(-1), 'libérer');
 	assert.deepEqual(b.appels.map(a => a.args[3].annoncer), [false, false, false]);
 	assert.equal(new Set(b.appels.map(a => a.args[3].entetes['Idempotency-Key'])).size, 3);
@@ -866,10 +863,8 @@ test('Salle : deux bandeaux stables au-dessus du rouleau, avec compte des votes 
 });
 
 test('Salle : la boucle masque le résultat à l’échéance, même en pause et sans Passage en cours', t => {
-	reinitialiserEtatEcranPourTests();
 	const audio = bancLecteur();
-	const b = creerBanc((zones, contexte) => creerEcranKaraoke(zones, contexte,
-		{ ...audio.dependances, document: zones.principale.ownerDocument }), 'ECRAN');
+	const b = creerBanc((zones, contexte) => ecran(zones, contexte, audio), 'ECRAN');
 	t.after(() => b.module.demonter());
 	const cloture = Date.parse('2026-11-18T21:00:30Z');
 	let maintenant = cloture + 9999;
