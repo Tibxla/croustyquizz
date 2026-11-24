@@ -68,6 +68,41 @@ class DeroulementSoireeTempsReelTest {
 	}
 
 	@Test
+	void lEcranOuvertPendantLaPreparationSuitLOuvertureEtLesArrivees() throws Exception {
+		var creation = envoyer("creerSoiree", HttpMethod.POST, "/api/soirees", null,
+				Map.of("titre", "Soirée ouverte devant la salle", "format", "SOLO", "pilotage", "MANUEL"), null, 201);
+		UUID soiree = UUID.fromString(creation.path("id").asString());
+		String racine = "/api/soirees/" + soiree;
+		String animateur = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
+		String cleEcran = envoyer("creerAccesEcran", HttpMethod.POST, racine + "/acces-ecran", animateur, null, null, 200)
+				.path("cleEcran").asString();
+		var salle = abonner(cleEcran, Canaux.salle(soiree), "salle", "retrouverEtatSalle");
+		assertThat(capturer(racine, salle).at("/vue/soiree/etat").asString()).isEqualTo("PREPARATION");
+
+		envoyer("ouvrirSoiree", HttpMethod.POST, racine + "/ouverture", animateur, null, UUID.randomUUID(), 200);
+
+		var ouverture = lire(salle, "soiree-ouverte");
+		assertThat(ouverture.at("/donnees/soiree/etat").asString()).isEqualTo("OUVERTE");
+
+		String code = ouverture.at("/donnees/soiree/codeAcces").asString();
+		var camille = envoyer("rejoindreSoiree", HttpMethod.POST, "/api/soirees/rejoindre", null,
+				Map.of("codeAcces", code, "pseudo", "Camille"), null, 201);
+		assertThat(lire(salle, "joueurs-modifies").at("/donnees/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
+		assertThat(capturer(racine, salle).at("/vue/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
+
+		String joueurId = camille.at("/joueur/id").asString();
+		var manette = abonner(camille.path("jetonReconnexion").asString(), Canaux.joueur(UUID.fromString(joueurId)),
+				"manette", "retrouverEtatManette");
+		assertThat(capturer(racine, manette).at("/vue/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
+
+		envoyer("rejoindreSoiree", HttpMethod.POST, "/api/soirees/rejoindre", null,
+				Map.of("codeAcces", code, "pseudo", "Sacha"), null, 201);
+		var vueManette = lire(manette, "joueurs-modifies").path("donnees");
+		assertThat(vueManette.path("joueurId").asString()).isEqualTo(joueurId);
+		assertThat(vueManette.path("joueurs").findValuesAsString("pseudo")).containsExactlyInAnyOrder("Camille", "Sacha");
+	}
+
+	@Test
 	void deuxManchesDansLOrdreAvecPauseRepriseRecaptureEtFinSurTousLesEcrans() throws Exception {
 		var creation = envoyer("creerSoiree", HttpMethod.POST, "/api/soirees", null,
 				Map.of("titre", "Soirée de deux Manches", "format", "SOLO", "pilotage", "MANUEL"), null, 201);
