@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Fallback;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import fr.croustyquizz.manche.DepotDeManches;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
+import fr.croustyquizz.manche.PilotageDeSoiree;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -28,7 +30,18 @@ public final class FournisseurCommunDemonstration implements FournisseurPartieCo
 
 	private final DepotDeManches depot;
 	private final JsonMapper json;
-	public FournisseurCommunDemonstration(DepotDeManches depot, JsonMapper json) { this.depot = depot; this.json = json; }
+	private final PilotageDeSoiree pilotage;
+
+	public FournisseurCommunDemonstration(DepotDeManches depot, JsonMapper json) {
+		this(depot, json, soireeId -> false);
+	}
+
+	@Autowired
+	public FournisseurCommunDemonstration(DepotDeManches depot, JsonMapper json, PilotageDeSoiree pilotage) {
+		this.depot = depot;
+		this.json = json;
+		this.pilotage = pilotage;
+	}
 	/** Identité stable par Soirée, partagée par les projections et les jetons de démonstration. */
 	public static UUID joueurId(UUID soireeId) {
 		return joueurId(soireeId, 1);
@@ -50,8 +63,8 @@ public final class FournisseurCommunDemonstration implements FournisseurPartieCo
 		ManchePersistante active = programme.stream().filter(m -> m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE)
 				.findFirst().orElse(null);
 		Map<String, Object> vue = new LinkedHashMap<>();
-		vue.put("soiree", Map.of("id", soireeId, "titre", "Soirée de démonstration", "format", "SOLO", "pilotage", "MANUEL",
-				"etat", "EN_COURS", "codeAcces", "DEMO01"));
+		vue.put("soiree", Map.of("id", soireeId, "titre", "Soirée de démonstration", "format", "SOLO",
+				"pilotage", pilotage.estAutomatique(soireeId) ? "AUTOMATIQUE" : "MANUEL", "etat", "EN_COURS", "codeAcces", "DEMO01"));
 		vue.put("mancheActive", active == null ? null : decrire(active, programme.indexOf(active)));
 		vue.put("modeEnCours", active == null ? null : active.getMode());
 		vue.put("joueurs", IntStream.rangeClosed(1, NOMBRE_JOUEURS)

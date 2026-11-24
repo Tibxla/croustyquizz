@@ -133,8 +133,10 @@ public class ServiceDeManche<R, E> {
 		return socle.registre().obtenir(manche.getMancheId(), () -> {
 			R reglages = socle.json().readValue(manche.getReglages(), fabrique.typeReglages());
 			HorlogeDeManche horloge = new HorlogeDeManche(socle.horloge(), (d, action) -> minuter(manche, d, action));
+			boolean automatique = socle.pilotage().estAutomatique(manche.getSoireeId());
+			// Le service constate estTerminee et persiste la fin naturelle.
 			var contexte = new ContexteDeManche(manche.getSoireeId(), manche.getMancheId(), fabrique.reglagesCommuns(reglages),
-					horloge, () -> { }); // Le service constate estTerminee et persiste la fin naturelle.
+					horloge, () -> { }, automatique);
 			DeroulementDeManche d = manche.getEtat() == EtatManche.PRETE ? fabrique.creer(contexte, reglages)
 					: fabrique.restaurer(contexte, reglages, persistance.charger(manche.getMancheId()), manche.getEtat());
 			horloge.attacher(d);

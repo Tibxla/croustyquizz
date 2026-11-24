@@ -31,6 +31,14 @@
         <option value="4">Joueur 4</option>
       </select>
     </div>
+    <div class="champ" id="champ-pilotage" hidden>
+      <label for="pilotage">Pilotage de la Soirée</label>
+      <select id="pilotage" name="pilotage" aria-describedby="erreur-identite">
+        <option value="">Garder le Pilotage actuel</option>
+        <option value="MANUEL">Manuel</option>
+        <option value="AUTOMATIQUE">Automatique</option>
+      </select>
+    </div>
     <label class="identite__option"><input type="checkbox" name="factice" checked>Afficher le module factice pour la Manche en cours</label>
     <p class="champ--erreur" id="erreur-identite" role="alert" hidden></p>
     <p class="envoi" role="status" data-envoi hidden></p>

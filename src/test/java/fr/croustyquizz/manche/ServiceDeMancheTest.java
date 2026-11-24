@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionSystemException;
@@ -20,6 +21,52 @@ import fr.croustyquizz.tempsreel.DiffuseurFactice;
 class ServiceDeMancheTest {
 	private final BancDuSocle banc = new BancDuSocle();
 	private final UUID soiree = UUID.randomUUID();
+
+	@Test
+	void leDeroulementRecoitLePilotageDeSaSoireeALaCreationEtALaRestauration() {
+		var automatique = new AtomicBoolean(true);
+		var bancPilote = new BancDuSocle(null, id -> soiree.equals(id) && automatique.get());
+		UUID manche = bancPilote.creer(soiree);
+		assertThat(bancPilote.service.demarrer(manche, bancPilote.envoi(soiree, "/demarrer", Map.of())))
+				.isInstanceOf(Accepte.class);
+		ContexteDeManche initial = bancPilote.mode.dernierContexte;
+		assertThat(initial.pilotageAutomatique()).isTrue();
+
+		automatique.set(false);
+		bancPilote.service.instantane(soiree, manche);
+		assertThat(bancPilote.mode.dernierContexte).isSameAs(initial);
+		assertThat(initial.pilotageAutomatique()).isTrue();
+		automatique.set(true);
+		bancPilote.registre.retirer(manche);
+		bancPilote.service.instantane(soiree, manche);
+		assertThat(bancPilote.mode.dernierContexte).isNotSameAs(initial);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isTrue();
+
+		UUID autreSoiree = UUID.randomUUID();
+		UUID autreManche = bancPilote.creer(autreSoiree);
+		assertThat(bancPilote.service.demarrer(autreManche, bancPilote.envoi(autreSoiree, "/demarrer", Map.of())))
+				.isInstanceOf(Accepte.class);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isFalse();
+	}
+
+	@Test
+	void uneRestaurationApresRedemarragePerdLeChoixDeDemonstration() {
+		var choix = new AtomicReference<>(new PilotageDeSoireeDemonstration());
+		choix.get().choisir(soiree, true);
+		var bancPilote = new BancDuSocle(null, id -> choix.get().estAutomatique(id));
+		UUID manche = bancPilote.creer(soiree);
+		assertThat(bancPilote.service.demarrer(manche, bancPilote.envoi(soiree, "/demarrer", Map.of())))
+				.isInstanceOf(Accepte.class);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isTrue();
+
+		choix.set(new PilotageDeSoireeDemonstration());
+		bancPilote.registre.retirer(manche);
+		bancPilote.service.instantane(soiree, manche);
+		assertThat(bancPilote.mode.dernierContexte.pilotageAutomatique()).isFalse();
+		var fournisseur = new fr.croustyquizz.tempsreel.FournisseurCommunDemonstration(
+				bancPilote.stockage, bancPilote.json, choix.get());
+		assertThat(fournisseur.fournir(soiree, Destination.CONSOLE).get("soiree")).extracting("pilotage").isEqualTo("MANUEL");
+	}
 
 	@Test
 	void repeterUnPilotageRendLeRecuInitialSansRepublierMemeApresRestauration() {
@@ -309,7 +356,7 @@ class ServiceDeMancheTest {
 		var socle = new SocleDeManche(banc.verrous, banc.stockage, banc.stockage, banc.registre,
 				new RegistreDesEnvois(banc.stockage, banc.json),
 				new fr.croustyquizz.tempsreel.PublicationDeVues(banc.assembleur, banc.commun,
-						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur), banc.horloge, banc.json);
+						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur), banc.horloge, banc.json, soireeId -> false);
 		class ServiceAvecGarde extends ServiceDeManche<ModeFacticeDuSocle.Reglages, DeroulementFactice.Etat> {
 			ServiceAvecGarde() { super(banc.mode, banc.mode, socle); }
 			@Override protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {
