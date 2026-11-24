@@ -111,3 +111,14 @@ test('terminer demande une confirmation et rend le focus après annulation', asy
 	await terminerMicrotaches();
 	assert.deepEqual(b.annonces.at(-1), { etat: 'refuse', detail: 'La Soirée est déjà terminée.' });
 });
+
+test('ne montre que les commandes de l’étape de la Soirée', () => {
+	const b = banc();
+	b.changerEtat('synchronisee');
+	b.afficher('OUVERTE');
+	assert.deepEqual([b.lancer.hidden, b.suivante.hidden, b.terminer.hidden], [false, true, true]);
+	b.afficher('EN_COURS', { id: 'active', etat: 'EN_COURS' });
+	assert.deepEqual([b.lancer.hidden, b.suivante.hidden, b.terminer.hidden], [true, false, false]);
+	b.afficher('TERMINEE', null, [{ id: 'm', etat: 'TERMINEE' }]);
+	assert.deepEqual([b.lancer.hidden, b.suivante.hidden, b.terminer.hidden], [true, true, true]);
+});

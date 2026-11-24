@@ -30,8 +30,22 @@ export function monterPilotage(barre, contexte) {
 		return false;
 	}
 
+	// Seules les commandes de l'étape de la Soirée restent visibles : un « Lancer la Soirée » désactivé pendant la
+	// Soirée ressemblait encore à l'action principale.
+	function visible(action) {
+		const etat = vue?.soiree?.etat;
+		if (!etat) return action === 'LANCER';
+		if (action === 'LANCER') return etat === 'PREPARATION' || etat === 'OUVERTE' || peutEnvoyer('LANCER');
+		return etat === 'EN_COURS';
+	}
+
 	function actualiser() {
-		for (const bouton of boutons) bouton.setAttribute('aria-disabled', String(!peutEnvoyer(actionDe(bouton))));
+		const focus = barre.ownerDocument.activeElement;
+		for (const bouton of boutons) {
+			bouton.setAttribute('aria-disabled', String(!peutEnvoyer(actionDe(bouton))));
+			bouton.hidden = !visible(actionDe(bouton));
+		}
+		if (focus && boutons.includes(focus) && focus.hidden) boutons.find(bouton => !bouton.hidden)?.focus();
 		if (dialogue.open && !peutEnvoyer('TERMINER')) dialogue.close();
 	}
 
