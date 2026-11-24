@@ -32,15 +32,19 @@ export function monter(zones, contexte) {
 		dialogue.contenu.append(e('p', '', `Retirer ton Passage ${cible.numero} · ${cible.chanson.titre} ?`), dialogue.confirmer);
 	}
 	let dernierCourant, descriptionTicket, ticketCourant, etiquette, minuterie, confirmerPresence, statutPresence, reessai;
+	let automatique = false;
 	function decompter() {
 		const p = ui.bloc?.courant;
 		if (p?.etat !== 'APPELE' || !minuterie) return;
 		const enPause = ui.bloc.etat === 'EN_PAUSE';
 		const restant = delaiAppelRestant({ ...p, maintenant: contexte.maintenantServeur(), enPause });
+		const expire = automatique && restant === 0;
 		minuterie.textContent = formaterTempsRestant(restant);
 		etiquette.classList.toggle('mon-ticket__etiquette--texte', enPause || restant === 0);
 		etiquette.textContent = enPause ? 'Pause : attends la reprise.'
+			: expire ? 'Le temps est écoulé.'
 			: restant === 0 ? 'Le temps est écoulé, tu peux encore confirmer.' : "C'est ton tour";
+		confirmerPresence.hidden = expire || !ui.bloc.peutConfirmerPresence || !ui.synchronisee || enPause;
 	}
 	function rendreScene(origine) {
 		const p = ui.bloc.courant;
@@ -90,22 +94,28 @@ export function monter(zones, contexte) {
 		if (origine?.source === 'capture') ticketCourant?.classList.remove('mon-ticket--detachement');
 		const envoi = envoiPresence();
 		const texte = texteEnvoi(envoi);
-		if (statutPresence && statutPresence.textContent !== texte) statutPresence.textContent = texte;
+		if (statutPresence) {
+			statutPresence.className = envoi?.etat === 'refuse' ? 'envoi envoi--refuse' : '';
+			if (statutPresence.textContent !== texte) statutPresence.textContent = texte;
+		}
 		if (confirmerPresence) {
-			confirmerPresence.hidden = !ui.bloc.peutConfirmerPresence || !ui.synchronisee || ui.bloc.etat === 'EN_PAUSE';
 			confirmerPresence.disabled = !ui.mutationsPermises || ['en-cours', 'accepte'].includes(envoi?.etat) || Boolean(peutReessayer(envoi));
 			reessai.hidden = !ui.reessaiPossible(envoi);
 		}
+		decompter();
 		if (avaitFocus && (!actif.isConnected || actif.hidden || actif.disabled || ui.document.activeElement !== actif)) {
 			const cible = boutonCible === 'reessai' ? reessai : confirmerPresence;
 			(actif !== titreScene && cible && !cible.hidden && !cible.disabled ? cible : p ? titreScene : titre).focus();
 		}
-		decompter();
 	}
 	function envoiPresence() {
 		return ui.dernierEnvoi(e => e.commande.type === 'CONFIRMER_PRESENCE' && e.commande.passageId === ui.bloc.courant?.passageId);
 	}
-	const horloge = setInterval(() => { decompter(); votes.decompter(); }, 1000);
+	const horloge = setInterval(() => {
+		decompter();
+		if (confirmerPresence?.hidden && ui.document.activeElement === confirmerPresence) titreScene.focus();
+		votes.decompter();
+	}, 1000);
 	ui.surRendu = origine => {
 		if (!ui.bloc) return;
 		votes.rendre(titre, origine);
@@ -135,7 +145,13 @@ export function monter(zones, contexte) {
 		catalogue.reinitialiser(); invalidation.textContent = '';
 	};
 	ui.surDestruction = () => { clearInterval(horloge); catalogue.detruire(); };
-	return { afficher: ui.afficher, demonter: ui.demonter };
+	return {
+		afficher(vue, origine) {
+			automatique = vue.soiree?.pilotage === 'AUTOMATIQUE';
+			ui.afficher(vue, origine);
+		},
+		demonter: ui.demonter,
+	};
 }
 
 function installerVotes(ui) {

@@ -140,3 +140,13 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 4. Confirmer le premier Passage après la préparation de son fichier. À la fin de lecture, vérifier que le Joueur 2 est appelé, que l’Écran de salle prépare son fichier et que le Vote du public du premier Passage s’ouvre sur sa Manette. Confirmer le deuxième Passage une fois préparé et vérifier que le fichier local démarre.
 5. Rejouer avec une pause pendant un Passage alors que le Joueur 2 attend. Cliquer sur « Passer » et vérifier que le Joueur 2 reste en attente jusqu’à « Reprendre ».
 6. Rejouer dans une Soirée neuve en Manuel. Vérifier que « Appeler le suivant » est disponible quand la File d’attente est libre et que l’Animateur doit l’utiliser après la première inscription et après la fin du Passage.
+
+## Recette navigateur du saut à l’échéance de l’appel (#121)
+
+1. Reprendre les étapes 1 à 3 de la recette #120 avec deux Manettes, sans préparer de fichier audio.
+2. Laisser le Joueur 1 attendre sans cliquer sur « Je suis prêt ». À zéro, vérifier que sa Manette retire le bouton et affiche « Le temps est écoulé. » si la vue d’appel est encore affichée. Si un envoi en cours reçoit `HORS_DELAI`, vérifier le détail « Le temps pour confirmer est écoulé. ».
+3. Vérifier que le Joueur 2 est appelé, que son décompte démarre à trente secondes et qu’aucun Vote du public ne s’ouvre. Laisser ensuite son appel expirer, File d’attente vide. Vérifier « Passage sauté » sur sa Manette et « Sauté » sur la Console et l’Écran de salle.
+4. Rejouer en mettant la Manche en pause lorsqu’il reste dix secondes à l’appel. Attendre plus de trente secondes. Vérifier que le Passage reste appelé et que « Je suis prêt » est indisponible pendant la pause. À la reprise, vérifier que le saut arrive après les dix secondes restantes.
+5. Rejouer en Pilotage Manuel. À zéro, vérifier « Le temps est écoulé, tu peux encore confirmer. », puis confirmer et vérifier que le Passage démarre.
+
+Vérification dans un navigateur à effectuer.
