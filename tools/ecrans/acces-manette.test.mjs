@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adresseRetourArrivee, controlerJeton, creerAccesManette, reprendreAcces, stockagesDuNavigateur } from '../../src/main/resources/static/js/acces-manette.mjs';
+import { adresseRetourArrivee, arriver, controlerJeton, creerAccesManette, reprendreAcces, stockagesDuNavigateur } from '../../src/main/resources/static/js/acces-manette.mjs';
 
 const soiree = '00000001-0000-4000-8000-000000000001';
 const autre = '00000001-0000-4000-8000-000000000002';
@@ -245,4 +245,31 @@ test('au démarrage, seul un jeton refusé renvoie à l’arrivée ; une panne l
 
 	assert.equal(adresseRetourArrivee('K7PQ2M'), '/rejoindre.html#code=K7PQ2M&acces=refuse');
 	assert.equal(adresseRetourArrivee(null), '/rejoindre.html#acces=refuse');
+});
+
+test('un code tapé à la main reprend le Joueur gardé pour ce code avant toute arrivée, même après 12 heures', async () => {
+	let heure = 0;
+	const acces = creerAccesManette(stockageFactice(), { maintenant: () => heure });
+	acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' });
+	heure = 13 * 3_600_000;
+	const rejoindre = () => assert.fail('Un second Joueur ne doit pas être créé.');
+
+	assert.deepEqual(await arriver(acces, { codeAcces: 'K7PQ2M', consulter: async () => ({ statut: 200, corps: vue() }), rejoindre }),
+		{ resultat: 'reprise', soireeId: soiree });
+	// Une coupure ne crée pas non plus de second Joueur : le jeton vaut peut-être encore.
+	assert.deepEqual(await arriver(acces, { codeAcces: 'K7PQ2M', consulter: async () => ({ statut: 0, corps: null }), rejoindre }),
+		{ resultat: 'coupure' });
+});
+
+test('sans accès gardé valable pour ce code, l’arrivée crée le Joueur', async () => {
+	const acces = creerAccesManette(stockageFactice());
+	acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' });
+	const reponse = { ok: true, corps: { soireeId: autre } };
+	const rejoindre = async () => reponse;
+
+	assert.deepEqual(await arriver(acces, { codeAcces: 'ZZZZZZ', consulter: () => assert.fail('Aucun accès à consulter.'), rejoindre }),
+		{ resultat: 'arrivee', arrivee: reponse });
+	assert.deepEqual(await arriver(acces, { codeAcces: 'K7PQ2M', consulter: async () => ({ statut: 401, corps: null }), rejoindre }),
+		{ resultat: 'arrivee', arrivee: reponse });
+	assert.equal(acces.lire(soiree), null);
 });

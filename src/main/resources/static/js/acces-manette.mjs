@@ -138,6 +138,18 @@ export async function reprendreAcces(accesManette, { codeAcces, consulter, ancie
 	return { resultat: 'aucune' };
 }
 
+/**
+ * Arrivée par le formulaire : un code tapé à la main reprend d'abord le Joueur gardé pour ce code, comme un QR
+ * code rescanné, même après les 12 heures de la reprise sans code. rejoindre() n'est appelé (POST) que sans accès
+ * valable ; une coupure ne l'appelle pas non plus, car le jeton gardé vaut peut-être encore.
+ * Rend { resultat: 'reprise', soireeId }, { resultat: 'coupure' } ou { resultat: 'arrivee', arrivee }.
+ */
+export async function arriver(accesManette, { codeAcces, consulter, rejoindre }) {
+	const reprise = await reprendreAcces(accesManette, { codeAcces, consulter });
+	if (reprise.resultat !== 'aucune') return reprise;
+	return { resultat: 'arrivee', arrivee: await rejoindre() };
+}
+
 // Rend l'accès repris ({ soireeId, codeAcces }), null s'il n'y en a pas ou s'il est refusé, ou 'coupure'.
 // L'ancien emplacement n'est effacé qu'une fois l'accès relu dans le nouveau : sinon le jeton serait perdu.
 async function reprendreAncienAcces(accesManette, ancienStockage, consulter) {

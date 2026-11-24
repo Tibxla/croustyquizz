@@ -55,7 +55,7 @@
 
 	<script type="module">
 		import { appeler } from '/js/api.js';
-		import { creerAccesManette, reprendreAcces } from '/js/acces-manette.mjs';
+		import { arriver, creerAccesManette, reprendreAcces } from '/js/acces-manette.mjs';
 
 		// Jeton et UUID du Joueur, rangés par Soirée jusqu'au vidage du navigateur (à défaut, le temps de l'onglet) ;
 		// la coquille (page.mjs) les relit.
@@ -171,8 +171,21 @@
 				return;
 			}
 			bouton.disabled = true;
-			const arrivee = await appeler('POST', '/api/soirees/rejoindre', { corps: { codeAcces: code, pseudo: champPseudo.value } });
+			// Un code tapé à la main reprend le Joueur déjà gardé pour ce code au lieu d'en créer un second.
+			const issue = await arriver(accesManette, {
+				codeAcces: code, consulter,
+				rejoindre: () => appeler('POST', '/api/soirees/rejoindre', { corps: { codeAcces: code, pseudo: champPseudo.value } }),
+			});
 			bouton.disabled = false;
+			if (issue.resultat === 'reprise') {
+				allerALaManette(issue.soireeId);
+				return;
+			}
+			if (issue.resultat === 'coupure') {
+				afficherErreur(MESSAGES.RESEAU_INDISPONIBLE);
+				return;
+			}
+			const { arrivee } = issue;
 			if (!arrivee.ok) {
 				if (arrivee.code?.startsWith('PSEUDO_') || arrivee.code === 'DONNEES_INVALIDES') {
 					signalerChamp(champPseudo, MESSAGES[arrivee.code]);
