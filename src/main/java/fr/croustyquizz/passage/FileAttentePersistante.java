@@ -20,8 +20,9 @@ public class FileAttentePersistante {
         tourOuvert = etat.tourOuvert(); prochainOrdreInscription = etat.prochainOrdreInscription();
         prochaineCleOrdre = etat.prochaineCleOrdre(); passagePrioritaireId = etat.passagePrioritaireId();
     }
-    public EtatFileAttente restaurer(List<Passage> passages, Map<UUID, Long> consommations) {
+    public EtatFileAttente restaurer(List<Passage> passages, Map<UUID, Long> consommations,
+            List<InvitationPassage> invitations) {
         return new EtatFileAttente(soireeId, mancheId, limitePassagesEnAttente, tourOuvert,
-                prochainOrdreInscription, prochaineCleOrdre, passagePrioritaireId, passages, consommations);
+                prochainOrdreInscription, prochaineCleOrdre, passagePrioritaireId, passages, consommations, invitations);
     }
 }
