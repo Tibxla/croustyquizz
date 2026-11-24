@@ -5,24 +5,6 @@ const roles = { manette: 'JOUEUR', console: 'ANIMATEUR', ecran: 'ECRAN' };
 // Jeton de reconnexion ou clé d'Écran remis par le serveur (format du contrat) : opaque, il ne contient pas l'identité.
 const opaque = /^[A-Za-z0-9_-]{43,128}$/;
 
-export function lireIdentiteEcran(adresse, memoire, remplacerAdresse) {
-	const fragment = new URLSearchParams(adresse.hash.slice(1));
-	if (fragment.has('cle')) {
-		const cle = fragment.get('cle');
-		const soireeId = fragment.get('soiree')?.toLowerCase();
-		const valide = opaque.test(cle) && uuid.test(soireeId ?? '');
-		adresse.hash = '';
-		if (valide) adresse.searchParams.set('soiree', soireeId);
-		remplacerAdresse(adresse.pathname + adresse.search);
-		if (!valide) throw new Error('Lien incomplet : ouvre l’Écran de salle avec une clé et une Soirée valides.');
-		memoire.ecrire(`croustyquizz.cleEcran.${soireeId}`, cle);
-		return { recherche: adresse.search, jeton: cle };
-	}
-	const soireeId = adresse.searchParams.get('soiree');
-	const jeton = soireeId ? memoire.lire(`croustyquizz.cleEcran.${soireeId}`) : null;
-	return { recherche: adresse.search, jeton };
-}
-
 // identifiant : l'UUID du Joueur, rangé à côté de son jeton opaque par la page d'arrivée (rejoindre.html).
 export function lireAcces(ecran, recherche, jeton, identifiant) {
 	const soireeId = new URLSearchParams(recherche).get('soiree');

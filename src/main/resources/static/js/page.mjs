@@ -1,8 +1,7 @@
 import { suivreVue, creerTransport } from './tempsreel.js';
 import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
-import { lireAcces, lireIdentiteEcran } from './identite.mjs';
-import { memoire } from './api.js';
+import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
@@ -50,10 +49,8 @@ async function demarrer() {
 	// La Manette d'un vrai Joueur relit l'accès rangé pour sa Soirée par rejoindre.html ; sinon, l'identité de
 	// démonstration de l'onglet (sessionStorage).
 	const accesManette = ecran === 'manette' ? creerAccesManette().lire(new URLSearchParams(location.search).get('soiree')) : null;
-	const identiteEcran = ecran === 'ecran' ? lireIdentiteEcran(new URL(location.href), memoire,
-		adresse => history.replaceState(null, '', adresse)) : null;
-	const jeton = identiteEcran?.jeton ?? accesManette?.jeton ?? memoire.lire('croustyquizz.jeton');
-	const acces = lireAcces(ecran, identiteEcran?.recherche ?? location.search, jeton, accesManette?.joueurId);
+	const jeton = accesManette?.jeton ?? sessionStorage.getItem('croustyquizz.jeton');
+	const acces = lireAcces(ecran, location.search, jeton, accesManette?.joueurId);
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');

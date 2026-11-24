@@ -1,57 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { lireAcces, lireIdentiteEcran } from '../../src/main/resources/static/js/identite.mjs';
-import { suivreVue } from '../../src/main/resources/static/js/tempsreel.js';
 import { creerTransport } from '../../src/main/resources/static/js/transport.mjs';
 
 const json = new Headers({ 'Content-Type': 'application/json' });
 const probleme = new Headers({ 'Content-Type': 'application/problem+json;charset=UTF-8' });
-
-test('la clé reçue par l’Écran authentifie CONNECT et la capture du canal de sa Soirée', { timeout: 2000 }, async () => {
-	const soiree = '00000001-0000-4000-8000-000000000000';
-	const cle = 'a'.repeat(43);
-	const stockage = new Map();
-	const memoire = { lire: nom => stockage.get(nom) ?? null, ecrire: (nom, valeur) => stockage.set(nom, valeur) };
-	const adresse = new URL(`https://exemple.test/ecran.html#soiree=${soiree}&cle=${cle}`);
-	let adresseNettoyee;
-	const { recherche, jeton } = lireIdentiteEcran(adresse, memoire, url => { adresseNettoyee = url; });
-	assert.equal(adresseNettoyee, `/ecran.html?soiree=${soiree}`);
-	assert.equal(lireIdentiteEcran(new URL(adresseNettoyee, adresse.origin), memoire).jeton, cle);
-	const autreSoiree = '00000002-0000-4000-8000-000000000000';
-	assert.equal(lireIdentiteEcran(new URL(`?soiree=${autreSoiree}`, adresse), memoire).jeton, null);
-
-	let connexion;
-	let abonnement;
-	let capture;
-	const abonnementId = '00000003-0000-4000-8000-000000000000';
-	const transport = creerTransport({ jeton }, {
-		adresse: adresse.href,
-		Client: class {
-			constructor(options) { connexion = options; }
-			activate() {}
-			deactivate() {}
-			subscribe(destination, _rappel, { id }) { abonnement = { destination, id }; }
-		},
-		requete: async (url, options) => {
-			capture = { route: `${url.pathname}${url.search}`, autorisation: options.headers.Authorization };
-			return Response.json({ abonnementId, revision: 0, heureServeur: '2026-11-24T20:00:00Z', vue: {} });
-		},
-	});
-	const { promise: synchronisee, resolve: resoudre } = Promise.withResolvers();
-	const suivi = suivreVue({ ...lireAcces('ecran', recherche, jeton), surVue: () => {}, surEtat(etat) {
-		if (etat === 'synchronisee') resoudre();
-	} }, { transport, nouvelIdentifiant: () => abonnementId, programmer: () => {}, annuler: () => {} });
-	try {
-		connexion.onConnect();
-		assert.equal(connexion.connectHeaders.Authorization, `Bearer ${cle}`);
-		assert.deepEqual(abonnement, { destination: `/topic/soirees/${soiree}/salle`, id: abonnementId });
-		assert.deepEqual(capture, { route: `/api/soirees/${soiree}/etat/salle?abonnementId=${abonnementId}`,
-			autorisation: `Bearer ${cle}` });
-		await synchronisee;
-	} finally {
-		suivi.arreter();
-	}
-});
 
 test('Bearer authentifie CONNECT, capture et commandes sans perdre clé idempotente ni annulation', async () => {
 	const requetes = [];
