@@ -1259,6 +1259,112 @@ paths:
         schema:
           type: string
           format: uuid
+  /api/soirees/{soireeId}/musique-attente:
+    put:
+      operationId: reglerMusiqueDAttente
+      summary: Couper ou relancer la Musique d’attente
+      description: >
+        Animateur de la Soirée uniquement. Le choix est conservé après redémarrage, même hors Manche.
+        Un changement publie musique-attente-modifiee sur la Console et l’Écran de salle.
+        Un choix déjà en vigueur réussit avec 200, sans publication.
+        En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
+        Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
+      tags:
+      - Socle
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton de la session Animateur. Les jetons de démonstration en dev et recette en sont dispensés.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ReglageMusiqueDAttente
+      responses:
+        '200':
+          description: Choix appliqué ou déjà en vigueur. La Vue synchronisée reste la référence pour l’affichage.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ReglageMusiqueDAttente
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/musique-attente/disponibilite:
+    put:
+      operationId: signalerDisponibiliteMusiqueDAttente
+      summary: Signaler la présence de morceaux dans Attente
+      description: >
+        Écran de salle de cette Soirée uniquement, même hors Manche. Le dernier signal indique si le dossier
+        choisi contient des morceaux dans Attente. Il ne contient ni fichiers ni noms de morceaux et ne
+        change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur la Console
+        et l’Écran de salle. Un signal identique réussit sans publication.
+        En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
+        Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
+      tags:
+      - Socle
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/DisponibiliteMusiqueDAttente
+      responses:
+        '200':
+          description: Disponibilité enregistrée.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/DisponibiliteMusiqueDAttente
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/etat/manette:
     get:
       operationId: retrouverEtatManette

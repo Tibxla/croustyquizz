@@ -12,7 +12,7 @@ import fr.croustyquizz.manche.EtatDeSoiree;
 /**
  * État d'une Soirée enregistrée, lu en base (#111). Une Soirée absente de la base est
  * confiée à l'autre implémentation du profil (démonstration en dev et recette,
- * {@code @Fallback}) ; sans elle, elle n'est ni en cours ni terminée.
+ * {@code @Fallback}) ; sans repli, la Soirée est inconnue.
  */
 @Component
 class EtatDeSoireeEnregistree implements EtatDeSoiree {
@@ -28,6 +28,16 @@ class EtatDeSoireeEnregistree implements EtatDeSoiree {
 	@Override
 	public boolean estEnregistree(UUID soireeId) {
 		return soirees.existsById(soireeId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean existe(UUID soireeId) {
+		if (soirees.existsById(soireeId)) {
+			return true;
+		}
+		EtatDeSoiree autre = autre();
+		return autre != null && autre.existe(soireeId);
 	}
 
 	@Override

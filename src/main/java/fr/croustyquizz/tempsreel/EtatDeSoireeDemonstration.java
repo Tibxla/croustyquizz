@@ -18,6 +18,12 @@ import fr.croustyquizz.manche.EtatDeSoiree;
 @Fallback
 public final class EtatDeSoireeDemonstration implements EtatDeSoiree {
 
+	/** Chaque UUID peut désigner une Soirée de démonstration, dès avant la première Manche. */
+	@Override
+	public boolean existe(UUID soireeId) {
+		return true;
+	}
+
 	@Override
 	public boolean estEnregistree(UUID soireeId) {
 		return false;

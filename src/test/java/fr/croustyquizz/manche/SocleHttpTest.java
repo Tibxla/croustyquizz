@@ -231,7 +231,7 @@ class SocleHttpTest {
 			"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
 			"org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration"})
 	@Import({PilotageMancheControleur.class, ManchesDeTestControleur.class, VuesControleur.class, ErreursHttp.class,
-			ConfigurationActeurHttp.class, AssembleurDeVues.class, PublicationDeVues.class, PublicationApresCommit.class,
+			ConfigurationActeurHttp.class, PublicationDeVues.class, PublicationApresCommit.class,
 			VerrousSoiree.class, RegistreDesDeroulements.class, RegistreDesEnvois.class, SocleDeManche.class,
 			RegistreServicesDeManche.class, RegistreAbonnements.class, DiffuseurStomp.class, IdentitesFactices.class,
 			PilotageDeSoireeDemonstration.class})
@@ -246,6 +246,10 @@ class SocleHttpTest {
 		}
 		@Bean FournisseurDeBloc bloc(org.springframework.beans.factory.ObjectProvider<ServiceDeManche<?, ?>> service,
 				StockageMancheFactice stockage) { return new BlocFacticeDuSocle(service::getObject, stockage); }
+		@Bean AssembleurDeVues assembleur(FournisseurPartieCommune commun, FournisseurDeBloc bloc,
+				VerrousSoiree verrous, JsonMapper json) {
+			return new AssembleurDeVues(commun, List.of(bloc), verrous, json);
+		}
 
 		@Bean CaptureVuePrototype prototype() { return id -> new VueSallePrototype(List.of()); }
 		@Bean SimpMessagingTemplate messagerie() {
