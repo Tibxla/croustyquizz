@@ -37,7 +37,10 @@ channels:
       et paroles du Passage démarré, votes), sans invitation, fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
       Pour le Freestyle, les causes de File d’attente, de cycle et de Vote du public sont
-      partagées. La salle reçoit la Grille masquée du Passage démarré. Aucun événement par seconde."
+      partagées. La salle reçoit la Grille masquée du Passage démarré. Pour un Passage à plusieurs (#74),
+      couplet-annonce paraît une mesure avant chaque changement de Couplet et couplet-commence au
+      changement, calculés par l’Horloge du serveur ; vote-clos apporte les voix de chaque Interprète.
+      Aucun événement par seconde."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -64,7 +67,8 @@ channels:
       effet et rollback sans publication. Pour le Freestyle, les causes de File d’attente, de cycle et de Vote du public sont
       partagées. La Console reçoit la Grille complète du Passage démarré. La déclaration des fiches
       publie instrumentales-modifiees sur la Console et les Manettes dont la sélection disponible change.
-      Aucun événement par seconde."
+      couplet-annonce et couplet-commence rythment les Couplets d’un Passage à plusieurs (#74), avec les
+      invitations en suspens comme au Karaoké. Aucun événement par seconde."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -93,7 +97,9 @@ channels:
       effet et rollback sans publication. Pour le Freestyle, les causes de File d’attente,
       de cycle et de Vote du public sont partagées. La Manette reçoit la Grille masquée du Passage démarré,
       les fiches sélectionnées et disponibles, ses Passages et ses votes personnels. Une déclaration
-      modifiant les fiches de sa sélection publie instrumentales-modifiees. Aucun événement par seconde."
+      modifiant les fiches de sa sélection publie instrumentales-modifiees. Pour un Passage à plusieurs
+      (#74), chaque Manette reçoit couplet-annonce et couplet-commence ; seule celle de l’Interprète annoncé
+      porte monCoupletAnnonce à true et vibre à couplet-annonce. Aucun événement par seconde."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.

@@ -542,6 +542,7 @@ paths:
         configurée si elle est absente. Un mode ou des réglages hors schéma donnent 400 REQUETE_INVALIDE.
         FREESTYLE reçoit les identifiants choisis dans les fiches déclarées par l’Écran de salle pour cette
         Soirée ; une sélection qui ne correspond plus aux fiches disponibles donne 422 INSTRUMENTALE_INDISPONIBLE.
+        Son mesuresParCouplet (#74), 4 par défaut, doit diviser nombreMesures, sinon 422 DONNEES_INVALIDES.
         Aucun Idempotency-Key ajouté à cette route.
       tags:
       - Soirée
@@ -1614,8 +1615,9 @@ paths:
         Instrumentale non admissible à ce titre donne 422 INSTRUMENTALE_INDISPONIBLE ; sans fiche
         disponible pour le tirage, même refus. Un doublon en attente ou un quota atteint donne 409
         PASSAGE_DEJA_INSCRIT ou LIMITE_ATTEINTE. La fiche et la Grille sont figées à l’inscription ;
-        une Grille impossible à composer donne 422 GRILLE_INDISPONIBLE. Le corps doit correspondre
-        au Mode de la Manche, sinon 400 REQUETE_INVALIDE.'
+        une Grille impossible à composer donne 422 GRILLE_INDISPONIBLE. Le Freestyle accepte les mêmes
+        invitesIds qu’au Karaoké, avec les mêmes refus après ceux de l’Instrumentale et de l’inscripteur (#74).
+        Le corps doit correspondre au Mode de la Manche, sinon 400 REQUETE_INVALIDE.'
       tags:
       - Karaoké
       - Freestyle
@@ -1742,7 +1744,8 @@ paths:
     post:
       operationId: repondreInvitation
       summary: Accepter ou refuser son Invitation à un Passage en attente
-      description: 'Passages à plusieurs (#135, #138), README.md, section Karaoké, « Passages à plusieurs ».
+      description: 'Passages à plusieurs (#135, #138), README.md, section Karaoké, « Passages à plusieurs », et
+        au Freestyle (#74).
         Le Joueur authentifié répond à l’Invitation que l’inscripteur lui a adressée à l’inscription.
         ACCEPTER l’ajoute à la fin des Interprètes, dans l’ordre d’acceptation, et lui applique le doublon
         personnel, la limite de Passages en attente et la rotation : le Passage prend le Tour le plus tardif de
@@ -1758,6 +1761,7 @@ paths:
         LIMITE_ATTEINTE. 503 SERVICE_INDISPONIBLE sans reçu.'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - jetonJoueur: []
       parameters:
@@ -1819,14 +1823,15 @@ paths:
         Le reçu est immuable et un rejeu identique ne republie aucune vue.
         Les vues de salle et de Console actualisent le nombre de votes. Au Karaoké, la moyenne est publiée
         à la clôture dans les trois vues, avec le nombre de votes, et vaut null si aucun vote n’a été reçu.
-        Au Freestyle, la moyenne figure dans le Palmarès de fin de Manche.
+        Au Freestyle, la moyenne figure dans le Palmarès de fin de Manche. Un Passage de Freestyle à plusieurs
+        ne se note pas : il se vote par designerMeilleurInterprete (#74).
         Refus dans l’ordre : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE,
         403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche, portée ou présence),
         409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE
         (Manche terminée), 404 RESSOURCE_INTROUVABLE (Passage inconnu, avec reçu),
         409 ETAT_INCOMPATIBLE (pause), 409 VOTE_INTERDIT, 409 COMMANDE_PERIMEE,
-        409 VOTE_CLOS, 409 VOTE_DEJA_ENREGISTRE. En cas de panne, 503 SERVICE_INDISPONIBLE
-        sans reçu.
+        409 VOTE_CLOS, 409 VOTE_DEJA_ENREGISTRE, 422 DONNEES_INVALIDES (Passage de Freestyle à plusieurs).
+        En cas de panne, 503 SERVICE_INDISPONIBLE sans reçu.
       tags:
       - Karaoké
       - Freestyle
@@ -1880,6 +1885,81 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/meilleur-interprete:
+    post:
+      operationId: designerMeilleurInterprete
+      summary: Désigner le meilleur Interprète d’un Passage de Freestyle à plusieurs
+      description: >-
+        Freestyle à plusieurs (#74), README.md, section Freestyle, « Freestyle à plusieurs ». Pendant le Vote
+        du public d’un Passage à plusieurs Interprètes, chaque Joueur présent qui n’en fait pas partie désigne
+        une seule fois un seul de ses Interprètes ; ce choix remplace la note de 1 à 5. Le reçu est immuable et un
+        rejeu identique ne republie aucune vue. Chaque succès publie vote-enregistre sur la salle, la Console et
+        la Manette du votant ; la salle et la Console n’y voient que le nombre de votes, puis les voix de chaque
+        Interprète à vote-clos. Refus dans l’ordre : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE,
+        403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche, portée ou présence), 409 ENVOI_REUTILISE,
+        409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche terminée), 404 RESSOURCE_INTROUVABLE
+        (Passage inconnu, avec reçu), 409 ETAT_INCOMPATIBLE (pause), 409 VOTE_INTERDIT (le votant est Interprète
+        du Passage), 409 COMMANDE_PERIMEE, 409 VOTE_CLOS, 409 VOTE_DEJA_ENREGISTRE, 422 DONNEES_INVALIDES
+        (Passage à un seul Interprète, ou interpreteId absent de ses Interprètes, le votant compris). En cas de
+        panne, 503 SERVICE_INDISPONIBLE sans reçu.
+      tags:
+      - Freestyle
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/DesignationMeilleurInterprete
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseDesignation
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
         '503':
           $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/retrait:
