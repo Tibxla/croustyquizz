@@ -19,4 +19,9 @@ public record InstantaneBlindTest(EtatManche etatManche, EtatBlindTestPersiste e
 		return etat.courant();
 	}
 
+	/** Dernier Buzz qui a pris la main, nul avant le premier. */
+	public AccuseBuzz dernierBuzz() {
+		return etat.dernierBuzz();
+	}
+
 }

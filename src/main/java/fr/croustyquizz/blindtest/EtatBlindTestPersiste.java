@@ -7,11 +7,13 @@ import java.util.List;
  * État privé du mode, persisté par le service : la sélection tirée y vit, jamais dans les réglages publics
  * (ADR 0009, point 1).
  *
- * @param selection Morceaux tirés, dans l'ordre de jeu
- * @param courant   Morceau courant, nul avant le démarrage
- * @param points    points attribués depuis le début de la Manche
+ * @param selection   Morceaux tirés, dans l'ordre de jeu
+ * @param courant     Morceau courant, nul avant le démarrage
+ * @param points      points attribués depuis le début de la Manche
+ * @param dernierBuzz dernier Buzz qui a pris la main, publié comme dernierBuzz ; nul avant le premier
  */
-public record EtatBlindTestPersiste(List<Morceau> selection, MorceauEnCours courant, List<AttributionDePoints> points) {
+public record EtatBlindTestPersiste(List<Morceau> selection, MorceauEnCours courant, List<AttributionDePoints> points,
+		AccuseBuzz dernierBuzz) {
 
 	public EtatBlindTestPersiste {
 		selection = List.copyOf(selection);

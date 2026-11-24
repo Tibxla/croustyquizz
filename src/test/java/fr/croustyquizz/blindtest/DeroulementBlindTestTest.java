@@ -45,6 +45,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 
 	private final Set<UUID> presents = new HashSet<>(Set.of(LEA, SAM, NOE));
 	private int etapesTirees;
+	private long numeroBrouillon;
 	private DeroulementBlindTest blindTest;
 
 	private FabriqueBlindTest fabrique() {
@@ -87,6 +88,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 		assertThat(courant.main().joueurId()).isEqualTo(LEA);
 		assertThat(courant.main().saisie()).isEqualTo(new Delai(horloge.maintenant().plusSeconds(20), null));
 		assertThat(courant.lienExtrait()).isEqualTo(LIEN);
+		assertThat(blindTest.instantane().dernierBuzz()).isEqualTo(((Accepte) resultat).accuse());
 		refusAttendu(buzz(SAM), "BUZZ_NON_AUTORISE");
 	}
 
@@ -101,7 +103,8 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 
 		assertThat(depot).isInstanceOfSatisfying(Accepte.class, accepte -> {
 			assertThat(accepte.accuse()).isNull();
-			assertThat(accepte.aRepublier()).isEmpty();
+			assertThat(accepte.typeEvenement()).isEqualTo("brouillon-depose");
+			assertThat(accepte.aRepublier()).containsExactly(Destination.joueur(LEA));
 		});
 		assertThat(courant().main().brouillon()).isEqualTo(new BrouillonProposition("halo", "BEYONCE"));
 		horloge.avancer(Duration.ofMillis(19_999));
@@ -111,6 +114,24 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 		assertThat(fabrique().typeEvenementMinuteur(blindTest)).isEqualTo("morceau-revele");
 		assertThat(blindTest.points()).containsExactly(
 				new AttributionDePoints(LEA, 100, "Titre et artiste trouvés", true, 3000));
+	}
+
+	@Test
+	void unBrouillonRejoueEnRetardNEcrasePasUnBrouillonPlusRecent() {
+		demarrer();
+		buzz(LEA);
+		deposer(LEA, 2, "halo", "beyonce");
+		Object retenu = blindTest.instantane();
+
+		ResultatDeCommande rejeu = deposer(LEA, 1, "hal", "");
+
+		assertThat(rejeu).isInstanceOfSatisfying(Accepte.class, accepte -> {
+			assertThat(accepte.accuse()).isNull();
+			assertThat(accepte.aRepublier()).isEmpty();
+		});
+		assertThat(blindTest.instantane()).isEqualTo(retenu);
+		assertThat(courant().main().brouillon()).isEqualTo(new BrouillonProposition("halo", "beyonce"));
+		assertThat(courant().main().numeroBrouillon()).isEqualTo(2);
 	}
 
 	@Test
@@ -223,6 +244,68 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 		assertThat(blindTest.instantane()).isEqualTo(avant);
 	}
 
+	@Test
+	void apresUnJugementALEcheanceQuiReveleLeMorceauLaSaisieEstHorsDelai() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "", "Beyoncé");
+		buzz(SAM);
+		deposer(SAM, "halo", "");
+		horloge.avancer(Duration.ofSeconds(20));
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		Object revele = blindTest.instantane();
+
+		refusAttendu(valider(SAM, "halo", ""), "HORS_DELAI");
+		refusAttendu(deposer(SAM, "halo", ""), "HORS_DELAI");
+		refusAttendu(valider(LEA, "Halo", ""), "HORS_DELAI");
+		refusAttendu(valider(NOE, "Halo", ""), "ETAT_INCOMPATIBLE");
+		refusAttendu(buzz(NOE), "BUZZ_NON_AUTORISE");
+		assertThat(blindTest.instantane()).isEqualTo(revele);
+	}
+
+	@Test
+	void uneSaisieApresLEcheanceEstRefuseeAvantQueLeRappelNeLaJuge() {
+		demarrer();
+		horloge.avancer(Duration.ofSeconds(4));
+		buzz(LEA);
+		deposer(LEA, "Halo", "Beyoncé");
+		InstantaneBlindTest avant = blindTest.instantane();
+		UUID etapeId = avant.courant().etapeId();
+		HorlogeFactice rappelEnAttente = new HorlogeFactice(horloge.maintenant().plusSeconds(25));
+		DeroulementBlindTest restaure = fabrique().restaurer(
+				new ContexteDeManche(SOIREE, MANCHE, reglages(), rappelEnAttente, () -> finsSignalees++),
+				REGLAGES, avant.etat(), avant.etatManche());
+
+		refusAttendu(restaure.recevoir(new DeposerBrouillon(LEA, rappelEnAttente.maintenant(), etapeId, 99,
+				new BrouillonProposition("Hello", ""))), "HORS_DELAI");
+		refusAttendu(restaure.recevoir(new ValiderProposition(LEA, rappelEnAttente.maintenant(), UUID.randomUUID(),
+				etapeId, new BrouillonProposition("Hello", ""))), "HORS_DELAI");
+		assertThat(restaure.instantane()).isEqualTo(avant);
+
+		rappelEnAttente.avancer(Duration.ZERO);
+		assertThat(restaure.instantane().courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		assertThat(restaure.points()).containsExactly(
+				new AttributionDePoints(LEA, 100, "Titre et artiste trouvés", true, 4000));
+	}
+
+	@Test
+	void unBuzzRecuA30sDExtraitEstRefuseAvantQueLeRappelNeRevele() {
+		demarrer();
+		horloge.avancer(Duration.ofSeconds(10));
+		InstantaneBlindTest avant = blindTest.instantane();
+		HorlogeFactice rappelEnAttente = new HorlogeFactice(horloge.maintenant().plusMillis(20_001));
+		DeroulementBlindTest restaure = fabrique().restaurer(
+				new ContexteDeManche(SOIREE, MANCHE, reglages(), rappelEnAttente, () -> finsSignalees++),
+				REGLAGES, avant.etat(), avant.etatManche());
+
+		refusAttendu(restaure.recevoir(new BuzzerMorceau(SAM, "Sam", rappelEnAttente.maintenant(), UUID.randomUUID(),
+				avant.courant().etapeId())), "BUZZ_NON_AUTORISE");
+		assertThat(restaure.instantane()).isEqualTo(avant);
+
+		rappelEnAttente.avancer(Duration.ZERO);
+		assertThat(restaure.instantane().courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+	}
+
 	// --- Fin d'un Morceau ---
 
 	@Test
@@ -260,14 +343,14 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	}
 
 	@Test
-	void unBuzzVersUnMorceauTermineEstPerimeSansChangerLInstantane() {
+	void unMorceauReveleRefuseLeBuzzEtUnMorceauPasseLeRendPerime() {
 		demarrer();
 		UUID premier = etape();
 		blindTest.passerEtape(pilotage());
 		Object revele = blindTest.instantane();
 
 		refusAttendu(blindTest.recevoir(new BuzzerMorceau(LEA, "Léa", horloge.maintenant(), UUID.randomUUID(),
-				premier)), "COMMANDE_PERIMEE");
+				premier)), "BUZZ_NON_AUTORISE");
 		assertThat(blindTest.instantane()).isEqualTo(revele);
 
 		blindTest.passerEtape(pilotage());
@@ -336,6 +419,37 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
 		assertThat(courant().main()).isNull();
 		assertThat(horloge.minuteursEnAttente()).isZero();
+	}
+
+	@Test
+	void lePilotageNommeToujoursLeMorceauAffiche() {
+		assertThat(blindTest.viseEtape(null)).isTrue();
+		demarrer();
+		UUID premier = etape();
+
+		assertThat(blindTest.viseEtape(null)).isFalse();
+		assertThat(blindTest.viseEtape(premier)).isTrue();
+		blindTest.passerEtape(pilotage());
+		assertThat(blindTest.viseEtape(premier)).isTrue();
+		blindTest.passerEtape(pilotage());
+		assertThat(blindTest.viseEtape(premier)).isFalse();
+		assertThat(blindTest.viseEtape(etape())).isTrue();
+	}
+
+	@Test
+	void leDernierBuzzSurvitAuMorceauSuivantEtALaRestauration() {
+		demarrer();
+		AccuseBuzz buzzDeLea = (AccuseBuzz) ((Accepte) buzz(LEA)).accuse();
+		blindTest.passerEtape(pilotage());
+		blindTest.passerEtape(pilotage());
+		InstantaneBlindTest avant = blindTest.instantane();
+
+		DeroulementBlindTest restaure = fabrique().restaurer(
+				new ContexteDeManche(SOIREE, MANCHE, reglages(), new HorlogeFactice(horloge.maintenant()), () -> { }),
+				REGLAGES, avant.etat(), avant.etatManche());
+
+		assertThat(avant.dernierBuzz()).isEqualTo(buzzDeLea);
+		assertThat(restaure.instantane().dernierBuzz()).isEqualTo(buzzDeLea);
 	}
 
 	@Test
@@ -509,7 +623,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 
 		assertThatThrownBy(() -> fabrique.creer(contexte, REGLAGES)).isInstanceOf(IllegalStateException.class);
 		assertThatThrownBy(() -> fabrique.restaurer(contexte, REGLAGES,
-				new EtatBlindTestPersiste(SELECTION, null, List.of()), EtatManche.PRETE))
+				new EtatBlindTestPersiste(SELECTION, null, List.of(), null), EtatManche.PRETE))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -552,7 +666,11 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	}
 
 	private ResultatDeCommande deposer(UUID joueurId, String titre, String artiste) {
-		return blindTest.recevoir(new DeposerBrouillon(joueurId, horloge.maintenant(), etape(),
+		return deposer(joueurId, ++numeroBrouillon, titre, artiste);
+	}
+
+	private ResultatDeCommande deposer(UUID joueurId, long numero, String titre, String artiste) {
+		return blindTest.recevoir(new DeposerBrouillon(joueurId, horloge.maintenant(), etape(), numero,
 				new BrouillonProposition(titre, artiste)));
 	}
 

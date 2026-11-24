@@ -40,6 +40,7 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 	static final String MORCEAU_REVELE = "morceau-revele";
 	static final String MORCEAU_SAUTE = "morceau-saute";
 	static final String MANCHE_TERMINEE = "manche-terminee";
+	static final String BROUILLON_DEPOSE = "brouillon-depose";
 	private static final Set<Destination> ECRANS = Set.of(
 			Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
 
@@ -51,12 +52,13 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 	private final List<AttributionDePoints> attributions = new ArrayList<>();
 	private EtatManche etatManche;
 	private MorceauEnCours courant;
+	private AccuseBuzz dernierBuzz;
 	private Minuteur minuteur = () -> { };
 	private String derniereCause = MORCEAU_REVELE;
 
 	public DeroulementBlindTest(ContexteDeManche contexte, List<Morceau> selection, JoueursPresents joueursPresents,
 			Supplier<UUID> identifiants) {
-		this(contexte, joueursPresents, identifiants, new EtatBlindTestPersiste(selection, null, List.of()),
+		this(contexte, joueursPresents, identifiants, new EtatBlindTestPersiste(selection, null, List.of(), null),
 				EtatManche.PRETE);
 	}
 
@@ -68,6 +70,7 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		this.morceaux = persiste.selection();
 		this.courant = persiste.courant();
 		this.attributions.addAll(persiste.points());
+		this.dernierBuzz = persiste.dernierBuzz();
 		this.etatManche = Objects.requireNonNull(etatManche, "etatManche");
 		if (etatManche != EtatManche.PRETE && courant == null) {
 			throw new IllegalStateException("Une Manche démarrée a un Morceau courant.");
@@ -152,19 +155,22 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		if (perime(buzz.etapeId())) {
 			return perimee();
 		}
+		Instant maintenant = maintenant();
+		// L'extrait arrivé à 30 s ferme le Buzz, même si le rappel de fin d'extrait attend encore le verrou.
 		if (courant.phase() != PhaseBlindTest.EXTRAIT || etatManche != EtatManche.EN_COURS
-				|| courant.bloques().contains(buzz.joueurId())) {
+				|| courant.bloques().contains(buzz.joueurId())
+				|| courant.lecture().positionA(maintenant) >= LectureExtrait.DUREE_MS) {
 			return new Refuse(409, "BUZZ_NON_AUTORISE", "Le Buzz n'est pas ouvert pour ce Joueur.");
 		}
-		Instant maintenant = maintenant();
 		minuteur.annuler();
 		LectureExtrait enPause = courant.lecture().geleeA(maintenant);
-		MainBlindTest main = new MainBlindTest(buzz.joueurId(), buzz.pseudo(), Delai.depuis(maintenant, DUREE_SAISIE),
-				enPause.positionMs(), BrouillonProposition.VIDE);
+		MainBlindTest main = MainBlindTest.donnee(buzz.joueurId(), buzz.pseudo(),
+				Delai.depuis(maintenant, DUREE_SAISIE), enPause.positionMs());
 		courant = courant.mainDonnee(main, enPause);
+		dernierBuzz = new AccuseBuzz(buzz.envoiId(), buzz.joueurId(), buzz.pseudo(), buzz.recueLe(),
+				courant.buzzAcceptes());
 		programmer(DUREE_SAISIE, this::echeanceDeSaisie);
-		return new Accepte(new AccuseBuzz(buzz.envoiId(), buzz.joueurId(), buzz.pseudo(), buzz.recueLe(),
-				courant.buzzAcceptes()), ECRANS, "buzz-recu");
+		return new Accepte(dernierBuzz, ECRANS, "buzz-recu");
 	}
 
 	private ResultatDeCommande deposer(DeposerBrouillon depot) {
@@ -172,9 +178,14 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		if (refus != null) {
 			return refus;
 		}
-		courant = courant.avecMain(courant.main().avecBrouillon(depot.brouillon()));
-		// Aucune destination : le brouillon n'est publié à personne (ADR 0009, point 6).
-		return new Accepte(null, Set.of(), PROPOSITION_JUGEE);
+		MainBlindTest main = courant.main();
+		if (!main.retiendrait(depot.numero())) {
+			// Rejeu en retard d'un brouillon déjà dépassé : ignoré, sans publication.
+			return new Accepte(null, Set.of(), BROUILLON_DEPOSE);
+		}
+		courant = courant.avecMain(main.avecBrouillon(depot.numero(), depot.brouillon()));
+		// La vue n'est republiée qu'à la Manette de l'auteur, pour qu'un rechargement retrouve sa saisie.
+		return new Accepte(null, Set.of(Destination.joueur(depot.joueurId())), BROUILLON_DEPOSE);
 	}
 
 	private ResultatDeCommande valider(ValiderProposition validation) {
@@ -190,22 +201,25 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 				jugement.titre(), jugement.artiste(), jugement.points()), ECRANS, causeApresJugement());
 	}
 
+	/**
+	 * Ordre des refus du contrat : Morceau qui n'est plus affiché, puis Joueur déjà jugé ou échéance atteinte, puis
+	 * Joueur sans la main.
+	 */
 	private Refuse gardeSaisie(UUID joueurId, UUID etapeId) {
 		if (perime(etapeId)) {
 			return perimee();
 		}
 		MainBlindTest main = courant.main();
-		if (main != null && main.joueurId().equals(joueurId)) {
-			return null;
+		boolean aLaMain = main != null && main.joueurId().equals(joueurId);
+		if (courant.ontPropose().contains(joueurId) || aLaMain && main.echueA(maintenant())) {
+			return new Refuse(409, "HORS_DELAI", "Le temps de saisie est écoulé.");
 		}
-		return courant.ontPropose().contains(joueurId)
-				? new Refuse(409, "HORS_DELAI", "Cette Proposition de titre a déjà été jugée.")
-				: incompatible("Ce Joueur n'a pas la main.");
+		return aLaMain ? null : incompatible("Ce Joueur n'a pas la main.");
 	}
 
-	/** La cible n'est plus le Morceau en cours : autre Morceau, ou Morceau déjà révélé. */
+	/** La cible n'est plus le Morceau affiché ; un Morceau révélé le reste jusqu'au suivant. */
 	private boolean perime(UUID etapeId) {
-		return !courant.etapeId().equals(etapeId) || courant.phase() == PhaseBlindTest.REVELATION;
+		return !courant.etapeId().equals(etapeId);
 	}
 
 	private record Jugement(VerdictChamp titre, VerdictChamp artiste, int points) { }
@@ -402,12 +416,13 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 
 	@Override
 	public boolean viseEtape(UUID etapeId) {
-		return etapeId == null || courant != null && etapeId.equals(courant.etapeId());
+		return courant == null ? etapeId == null : courant.etapeId().equals(etapeId);
 	}
 
 	@Override
 	public InstantaneBlindTest instantane() {
-		return new InstantaneBlindTest(etatManche, new EtatBlindTestPersiste(morceaux, courant, attributions));
+		return new InstantaneBlindTest(etatManche, new EtatBlindTestPersiste(morceaux, courant, attributions,
+				dernierBuzz));
 	}
 
 	@Override
