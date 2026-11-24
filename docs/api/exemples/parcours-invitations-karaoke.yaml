@@ -1,0 +1,1898 @@
+description: 'Toutes les données sont fictives. Contrat seul : aucun serveur exécuté. Passages à plusieurs (#135),
+  trois Joueurs : Invitations à l’inscription, limite de l’invité, acceptation, rejeu, Invitation close, compteur
+  périmé, départ d’une invitée, confidentialité par destination et expiration à l’appel. Limite de Passages en attente
+  : 1.'
+evenementsComplets: false
+parametresCommuns:
+  soireeId: 66000000-0000-4000-8000-000000000001
+  mancheId: 66000000-0000-4000-8000-000000000002
+http:
+- nom: Alizé ne peut pas s’inviter elle-même
+  operationId: inscrirePassage
+  acteur: joueur:66000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000100
+    chansonId: ch_quais_1
+    invitesIds:
+    - 66000000-0000-4000-8000-000000000004
+    - 66000000-0000-4000-8000-000000000003
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 422
+    code: DONNEES_INVALIDES
+    detail: Tu ne peux pas t’inviter toi-même.
+    instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages
+- nom: Un invité absent rend l’inscription introuvable
+  operationId: inscrirePassage
+  acteur: joueur:66000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000101
+    chansonId: ch_quais_1
+    invitesIds:
+    - 66000000-0000-4000-8000-000000000006
+  statut: 404
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 404
+    code: RESSOURCE_INTROUVABLE
+    detail: Un Joueur invité est introuvable.
+    instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages
+- nom: Alizé inscrit son Passage et invite Basile et Célia
+  operationId: inscrirePassage
+  acteur: joueur:66000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000102
+    chansonId: ch_quais_1
+    invitesIds:
+    - 66000000-0000-4000-8000-000000000004
+    - 66000000-0000-4000-8000-000000000005
+  statut: 201
+  reponse:
+    envoiId: 66000000-0000-4000-8000-000000000102
+    soireeId: 66000000-0000-4000-8000-000000000001
+    mancheId: 66000000-0000-4000-8000-000000000002
+    passageId: 66000000-0000-4000-8000-000000000020
+    numeroModification: 0
+    action: INSCRIRE
+    recueLe: '2026-11-24T21:00:01Z'
+    etatApres: EN_ATTENTE
+- nom: Basile inscrit son propre Passage
+  operationId: inscrirePassage
+  acteur: joueur:66000000-0000-4000-8000-000000000004
+  parametres: {}
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000103
+    chansonId: ch_phare_2
+  statut: 201
+  reponse:
+    envoiId: 66000000-0000-4000-8000-000000000103
+    soireeId: 66000000-0000-4000-8000-000000000001
+    mancheId: 66000000-0000-4000-8000-000000000002
+    passageId: 66000000-0000-4000-8000-000000000021
+    numeroModification: 0
+    action: INSCRIRE
+    recueLe: '2026-11-24T21:00:02Z'
+    etatApres: EN_ATTENTE
+- nom: 'Basile n’a plus de place sous sa limite : l’Invitation reste ouverte'
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000004
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000104
+    numeroModification: 0
+    reponse: ACCEPTER
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: LIMITE_ATTEINTE
+    detail: Ta limite de Passages en attente est atteinte.
+    instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages/66000000-0000-4000-8000-000000000020/invitation
+- nom: Alizé n’est invitée à aucun Passage de Basile
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000003
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000021
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000105
+    numeroModification: 0
+    reponse: ACCEPTER
+  statut: 404
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 404
+    code: RESSOURCE_INTROUVABLE
+    detail: Cette Invitation est introuvable.
+    instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages/66000000-0000-4000-8000-000000000021/invitation
+- nom: Célia accepte
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000005
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000106
+    numeroModification: 0
+    reponse: ACCEPTER
+  statut: 200
+  reponse:
+    envoiId: 66000000-0000-4000-8000-000000000106
+    soireeId: 66000000-0000-4000-8000-000000000001
+    mancheId: 66000000-0000-4000-8000-000000000002
+    passageId: 66000000-0000-4000-8000-000000000020
+    numeroModification: 1
+    action: ACCEPTER
+    recueLe: '2026-11-24T21:00:04Z'
+    etatApres: EN_ATTENTE
+- nom: Le rejeu de l’acceptation rend le même reçu
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000005
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000106
+    numeroModification: 0
+    reponse: ACCEPTER
+  statut: 200
+  reponse:
+    envoiId: 66000000-0000-4000-8000-000000000106
+    soireeId: 66000000-0000-4000-8000-000000000001
+    mancheId: 66000000-0000-4000-8000-000000000002
+    passageId: 66000000-0000-4000-8000-000000000020
+    numeroModification: 1
+    action: ACCEPTER
+    recueLe: '2026-11-24T21:00:04Z'
+    etatApres: EN_ATTENTE
+- nom: Une Invitation acceptée ne se refuse plus
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000005
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000107
+    numeroModification: 1
+    reponse: REFUSER
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Cette Invitation est déjà close.
+    instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages/66000000-0000-4000-8000-000000000020/invitation
+- nom: Réponse avec un compteur périmé
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000004
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000108
+    numeroModification: 0
+    reponse: REFUSER
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Ce Passage a changé ; consulte la File actualisée.
+    instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages/66000000-0000-4000-8000-000000000020/invitation
+- nom: La salle ne voit que les Interprètes acceptés
+  operationId: retrouverEtatSalle
+  acteur: ecran:66000000-0000-4000-8000-000000000008
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 3
+    heureServeur: '2026-11-24T21:00:06Z'
+    abonnementId: null
+    vue:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: &id002
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 1
+          numero: 1
+          chanson: &id003
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          - joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: &id004
+            chansonId: ch_phare_2
+            titre: Ballade fictive du phare
+            artiste: Duo imaginaire
+            album: null
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+        votes: []
+- nom: La Console voit l’Invitation en suspens de Basile
+  operationId: retrouverEtatConsole
+  acteur: animateur:66000000-0000-4000-8000-000000000009
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 3
+    heureServeur: '2026-11-24T21:00:06Z'
+    abonnementId: null
+    vue:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive: &id001
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      programme:
+      - *id001
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        passagesEnAttente:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 1
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          - joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        invitationsEnAttente:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+        votes: []
+- nom: Alizé voit l’état de chacune de ses Invitations
+  operationId: retrouverEtatManette
+  acteur: joueur:66000000-0000-4000-8000-000000000003
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 3
+    heureServeur: '2026-11-24T21:00:06Z'
+    abonnementId: null
+    vue:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - &id005
+          passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 1
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          - joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id005
+        invitationsEmises:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          etat: EN_ATTENTE
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          etat: ACCEPTEE
+        invitationsRecues: []
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+- nom: Basile voit l’Invitation qui l’attend
+  operationId: retrouverEtatManette
+  acteur: joueur:66000000-0000-4000-8000-000000000004
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 3
+    heureServeur: '2026-11-24T21:00:06Z'
+    abonnementId: null
+    vue:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 1
+          numero: 1
+          chanson: *id003
+          interpretes: &id008
+          - &id007
+            joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          - joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - &id006
+          passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id006
+        invitationsEmises: []
+        invitationsRecues:
+        - passage:
+            passageId: 66000000-0000-4000-8000-000000000020
+            numeroModification: 1
+          numero: 1
+          chanson: *id003
+          inscrivant: *id007
+          interpretes: *id008
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+- nom: Célia voit le Passage dans ses Passages
+  operationId: retrouverEtatManette
+  acteur: joueur:66000000-0000-4000-8000-000000000005
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 3
+    heureServeur: '2026-11-24T21:00:06Z'
+    abonnementId: null
+    vue:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000005
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - &id009
+          passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 1
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          - joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id009
+        invitationsEmises: []
+        invitationsRecues: []
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+- nom: Célia quitte le Passage, qui reste en attente
+  operationId: desinscrirePassage
+  acteur: joueur:66000000-0000-4000-8000-000000000005
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000109
+    numeroModification: 1
+  statut: 200
+  reponse:
+    envoiId: 66000000-0000-4000-8000-000000000109
+    soireeId: 66000000-0000-4000-8000-000000000001
+    mancheId: 66000000-0000-4000-8000-000000000002
+    passageId: 66000000-0000-4000-8000-000000000020
+    numeroModification: 2
+    action: DESINSCRIRE
+    recueLe: '2026-11-24T21:00:07Z'
+    etatApres: EN_ATTENTE
+- nom: L’appel fait expirer l’Invitation de Basile
+  operationId: appelerPassage
+  acteur: animateur:66000000-0000-4000-8000-000000000009
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+    Idempotency-Key: 66000000-0000-4000-8000-00000000010a
+    X-CSRF-TOKEN: csrf_session_fictive_66
+  requete:
+    numeroModification: 2
+  statut: 200
+  reponse:
+    envoiId: 66000000-0000-4000-8000-00000000010a
+    soireeId: 66000000-0000-4000-8000-000000000001
+    mancheId: 66000000-0000-4000-8000-000000000002
+    passageId: 66000000-0000-4000-8000-000000000020
+    etapeId: 66000000-0000-4000-8000-000000000050
+    numeroModification: 3
+    action: APPELER
+    recueLe: '2026-11-24T21:00:08Z'
+    etatApres: APPELE
+- nom: Basile répond trop tard
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000004
+  parametres:
+    passageId: 66000000-0000-4000-8000-000000000020
+  requete:
+    envoiId: 66000000-0000-4000-8000-00000000010b
+    numeroModification: 2
+    reponse: ACCEPTER
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Ce Passage a changé ; consulte la File actualisée.
+    instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages/66000000-0000-4000-8000-000000000020/invitation
+evenements:
+- nom: file-attente-modifiee — Console
+  canal: console
+  message:
+    type: file-attente-modifiee
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-24T21:00:01Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive: &id010
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      programme:
+      - *id010
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        passagesEnAttente:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 0
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:01Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        invitationsEnAttente:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+        votes: []
+- nom: file-attente-modifiee — Manette de Basile
+  canal: joueur
+  message: &id024
+    type: file-attente-modifiee
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-24T21:00:01Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 0
+          numero: 1
+          chanson: *id003
+          interpretes: &id012
+          - &id011
+            joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:01Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        mesPassagesEnAttente: []
+        invitationsEmises: []
+        invitationsRecues:
+        - passage:
+            passageId: 66000000-0000-4000-8000-000000000020
+            numeroModification: 0
+          numero: 1
+          chanson: *id003
+          inscrivant: *id011
+          interpretes: *id012
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+        votes: []
+- nom: file-attente-modifiee — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-24T21:00:04Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 1
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          - joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+        votes: []
+- nom: file-attente-modifiee — Manette de Alizé
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-24T21:00:04Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - &id013
+          passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 1
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          - joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:04Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id013
+        invitationsEmises:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          etat: EN_ATTENTE
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          etat: ACCEPTEE
+        invitationsRecues: []
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+- nom: file-attente-modifiee — salle
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: '2026-11-24T21:00:07Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 2
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+        votes: []
+- nom: file-attente-modifiee — Manette de Alizé
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: '2026-11-24T21:00:07Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - &id014
+          passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 2
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id014
+        invitationsEmises:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          etat: EN_ATTENTE
+        - passageId: 66000000-0000-4000-8000-000000000020
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000005
+            pseudo: Célia-Marguerite de la Roche
+          etat: REFUSEE
+        invitationsRecues: []
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+- nom: file-attente-modifiee — Manette de Basile
+  canal: joueur
+  message:
+    type: file-attente-modifiee
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: '2026-11-24T21:00:07Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 2
+          numero: 1
+          chanson: *id003
+          interpretes: &id017
+          - &id016
+            joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - &id015
+          passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id015
+        invitationsEmises: []
+        invitationsRecues:
+        - passage:
+            passageId: 66000000-0000-4000-8000-000000000020
+            numeroModification: 2
+          numero: 1
+          chanson: *id003
+          inscrivant: *id016
+          interpretes: *id017
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+- nom: passage-appele — salle
+  canal: salle
+  message:
+    type: passage-appele
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: '2026-11-24T21:00:08Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant:
+          passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 3
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          etapeId: 66000000-0000-4000-8000-000000000050
+          etat: APPELE
+          prochainAppelPrevuLe: '2026-11-24T21:04:03Z'
+          appeleLe: '2026-11-24T21:00:08Z'
+          echeanceAppelLe: '2026-11-24T21:00:38Z'
+          delaiAppelRestantMs: 30000
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-24T21:00:08Z'
+          clotureLe: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:08Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+        votes: []
+- nom: passage-appele — Console
+  canal: console
+  message:
+    type: passage-appele
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: '2026-11-24T21:00:08Z'
+    donnees:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive: &id018
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      programme:
+      - *id018
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant:
+          passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 3
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          etapeId: 66000000-0000-4000-8000-000000000050
+          etat: APPELE
+          prochainAppelPrevuLe: '2026-11-24T21:04:03Z'
+          appeleLe: '2026-11-24T21:00:08Z'
+          echeanceAppelLe: '2026-11-24T21:00:38Z'
+          delaiAppelRestantMs: 30000
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-24T21:00:08Z'
+          clotureLe: null
+        configurationInterface: *id002
+        passagesEnAttente:
+        - passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:08Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        invitationsEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: true
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+        votes: []
+- nom: passage-appele — Manette de Basile
+  canal: joueur
+  message: &id025
+    type: passage-appele
+    soireeId: 66000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: '2026-11-24T21:00:08Z'
+    donnees: &id026
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant:
+          passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 3
+          numero: 1
+          chanson: *id003
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          etapeId: 66000000-0000-4000-8000-000000000050
+          etat: APPELE
+          prochainAppelPrevuLe: '2026-11-24T21:04:03Z'
+          appeleLe: '2026-11-24T21:00:08Z'
+          echeanceAppelLe: '2026-11-24T21:00:38Z'
+          delaiAppelRestantMs: 30000
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-24T21:00:08Z'
+          clotureLe: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - &id019
+          passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:08Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id019
+        invitationsEmises: []
+        invitationsRecues: []
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+cases:
+- nom: La salle refuse un champ d’Invitations
+  schema: BlocKaraokeSalle
+  valide: false
+  valeur:
+    mancheId: 66000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 1
+    nombreEnAttente: 1
+    tourOuvert: 1
+    passagePrioritaireId: null
+    courant:
+      passageId: 66000000-0000-4000-8000-000000000020
+      numeroModification: 3
+      numero: 1
+      chanson: *id003
+      interpretes:
+      - joueurId: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+      etapeId: 66000000-0000-4000-8000-000000000050
+      etat: APPELE
+      prochainAppelPrevuLe: '2026-11-24T21:04:03Z'
+      appeleLe: '2026-11-24T21:00:08Z'
+      echeanceAppelLe: '2026-11-24T21:00:38Z'
+      delaiAppelRestantMs: 29000
+      demarreLe: null
+      finPrevueLe: null
+      positionChronologiqueMs: null
+      tempsPauseMs: 0
+      calculeLe: '2026-11-24T21:00:08Z'
+      clotureLe: null
+    configurationInterface: *id002
+    prochainsPassages:
+    - passageId: 66000000-0000-4000-8000-000000000021
+      numeroModification: 0
+      numero: 2
+      chanson: *id004
+      interpretes:
+      - joueurId: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+      position: 1
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-24T21:00:09Z'
+        etat: ESTIMEE
+        dureeMs: 234000
+    nombreAutresPassages: 0
+    lecteurDesigneId: null
+    lecture: null
+    paroles: null
+    votes: []
+    invitationsEnAttente: []
+- nom: Une Invitation émise n’a que quatre états
+  schema: InvitationEmise
+  valide: false
+  valeur:
+    passageId: 66000000-0000-4000-8000-000000000020
+    invite:
+      joueurId: 66000000-0000-4000-8000-000000000004
+      pseudo: Basile
+    etat: RETIREE
+  correction:
+    chemin:
+    - etat
+    valeur: EXPIREE
+- nom: Une réponse est ACCEPTER ou REFUSER
+  schema: ReponseInvitation
+  valide: false
+  valeur:
+    envoiId: 66000000-0000-4000-8000-0000000001ff
+    numeroModification: 0
+    reponse: PEUT_ETRE
+  correction:
+    chemin:
+    - reponse
+    valeur: REFUSER
+- nom: Une réponse ne cite aucun invité
+  schema: ReponseInvitation
+  valide: false
+  valeur:
+    envoiId: 66000000-0000-4000-8000-0000000001ff
+    numeroModification: 0
+    reponse: ACCEPTER
+    inviteId: 66000000-0000-4000-8000-000000000004
+- nom: Au plus trois invités à l’inscription
+  schema: InscriptionPassage
+  valide: false
+  valeur:
+    envoiId: 66000000-0000-4000-8000-0000000001fe
+    chansonId: ch_quais_1
+    invitesIds:
+    - 66000000-0000-4000-8000-000000000004
+    - 66000000-0000-4000-8000-000000000005
+    - 66000000-0000-4000-8000-000000000006
+    - 66000000-0000-4000-8000-000000000099
+- nom: Un invité ne figure qu’une fois
+  schema: InscriptionPassage
+  valide: false
+  valeur:
+    envoiId: 66000000-0000-4000-8000-0000000001fe
+    chansonId: ch_quais_1
+    invitesIds:
+    - 66000000-0000-4000-8000-000000000004
+    - 66000000-0000-4000-8000-000000000004
+  correction:
+    chemin:
+    - invitesIds
+    valeur:
+    - 66000000-0000-4000-8000-000000000004
+    - 66000000-0000-4000-8000-000000000005
+- nom: La Manette n’a pas les Invitations de la Console
+  schema: BlocKaraokeManette
+  valide: false
+  valeur:
+    mancheId: 66000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 1
+    nombreEnAttente: 1
+    tourOuvert: 1
+    passagePrioritaireId: null
+    courant:
+      passageId: 66000000-0000-4000-8000-000000000020
+      numeroModification: 3
+      numero: 1
+      chanson: *id003
+      interpretes:
+      - joueurId: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+      etapeId: 66000000-0000-4000-8000-000000000050
+      etat: APPELE
+      prochainAppelPrevuLe: '2026-11-24T21:04:03Z'
+      appeleLe: '2026-11-24T21:00:08Z'
+      echeanceAppelLe: '2026-11-24T21:00:38Z'
+      delaiAppelRestantMs: 29000
+      demarreLe: null
+      finPrevueLe: null
+      positionChronologiqueMs: null
+      tempsPauseMs: 0
+      calculeLe: '2026-11-24T21:00:08Z'
+      clotureLe: null
+    configurationInterface: *id002
+    prochainsPassages:
+    - &id020
+      passageId: 66000000-0000-4000-8000-000000000021
+      numeroModification: 0
+      numero: 2
+      chanson: *id004
+      interpretes:
+      - joueurId: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+      position: 1
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-24T21:00:09Z'
+        etat: ESTIMEE
+        dureeMs: 234000
+    nombreAutresPassages: 0
+    mesPassagesEnAttente:
+    - *id020
+    invitationsEmises: []
+    invitationsRecues: []
+    nombrePersonnelEnAttente: 1
+    peutRechercher: true
+    peutInscrire: false
+    motifInscriptionRefusee: LIMITE_ATTEINTE
+    peutConfirmerPresence: false
+    votes: []
+    invitationsEnAttente: []
+resynchronisation:
+  destination: /topic/joueurs/66000000-0000-4000-8000-000000000004
+  routeEtat: /api/soirees/66000000-0000-4000-8000-000000000001/etat/manette
+  typeEvenementFinal: passage-appele
+  etat:
+    revision: 4
+    heureServeur: '2026-11-24T21:00:07Z'
+    abonnementId: 66000000-0000-4000-8000-000000000080
+    vue:
+      soiree:
+        id: 66000000-0000-4000-8000-000000000001
+        titre: Karaoké fictif à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 66000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 1
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 66000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      - id: 66000000-0000-4000-8000-000000000005
+        pseudo: Célia-Marguerite de la Roche
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 66000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 66000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 1
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *id002
+        prochainsPassages:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numeroModification: 2
+          numero: 1
+          chanson: *id003
+          interpretes: &id023
+          - &id022
+            joueurId: 66000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - &id021
+          passageId: 66000000-0000-4000-8000-000000000021
+          numeroModification: 0
+          numero: 2
+          chanson: *id004
+          interpretes:
+          - joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-24T21:00:07Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        nombreAutresPassages: 0
+        mesPassagesEnAttente:
+        - *id021
+        invitationsEmises: []
+        invitationsRecues:
+        - passage:
+            passageId: 66000000-0000-4000-8000-000000000020
+            numeroModification: 2
+          numero: 1
+          chanson: *id003
+          inscrivant: *id022
+          interpretes: *id023
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        votes: []
+  tampon:
+  - *id024
+  - *id025
+  - *id025
+  revisionFinale: 5
+  vueFinale: *id026

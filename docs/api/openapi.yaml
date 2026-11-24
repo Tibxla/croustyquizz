@@ -1504,7 +1504,11 @@ paths:
         garde. chansonId de 1 à 128 caractères, sinon REQUETE_INVALIDE. Reçu consulté avant le métier,
         source consultée hors verrou, revalidation sous verrou. Gardes dans l’ordre : sans voix, paroles
         non synchronisées (absentes et inconnues incluses), durée inconnue, doublon personnel en
-        attente, quota EN_ATTENTE. Détail de la Chanson figé à l’inscription ; la même Chanson reste
+        attente et quota EN_ATTENTE de l’inscripteur seul, puis invités : invitesIds, facultatif, cite au
+        plus trois Joueurs distincts (sinon REQUETE_INVALIDE) ; 422 DONNEES_INVALIDES si l’inscripteur s’y
+        cite, 404 RESSOURCE_INTROUVABLE si un invité est absent ou exclu. Le Passage entre dans la File
+        avec son seul inscripteur et chaque invité reçoit une Invitation EN_ATTENTE ; en Pilotage
+        Automatique, un appel immédiat les fait expirer aussitôt. Détail de la Chanson figé à l’inscription ; la même Chanson reste
         permise à deux Joueurs ; source audio et fichier local sans incidence. En Pilotage Automatique,
         si la Manche est EN_COURS et sans courant actif, le Passage en position 1 est appelé dans la
         même mutation. Le reçu 201 décrit toujours l’inscription (EN_ATTENTE) ; la vue publiée par
@@ -1514,7 +1518,8 @@ paths:
         RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 409 ETAT_INCOMPATIBLE, 409 ENVOI_REUTILISE, 503
         SERVICE_INDISPONIBLE, 503 SOURCE_PAROLES_INDISPONIBLE. Propres à cette route : 409
         PASSAGE_DEJA_INSCRIT (doublon personnel en attente), 409 LIMITE_ATTEINTE (quota EN_ATTENTE
-        atteint), 422 CHANSON_INDISPONIBLE (contenu inutilisable, detail motivé). Conditions de chaque
+        atteint), 422 CHANSON_INDISPONIBLE (contenu inutilisable, detail motivé), 422 DONNEES_INVALIDES
+        et 404 RESSOURCE_INTROUVABLE (invités). Conditions de chaque
         code : tableau des groupes de refus, README.md, section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
@@ -1570,9 +1575,12 @@ paths:
     post:
       operationId: desinscrirePassage
       summary: Désinscrire son Passage en attente
-      description: 'Réservé au Joueur qui a inscrit le Passage ; l’attente d’un autre Joueur donne
-        RESSOURCE_INTROUVABLE. Garde du compteur de la cible ; cible sortie de l’attente :
-        COMMANDE_PERIMEE quel que soit son compteur. La réinscription rejoint la fin du Tour admissible.
+      description: 'Réservé aux Interprètes du Passage et à ses invités ; l’attente d’un autre Joueur donne
+        RESSOURCE_INTROUVABLE. L’inscripteur retire tout le Passage (RETIRE), et ses Invitations ouvertes
+        expirent ; un Interprète invité quitte seulement le Passage, qui reste EN_ATTENTE avec les autres,
+        reprend le Tour le plus tardif de ceux qui restent et peut avancer (#139). Garde du compteur de la
+        cible ; cible sortie de l’attente, ou invité qui n’est pas ou plus Interprète : COMMANDE_PERIMEE
+        quel que soit son compteur. La réinscription rejoint la fin du Tour admissible.
         Retirer la dernière attente ne termine pas la Manche. Reçu et rejeu : README.md, section
         Karaoké, « Commandes, compteurs et reçus ». Refus (groupes N, V, X, D, T, P) : 400
         REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 409
@@ -1608,6 +1616,78 @@ paths:
           application/json:
             schema:
               $ref: ./schemas.yaml#/$defs/DesinscriptionPassage
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/invitation:
+    post:
+      operationId: repondreInvitation
+      summary: Accepter ou refuser son Invitation à un Passage en attente
+      description: 'Passages à plusieurs (#135, #138), README.md, section Karaoké, « Passages à plusieurs ».
+        Le Joueur authentifié répond à l’Invitation que l’inscripteur lui a adressée à l’inscription.
+        ACCEPTER l’ajoute à la fin des Interprètes, dans l’ordre d’acceptation, et lui applique le doublon
+        personnel, la limite de Passages en attente et la rotation : le Passage prend le Tour le plus tardif de
+        ses Interprètes, peut reculer, et son compteur augmente. Un refus de ces gardes ne change rien et
+        l’Invitation reste EN_ATTENTE. REFUSER clôt l’Invitation sans changer le compteur. Chaque succès publie
+        file-attente-modifiee sur les trois destinations, la salle sans aucune Invitation. Reçu et rejeu par
+        envoiId : README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus dans l’ordre (groupes N,
+        V, X, D, T, P) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404
+        RESSOURCE_INTROUVABLE (Manche, portée ou présence), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu),
+        409 ETAT_INCOMPATIBLE (Manche terminée), 404 RESSOURCE_INTROUVABLE (Passage inconnu, ou aucune
+        Invitation de ce Joueur sur ce Passage), 409 COMMANDE_PERIMEE (compteur, Passage sorti de l’attente,
+        Invitation déjà acceptée, refusée ou expirée), puis pour ACCEPTER 409 PASSAGE_DEJA_INSCRIT et 409
+        LIMITE_ATTEINTE. 503 SERVICE_INDISPONIBLE sans reçu.'
+      tags:
+      - Karaoké
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ReponseInvitation
       responses:
         '200':
           description: Reçu immuable. Ne remplace pas une vue plus récente.

@@ -401,6 +401,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 0
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -473,6 +474,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -539,6 +542,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: *id014
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -663,6 +668,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 0
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -735,6 +741,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: *id018
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -859,6 +867,7 @@ evenements:
             etat: SUSPENDUE
             dureeMs: null
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -931,6 +940,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -997,6 +1008,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: *id021
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1121,6 +1134,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 0
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1193,6 +1207,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1259,6 +1275,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: *id024
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1359,6 +1377,7 @@ evenements:
         votes: *votesPendantAppel
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1419,6 +1438,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1473,6 +1494,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: *id027
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1587,6 +1610,7 @@ evenements:
         votes: *votesPendantChant
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1656,6 +1680,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1710,6 +1736,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: *id030
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1821,6 +1849,7 @@ evenements:
         votes: *votesSimultanes
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1894,6 +1923,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1961,6 +1992,8 @@ evenements:
           nombreVotes: null
         mesPassagesEnAttente: *id033
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -2072,6 +2105,7 @@ evenements:
         votes: *votesApresCloture
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -2145,6 +2179,8 @@ evenements:
           nombreVotes: 1
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -2212,6 +2248,8 @@ evenements:
           nombreVotes: 1
         mesPassagesEnAttente: *id036
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null

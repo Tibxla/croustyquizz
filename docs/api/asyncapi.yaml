@@ -24,8 +24,8 @@ channels:
     description: "Écran avec capacité pour cette Soirée, Joueur de la Soirée ou Animateur du Lieu.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier, les commandes du lecteur
       de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
-      Soirée. Karaoké : file-attente-modifiee après inscription, désinscription, retrait, placement ou
-      priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
+      Soirée. Karaoké : file-attente-modifiee après inscription, désinscription, réponse à une
+      Invitation (la vue n’en porte aucune), retrait, placement ou priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
       passage-demarre, passage-termine et passage-saute pour le cycle du Passage.
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une
       fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le
@@ -34,7 +34,7 @@ channels:
       lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
       calage-chanson-modifie après geste, demande, relevé ou correction. Vue complète avec bloc karaoke
       (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
-      et paroles du Passage démarré, votes), sans fichier local ni secret ; pause, reprise et fin de Manche par
+      et paroles du Passage démarré, votes), sans invitation, fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
       Aucun événement par seconde."
     parameters:
@@ -47,7 +47,8 @@ channels:
     address: /topic/soirees/{soireeId}/console
     description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND
       de commande métier. Une révision est propre à cette destination et à cette Soirée. Karaoké :
-      file-attente-modifiee après inscription, désinscription, retrait, placement ou priorité ;
+      file-attente-modifiee après inscription, désinscription, réponse à une Invitation, retrait,
+      placement ou priorité ;
       limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre,
       passage-termine et passage-saute pour le cycle du Passage.
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une fin
@@ -57,7 +58,7 @@ channels:
       à la clôture ; lecture-chanson-modifiee après
       désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
       geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
-      la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
+      la File d’attente, invitations en suspens, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
       ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde."
     parameters:
@@ -71,8 +72,8 @@ channels:
     description: "Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
       propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
-      inscription, désinscription, retrait, placement ou priorité ; limite-passages-modifiee après
-      changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
+      inscription, désinscription, réponse à une Invitation, retrait, placement ou priorité ;
+      limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
       pour le cycle du Passage. En Pilotage Automatique, passage-appele est aussi l’unique cause si
       une inscription, une fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une
       reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la place du Passage
@@ -81,8 +82,9 @@ channels:
       Joueur de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
       Passages. vote-clos apporte la moyenne à la salle, à la Console et à toutes les Manettes ;
       vote-enregistre atteint la salle, la Console et la Manette du votant. Vue complète avec bloc karaoke
-      (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »
-      et ses votes), sans lecture, paroles, fichier local ni secret ;
+      (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »,
+      ses votes, ses invitations reçues en suspens et l’état de ses invitations émises), sans lecture,
+      paroles, fichier local, invitation d’autrui ni secret ;
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde."
     parameters:
