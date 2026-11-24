@@ -535,11 +535,14 @@ paths:
   /api/soirees/{soireeId}/manches:
     post:
       operationId: ajouterManche
-      summary: Ajouter une Manche de Quiz ou de Karaoké
-      description: PREPARATION ou OUVERTE uniquement, sinon 409 ETAT_INCOMPATIBLE. Le serveur ajoute la Manche
+      summary: Ajouter une Manche de Quiz, de Blind test ou de Karaoké
+      description: 'PREPARATION ou OUVERTE uniquement, sinon 409 ETAT_INCOMPATIBLE. Le serveur ajoute la Manche
         en fin de programme et publie programme-modifie sur la Console. KARAOKE résout la limite initiale
-        configurée si elle est absente. Un mode ou des réglages hors schéma donnent 400 REQUETE_INVALIDE.
-        Aucun Idempotency-Key ajouté à cette route.
+        configurée si elle est absente. BLIND_TEST tire les Morceaux dans la playlist ou le genre Deezer, hors
+        du verrou de la Soirée, parmi ceux qui ont un extrait ; la sélection reste privée et n’apparaît jamais
+        dans les réglages, publiés à toutes les destinations. Deezer indisponible ou source sans assez de
+        Morceaux jouables : 503 SOURCE_MUSICALE_INDISPONIBLE, rien n’est ajouté. Un mode ou des réglages hors
+        schéma donnent 400 REQUETE_INVALIDE. Aucun Idempotency-Key ajouté à cette route.'
       tags:
       - Soirée
       security:
@@ -1096,13 +1099,145 @@ paths:
           application/json:
             schema:
               $ref: ./schemas.yaml#/$defs/ReponseSaisie
+  /api/soirees/{soireeId}/manches/{mancheId}/morceaux/{etapeId}/brouillon:
+    put:
+      operationId: deposerBrouillonProposition
+      summary: Déposer le brouillon de sa Proposition de titre
+      description: 'Seul le Joueur qui a la main sur ce Morceau dépose son brouillon (ADR 0009, point 6). Chaque
+        envoi remplace le précédent, sans reçu ni publication ; le brouillon n’est montré qu’à son auteur
+        (monBrouillon). À l’échéance comptée par le serveur, le dernier brouillon reçu est jugé comme une
+        validation, puis proposition-jugee, ou morceau-revele quand ce jugement termine le Morceau. Aucun Idempotency-Key, le dernier brouillon l’emporte. Morceau qui
+        n’est plus le courant : 409 COMMANDE_PERIMEE. Joueur sans la main : 409 ETAT_INCOMPATIBLE. Échéance
+        passée, brouillon déjà jugé : 409 HORS_DELAI.'
+      tags:
+      - Blind test
+      security:
+      - jetonJoueur: []
+      responses:
+        '204':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+      parameters:
+      - name: etapeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/BrouillonProposition
+  /api/soirees/{soireeId}/manches/{mancheId}/morceaux/{etapeId}/proposition:
+    post:
+      operationId: validerProposition
+      summary: Valider sa Proposition de titre
+      description: 'Le Joueur qui a la main valide sa Proposition de titre, jugée aussitôt (ADR 0009). Seuls les
+        champs encore demandés sont jugés ; une partie déjà trouvée vaut NON_DEMANDE. Titre juste 70 points,
+        artiste juste 30, au premier qui trouve chaque partie. Un champ demandé faux ou vide bloque le Joueur sur
+        ce Morceau, l’extrait reprend et le Buzz se rouvre. Puis proposition-jugee, ou morceau-revele quand
+        ce jugement termine le Morceau. Dédupliquer avant tout contrôle : même auteur, route et envoiId, même contenu =
+        accusé original, même après la fin du Morceau ; même envoiId avec autre contenu = 409 ENVOI_REUTILISE.
+        Morceau qui n’est plus le courant : 409 COMMANDE_PERIMEE. Joueur sans la main : 409 ETAT_INCOMPATIBLE.
+        Échéance passée, brouillon déjà jugé : 409 HORS_DELAI.'
+      tags:
+      - Blind test
+      security:
+      - jetonJoueur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseProposition
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+      parameters:
+      - name: etapeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/PropositionSaisie
   /api/soirees/{soireeId}/buzz:
     post:
       operationId: envoyerBuzz
-      summary: Buzzer dans le scénario du socle
+      summary: Buzzer, dans le scénario du socle ou pendant un Blind test
       description: 'Scénario #7/#8, Soirée OUVERTE avant Manche : identité, rang et réception attribués par le serveur,
         puis événement buzz-recu. Répéter le même envoiId retrouve le résultat sans nouvelle diffusion. Refus pendant
-        le Quiz : 409 BUZZ_NON_AUTORISE. L’arbitrage du Blind test étendra ce contrat dans #17.'
+        le Quiz : 409 BUZZ_NON_AUTORISE. Pendant une Manche de Blind test (ADR 0009), le corps nomme mancheId et
+        l’etapeId du Morceau visé (absents : 400 REQUETE_INVALIDE) et la route transmet le Buzz au déroulement de
+        la Manche. Le premier Buzz accepté d’un Joueur non bloqué, en phase EXTRAIT, lui donne la main, met
+        l’extrait en pause et ouvre 20 s de saisie, puis buzz-recu ; rang est son ordre parmi les Buzz acceptés
+        du Morceau. Cible qui n’est plus la Manche ou le Morceau courant : 409 COMMANDE_PERIMEE, distinct des
+        refus de jeu. Joueur bloqué, main déjà prise ou phase autre que EXTRAIT : 409 BUZZ_NON_AUTORISE. Le même
+        envoi rend son reçu initial, même après la fin du Morceau.'
       tags:
       - Socle
       security:
@@ -2910,7 +3045,8 @@ components:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur503:
       description: 'SERVICE_INDISPONIBLE : base ou transaction indisponible. SOURCE_PAROLES_INDISPONIBLE :
-        consultation externe en échec sur les routes Karaoké prévues. Aucun reçu ; pour une mutation
+        consultation externe en échec sur les routes Karaoké prévues. SOURCE_MUSICALE_INDISPONIBLE : Deezer
+        indisponible à la création d’une Manche de Blind test. Aucun reçu ; pour une mutation
         seulement, réessayer avec la même clé et le même contenu.'
       headers:
         Cache-Control:

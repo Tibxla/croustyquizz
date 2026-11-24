@@ -1,0 +1,806 @@
+description: "Toutes les identités, liens et données sont fictives. Contrat seul, aucun serveur exécuté. Une Manche de
+  Blind test de deux Morceaux en Pilotage Manuel (ADR 0009) : partie trouvée, erreur et blocage, brouillon jugé à
+  l’échéance, Révélation, Morceau 2 en préparation, Buzz périmé. La suite du Morceau 2 est omise."
+evenementsComplets: false
+parametresCommuns:
+  soireeId: 17400000-0000-4000-8000-000000000001
+  mancheId: 17400000-0000-4000-8000-000000000002
+  etapeId: 17400000-0000-4000-8000-000000000011
+  X-CSRF-TOKEN: csrf_session_blindtest_fictif_174000
+http:
+- nom: Préparer une Manche de Blind test tirée d’une playlist Deezer
+  operationId: ajouterManche
+  acteur: animateur:17400000-0000-4000-8000-000000000006
+  requete:
+    mode: BLIND_TEST
+    reglages: &a1
+      source: &a23
+        type: PLAYLIST
+        idDeezer: 1306931615
+      nombreMorceaux: 2
+  statut: 201
+  reponse:
+    id: 17400000-0000-4000-8000-000000000002
+    ordre: 0
+    mode: BLIND_TEST
+    etat: EN_ATTENTE
+    reglages: *a1
+- nom: "Deezer indisponible : la Manche n’est pas ajoutée"
+  operationId: ajouterManche
+  acteur: animateur:17400000-0000-4000-8000-000000000006
+  requete:
+    mode: BLIND_TEST
+    reglages:
+      source:
+        type: GENRE
+        idDeezer: 132
+      nombreMorceaux: 10
+  statut: 503
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 503
+    code: SOURCE_MUSICALE_INDISPONIBLE
+    detail: Le catalogue musical ne répond pas. Réessaie dans un instant.
+    instance: /api/soirees/17400000-0000-4000-8000-000000000001/manches
+- nom: L’Écran de salle reçoit le lien d’extrait, sans titre ni identifiant Deezer
+  operationId: retrouverEtatSalle
+  acteur: ecran
+  parametres:
+    abonnementId: 17400000-0000-4000-8000-000000000021
+  statut: 200
+  reponse:
+    revision: 10
+    heureServeur: 2026-11-25T20:10:01.000Z
+    abonnementId: 17400000-0000-4000-8000-000000000021
+    vue: &a10
+      soiree: &a3
+        id: 17400000-0000-4000-8000-000000000001
+        titre: Blind test du mardi
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: BLIND7
+      mancheActive: &a4
+        id: 17400000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: BLIND_TEST
+        etat: EN_COURS
+        reglages: *a1
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: &a5
+        - id: 17400000-0000-4000-8000-000000000003
+          pseudo: Léa
+          connecte: true
+        - id: 17400000-0000-4000-8000-000000000004
+          pseudo: Sam
+          connecte: true
+      classement: &a11
+        - concurrentId: 17400000-0000-4000-8000-000000000003
+          nom: Léa
+          rang: 1
+          points: 0
+          bonnesReponses: 0
+          tempsCumuleMs: 0
+        - concurrentId: 17400000-0000-4000-8000-000000000004
+          nom: Sam
+          rang: 1
+          points: 0
+          bonnesReponses: 0
+          tempsCumuleMs: 0
+      dernierBuzz: null
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: EXTRAIT
+        lecture:
+          etat: EN_LECTURE
+          positionMs: 0
+          depuisLe: 2026-11-25T20:10:00.000Z
+        main: null
+        partiesTrouvees: []
+        revelation: null
+        lienExtrait: https://cdnt-preview.dzcdn.net/api/1/1/7/4/0/0/740e4bd2c1.mp3?hdnea=exp=1764101700~acl=*~hmac=4f2a9c
+      karaoke: null
+- nom: Léa buzze la première et prend la main
+  operationId: envoyerBuzz
+  acteur: lea
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000031
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etapeId: 17400000-0000-4000-8000-000000000011
+  statut: 200
+  reponse: &a6
+    envoiId: 17400000-0000-4000-8000-000000000031
+    joueurId: 17400000-0000-4000-8000-000000000003
+    pseudo: Léa
+    recuLe: 2026-11-25T20:10:04.200Z
+    rang: 1
+- nom: Sam buzze pendant que Léa a la main
+  operationId: envoyerBuzz
+  acteur: sam
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000033
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etapeId: 17400000-0000-4000-8000-000000000011
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: BUZZ_NON_AUTORISE
+    detail: Léa a déjà la main sur ce Morceau.
+    instance: /api/soirees/17400000-0000-4000-8000-000000000001/buzz
+- nom: Léa dépose son brouillon au fil de la saisie
+  operationId: deposerBrouillonProposition
+  acteur: lea
+  requete:
+    titre: ""
+    artiste: beyon
+  statut: 204
+- nom: Léa valide l’artiste et laisse le titre vide
+  operationId: validerProposition
+  acteur: lea
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000041
+    titre: ""
+    artiste: beyonce
+  statut: 200
+  reponse: &a2
+    envoiId: 17400000-0000-4000-8000-000000000041
+    etapeId: 17400000-0000-4000-8000-000000000011
+    recueLe: 2026-11-25T20:10:09.000Z
+    titre: FAUX
+    artiste: JUSTE
+    pointsGagnes: 30
+- nom: Répéter le même envoi rend l’accusé initial
+  operationId: validerProposition
+  acteur: lea
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000041
+    titre: ""
+    artiste: beyonce
+  statut: 200
+  reponse: *a2
+- nom: Léa, bloquée sur ce Morceau, voit l’artiste trouvé et le titre encore demandé
+  operationId: retrouverEtatManette
+  acteur: lea
+  parametres:
+    abonnementId: 17400000-0000-4000-8000-000000000022
+  statut: 200
+  reponse:
+    revision: 9
+    heureServeur: 2026-11-25T20:10:10.000Z
+    abonnementId: 17400000-0000-4000-8000-000000000022
+    vue: &a15
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: &a12
+        - concurrentId: 17400000-0000-4000-8000-000000000003
+          nom: Léa
+          rang: 1
+          points: 30
+          bonnesReponses: 1
+          tempsCumuleMs: 4200
+        - concurrentId: 17400000-0000-4000-8000-000000000004
+          nom: Sam
+          rang: 2
+          points: 0
+          bonnesReponses: 0
+          tempsCumuleMs: 0
+      dernierBuzz: *a6
+      joueurId: 17400000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: EXTRAIT
+        lecture: &a13
+          etat: EN_LECTURE
+          positionMs: 4200
+          depuisLe: 2026-11-25T20:10:09.000Z
+        main: null
+        partiesTrouvees: &a14
+          - &a8
+            partie: ARTISTE
+            valeur: Beyoncé
+            joueurId: 17400000-0000-4000-8000-000000000003
+            pseudo: Léa
+            points: 30
+        revelation: null
+        peutBuzzer: false
+        bloque: true
+        aLaMain: false
+        champsDemandes:
+        - TITRE
+        monBrouillon: null
+      karaoke: null
+- nom: Sam buzze quand le Buzz se rouvre
+  operationId: envoyerBuzz
+  acteur: sam
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000032
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etapeId: 17400000-0000-4000-8000-000000000011
+  statut: 200
+  reponse: &a7
+    envoiId: 17400000-0000-4000-8000-000000000032
+    joueurId: 17400000-0000-4000-8000-000000000004
+    pseudo: Sam
+    recuLe: 2026-11-25T20:10:15.000Z
+    rang: 2
+- nom: Sam ne remplit que le titre, seul champ encore demandé
+  operationId: deposerBrouillonProposition
+  acteur: sam
+  requete:
+    titre: halo
+    artiste: ""
+  statut: 204
+- nom: "Valider après l’échéance : le brouillon a déjà été jugé"
+  operationId: validerProposition
+  acteur: sam
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000042
+    titre: halo
+    artiste: ""
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: HORS_DELAI
+    detail: "Le temps de saisie est écoulé : ton dernier brouillon a été jugé."
+    instance: /api/soirees/17400000-0000-4000-8000-000000000001/manches/17400000-0000-4000-8000-000000000002/morceaux/17400000-0000-4000-8000-000000000011/proposition
+- nom: La Console voit la réponse et le Joueur bloqué
+  operationId: retrouverEtatConsole
+  acteur: animateur:17400000-0000-4000-8000-000000000006
+  parametres:
+    abonnementId: 17400000-0000-4000-8000-000000000023
+  statut: 200
+  reponse:
+    revision: 14
+    heureServeur: 2026-11-25T20:10:37.000Z
+    abonnementId: 17400000-0000-4000-8000-000000000023
+    vue:
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: &a19
+        - concurrentId: 17400000-0000-4000-8000-000000000004
+          nom: Sam
+          rang: 1
+          points: 70
+          bonnesReponses: 1
+          tempsCumuleMs: 10200
+        - concurrentId: 17400000-0000-4000-8000-000000000003
+          nom: Léa
+          rang: 2
+          points: 30
+          bonnesReponses: 1
+          tempsCumuleMs: 4200
+      dernierBuzz: *a7
+      programme:
+      - *a4
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: REVELATION
+        lecture: null
+        main: null
+        partiesTrouvees: &a20
+          - *a8
+          - partie: TITRE
+            valeur: Halo
+            joueurId: 17400000-0000-4000-8000-000000000004
+            pseudo: Sam
+            points: 70
+        revelation: &a9
+          titre: Halo
+          artiste: Beyoncé
+          pochette: https://cdn-images.dzcdn.net/images/cover/fictive-halo/250x250-000000-80-0-0.jpg
+        reponse: *a9
+        joueursBloques:
+        - 17400000-0000-4000-8000-000000000003
+      karaoke: null
+- nom: Un Buzz parti pendant le Morceau 1 arrive pendant le Morceau 2
+  operationId: envoyerBuzz
+  acteur: lea
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000034
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etapeId: 17400000-0000-4000-8000-000000000011
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Ce Morceau est terminé.
+    instance: /api/soirees/17400000-0000-4000-8000-000000000001/buzz
+- nom: Pendant un Blind test, un Buzz sans cible est refusé
+  operationId: envoyerBuzz
+  acteur: lea
+  requete:
+    envoiId: 17400000-0000-4000-8000-000000000035
+  statut: 400
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 400
+    code: REQUETE_INVALIDE
+    detail: Pendant un Blind test, le Buzz nomme sa Manche et son Morceau.
+    instance: /api/soirees/17400000-0000-4000-8000-000000000001/buzz
+evenements:
+- nom: Extrait du Morceau 1 — salle
+  canal: salle
+  message:
+    type: morceau-ouvert
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 10
+    emisLe: 2026-11-25T20:10:00.000Z
+    donnees: *a10
+- nom: Léa a la main — salle
+  canal: salle
+  message:
+    type: buzz-recu
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 11
+    emisLe: 2026-11-25T20:10:04.200Z
+    donnees:
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: *a11
+      dernierBuzz: *a6
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: PROPOSITION
+        lecture:
+          etat: EN_PAUSE
+          positionMs: 4200
+          depuisLe: null
+        main:
+          joueurId: 17400000-0000-4000-8000-000000000003
+          pseudo: Léa
+          echeanceLe: 2026-11-25T20:10:24.200Z
+          tempsRestantMs: null
+        partiesTrouvees: []
+        revelation: null
+        lienExtrait: https://cdnt-preview.dzcdn.net/api/1/1/7/4/0/0/740e4bd2c1.mp3?hdnea=exp=1764101700~acl=*~hmac=4f2a9c
+      karaoke: null
+- nom: Artiste trouvé par Léa — salle
+  canal: salle
+  message:
+    type: proposition-jugee
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 12
+    emisLe: 2026-11-25T20:10:09.000Z
+    donnees:
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: *a12
+      dernierBuzz: *a6
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: EXTRAIT
+        lecture: *a13
+        main: null
+        partiesTrouvees: *a14
+        revelation: null
+        lienExtrait: https://cdnt-preview.dzcdn.net/api/1/1/7/4/0/0/740e4bd2c1.mp3?hdnea=exp=1764101700~acl=*~hmac=4f2a9c
+      karaoke: null
+- nom: Artiste trouvé, Léa bloquée — Léa
+  canal: joueur
+  message:
+    type: proposition-jugee
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 9
+    emisLe: 2026-11-25T20:10:09.000Z
+    donnees: *a15
+- nom: Sam a la main — salle
+  canal: salle
+  message:
+    type: buzz-recu
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 13
+    emisLe: 2026-11-25T20:10:15.000Z
+    donnees: &a21
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: *a12
+      dernierBuzz: *a7
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: PROPOSITION
+        lecture: &a16
+          etat: EN_PAUSE
+          positionMs: 10200
+          depuisLe: null
+        main: &a17
+          joueurId: 17400000-0000-4000-8000-000000000004
+          pseudo: Sam
+          echeanceLe: 2026-11-25T20:10:35.000Z
+          tempsRestantMs: null
+        partiesTrouvees: &a18
+          - *a8
+        revelation: null
+        lienExtrait: https://cdnt-preview.dzcdn.net/api/1/1/7/4/0/0/740e4bd2c1.mp3?hdnea=exp=1764101700~acl=*~hmac=4f2a9c
+      karaoke: null
+- nom: Sam a la main — Sam
+  canal: joueur
+  message:
+    type: buzz-recu
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: 2026-11-25T20:10:15.000Z
+    donnees:
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: *a12
+      dernierBuzz: *a7
+      joueurId: 17400000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: PROPOSITION
+        lecture: *a16
+        main: *a17
+        partiesTrouvees: *a18
+        revelation: null
+        peutBuzzer: false
+        bloque: false
+        aLaMain: true
+        champsDemandes:
+        - TITRE
+        monBrouillon: null
+      karaoke: null
+- nom: Brouillon de Sam jugé à l’échéance, Morceau révélé — salle
+  canal: salle
+  message:
+    type: morceau-revele
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 14
+    emisLe: 2026-11-25T20:10:35.000Z
+    donnees: &a22
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: *a19
+      dernierBuzz: *a7
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000011
+        numero: 1
+        total: 2
+        phase: REVELATION
+        lecture: null
+        main: null
+        partiesTrouvees: *a20
+        revelation: *a9
+        lienExtrait: null
+      karaoke: null
+- nom: Morceau 2 en préparation — salle
+  canal: salle
+  message:
+    type: morceau-en-preparation
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 15
+    emisLe: 2026-11-25T20:10:50.000Z
+    donnees: &a24
+      soiree: *a3
+      mancheActive: *a4
+      modeEnCours: BLIND_TEST
+      quiz: null
+      joueurs: *a5
+      classement: *a19
+      dernierBuzz: *a7
+      blindtest:
+        mancheId: 17400000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        etapeId: 17400000-0000-4000-8000-000000000012
+        numero: 2
+        total: 2
+        phase: PREPARATION
+        lecture: null
+        main: null
+        partiesTrouvees: []
+        revelation: null
+        lienExtrait: null
+      karaoke: null
+resynchronisation:
+  destination: /topic/soirees/17400000-0000-4000-8000-000000000001/salle
+  routeEtat: /api/soirees/17400000-0000-4000-8000-000000000001/etat/salle
+  typeEvenementFinal: morceau-revele
+  etat:
+    abonnementId: 17400000-0000-4000-8000-000000000024
+    revision: 13
+    heureServeur: 2026-11-25T20:10:16.000Z
+    vue: *a21
+  tampon:
+  - type: buzz-recu
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 13
+    emisLe: 2026-11-25T20:10:15.000Z
+    donnees: *a21
+  - type: morceau-revele
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 14
+    emisLe: 2026-11-25T20:10:35.000Z
+    donnees: *a22
+  revisionFinale: 14
+  vueFinale: *a22
+cases:
+- nom: La salle ne reçoit pas la Révélation avant la phase REVELATION
+  schema: BlocBlindTestSalle
+  valeur:
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    etapeId: 17400000-0000-4000-8000-000000000011
+    numero: 1
+    total: 2
+    phase: EXTRAIT
+    lecture:
+      etat: EN_LECTURE
+      positionMs: 4200
+      depuisLe: 2026-11-25T20:10:09.000Z
+    main: null
+    partiesTrouvees:
+    - partie: ARTISTE
+      valeur: Beyoncé
+      joueurId: 17400000-0000-4000-8000-000000000003
+      pseudo: Léa
+      points: 30
+    revelation: *a9
+    lienExtrait: https://cdnt-preview.dzcdn.net/api/1/1/7/4/0/0/740e4bd2c1.mp3?hdnea=exp=1764101700~acl=*~hmac=4f2a9c
+  valide: false
+  correction:
+    chemin:
+    - revelation
+    valeur: null
+- nom: La salle ne reçoit plus le lien d’extrait pendant la Révélation
+  schema: BlocBlindTestSalle
+  valeur:
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    etapeId: 17400000-0000-4000-8000-000000000011
+    numero: 1
+    total: 2
+    phase: REVELATION
+    lecture: null
+    main: null
+    partiesTrouvees:
+    - partie: ARTISTE
+      valeur: Beyoncé
+      joueurId: 17400000-0000-4000-8000-000000000003
+      pseudo: Léa
+      points: 30
+    - partie: TITRE
+      valeur: Halo
+      joueurId: 17400000-0000-4000-8000-000000000004
+      pseudo: Sam
+      points: 70
+    revelation:
+      titre: Halo
+      artiste: Beyoncé
+      pochette: https://cdn-images.dzcdn.net/images/cover/fictive-halo/250x250-000000-80-0-0.jpg
+    lienExtrait: https://cdnt-preview.dzcdn.net/api/1/1/7/4/0/0/740e4bd2c1.mp3?hdnea=exp=1764101700~acl=*~hmac=4f2a9c
+  valide: false
+  correction:
+    chemin:
+    - lienExtrait
+    valeur: null
+- nom: La salle ne reçoit jamais la réponse attendue de la Console
+  schema: BlocBlindTestSalle
+  valeur:
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    etapeId: 17400000-0000-4000-8000-000000000011
+    numero: 1
+    total: 2
+    phase: EXTRAIT
+    lecture:
+      etat: EN_LECTURE
+      positionMs: 0
+      depuisLe: 2026-11-25T20:10:00.000Z
+    main: null
+    partiesTrouvees: []
+    revelation: null
+    lienExtrait: https://cdnt-preview.dzcdn.net/api/1/1/7/4/0/0/740e4bd2c1.mp3?hdnea=exp=1764101700~acl=*~hmac=4f2a9c
+    reponse: *a9
+  valide: false
+- nom: Les réglages publics ne portent jamais la sélection des Morceaux
+  schema: Manche
+  valeur:
+    id: 17400000-0000-4000-8000-000000000002
+    ordre: 0
+    mode: BLIND_TEST
+    etat: EN_COURS
+    reglages:
+      source: *a23
+      nombreMorceaux: 2
+      morceaux:
+      - 3135556
+      - 1109731
+  valide: false
+- nom: Un Joueur bloqué ne peut pas avoir la main
+  schema: BlocBlindTestManette
+  valeur:
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    etapeId: 17400000-0000-4000-8000-000000000011
+    numero: 1
+    total: 2
+    phase: PROPOSITION
+    lecture:
+      etat: EN_PAUSE
+      positionMs: 10200
+      depuisLe: null
+    main:
+      joueurId: 17400000-0000-4000-8000-000000000004
+      pseudo: Sam
+      echeanceLe: 2026-11-25T20:10:35.000Z
+      tempsRestantMs: null
+    partiesTrouvees:
+    - partie: ARTISTE
+      valeur: Beyoncé
+      joueurId: 17400000-0000-4000-8000-000000000003
+      pseudo: Léa
+      points: 30
+    revelation: null
+    peutBuzzer: false
+    bloque: true
+    aLaMain: true
+    champsDemandes:
+    - TITRE
+    monBrouillon: null
+  valide: false
+  correction:
+    chemin:
+    - bloque
+    valeur: false
+- nom: Un Joueur bloqué ne peut pas buzzer
+  schema: BlocBlindTestManette
+  valeur:
+    mancheId: 17400000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    etapeId: 17400000-0000-4000-8000-000000000011
+    numero: 1
+    total: 2
+    phase: EXTRAIT
+    lecture:
+      etat: EN_LECTURE
+      positionMs: 4200
+      depuisLe: 2026-11-25T20:10:09.000Z
+    main: null
+    partiesTrouvees:
+    - partie: ARTISTE
+      valeur: Beyoncé
+      joueurId: 17400000-0000-4000-8000-000000000003
+      pseudo: Léa
+      points: 30
+    revelation: null
+    peutBuzzer: true
+    bloque: true
+    aLaMain: false
+    champsDemandes:
+    - TITRE
+    monBrouillon: null
+  valide: false
+  correction:
+    chemin:
+    - peutBuzzer
+    valeur: false
+- nom: L’artiste rapporte 30 points, pas 70
+  schema: PartieTrouvee
+  valeur:
+    partie: ARTISTE
+    valeur: Beyoncé
+    joueurId: 17400000-0000-4000-8000-000000000003
+    pseudo: Léa
+    points: 70
+  valide: false
+  correction:
+    chemin:
+    - points
+    valeur: 30
+- nom: Une pause de la Manche gèle l’échéance de saisie
+  schema: MainBlindTest
+  valeur:
+    joueurId: 17400000-0000-4000-8000-000000000003
+    pseudo: Léa
+    echeanceLe: 2026-11-25T20:10:24.200Z
+    tempsRestantMs: 15000
+  valide: false
+  correction:
+    chemin:
+    - echeanceLe
+    valeur: null
+- nom: Un extrait en pause n’a pas d’instant de lecture
+  schema: LectureExtrait
+  valeur:
+    etat: EN_PAUSE
+    positionMs: 4200
+    depuisLe: 2026-11-25T20:10:04.200Z
+  valide: false
+  correction:
+    chemin:
+    - depuisLe
+    valeur: null
+- nom: Un Buzz qui nomme sa Manche nomme aussi son Morceau
+  schema: BuzzSaisi
+  valeur:
+    envoiId: 17400000-0000-4000-8000-000000000036
+    mancheId: 17400000-0000-4000-8000-000000000002
+  valide: false
+- nom: Un accusé de Proposition ne porte que les barèmes possibles
+  schema: AccuseProposition
+  valeur:
+    envoiId: 17400000-0000-4000-8000-000000000041
+    etapeId: 17400000-0000-4000-8000-000000000011
+    recueLe: 2026-11-25T20:10:09.000Z
+    titre: FAUX
+    artiste: JUSTE
+    pointsGagnes: 50
+  valide: false
+  correction:
+    chemin:
+    - pointsGagnes
+    valeur: 30
+- nom: Un Morceau sans extrait est annoncé à la salle
+  schema: EvenementSalle
+  valeur:
+    type: morceau-saute
+    soireeId: 17400000-0000-4000-8000-000000000001
+    revision: 16
+    emisLe: 2026-11-25T20:10:52.000Z
+    donnees: *a24
+  valide: true
