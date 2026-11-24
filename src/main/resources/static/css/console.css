@@ -208,3 +208,48 @@
   color: var(--texte-2);
   font-size: 0.9375rem;
 }
+
+.programme, .programme__ajout {
+  display: grid;
+  gap: var(--espace-3);
+}
+.programme__ajout {
+  justify-items: start;
+  padding-top: var(--espace-3);
+  border-top: 1px solid var(--fond-3);
+}
+.programme__reglages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+.programme__reglages .champ {
+  flex: 1 1 10rem;
+}
+.programme__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--espace-2) var(--espace-4);
+  padding-block: var(--espace-2);
+  border-bottom: 1px solid var(--fond-3);
+}
+.programme__ligne strong, .programme__ligne small {
+  display: block;
+}
+.programme__ligne small {
+  color: var(--texte-2);
+}
+.programme__commandes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+}
+.programme__commandes .bouton {
+  padding-inline: var(--espace-2);
+}

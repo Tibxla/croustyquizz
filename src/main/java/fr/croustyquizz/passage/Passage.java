@@ -12,14 +12,23 @@ public record Passage(UUID id, UUID soireeId, UUID mancheId,
         Duration duree, long numero, long numeroModification,
         EtatPassage etat, Instant inscriptionLe, long ordreInscription,
         long tourNormal, long cleOrdre, Long tourConsomme, TraceTerminale traceTerminale) {
+    static final int NOMBRE_MAX_INTERPRETES = 4;
+
     public Passage {
         interpretes = List.copyOf(interpretes);
-        if (interpretes.isEmpty() || interpretes.size() > 4
+        verifierInterpretes(inscripteurId, interpretes);
+        if (duree.isZero() || duree.isNegative() || numero <= 0) {
+            throw new IllegalArgumentException("La durée et le numéro doivent être positifs.");
+        }
+    }
+
+    static void verifierInterpretes(UUID inscripteurId, List<UUID> interpretes) {
+        if (interpretes.isEmpty() || interpretes.size() > NOMBRE_MAX_INTERPRETES
                 || new HashSet<>(interpretes).size() != interpretes.size()) {
             throw new IllegalArgumentException("Un Passage exige un à quatre Interprètes distincts.");
         }
-        if (duree.isZero() || duree.isNegative() || numero <= 0) {
-            throw new IllegalArgumentException("La durée et le numéro doivent être positifs.");
+        if (!interpretes.contains(inscripteurId)) {
+            throw new IllegalArgumentException("L’inscripteur doit être Interprète du Passage.");
         }
     }
 }

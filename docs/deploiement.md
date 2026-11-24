@@ -110,10 +110,12 @@ Pour changer de version : sauvegarder la base, modifier `CROUSTYQUIZZ_VERSION` d
 `.env`, puis `tools/demo.sh arreter` et `tools/demo.sh demarrer`. Choisir une version
 numérotée pour une démonstration, afin de pouvoir la retrouver.
 
-En production, Flyway garde `out-of-order=false`. Si une migration ancienne manque
-sur une base déjà utilisée, le démarrage peut être refusé. Conserver les logs
-(`docker compose -f compose.prod.yaml logs app`) et faire corriger la séquence de
-migrations avant de poursuivre. Ne pas activer le profil `dev` pour contourner ce refus.
+Flyway applique les migrations hors ordre dans tous les profils (`CONTRIBUTING.md`,
+« Base de données ») : une migration plus ancienne que la dernière appliquée, arrivée
+par une branche fusionnée plus tard, est appliquée au démarrage. Si Flyway refuse quand
+même de démarrer (migration modifiée après sa fusion, base abîmée), conserver les logs
+(`docker compose -f compose.prod.yaml logs app`) et faire corriger la migration avant
+de poursuivre.
 
 ## Exposer en HTTPS le temps d'une démo
 

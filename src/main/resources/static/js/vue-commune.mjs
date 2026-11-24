@@ -2,6 +2,10 @@ const modes = { QUIZ: 'Quiz', BLIND_TEST: 'Blind test', KARAOKE: 'Karaoké', FRE
 const etats = { PREPARATION: 'En préparation', OUVERTE: 'Ouverte', EN_COURS: 'En cours',
 	EN_PAUSE: 'En pause', TERMINEE: 'Terminée', EN_ATTENTE: 'En attente' };
 
+export function decrireManche(manche) {
+	return `${manche.ordre + 1}. ${modes[manche.mode] ?? manche.mode} · ${etats[manche.etat] ?? manche.etat}`;
+}
+
 export const formaterNote = note => `${note} sur 5`;
 export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
 export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
@@ -28,7 +32,7 @@ export function decrireVue(vue) {
 		classement: vue.classement.map(ligne => `${ligne.rang}. ${ligne.nom} · ${ligne.points} points`),
 		palmares: vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null,
 		buzz: vue.dernierBuzz ? `Dernier Buzz : ${vue.dernierBuzz.pseudo}` : 'Aucun Buzz reçu',
-		programme: (vue.programme ?? []).map(m => `${m.ordre + 1}. ${modes[m.mode] ?? m.mode} · ${etats[m.etat] ?? m.etat}`),
+		programme: (vue.programme ?? []).map(decrireManche),
 		personnel: joueur ? [`${joueur.pseudo}`, vue.mancheActive && !vue.eligiblePourMancheActive ?
 			'Tu participeras à la prochaine Manche.' : '', vue.resultatPersonnel ?
 			`${vue.resultatPersonnel.pointsGagnes} points à la dernière correction` : ''].filter(Boolean).join(' · ') : '',
