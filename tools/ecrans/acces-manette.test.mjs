@@ -106,6 +106,35 @@ test('le navigateur qui refuse l’accès à localStorage (SecurityError) ne fai
 	assert.deepEqual(stockagesDuNavigateur({}), []);
 });
 
+test('sans code, seule une Soirée rejointe depuis moins de 12 heures est reprise ; un QR code reprend la sienne à tout moment', async () => {
+	let maintenant = Date.parse('2026-11-18T14:57:00Z');
+	const stockage = stockageFactice();
+	const acces = creerAccesManette(stockage, { maintenant: () => maintenant });
+	acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' });
+	const consulter = async () => ({ statut: 200, corps: vue('OUVERTE') });
+
+	maintenant += 11 * 3_600_000;
+	assert.deepEqual(await reprendreAcces(acces, { consulter }), { resultat: 'reprise', soireeId: soiree });
+
+	// Six jours plus tard, la page ouverte sans code propose d'arriver au lieu de ressusciter un ancien pseudo.
+	maintenant += 6 * 24 * 3_600_000;
+	assert.equal(acces.derniere(), null);
+	assert.deepEqual(await reprendreAcces(acces, { consulter }), { resultat: 'aucune' });
+	assert.deepEqual(await reprendreAcces(acces, { codeAcces: 'K7PQ2M', consulter }), { resultat: 'reprise', soireeId: soiree });
+	// L'accès lui-même reste gardé : seul le raccourci sans code a expiré.
+	assert.equal(acces.lire(soiree).jeton, jeton);
+});
+
+test('une dernière Soirée rangée par une version précédente, sans date, n’est plus reprise sans code', () => {
+	const stockage = stockageFactice();
+	const acces = creerAccesManette(stockage);
+	acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' });
+	stockage.setItem('croustyquizz.manette-derniere', soiree);
+	assert.equal(acces.derniere(), null);
+	acces.oublier(soiree);
+	assert.equal(stockage.valeurs.size, 0);
+});
+
 function vue(etat = 'EN_COURS', { joueurId = joueur, codeAcces = 'K7PQ2M' } = {}) {
 	return { vue: { soiree: { etat, codeAcces }, joueurId } };
 }

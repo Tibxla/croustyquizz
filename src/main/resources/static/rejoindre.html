@@ -122,7 +122,7 @@
 		}
 
 		// Une Manette qui a déjà rejoint retrouve son Joueur sans repasser par le pseudo, si son jeton vaut encore :
-		// celui de la Soirée du code scanné, sinon celui de la dernière Soirée rejointe.
+		// celui de la Soirée du code scanné, sinon celui de la dernière Soirée rejointe depuis moins de 12 heures.
 		async function consulter(soireeId, jeton) {
 			const etat = await appeler('GET', `/api/soirees/${encodeURIComponent(soireeId)}/etat/manette`, { secret: jeton });
 			return { statut: etat.statut, corps: etat.corps };

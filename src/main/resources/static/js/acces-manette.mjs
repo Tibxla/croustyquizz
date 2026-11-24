@@ -8,6 +8,9 @@
 const PREFIXE = 'croustyquizz.manette.';
 const DERNIERE = 'croustyquizz.manette-derniere';
 const SONDE = 'croustyquizz.manette-sonde';
+// Sans code, la page reprend la dernière Soirée rejointe le temps d'une soirée seulement : au-delà, un ancien
+// pseudo ne revient pas tout seul. Un QR code rescanné reprend la Soirée de son code à tout moment.
+const REPRISE_SANS_CODE_MS = 12 * 3_600_000;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const opaque = /^[A-Za-z0-9_-]{43,128}$/;
 const code = /^[A-Z0-9]{6}$/;
@@ -26,8 +29,11 @@ export function stockagesDuNavigateur(fenetre = globalThis) {
 	return stockages;
 }
 
-/** stockages : un stockage ou une liste, par ordre de préférence. Une écriture va au premier qui l'accepte. */
-export function creerAccesManette(stockages = stockagesDuNavigateur()) {
+/**
+ * stockages : un stockage ou une liste, par ordre de préférence. Une écriture va au premier qui l'accepte.
+ * maintenant : l'heure du navigateur en millisecondes, remplaçable dans les tests.
+ */
+export function creerAccesManette(stockages = stockagesDuNavigateur(), { maintenant = () => Date.now() } = {}) {
 	const liste = (Array.isArray(stockages) ? stockages : [stockages]).filter(Boolean);
 	const lireDans = (stockage, cle) => { try { return stockage.getItem(cle); } catch { return null; } };
 	const lireBrut = (cle) => liste.map((stockage) => lireDans(stockage, cle)).find((valeur) => valeur != null) ?? null;
@@ -54,6 +60,16 @@ export function creerAccesManette(stockages = stockagesDuNavigateur()) {
 		}
 	}
 
+	// La dernière Soirée est rangée avec son heure ; une valeur sans heure vient d'une version précédente.
+	function derniereRangee() {
+		try {
+			const { soireeId, rangeeLe } = JSON.parse(lireBrut(DERNIERE)) ?? {};
+			return { soireeId, rangeeLe: Number.isFinite(rangeeLe) ? rangeeLe : null };
+		} catch {
+			return { soireeId: lireBrut(DERNIERE), rangeeLe: null };
+		}
+	}
+
 	function soirees() {
 		const ids = new Set();
 		for (const stockage of liste) {
@@ -69,8 +85,12 @@ export function creerAccesManette(stockages = stockagesDuNavigateur()) {
 
 	return {
 		lire,
-		/** Accès de la dernière Soirée rejointe depuis ce navigateur, ou null. */
-		derniere: () => lire(lireBrut(DERNIERE)),
+		/** Accès de la dernière Soirée rejointe depuis ce navigateur il y a moins de 12 heures, ou null. */
+		derniere() {
+			const { soireeId, rangeeLe } = derniereRangee();
+			const age = rangeeLe === null ? Infinity : maintenant() - rangeeLe;
+			return age >= 0 && age < REPRISE_SANS_CODE_MS ? lire(soireeId) : null;
+		},
 		/** Accès gardés pour ce code d'accès : un code peut resservir après la fin d'une Soirée. */
 		parCode: (codeAcces) => soirees().map(lire).filter((acces) => acces && acces.codeAcces === codeAcces),
 		/** Vrai si un stockage accepte d'écrire : à vérifier avant de créer un Joueur. */
@@ -82,12 +102,12 @@ export function creerAccesManette(stockages = stockagesDuNavigateur()) {
 		/** Range l'accès et rend vrai s'il a pu être relu ; la dernière Soirée n'est qu'une commodité. */
 		ranger(soireeId, { jeton, joueurId, codeAcces }) {
 			if (!ecrire(PREFIXE + soireeId, JSON.stringify({ jeton, joueurId, codeAcces }))) return false;
-			ecrire(DERNIERE, soireeId);
+			ecrire(DERNIERE, JSON.stringify({ soireeId, rangeeLe: maintenant() }));
 			return true;
 		},
 		oublier(soireeId) {
 			effacer(PREFIXE + soireeId);
-			if (lireBrut(DERNIERE) === soireeId) effacer(DERNIERE);
+			if (derniereRangee().soireeId === soireeId) effacer(DERNIERE);
 		},
 	};
 }
