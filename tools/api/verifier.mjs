@@ -67,8 +67,8 @@ function dependances(nom, vues = new Set()) {
 // Le fichier local ne sort que vers la Console. Paroles et lecture restent hors de la Manette pour la
 // légèreté de sa vue, pas pour le secret : la vue salle est lisible par un Joueur.
 const interditsParVue = {
-  salle: ['FichierAudioLocal'],
-  console: ['ParolesDuPassage'],
+  salle: ['FichierAudioLocal', 'AccordEnregistrement', 'AccuseAccordEnregistrement'],
+  console: ['ParolesDuPassage', 'AccordEnregistrement', 'AccuseAccordEnregistrement'],
   joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal'],
 };
 for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console'], ['VueManette', 'joueur'],
@@ -97,6 +97,10 @@ for (const [chemin, element] of Object.entries(ouvert.paths)) {
     assert.ok(operation.operationId, `${methode} ${chemin} sans operationId`);
     assert.ok(!operations.has(operation.operationId), `operationId dupliqué : ${operation.operationId}`);
     operations.set(operation.operationId, { ...operation, chemin, methode });
+    if (operation.requestBody) {
+      assert.deepEqual(Object.keys(operation.requestBody.content), ['application/json'],
+        `${operation.operationId} : aucun dépôt audio dans le contrat HTTP`);
+    }
     const session = operation.security.some((securite) => 'sessionAnimateur' in securite);
     if (session && ['post', 'put', 'patch', 'delete'].includes(methode)) {
       assert.ok(operation.parameters?.some((p) => p.in === 'header' && p.name === 'X-CSRF-TOKEN' && p.required),
@@ -115,7 +119,8 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke',
+  'enregistrement-karaoke'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();

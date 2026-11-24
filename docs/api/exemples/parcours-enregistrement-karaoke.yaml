@@ -1,0 +1,963 @@
+description: Un Interprète donne son accord, puis l’Animateur interdit les Enregistrements pour la Soirée.
+evenementsComplets: true
+parametresCommuns:
+  soireeId: 98000000-0000-4000-8000-000000000001
+  mancheId: 98000000-0000-4000-8000-000000000002
+  X-CSRF-TOKEN: csrf_session_passage_fictif_98000
+  passageId: 98000000-0000-4000-8000-000000000041
+http:
+- nom: Accord personnel
+  operationId: definirAccordEnregistrement
+  acteur: joueur:98000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 71000000-0000-4000-8000-000000000001
+  requete: &id001
+    accord: true
+    numeroModification: 0
+  statut: 200
+  reponse: &id002
+    envoiId: 71000000-0000-4000-8000-000000000001
+    soireeId: 98000000-0000-4000-8000-000000000001
+    mancheId: 98000000-0000-4000-8000-000000000002
+    passageId: 98000000-0000-4000-8000-000000000041
+    accord: true
+    recueLe: '2026-11-17T21:00:01.000Z'
+- nom: Interdiction pour la Soirée
+  operationId: reglerAutorisationEnregistrement
+  acteur: animateur:71000000-0000-4000-8000-000000000099
+  parametres:
+    Idempotency-Key: 71000000-0000-4000-8000-000000000002
+  requete:
+    autorise: false
+  statut: 200
+  reponse:
+    envoiId: 71000000-0000-4000-8000-000000000002
+    soireeId: 98000000-0000-4000-8000-000000000001
+    autorise: false
+    recueLe: '2026-11-17T21:00:02.000Z'
+- nom: Rejeu de l’accord depuis la Manette
+  operationId: definirAccordEnregistrement
+  acteur: joueur:98000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 71000000-0000-4000-8000-000000000001
+  requete: *id001
+  statut: 200
+  reponse: *id002
+- nom: Nouvel accord interdit
+  operationId: definirAccordEnregistrement
+  acteur: joueur:98000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 71000000-0000-4000-8000-000000000003
+  requete: *id001
+  statut: 409
+  reponse:
+    type: about:blank
+    title: ENREGISTREMENT_INTERDIT
+    status: 409
+    code: ENREGISTREMENT_INTERDIT
+    detail: Les Enregistrements sont interdits pour cette Soirée.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/accord-enregistrement
+- nom: Accord envoyé après le départ, dans une Soirée qui autorise l’Enregistrement
+  operationId: definirAccordEnregistrement
+  acteur: joueur:98000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 71000000-0000-4000-8000-000000000004
+  requete:
+    accord: true
+    numeroModification: 2
+  statut: 409
+  reponse:
+    type: about:blank
+    title: COMMANDE_PERIMEE
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Ce Passage ne permet plus de modifier ton accord.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/accord-enregistrement
+- nom: Accord tenté par un autre Joueur
+  operationId: definirAccordEnregistrement
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  parametres:
+    Idempotency-Key: 71000000-0000-4000-8000-000000000005
+  requete: *id001
+  statut: 403
+  reponse:
+    type: about:blank
+    title: ACCES_REFUSE
+    status: 403
+    code: ACCES_REFUSE
+    detail: Seul un Interprète de ce Passage peut donner son accord.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/accord-enregistrement
+evenements:
+- nom: accord-enregistrement-modifie sur joueur (2)
+  canal: joueur
+  message: &id020
+    type: accord-enregistrement-modifie
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-17T21:00:01.000Z'
+    donnees: &id021
+      soiree:
+        id: 98000000-0000-4000-8000-000000000001
+        titre: Soirée fictive du Passage
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface:
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        prochainsPassages:
+        - &id004
+          passageId: 98000000-0000-4000-8000-000000000041
+          numeroModification: 0
+          numero: 1
+          chanson:
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id003
+          - joueurId: 98000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson:
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: 98000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        - &id005
+          passageId: 98000000-0000-4000-8000-000000000043
+          numeroModification: 0
+          numero: 3
+          chanson:
+            chansonId: ch_vent_3
+            titre: Vent de papier
+            artiste: Chorale imaginaire
+            album: null
+            dureeMs: 240000
+            etatParoles: SYNCHRONISEES
+          interpretes: *id003
+          position: 3
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 445000
+        nombreAutresPassages: 1
+        votes: []
+        mesPassagesEnAttente:
+        - *id004
+        - *id005
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        enregistrementAutorise: true
+        mesAccordsEnregistrement:
+        - 98000000-0000-4000-8000-000000000041
+- nom: autorisation-enregistrement-modifiee sur joueur (3)
+  canal: joueur
+  message:
+    type: autorisation-enregistrement-modifiee
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-17T21:00:02.000Z'
+    donnees:
+      soiree:
+        id: 98000000-0000-4000-8000-000000000001
+        titre: Soirée fictive du Passage
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface:
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        prochainsPassages:
+        - &id007
+          passageId: 98000000-0000-4000-8000-000000000041
+          numeroModification: 0
+          numero: 1
+          chanson:
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id006
+          - joueurId: 98000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson:
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: 98000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        - &id008
+          passageId: 98000000-0000-4000-8000-000000000043
+          numeroModification: 0
+          numero: 3
+          chanson:
+            chansonId: ch_vent_3
+            titre: Vent de papier
+            artiste: Chorale imaginaire
+            album: null
+            dureeMs: 240000
+            etatParoles: SYNCHRONISEES
+          interpretes: *id006
+          position: 3
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 445000
+        nombreAutresPassages: 1
+        votes: []
+        mesPassagesEnAttente:
+        - *id007
+        - *id008
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        enregistrementAutorise: false
+        mesAccordsEnregistrement: []
+- nom: autorisation-enregistrement-modifiee sur joueur (2)
+  canal: joueur
+  message:
+    type: autorisation-enregistrement-modifiee
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-17T21:00:02.000Z'
+    donnees:
+      soiree:
+        id: 98000000-0000-4000-8000-000000000001
+        titre: Soirée fictive du Passage
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface:
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numeroModification: 0
+          numero: 1
+          chanson:
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id009
+          - joueurId: 98000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - &id010
+          passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson:
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: 98000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        - passageId: 98000000-0000-4000-8000-000000000043
+          numeroModification: 0
+          numero: 3
+          chanson:
+            chansonId: ch_vent_3
+            titre: Vent de papier
+            artiste: Chorale imaginaire
+            album: null
+            dureeMs: 240000
+            etatParoles: SYNCHRONISEES
+          interpretes: *id009
+          position: 3
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 445000
+        nombreAutresPassages: 1
+        votes: []
+        mesPassagesEnAttente:
+        - *id010
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        enregistrementAutorise: false
+        mesAccordsEnregistrement: []
+- nom: autorisation-enregistrement-modifiee sur console (2)
+  canal: console
+  message:
+    type: autorisation-enregistrement-modifiee
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-17T21:00:02.000Z'
+    donnees:
+      soiree:
+        id: 98000000-0000-4000-8000-000000000001
+        titre: Soirée fictive du Passage
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: &id011
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      programme:
+      - id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id011
+      - id: 98000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface:
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        votes: []
+        passagesEnAttente:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numeroModification: 0
+          numero: 1
+          chanson:
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id012
+          - joueurId: 98000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson:
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id013
+          - joueurId: 98000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        - passageId: 98000000-0000-4000-8000-000000000043
+          numeroModification: 0
+          numero: 3
+          chanson:
+            chansonId: ch_vent_3
+            titre: Vent de papier
+            artiste: Chorale imaginaire
+            album: null
+            dureeMs: 240000
+            etatParoles: SYNCHRONISEES
+          interpretes: *id012
+          position: 3
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 445000
+        - passageId: 98000000-0000-4000-8000-000000000044
+          numeroModification: 0
+          numero: 4
+          chanson:
+            chansonId: ch_sel_4
+            titre: Grain de sel
+            artiste: Trio fictif
+            album: null
+            dureeMs: 200000
+            etatParoles: SYNCHRONISEES
+          interpretes: *id013
+          position: 4
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 715000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+        enregistrementAutorise: false
+cases:
+- nom: Accord sans audio
+  schema: AccordEnregistrement
+  valeur: *id001
+  valide: true
+- nom: Son encodé refusé dans l’accord
+  schema: AccordEnregistrement
+  valeur:
+    accord: true
+    numeroModification: 0
+    audio: data:audio/webm;base64,AAAA
+  valide: false
+- nom: Son refusé dans le réglage
+  schema: AutorisationEnregistrement
+  valeur:
+    autorise: false
+    audio: data:audio/mp4;base64,AAAA
+  valide: false
+- nom: Lien blob refusé dans le reçu
+  schema: AccuseAccordEnregistrement
+  valeur:
+    envoiId: 71000000-0000-4000-8000-000000000001
+    soireeId: 98000000-0000-4000-8000-000000000001
+    mancheId: 98000000-0000-4000-8000-000000000002
+    passageId: 98000000-0000-4000-8000-000000000041
+    accord: true
+    recueLe: '2026-11-17T21:00:01.000Z'
+    fichier: blob:https://example.test/prise
+  valide: false
+- nom: Accords personnels interdits sur la salle
+  schema: BlocKaraokeSalle
+  valeur:
+    mancheId: 98000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 2
+    nombreEnAttente: 4
+    tourOuvert: 1
+    passagePrioritaireId: null
+    courant: null
+    configurationInterface:
+      longueurRechercheMax: 120
+      delaiConsultationNavigateurMs: 8000
+      delaiConfirmationNavigateurMs: 10000
+      delaiAppelMs: 30000
+      dureeVoteMs: 30000
+      dureeAffichageMoyenneMs: 10000
+    votes: []
+    prochainsPassages:
+    - passageId: 98000000-0000-4000-8000-000000000041
+      numeroModification: 0
+      numero: 1
+      chanson:
+        chansonId: ch_quais_1
+        titre: Chanson fictive des quais
+        artiste: Groupe fictif
+        album: null
+        dureeMs: 205000
+        etatParoles: SYNCHRONISEES
+      interpretes: &id014
+      - joueurId: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+      position: 1
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-17T21:00:00.000Z'
+        etat: ESTIMEE
+        dureeMs: 0
+    - passageId: 98000000-0000-4000-8000-000000000042
+      numeroModification: 0
+      numero: 2
+      chanson:
+        chansonId: ch_phare_2
+        titre: Le phare imaginaire
+        artiste: Duo inventé
+        album: Album fictif
+        dureeMs: 180000
+        etatParoles: SYNCHRONISEES
+      interpretes:
+      - joueurId: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+      position: 2
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-17T21:00:00.000Z'
+        etat: ESTIMEE
+        dureeMs: 235000
+    - passageId: 98000000-0000-4000-8000-000000000043
+      numeroModification: 0
+      numero: 3
+      chanson:
+        chansonId: ch_vent_3
+        titre: Vent de papier
+        artiste: Chorale imaginaire
+        album: null
+        dureeMs: 240000
+        etatParoles: SYNCHRONISEES
+      interpretes: *id014
+      position: 3
+      tour: 2
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-17T21:00:00.000Z'
+        etat: ESTIMEE
+        dureeMs: 445000
+    nombreAutresPassages: 1
+    lecteurDesigneId: null
+    lecture: null
+    paroles: null
+    mesAccordsEnregistrement:
+    - 98000000-0000-4000-8000-000000000041
+  valide: false
+- nom: Accords personnels interdits sur la Console
+  schema: BlocKaraokeConsole
+  valeur:
+    mancheId: 98000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 2
+    nombreEnAttente: 4
+    tourOuvert: 1
+    passagePrioritaireId: null
+    courant: null
+    configurationInterface:
+      longueurRechercheMax: 120
+      delaiConsultationNavigateurMs: 8000
+      delaiConfirmationNavigateurMs: 10000
+      delaiAppelMs: 30000
+      dureeVoteMs: 30000
+      dureeAffichageMoyenneMs: 10000
+    votes: []
+    passagesEnAttente:
+    - passageId: 98000000-0000-4000-8000-000000000041
+      numeroModification: 0
+      numero: 1
+      chanson:
+        chansonId: ch_quais_1
+        titre: Chanson fictive des quais
+        artiste: Groupe fictif
+        album: null
+        dureeMs: 205000
+        etatParoles: SYNCHRONISEES
+      interpretes: &id015
+      - joueurId: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+      position: 1
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-17T21:00:00.000Z'
+        etat: ESTIMEE
+        dureeMs: 0
+    - passageId: 98000000-0000-4000-8000-000000000042
+      numeroModification: 0
+      numero: 2
+      chanson:
+        chansonId: ch_phare_2
+        titre: Le phare imaginaire
+        artiste: Duo inventé
+        album: Album fictif
+        dureeMs: 180000
+        etatParoles: SYNCHRONISEES
+      interpretes: &id016
+      - joueurId: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+      position: 2
+      tour: 1
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-17T21:00:00.000Z'
+        etat: ESTIMEE
+        dureeMs: 235000
+    - passageId: 98000000-0000-4000-8000-000000000043
+      numeroModification: 0
+      numero: 3
+      chanson:
+        chansonId: ch_vent_3
+        titre: Vent de papier
+        artiste: Chorale imaginaire
+        album: null
+        dureeMs: 240000
+        etatParoles: SYNCHRONISEES
+      interpretes: *id015
+      position: 3
+      tour: 2
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-17T21:00:00.000Z'
+        etat: ESTIMEE
+        dureeMs: 445000
+    - passageId: 98000000-0000-4000-8000-000000000044
+      numeroModification: 0
+      numero: 4
+      chanson:
+        chansonId: ch_sel_4
+        titre: Grain de sel
+        artiste: Trio fictif
+        album: null
+        dureeMs: 200000
+        etatParoles: SYNCHRONISEES
+      interpretes: *id016
+      position: 4
+      tour: 2
+      prioritaire: false
+      attente:
+        calculeeLe: '2026-11-17T21:00:00.000Z'
+        etat: ESTIMEE
+        dureeMs: 715000
+    peutGererFile: true
+    peutReglerLimite: true
+    peutRechercher: true
+    lecteurDesigne: false
+    peutAppeler: true
+    peutPasser: false
+    peutReprendre: false
+    peutCaler: false
+    peutReprendreEnParolesSeules: false
+    lecture: null
+    fichierLocal: null
+    enregistrementAutorise: false
+    mesAccordsEnregistrement:
+    - 98000000-0000-4000-8000-000000000041
+  valide: false
+resynchronisation:
+  destination: /topic/joueurs/98000000-0000-4000-8000-000000000003
+  routeEtat: /api/soirees/98000000-0000-4000-8000-000000000001/etat/manette
+  typeEvenementFinal: accord-enregistrement-modifie
+  etat:
+    abonnementId: 71000000-0000-4000-8000-000000000090
+    revision: 1
+    heureServeur: '2026-11-17T21:00:00.000Z'
+    vue:
+      soiree:
+        id: 98000000-0000-4000-8000-000000000001
+        titre: Soirée fictive du Passage
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs:
+      - id: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      classement: []
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 4
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface:
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        prochainsPassages:
+        - &id018
+          passageId: 98000000-0000-4000-8000-000000000041
+          numeroModification: 0
+          numero: 1
+          chanson:
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id017
+          - joueurId: 98000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson:
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: 98000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 235000
+        - &id019
+          passageId: 98000000-0000-4000-8000-000000000043
+          numeroModification: 0
+          numero: 3
+          chanson:
+            chansonId: ch_vent_3
+            titre: Vent de papier
+            artiste: Chorale imaginaire
+            album: null
+            dureeMs: 240000
+            etatParoles: SYNCHRONISEES
+          interpretes: *id017
+          position: 3
+          tour: 2
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-17T21:00:00.000Z'
+            etat: ESTIMEE
+            dureeMs: 445000
+        nombreAutresPassages: 1
+        votes: []
+        mesPassagesEnAttente:
+        - *id018
+        - *id019
+        nombrePersonnelEnAttente: 2
+        peutRechercher: true
+        peutInscrire: false
+        motifInscriptionRefusee: LIMITE_ATTEINTE
+        peutConfirmerPresence: false
+        enregistrementAutorise: true
+        mesAccordsEnregistrement: []
+  tampon:
+  - *id020
+  - *id020
+  revisionFinale: 2
+  vueFinale: *id021
