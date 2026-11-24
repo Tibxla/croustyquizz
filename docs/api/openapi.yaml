@@ -2009,7 +2009,8 @@ paths:
         EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
         numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
         recalculée sur la salle, la Console et toutes les Manettes. En Pilotage Automatique, le serveur
-        appelle le Passage suivant et cette commande est refusée. Le saut automatique relève du ticket #121.
+        appelle le Passage suivant et cette commande est refusée. À l’échéance de l’appel, le Passage
+        est sauté en Pilotage Automatique ; en Pilotage Manuel, l’échéance ne publie rien.
         Propres, dans l’ordre : 409 ETAT_INCOMPATIBLE (Manche en pause, puis Pilotage Automatique,
         puis courant actif) ; 409 COMMANDE_PERIMEE (compteur, Passage
         sorti de l’attente ou plus en position 1). Refus communs : 400 REQUETE_INVALIDE, 401
@@ -2094,10 +2095,13 @@ paths:
       description: 'Manche Karaoké active en Soirée EN_COURS. Joueur Interprète du Passage appelé, envoiId dans le
         corps. APPELE vers EN_COURS ; numeroModification augmente et la chronologie démarre aussitôt
         (demarreLe). Une lecture préparée pendant l’appel est figée ; sinon le Passage démarre en paroles
-        seules, motif ECRAN_NON_PRET, lecteurId nul. La confirmation reste acceptée après l’échéance, qui ne
-        publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
+        seules, motif ECRAN_NON_PRET, lecteurId nul. En Pilotage Manuel, la confirmation reste acceptée
+        après l’échéance, qui ne publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
         l’ordre : 404 RESSOURCE_INTROUVABLE (Joueur non Interprète, avant tout reçu) ; 409 ETAT_INCOMPATIBLE
-        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE). Refus communs :
+        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE) ;
+        409 HORS_DELAI en Pilotage Automatique (confirmation reçue à l’échéance de l’appel ou après,
+        tant que le Passage est encore APPELE), avec le détail « Le temps pour confirmer est écoulé. ».
+        Refus communs :
         400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE
         (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
         ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
