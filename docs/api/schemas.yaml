@@ -302,10 +302,12 @@ $defs:
         type: string
         enum:
         - QUIZ
+        - BLIND_TEST
         - KARAOKE
       reglages:
         oneOf:
         - $ref: '#/$defs/ReglagesQuiz'
+        - $ref: '#/$defs/ReglagesBlindTest'
         - $ref: '#/$defs/ReglagesKaraoke'
     required:
     - mode
@@ -319,7 +321,19 @@ $defs:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesQuiz'
-      else:
+    - if:
+        properties:
+          mode:
+            const: BLIND_TEST
+      then:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesBlindTest'
+    - if:
+        properties:
+          mode:
+            const: KARAOKE
+      then:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesKaraoke'
@@ -337,6 +351,7 @@ $defs:
         type: string
         enum:
         - QUIZ
+        - BLIND_TEST
         - KARAOKE
       etat:
         type: string
@@ -348,6 +363,7 @@ $defs:
       reglages:
         oneOf:
         - $ref: '#/$defs/ReglagesQuiz'
+        - $ref: '#/$defs/ReglagesBlindTest'
         - $ref: '#/$defs/ReglagesKaraoke'
     required:
     - id
@@ -364,7 +380,19 @@ $defs:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesQuiz'
-      else:
+    - if:
+        properties:
+          mode:
+            const: BLIND_TEST
+      then:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesBlindTest'
+    - if:
+        properties:
+          mode:
+            const: KARAOKE
+      then:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesKaraoke'
@@ -711,7 +739,8 @@ $defs:
     description: etapeId désigne l’étape courante et doit alors lui correspondre, sinon 409 ETAPE_INACTIVE. Pour
       le Quiz, il est toujours présent ; la correction reste attachée au même etapeId jusqu’à l’étape suivante.
       Au Karaoké, un Passage actif (APPELE, EN_COURS ou EN_PAUSE) a une étape, créée à l’appel ; etapeId est
-      omis seulement sans Passage actif, et PASSER_ETAPE y donne ETAPE_INACTIVE.
+      omis seulement sans Passage actif, et PASSER_ETAPE y donne ETAPE_INACTIVE. Au Blind test, il est toujours
+      présent et nomme le Morceau affiché, même pendant sa Révélation.
   AccuseCommande:
     type: object
     additionalProperties: false
@@ -789,12 +818,25 @@ $defs:
   BuzzSaisi:
     type: object
     additionalProperties: false
+    description: Pendant une Manche de Blind test, mancheId et etapeId nomment le Morceau visé et sont exigés
+      (400 REQUETE_INVALIDE sinon) ; hors Blind test, ils sont absents (ADR 0009, point 5).
     properties:
       envoiId:
         type: string
         format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
     required:
     - envoiId
+    dependentRequired:
+      mancheId:
+      - etapeId
+      etapeId:
+      - mancheId
   Buzz:
     type: object
     additionalProperties: false
@@ -887,6 +929,25 @@ $defs:
                 enum:
                 - EN_COURS
                 - EN_PAUSE
+    - if:
+        required:
+        - blindtest
+        properties:
+          blindtest:
+            not:
+              type: 'null'
+      then:
+        properties:
+          mancheActive:
+            type: object
+            properties:
+              mode:
+                const: BLIND_TEST
+              etat:
+                type: string
+                enum:
+                - EN_COURS
+                - EN_PAUSE
   ReglageMusiqueDAttente:
     type: object
     additionalProperties: false
@@ -939,7 +1000,9 @@ $defs:
         - $ref: '#/$defs/EtatQuiz'
         - type: 'null'
       blindtest:
-        type: 'null'
+        oneOf:
+        - $ref: '#/$defs/BlocBlindTestSalle'
+        - type: 'null'
       karaoke:
         oneOf:
         - $ref: '#/$defs/BlocKaraokeSalle'
@@ -990,7 +1053,9 @@ $defs:
         - $ref: '#/$defs/EtatQuiz'
         - type: 'null'
       blindtest:
-        type: 'null'
+        oneOf:
+        - $ref: '#/$defs/BlocBlindTestConsole'
+        - type: 'null'
       karaoke:
         oneOf:
         - $ref: '#/$defs/BlocKaraokeConsole'
@@ -1042,7 +1107,9 @@ $defs:
         - $ref: '#/$defs/EtatQuiz'
         - type: 'null'
       blindtest:
-        type: 'null'
+        oneOf:
+        - $ref: '#/$defs/BlocBlindTestManette'
+        - type: 'null'
       karaoke:
         oneOf:
         - $ref: '#/$defs/BlocKaraokeManette'
@@ -1068,8 +1135,8 @@ $defs:
       eligiblePourMancheActive:
         type: boolean
         description: 'Participation du Joueur à la Manche active. Pour un Joueur arrivé pendant la Manche, vrai
-          quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Karaoké ; Freestyle), faux
-          sinon ; le Blind test tranchera dans #17. Jamais une garde du Karaoké, où la présence suffit.'
+          quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Blind test, ADR 0009 ;
+          Karaoké ; Freestyle), faux sinon. Jamais une garde du Karaoké, où la présence suffit.'
       derniereReponse:
         oneOf:
         - $ref: '#/$defs/AccuseReponse'
@@ -1207,6 +1274,11 @@ $defs:
         - classement-modifie
         - soiree-terminee
         - buzz-recu
+        - morceau-en-preparation
+        - morceau-ouvert
+        - proposition-jugee
+        - morceau-revele
+        - morceau-saute
         - file-attente-modifiee
         - limite-passages-modifiee
         - passage-appele
@@ -1257,6 +1329,11 @@ $defs:
         - classement-modifie
         - soiree-terminee
         - buzz-recu
+        - morceau-en-preparation
+        - morceau-ouvert
+        - proposition-jugee
+        - morceau-revele
+        - morceau-saute
         - file-attente-modifiee
         - limite-passages-modifiee
         - passage-appele
@@ -1307,6 +1384,12 @@ $defs:
         - classement-modifie
         - soiree-terminee
         - buzz-recu
+        - morceau-en-preparation
+        - morceau-ouvert
+        - proposition-jugee
+        - morceau-revele
+        - morceau-saute
+        - brouillon-depose
         - reponse-enregistree
         - resultat-personnel
         - file-attente-modifiee
@@ -1387,6 +1470,7 @@ $defs:
         - ROTATION_PROTEGEE
         - CHANSON_INDISPONIBLE
         - SOURCE_PAROLES_INDISPONIBLE
+        - SOURCE_MUSICALE_INDISPONIBLE
         - LECTEUR_NON_DESIGNE
         - VOTE_INTERDIT
         - VOTE_DEJA_ENREGISTRE
@@ -1406,6 +1490,530 @@ $defs:
     - instance
     description: Erreur JSON Problem Details. Ne contient ni secret, ni solution de Question, ni
       information sur un autre Lieu.
+  ReglagesBlindTest:
+    type: object
+    additionalProperties: false
+    description: Réglages publics d’une Manche de Blind test, publiés tels quels à toutes les destinations par
+      mancheActive.reglages. La sélection des Morceaux tirés n’y figure jamais (ADR 0009, point 1).
+    properties:
+      source:
+        $ref: '#/$defs/SourceDeMorceaux'
+      nombreMorceaux:
+        type: integer
+        minimum: 1
+        maximum: 50
+    required:
+    - source
+    - nombreMorceaux
+  SourceDeMorceaux:
+    type: object
+    additionalProperties: false
+    description: Playlist Deezer, ou genre Deezer (son classement), où le serveur tire les Morceaux qui ont un
+      extrait. Visible comme un thème annoncé ; ni la sélection ni l’ordre.
+    properties:
+      type:
+        type: string
+        enum:
+        - PLAYLIST
+        - GENRE
+      idDeezer:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - type
+    - idDeezer
+  BrouillonProposition:
+    type: object
+    additionalProperties: false
+    description: Saisie en cours du Joueur qui a la main, remplacée à chaque envoi. À l’échéance, le dernier brouillon
+      reçu est jugé ; il n’est montré à personne d’autre avant le verdict. Seuls les champs encore demandés comptent.
+    properties:
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+        description: Numéro d’envoi croissant pendant la main du Joueur, à partir de 1. Un brouillon dont le numéro
+          ne dépasse pas celui du dernier brouillon retenu est ignoré ; après un rechargement, la Manette repart du
+          numéro de monBrouillon.
+      titre:
+        type: string
+        maxLength: 200
+      artiste:
+        type: string
+        maxLength: 200
+    required:
+    - numero
+    - titre
+    - artiste
+  PropositionSaisie:
+    type: object
+    additionalProperties: false
+    description: Proposition validée par le Joueur qui a la main, jugée aussitôt. Aucune identité, date ni valeur de
+      points fournie par le navigateur n’est acceptée.
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      titre:
+        type: string
+        maxLength: 200
+      artiste:
+        type: string
+        maxLength: 200
+    required:
+    - envoiId
+    - titre
+    - artiste
+  VerdictChamp:
+    type: string
+    enum:
+    - JUSTE
+    - FAUX
+    - NON_DEMANDE
+    description: NON_DEMANDE pour une partie déjà trouvée par un autre Joueur, ni demandée ni jugée.
+  AccuseProposition:
+    type: object
+    additionalProperties: false
+    description: Verdict immédiat d’une Proposition de titre ; la partie trouvée est publique dans la vue. Le même
+      envoi retrouve exactement cet accusé.
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      titre:
+        $ref: '#/$defs/VerdictChamp'
+      artiste:
+        $ref: '#/$defs/VerdictChamp'
+      pointsGagnes:
+        type: integer
+        enum:
+        - 0
+        - 30
+        - 70
+        - 100
+    required:
+    - envoiId
+    - etapeId
+    - recueLe
+    - titre
+    - artiste
+    - pointsGagnes
+  LectureExtrait:
+    type: object
+    additionalProperties: false
+    description: État de lecture des 30 s d’extrait, mené par l’Horloge du serveur. En lecture, l’extrait était à
+      positionMs à l’instant depuisLe ; en pause, il attend à positionMs. L’Écran de salle s’y aligne sans rien
+      signaler (ADR 0009, point 3).
+    properties:
+      etat:
+        type: string
+        enum:
+        - EN_LECTURE
+        - EN_PAUSE
+      positionMs:
+        type: integer
+        minimum: 0
+        maximum: 30000
+      depuisLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: 'null'
+    required:
+    - etat
+    - positionMs
+    - depuisLe
+    allOf:
+    - if:
+        properties:
+          etat:
+            const: EN_LECTURE
+      then:
+        properties:
+          depuisLe:
+            type: string
+      else:
+        properties:
+          depuisLe:
+            type: 'null'
+  MainBlindTest:
+    type: object
+    additionalProperties: false
+    description: Joueur qui a la main sur le Morceau. L’échéance de sa saisie est gelée pendant une pause de la Manche
+      ; tempsRestantMs la remplace alors.
+    properties:
+      joueurId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+      echeanceLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: 'null'
+      tempsRestantMs:
+        oneOf:
+        - type: integer
+          minimum: 0
+          maximum: 20000
+        - type: 'null'
+    required:
+    - joueurId
+    - pseudo
+    - echeanceLe
+    - tempsRestantMs
+    oneOf:
+    - properties:
+        echeanceLe:
+          type: string
+        tempsRestantMs:
+          type: 'null'
+    - properties:
+        echeanceLe:
+          type: 'null'
+        tempsRestantMs:
+          type: integer
+  PartieTrouvee:
+    type: object
+    additionalProperties: false
+    description: Titre ou artiste trouvé, montré aussitôt à toutes les destinations ; le Morceau continue pour l’autre
+      partie (ADR 0009, point 10).
+    properties:
+      partie:
+        type: string
+        enum:
+        - TITRE
+        - ARTISTE
+      valeur:
+        type: string
+        minLength: 1
+      joueurId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+      points:
+        type: integer
+        enum:
+        - 30
+        - 70
+    required:
+    - partie
+    - valeur
+    - joueurId
+    - pseudo
+    - points
+    allOf:
+    - if:
+        properties:
+          partie:
+            const: TITRE
+      then:
+        properties:
+          points:
+            const: 70
+      else:
+        properties:
+          points:
+            const: 30
+  RevelationMorceau:
+    type: object
+    additionalProperties: false
+    properties:
+      titre:
+        type: string
+        minLength: 1
+      artiste:
+        type: string
+        minLength: 1
+      pochette:
+        oneOf:
+        - type: string
+          format: uri
+        - type: 'null'
+    required:
+    - titre
+    - artiste
+    - pochette
+  BlindTestCommun:
+    type: object
+    description: Partie du bloc blindtest commune aux trois destinations. revelation n’est non nul qu’en phase
+      REVELATION ; avant, seules les parties déjà trouvées sont visibles, aucune en PREPARATION et au plus une en
+      EXTRAIT ou PROPOSITION, la seconde déclenchant la Révélation. Pendant une pause de la Manche, main porte
+      tempsRestantMs, jamais d’échéance absolue ; hors pause, l’inverse.
+    properties:
+      mancheId:
+        type: string
+        format: uuid
+      etat:
+        type: string
+        enum:
+        - EN_COURS
+        - EN_PAUSE
+      etapeId:
+        type: string
+        format: uuid
+        description: Identifiant du Morceau attribué par le serveur, jamais l’identifiant Deezer.
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 50
+      total:
+        type: integer
+        minimum: 1
+        maximum: 50
+      phase:
+        type: string
+        enum:
+        - PREPARATION
+        - EXTRAIT
+        - PROPOSITION
+        - REVELATION
+      lecture:
+        oneOf:
+        - $ref: '#/$defs/LectureExtrait'
+        - type: 'null'
+      main:
+        oneOf:
+        - $ref: '#/$defs/MainBlindTest'
+        - type: 'null'
+      partiesTrouvees:
+        type: array
+        maxItems: 2
+        items:
+          $ref: '#/$defs/PartieTrouvee'
+      revelation:
+        oneOf:
+        - $ref: '#/$defs/RevelationMorceau'
+        - type: 'null'
+    required:
+    - mancheId
+    - etat
+    - etapeId
+    - numero
+    - total
+    - phase
+    - lecture
+    - main
+    - partiesTrouvees
+    - revelation
+    allOf:
+    - if:
+        properties:
+          phase:
+            const: PREPARATION
+      then:
+        properties:
+          lecture:
+            type: 'null'
+          main:
+            type: 'null'
+          partiesTrouvees:
+            maxItems: 0
+          revelation:
+            type: 'null'
+    - if:
+        properties:
+          phase:
+            const: EXTRAIT
+      then:
+        properties:
+          lecture:
+            type: object
+          main:
+            type: 'null'
+          partiesTrouvees:
+            maxItems: 1
+          revelation:
+            type: 'null'
+    - if:
+        properties:
+          phase:
+            const: PROPOSITION
+      then:
+        properties:
+          lecture:
+            type: object
+            properties:
+              etat:
+                const: EN_PAUSE
+          main:
+            type: object
+          partiesTrouvees:
+            maxItems: 1
+          revelation:
+            type: 'null'
+    - if:
+        properties:
+          etat:
+            const: EN_PAUSE
+          main:
+            type: object
+      then:
+        properties:
+          main:
+            properties:
+              echeanceLe:
+                type: 'null'
+      else:
+        properties:
+          main:
+            properties:
+              tempsRestantMs:
+                type: 'null'
+    - if:
+        properties:
+          phase:
+            const: REVELATION
+      then:
+        properties:
+          lecture:
+            type: 'null'
+          main:
+            type: 'null'
+          revelation:
+            type: object
+    - if:
+        properties:
+          etat:
+            const: EN_PAUSE
+          lecture:
+            type: object
+      then:
+        properties:
+          lecture:
+            properties:
+              etat:
+                const: EN_PAUSE
+  BlocBlindTestSalle:
+    allOf:
+    - $ref: '#/$defs/BlindTestCommun'
+    - type: object
+      properties:
+        lienExtrait:
+          oneOf:
+          - type: string
+            format: uri
+          - type: 'null'
+          description: Lien d’extrait signé rendu par Deezer, redemandé au début du Morceau ; ni identifiant Deezer,
+            ni titre. Non nul en phases EXTRAIT et PROPOSITION seulement.
+      required:
+      - lienExtrait
+    - if:
+        properties:
+          phase:
+            enum:
+            - PREPARATION
+            - REVELATION
+      then:
+        properties:
+          lienExtrait:
+            type: 'null'
+      else:
+        properties:
+          lienExtrait:
+            type: string
+    unevaluatedProperties: false
+  BlocBlindTestManette:
+    allOf:
+    - $ref: '#/$defs/BlindTestCommun'
+    - type: object
+      properties:
+        peutBuzzer:
+          type: boolean
+        bloque:
+          type: boolean
+          description: Vrai après une Proposition de titre avec un champ demandé faux ou vide, jusqu’au Morceau suivant.
+        aLaMain:
+          type: boolean
+        champsDemandes:
+          type: array
+          uniqueItems: true
+          maxItems: 2
+          items:
+            type: string
+            enum:
+            - TITRE
+            - ARTISTE
+          description: Parties encore à trouver sur ce Morceau ; une partie trouvée n’est plus demandée.
+        monBrouillon:
+          oneOf:
+          - $ref: '#/$defs/BrouillonProposition'
+          - type: 'null'
+          description: Dernier brouillon reçu de ce Joueur, pour retrouver sa saisie après un rechargement ; null s’il
+            n’a pas la main.
+      required:
+      - peutBuzzer
+      - bloque
+      - aLaMain
+      - champsDemandes
+      - monBrouillon
+    - not:
+        properties:
+          aLaMain:
+            const: true
+          bloque:
+            const: true
+        required:
+        - aLaMain
+        - bloque
+    - if:
+        properties:
+          aLaMain:
+            const: false
+      then:
+        properties:
+          monBrouillon:
+            type: 'null'
+    - if:
+        properties:
+          phase:
+            not:
+              const: EXTRAIT
+      then:
+        properties:
+          peutBuzzer:
+            const: false
+    - if:
+        properties:
+          bloque:
+            const: true
+      then:
+        properties:
+          peutBuzzer:
+            const: false
+    unevaluatedProperties: false
+  BlocBlindTestConsole:
+    allOf:
+    - $ref: '#/$defs/BlindTestCommun'
+    - type: object
+      properties:
+        reponse:
+          $ref: '#/$defs/RevelationMorceau'
+          description: Réponse attendue, visible de l’Animateur seulement, pour l’arbitrage (#19).
+        joueursBloques:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+      required:
+      - reponse
+      - joueursBloques
+    unevaluatedProperties: false
   ReglagesKaraoke:
     type: object
     additionalProperties: false

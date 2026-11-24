@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +25,7 @@ import fr.croustyquizz.soiree.Format;
 import fr.croustyquizz.soiree.Pilotage;
 import fr.croustyquizz.soiree.ServiceDesAcces;
 import fr.croustyquizz.soiree.ServiceSoiree;
+import fr.croustyquizz.tempsreel.FournisseurDeBloc;
 import fr.croustyquizz.tempsreel.PublicationDeVues;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -142,6 +144,13 @@ class SocleMancheJpaTest {
 				}
 			};
 			return new ServiceDeManche<>(fabrique, persistance, socle);
+		}
+
+		@Bean
+		FournisseurDeBloc blocFacticeJpa(
+				@Qualifier("serviceFacticeJpa") ObjectProvider<ServiceDeManche<?, ?>> service,
+				DepotDeManches depot) {
+			return new BlocFacticeDuSocle(service::getObject, depot);
 		}
 	}
 }

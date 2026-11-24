@@ -234,7 +234,7 @@ class SocleHttpTest {
 			ConfigurationActeurHttp.class, PublicationDeVues.class, PublicationApresCommit.class,
 			VerrousSoiree.class, RegistreDesDeroulements.class, RegistreDesEnvois.class, SocleDeManche.class,
 			RegistreServicesDeManche.class, RegistreAbonnements.class, DiffuseurStomp.class, IdentitesFactices.class,
-			PilotageDeSoireeDemonstration.class})
+			PilotageDeSoireeDemonstration.class, EtatDeSoireeDemonstration.class})
 	static class Configuration {
 		@Bean ModeFacticeDuSocle mode() { return new ModeFacticeDuSocle(); }
 		@Bean StockageMancheFactice stockage(ModeFacticeDuSocle mode) { return new StockageMancheFactice(mode); }

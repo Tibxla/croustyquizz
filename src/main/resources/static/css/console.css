@@ -57,8 +57,15 @@
   margin-left: auto;
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: flex-start;
   gap: var(--espace-2);
+}
+.pilotage__confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+  justify-content: flex-end;
 }
 
 .pilotage__musique {

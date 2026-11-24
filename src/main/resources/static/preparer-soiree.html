@@ -132,8 +132,9 @@
 				return;
 			}
 			// La clé passe par le fragment, que l'Écran retire dès sa lecture.
-			const fragment = new URLSearchParams({ soiree: acces.corps.soireeId, cle: acces.corps.cleEcran });
-			const adresse = `/ecran-de-salle.html#${fragment}`;
+			const parametres = new URLSearchParams({ soiree: acces.corps.soireeId });
+			const fragment = new URLSearchParams({ cle: acces.corps.cleEcran });
+			const adresse = `/ecran.html?${parametres}#${fragment}`;
 			if (fenetre) fenetre.location.href = adresse; else location.href = adresse;
 		});
 
