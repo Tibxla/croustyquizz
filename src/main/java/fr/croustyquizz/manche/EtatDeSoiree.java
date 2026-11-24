@@ -9,6 +9,9 @@ import java.util.UUID;
  */
 public interface EtatDeSoiree {
 
+	/** La Soirée est connue, quel que soit son état. */
+	boolean existe(UUID soireeId);
+
 	/** La Soirée est lancée et pas encore terminée. */
 	boolean estEnCours(UUID soireeId);
 

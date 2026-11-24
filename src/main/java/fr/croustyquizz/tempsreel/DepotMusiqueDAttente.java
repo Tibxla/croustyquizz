@@ -2,25 +2,15 @@ package fr.croustyquizz.tempsreel;
 
 import java.util.UUID;
 
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 @Repository
 class DepotMusiqueDAttente {
 	private final JdbcClient jdbc;
-	private final boolean demonstration;
 
-	DepotMusiqueDAttente(JdbcClient jdbc, Environment environnement) {
+	DepotMusiqueDAttente(JdbcClient jdbc) {
 		this.jdbc = jdbc;
-		this.demonstration = environnement.matchesProfiles("dev", "recette");
-	}
-
-	boolean soireeConnue(UUID soireeId) {
-		return jdbc.sql("""
-				select exists (select 1 from soiree where id = :soiree)
-				    or (:demonstration and exists (select 1 from manche_deroulement where soiree_id = :soiree))
-				""").param("soiree", soireeId).param("demonstration", demonstration).query(Boolean.class).single();
 	}
 
 	MusiqueDAttente lire(UUID soireeId) {

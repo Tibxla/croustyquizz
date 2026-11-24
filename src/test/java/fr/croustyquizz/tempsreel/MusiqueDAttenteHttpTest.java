@@ -93,12 +93,12 @@ class MusiqueDAttenteHttpTest {
 		for (String role : new String[] { "JOUEUR", "ECRAN" }) {
 			assertThat(regler(soiree, role, "COUPEE", 403).path("code").asString()).isEqualTo("ACCES_REFUSE");
 		}
-		assertThat(regler(UUID.randomUUID(), "ANIMATEUR", "COUPEE", 404).path("code").asString())
-				.isEqualTo("RESSOURCE_INTROUVABLE");
 		var autrePortee = http.perform(put(ROUTE, soiree).header("Authorization", jeton(UUID.randomUUID(), "ANIMATEUR"))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"etat\":\"COUPEE\"}"))
 				.andExpect(status().isNotFound()).andReturn();
 		ContratApi.verifier(CONTRAT, REGLEMENT, autrePortee);
+		assertThat(json.readTree(autrePortee.getResponse().getContentAsString()).path("code").asString())
+				.isEqualTo("RESSOURCE_INTROUVABLE");
 		assertThat(signaler(soiree, "ANIMATEUR", "false", 403).path("code").asString()).isEqualTo("ACCES_REFUSE");
 		assertThat(signaler(soiree, "ECRAN", "\"false\"", 400).path("code").asString()).isEqualTo("REQUETE_INVALIDE");
 		var reponse = http.perform(put(ROUTE, soiree).contentType(MediaType.APPLICATION_JSON)
@@ -108,13 +108,9 @@ class MusiqueDAttenteHttpTest {
 	}
 
 	@Test
-	void uneManchePrepareeIdentifieUneSoireeDeDemonstration() throws Exception {
+	void couperLaMusiqueAvantLaPremiereMancheDuneSoireeDeDemonstration() throws Exception {
 		UUID soiree = UUID.randomUUID();
-		var creation = http.perform(post("/api/test/soirees/{soireeId}/manches", soiree)
-				.header("Authorization", jeton(soiree, "ANIMATEUR")).contentType(MediaType.APPLICATION_JSON)
-				.content("{\"mode\":\"KARAOKE\",\"reglages\":{}}")).andExpect(status().isCreated()).andReturn();
-		ContratApi.verifier("docs/api/prototype/openapi.yaml", "creerMancheDeTest", creation);
-		regler(soiree, "ANIMATEUR", "COUPEE", 200);
+		assertThat(regler(soiree, "ANIMATEUR", "COUPEE", 200).path("etat").asString()).isEqualTo("COUPEE");
 		assertThat(capturer(soiree, "salle", "ECRAN").at("/vue/musiqueAttente/etat").asString()).isEqualTo("COUPEE");
 	}
 

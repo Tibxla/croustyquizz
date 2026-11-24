@@ -1265,6 +1265,7 @@ paths:
         Animateur de la Soirée uniquement. Le choix est conservé après redémarrage, même hors Manche.
         Un changement publie musique-attente-modifiee sur la Console et l’Écran de salle.
         Choix déjà en vigueur : 409 COMMANDE_SANS_EFFET, sans publication.
+        En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
       tags:
       - Socle
@@ -1323,6 +1324,7 @@ paths:
         choisi contient des morceaux dans Attente. Il ne contient ni fichiers ni noms de morceaux et ne
         change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur la Console
         et l’Écran de salle. Un signal identique réussit sans publication.
+        En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
       tags:
       - Socle
