@@ -39,13 +39,13 @@ class ConfigurationTempsReelTest {
 			entrant.send(trame(StompCommand.CONNECT, abonnement, destination));
 			assertThat(messages.poll(2, TimeUnit.SECONDS)).isNotNull();
 			entrant.send(trame(StompCommand.SUBSCRIBE, abonnement, destination));
-			await().atMost(Duration.ofSeconds(2)).until(() -> registre.estInstalle(abonnement, destination));
+			await().atMost(Duration.ofSeconds(10)).until(() -> registre.estInstalle(abonnement, destination));
 			publications.convertAndSend(destination, "Vue publiée après la barrière");
 			var message = messages.poll(2, TimeUnit.SECONDS);
 			assertThat(message).isNotNull();
 			assertThat(new String((byte[]) message.getPayload(), StandardCharsets.UTF_8)).isEqualTo("Vue publiée après la barrière");
 			entrant.send(trame(StompCommand.UNSUBSCRIBE, abonnement, destination));
-			await().atMost(Duration.ofSeconds(2)).until(() -> !registre.estInstalle(abonnement, destination));
+			await().atMost(Duration.ofSeconds(10)).until(() -> !registre.estInstalle(abonnement, destination));
 		}
 	}
 

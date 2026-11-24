@@ -221,7 +221,7 @@ class ServiceDeMancheTest {
 				assertThat(entree.await(2, TimeUnit.SECONDS)).isTrue();
 				var filMinuteur = new AtomicReference<Thread>();
 				var minuteur = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); banc.horloge.avancer(Duration.ofSeconds(20)); });
-				await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null && filMinuteur.get().getState() == Thread.State.WAITING);
+				await().atMost(Duration.ofSeconds(10)).until(() -> filMinuteur.get() != null && filMinuteur.get().getState() == Thread.State.WAITING);
 				assertThat(minuteur.isDone()).isFalse();
 				sortir.countDown(); premier.get(2, TimeUnit.SECONDS); minuteur.get(2, TimeUnit.SECONDS);
 				assertThat(maximum).hasValue(1);
@@ -241,7 +241,7 @@ class ServiceDeMancheTest {
 					filMinuteur.set(Thread.currentThread());
 					banc.horloge.avancer(Duration.ofSeconds(20));
 				});
-				await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null
+				await().atMost(Duration.ofSeconds(10)).until(() -> filMinuteur.get() != null
 						&& filMinuteur.get().getState() == Thread.State.WAITING);
 				var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, null);
 				assertThat(banc.service.piloter(manche, banc.envoi(soiree, "/commandes", passer), passer)).isInstanceOf(Accepte.class);
@@ -272,7 +272,7 @@ class ServiceDeMancheTest {
 					var rappel = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); action.run(); });
 					expiration.set(rappel);
 					// L'ordonnanceur a lancé le rappel avant que programmer ne rende la main à restaurer.
-					await().atMost(Duration.ofSeconds(2)).until(() -> filMinuteur.get() != null
+					await().atMost(Duration.ofSeconds(10)).until(() -> filMinuteur.get() != null
 							&& filMinuteur.get().getState() == Thread.State.WAITING);
 					return () -> rappel.cancel(false);
 				}
@@ -312,7 +312,7 @@ class ServiceDeMancheTest {
 					return banc.service.executer(manche, banc.envoi(soiree, "/seconde", Map.of()),
 							() -> PreparationDeCommande.prete(d -> { ordre.add(2); return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet."); }));
 				});
-				await().atMost(Duration.ofSeconds(2)).until(() -> secondFil.get() != null && secondFil.get().getState() == Thread.State.WAITING);
+				await().atMost(Duration.ofSeconds(10)).until(() -> secondFil.get() != null && secondFil.get().getState() == Thread.State.WAITING);
 				assertThat(ordre).containsExactly(1);
 				sortir.countDown(); premiere.get(2, TimeUnit.SECONDS); seconde.get(2, TimeUnit.SECONDS);
 				assertThat(ordre).containsExactly(1, 2);

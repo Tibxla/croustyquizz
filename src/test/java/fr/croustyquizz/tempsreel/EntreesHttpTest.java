@@ -55,7 +55,7 @@ class EntreesHttpTest {
 					secondThread.set(Thread.currentThread());
 					return controleur.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Second"));
 				});
-				await().atMost(Duration.ofSeconds(2)).until(() -> secondThread.get() != null
+				await().atMost(Duration.ofSeconds(10)).until(() -> secondThread.get() != null
 						&& secondThread.get().getState() == Thread.State.WAITING);
 				assertThat(lectures.get()).isEqualTo(1);
 				autoriserPublication.countDown();

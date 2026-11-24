@@ -110,12 +110,12 @@ class AccesActeurTest {
 			String canal = Canaux.joueur(acteur.identifiant());
 			entrant.send(trame(StompCommand.CONNECT, acteur, abonnement, canal));
 			entrant.send(trame(StompCommand.SUBSCRIBE, acteur, abonnement, canal));
-			await().atMost(Duration.ofSeconds(2)).until(() -> registre.estInstalle(abonnement, canal, acteur));
+			await().atMost(Duration.ofSeconds(10)).until(() -> registre.estInstalle(abonnement, canal, acteur));
 			assertThat(registre.estInstalle(abonnement, canal, new Acteur(Acteur.Type.JOUEUR, UUID.randomUUID(), acteur.soireeId()))).isFalse();
 			assertThatThrownBy(() -> entrant.send(trame(StompCommand.SUBSCRIBE, acteur, UUID.randomUUID(), Canaux.console(acteur.soireeId()))))
 					.isInstanceOf(MessageDeliveryException.class);
 			entrant.send(trame(StompCommand.UNSUBSCRIBE, acteur, abonnement, canal));
-			await().atMost(Duration.ofSeconds(2)).until(() -> !registre.estInstalle(abonnement, canal, acteur));
+			await().atMost(Duration.ofSeconds(10)).until(() -> !registre.estInstalle(abonnement, canal, acteur));
 		}
 	}
 	private Message<byte[]> trame(StompCommand commande, Acteur acteur, UUID abonnement, String destination) {

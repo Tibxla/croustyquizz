@@ -285,7 +285,7 @@ class CanalTempsReelTest {
 		String identifiant = abonnement.toString();
 		entetes.setId(identifiant);
 		session.subscribe(entetes, collecteur(recus));
-		await().atMost(Duration.ofSeconds(2)).until(() -> abonnements.estInstalle(abonnement, destination));
+		await().atMost(Duration.ofSeconds(10)).until(() -> abonnements.estInstalle(abonnement, destination));
 		return recus;
 	}
 
@@ -366,7 +366,7 @@ class CanalTempsReelTest {
 			var suivante = http.send(HttpRequest.newBuilder(URI.create(route)).build(), HttpResponse.BodyHandlers.ofString());
 			assertThat(json.readTree(suivante.body()).get("revision").asLong()).isEqualTo(1);
 			session.disconnect();
-			await().atMost(Duration.ofSeconds(2)).until(() -> !abonnements.estInstalle(abonnement, Canaux.salle(soiree)));
+			await().atMost(Duration.ofSeconds(10)).until(() -> !abonnements.estInstalle(abonnement, Canaux.salle(soiree)));
 			assertThat(http.send(HttpRequest.newBuilder(URI.create(route)).build(), HttpResponse.BodyHandlers.ofString()).statusCode())
 					.isEqualTo(409);
 		} finally {

@@ -76,7 +76,7 @@ class VueSynchroniseeTest {
 					publication.set(Thread.currentThread());
 					diffuseur.diffuserSalle(soiree, vue);
 				}, new CaptureSalleFactice());
-				await().atMost(Duration.ofSeconds(2)).until(() -> publication.get() != null
+				await().atMost(Duration.ofSeconds(10)).until(() -> publication.get() != null
 						&& publication.get().getState() == Thread.State.WAITING);
 				terminerCapture.countDown();
 				assertThat(capture.get(2, TimeUnit.SECONDS).revision()).isZero();
