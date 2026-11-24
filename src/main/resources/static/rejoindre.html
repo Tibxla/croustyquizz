@@ -108,8 +108,13 @@
 			(champCode.value ? champPseudo : champCode).focus();
 		}
 
+		// Une Manette ouverte avant le stockage durable gardait son accès dans l'onglet : il est repris au passage.
+		function memoireOnglet() {
+			try { return sessionStorage; } catch { return null; }
+		}
+
 		async function demarrer() {
-			const { resultat, soireeId } = await reprendreAcces(accesManette, { codeAcces: codeScanne || null, consulter });
+			const { resultat, soireeId } = await reprendreAcces(accesManette, { codeAcces: codeScanne || null, consulter, ancienStockage: memoireOnglet() });
 			if (resultat === 'reprise') {
 				allerALaManette(soireeId);
 			} else if (resultat === 'aucune') {

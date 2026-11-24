@@ -8,6 +8,9 @@ const DERNIERE = 'croustyquizz.manette-derniere';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const opaque = /^[A-Za-z0-9_-]{43,128}$/;
 const code = /^[A-Z0-9]{6}$/;
+// Emplacements de l'ancienne page d'arrivée, dans le stockage de l'onglet : jeton et Soirée, sans l'UUID du Joueur.
+const ANCIEN_JETON = 'croustyquizz.jeton';
+const ANCIENNE_SOIREE = 'croustyquizz.soiree';
 
 export function creerAccesManette(stockage = globalThis.localStorage) {
 	const lireBrut = (cle) => { try { return stockage?.getItem(cle) ?? null; } catch { return null; } };
@@ -61,8 +64,13 @@ export function creerAccesManette(stockage = globalThis.localStorage) {
  * Un jeton refusé (401, 404) ou une Soirée terminée est oublié ; une coupure ou un serveur indisponible le garde,
  * car rejoindre à nouveau créerait un second Joueur. Rend { resultat: 'reprise', soireeId }, 'aucune' ou 'coupure'.
  * L'Exclusion (#11) devra se distinguer d'un jeton inconnu : un Joueur exclu ne revient pas depuis sa Manette.
+ * ancienStockage (sessionStorage) porte l'accès d'une Manette ouverte avant le stockage durable : il est d'abord
+ * repris, puis rangé ici avec l'UUID du Joueur et le code lus dans la capture.
  */
-export async function reprendreAcces(accesManette, { codeAcces, consulter }) {
+export async function reprendreAcces(accesManette, { codeAcces, consulter, ancienStockage }) {
+	const ancien = await reprendreAncienAcces(accesManette, ancienStockage, consulter);
+	if (ancien === 'coupure') return { resultat: 'coupure' };
+	if (ancien && (!codeAcces || ancien.codeAcces === codeAcces)) return { resultat: 'reprise', soireeId: ancien.soireeId };
 	const candidats = codeAcces ? accesManette.parCode(codeAcces) : [accesManette.derniere()].filter(Boolean);
 	for (const acces of candidats) {
 		const { statut, corps } = await consulter(acces.soireeId, acces.jeton);
@@ -74,6 +82,31 @@ export async function reprendreAcces(accesManette, { codeAcces, consulter }) {
 		return { resultat: 'coupure' };
 	}
 	return { resultat: 'aucune' };
+}
+
+// Rend l'accès repris ({ soireeId, codeAcces }), null s'il n'y en a pas ou s'il est refusé, ou 'coupure'.
+// L'ancien emplacement n'est effacé qu'une fois l'accès relu dans le nouveau : sinon le jeton serait perdu.
+async function reprendreAncienAcces(accesManette, ancienStockage, consulter) {
+	const lireBrut = (cle) => { try { return ancienStockage?.getItem(cle) ?? null; } catch { return null; } };
+	const effacer = () => { try { ancienStockage.removeItem(ANCIEN_JETON); ancienStockage.removeItem(ANCIENNE_SOIREE); } catch { /* stockage indisponible */ } };
+	const jeton = lireBrut(ANCIEN_JETON);
+	const soireeId = lireBrut(ANCIENNE_SOIREE);
+	// Une identité de démonstration occupe le même emplacement : elle n'est ni consultée ni effacée.
+	if (!opaque.test(jeton ?? '') || !uuid.test(soireeId ?? '')) return null;
+	const { statut, corps } = await consulter(soireeId, jeton);
+	const vue = corps?.vue;
+	if (statut === 200 && vue?.soiree?.etat !== 'TERMINEE' && uuid.test(vue?.joueurId ?? '')) {
+		const codeAcces = code.test(vue.soiree.codeAcces ?? '') ? vue.soiree.codeAcces : null;
+		accesManette.ranger(soireeId, { jeton, joueurId: vue.joueurId, codeAcces });
+		if (accesManette.lire(soireeId)?.jeton !== jeton) return null;
+		effacer();
+		return { soireeId, codeAcces };
+	}
+	if (statut === 200 || statut === 401 || statut === 404) {
+		effacer();
+		return null;
+	}
+	return 'coupure';
 }
 
 /**
