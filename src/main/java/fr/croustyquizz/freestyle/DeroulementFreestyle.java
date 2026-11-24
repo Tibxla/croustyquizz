@@ -239,6 +239,10 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
 
     private void surCloturePassage(CloturePassage cloture) {
         annulerCouplet();
+        var contenu = contenus.get(cloture.passageId());
+        if (contenu != null && contenu.couplets() != null) {
+            contenus.put(cloture.passageId(), contenu.avec(contenu.couplets().sansAnnonce()));
+        }
         if (cloture.etat() == EtatPassage.TERMINE) {
             vote.ouvrir(cloture.passageId(), cloture.instant(), false);
             evenementDuMinuteur = enchainer(cloture.instant()) ? PASSAGE_APPELE : "passage-termine";

@@ -37,6 +37,11 @@ public record CoupletsDuPassage(int mesuresParCouplet, int nombreCouplets, List<
         return suivantAnnonce ? changement : changement - GrilleDeRimes.TEMPS_PAR_MESURE;
     }
 
+    /** À la clôture du Passage, aucune annonce ne survit au Couplet en cours. */
+    CoupletsDuPassage sansAnnonce() {
+        return new CoupletsDuPassage(mesuresParCouplet, nombreCouplets, ordre, courant, false);
+    }
+
     /** Annonce le suivant, ou fait commencer le Couplet annoncé. */
     CoupletsDuPassage avancer() {
         return suivantAnnonce ? new CoupletsDuPassage(mesuresParCouplet, nombreCouplets, ordre, courant + 1, false)

@@ -128,13 +128,39 @@ class FreestyleAPlusieursTest {
     }
 
     @Test
-    void lePassageClosAnnuleLesCoupletsRestants() {
+    void lePassageClosPendantUneAnnonceEteintLAnnonceEtAnnuleLesCoupletsRestants() {
         demarrerUnTrio();
-        horloge.avancer(Duration.ofMillis(1_000));
+        horloge.avancer(Duration.ofMillis(3_000));
+        assertThat(couplets().suivantAnnonce()).isTrue();
         deroulement.passerEtape(pilotage());
         horloge.avancer(Duration.ofSeconds(20));
         assertThat(couplets().courant()).isEqualTo(1);
         assertThat(couplets().suivantAnnonce()).isFalse();
+        for (UUID joueur : List.of(INES, MAEL, ZOE, NOE)) {
+            assertThat(manette(joueur)).containsEntry("monCoupletAnnonce", false);
+        }
+    }
+
+    @Test
+    void uneRestaurationRearmeLAnnonceEtLeChangementAvecLeTempsRestant() {
+        demarrerUnTrio();
+        horloge.avancer(Duration.ofMillis(1_000));
+        restaurer();
+        horloge.avancer(Duration.ofMillis(1_249));
+        assertThat(couplets().suivantAnnonce()).isFalse();
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(couplets().suivantAnnonce()).isTrue();
+
+        restaurer();
+        horloge.avancer(Duration.ofMillis(1_999));
+        assertThat(couplets().courant()).isEqualTo(1);
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(couplets().courant()).as("changement à 4 250 ms de lecture").isEqualTo(2);
+    }
+
+    private void restaurer() {
+        var persiste = instantane();
+        deroulement = fabrique.restaurer(contexte(), REGLAGES, persiste.etat(), persiste.etatManche());
     }
 
     @Test

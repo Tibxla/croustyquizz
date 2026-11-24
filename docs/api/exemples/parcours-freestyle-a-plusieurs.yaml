@@ -759,6 +759,15 @@ cases:
   correction:
     chemin: [ordre]
     valeur: [*zoe, *ines, *mael]
+- nom: Des Couplets sans ordre sont refusés
+  schema: CoupletsFreestyle
+  valide: false
+  valeur:
+    mesuresParCouplet: 2
+    nombreCouplets: 4
+    courant: *couplet1
+    suivant: *couplet2
+    suivantAnnonce: false
 - nom: Un courant sans Couplets est refusé, même à un seul Interprète
   schema: CourantFreestyle
   valide: false

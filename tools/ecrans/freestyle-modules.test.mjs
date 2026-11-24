@@ -221,5 +221,9 @@ test('la salle affiche l’ordre des Couplets, le Couplet courant et l’annonce
 		banc.module.afficher(vue({ courant: enScene(true), grille }), { source: 'evenement', type: 'couplet-annonce' });
 		assert.equal(texte('freestyle__annonce').textContent, 'À Jo dans une mesure');
 		assert.equal(texte('freestyle__annonce').hidden, false);
+		banc.module.afficher(vue({ courant: { ...enScene(false), etat: 'TERMINE' }, grille: null }), capture);
+		assert.equal(texte('freestyle__interprete').textContent, 'Jo, Inès, Zoé');
+		assert.equal(texte('freestyle__ordre').hidden, true);
+		assert.equal(texte('freestyle__couplet').hidden, true);
 	} finally { banc.module.demonter(); }
 });

@@ -180,7 +180,8 @@ export function monter(zones, contexte) {
 			recaler = true;
 			figer();
 		}
-		const couplets = courant?.couplets ?? null;
+		// Une fois le Passage clos, la salle renomme tous ses Interprètes et retire les Couplets.
+		const couplets = ['EN_COURS', 'EN_PAUSE'].includes(courant?.etat) ? courant.couplets ?? null : null;
 		interprete.hidden = !courant;
 		interprete.textContent = couplets ? couplets.courant.interprete.pseudo : pseudos(courant?.interpretes);
 		for (const [element, texte] of [[ordreCouplets, texteOrdre(couplets)], [coupletCourant, texteCouplet(couplets)],
