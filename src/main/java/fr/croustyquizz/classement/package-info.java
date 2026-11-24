@@ -1,5 +1,5 @@
 /**
- * Classement général et Palmarès du Karaoké.
+ * Classement général.
  *
  * <p>Propriétaire : Piyakabib.
  */

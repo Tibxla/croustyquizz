@@ -411,6 +411,24 @@ classDiagram
             +int note
             +Instant recueLe
         }
+        class ResultatVote {
+            <<record>>
+            +UUID passageId
+            +UUID mancheId
+            +long numero
+            +List~UUID~ interpretes
+            +long nombreVotes
+            +long sommeNotes
+            +Integer moyenneDixiemes
+        }
+        class RangPassage {
+            <<record>>
+            +ResultatVote resultat
+            +Long rang
+        }
+        class ClassementParVote {
+            +classer(List~ResultatVote~) List~RangPassage~
+        }
     }
 
     Lieu "1" --> "1..*" Animateur : emploie
@@ -480,6 +498,9 @@ classDiagram
     EtatVotePassage "0..1" --> "1" Passage : Passage noté
     EtatVotePassage "1" *-- "*" VoteRecu
     VoteRecu "*" --> "1" Joueur : votant
+    ResultatVote ..> EtatVotePassage : résultat du vote clos
+    RangPassage --> ResultatVote
+    ClassementParVote ..> RangPassage : attribue
 ```
 
 ![Diagramme de classes du domaine](diagramme-classes-domaine.png)
@@ -587,7 +608,6 @@ classDiagram
     }
     class ServiceClassement {
         +List~LigneClassement~ classementGeneral(UUID soireeId)
-        +List~LigneClassement~ palmaresKaraoke(UUID soireeId)
     }
     class FiltreDePseudos {
         <<interface>>
@@ -635,6 +655,7 @@ classDiagram
         #executer(UUID, EnvoiDeCommande, Supplier~PreparationDeCommande~, EtatManche etatApresAcceptation) ResultatDeCommande
     }
     class ServiceKaraoke {
+        +palmaresKaraoke(UUID soireeId) List~LignePalmaresKaraoke~
         +rechercherChansons(Acteur, UUID, UUID, String, UUID) ResultatsChansons
         +consulterChanson(Acteur, UUID, UUID, String) FicheChanson
         +inscrirePassage(UUID, EnvoiDeCommande, InscriptionPassage) ResultatDeCommande
@@ -658,12 +679,22 @@ classDiagram
     class KaraokeControleur
     class ConvertisseurCorpsKaraoke
     class FournisseurDeBlocKaraoke
+    class FournisseurDeChampCommun {
+        <<interface>>
+        +champ() String
+        +concerne(Destination) boolean
+        +fournir(UUID, Destination, Map) Object
+    }
+    class AssembleurDeVues
+    class FournisseurPalmaresKaraoke
     class VuesKaraoke
     class VoteDuPassage
     class VoteDuPassageManette
+    class LignePalmaresKaraoke
     class PersistanceKaraokeJpa {
         +charger(UUID) EtatKaraokePersiste
         +enregistrer(UUID, Object)
+        +contenus(Collection~UUID~) Map
     }
     class ChoixDeVersionParoles {
         +choisir(ContenuKaraoke, long) ResultatChoix
@@ -683,6 +714,7 @@ classDiagram
         +enregistrerCycle(UUID mancheId, EtatCyclePassage)
         +chargerVotes(UUID mancheId) EtatVoteDuPublic
         +enregistrerVotes(UUID mancheId, EtatVoteDuPublic)
+        +resultatsDeVote(Collection~UUID~) List~ResultatVote~
         +numeroPropose(UUID soireeId) long
         +incrementerNumero(UUID soireeId, long numeroAccepte)
     }
@@ -700,7 +732,7 @@ classDiagram
     class ParticipantsDePassage {
         <<interface>>
         +estPresent(UUID soireeId, UUID joueurId) boolean
-        +pseudo(UUID soireeId, UUID joueurId) String
+        +pseudos(UUID soireeId) Map
     }
     class PorteeDePassageSoiree
     class ParticipantsDePassageSoiree
@@ -892,6 +924,7 @@ classDiagram
         }
         class ClotureVote
         class ProjectionVote
+        class ClassementParVote
         class VotePersistant
         class NotePersistante
         class FileAttente {
@@ -1040,6 +1073,11 @@ classDiagram
     PersistancePassageJpa --> NumeroSoireePersistant
     FournisseurDeBloc <|.. FournisseurDeBlocKaraoke
     FournisseurDeBlocKaraoke --> ServiceKaraoke : instantané
+    AssembleurDeVues o-- FournisseurDeChampCommun : champs de la vue
+    FournisseurDeChampCommun <|.. FournisseurPalmaresKaraoke
+    FournisseurPalmaresKaraoke --> ServiceKaraoke : Palmarès
+    ServiceKaraoke ..> ClassementParVote
+    ServiceKaraoke ..> LignePalmaresKaraoke
     FournisseurDeBlocKaraoke --> VuesKaraoke
     VuesKaraoke --> ParticipantsDePassage : pseudos publics
     PorteeDePassage <|.. PorteeDePassageSoiree : soiree, Soirée en base
