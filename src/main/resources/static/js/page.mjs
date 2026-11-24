@@ -27,6 +27,25 @@ function lister(nom, valeurs, vide, maximum = Infinity) {
 		return li;
 	}));
 }
+function remplirLignePalmaresSalle(li, { numero, rang, titre, interpretes, note, votes, texte }) {
+	li.dataset.teinte = String(numero % 4);
+	const presentation = document.createElement('div');
+	presentation.className = 'palmares__ligne';
+	presentation.setAttribute('aria-hidden', 'true');
+	for (const [champ, valeur] of [
+		['rang', rang === null ? '' : `${rang}.`], ['numero', `n° ${numero}`],
+		['interpretes', interpretes], ['chanson', titre], ['note', note ?? ''], ['votes', votes],
+	]) {
+		const span = document.createElement('span');
+		span.className = `palmares__${champ}`;
+		span.textContent = valeur;
+		presentation.append(span);
+	}
+	const phrase = document.createElement('span');
+	phrase.className = 'visuellement-cache';
+	phrase.textContent = texte;
+	li.append(presentation, phrase);
+}
 function afficherPalmares(palmares) {
 	const zone = element('zone-palmares');
 	if (!zone) return;
@@ -34,10 +53,10 @@ function afficherPalmares(palmares) {
 	const liste = element('palmares');
 	const vide = element('palmares-vide');
 	vide.hidden = palmares?.length !== 0;
-	liste.replaceChildren(...(palmares ?? []).map(({ texte, numero }) => {
+	liste.replaceChildren(...(palmares ?? []).map(ligne => {
 		const li = document.createElement('li');
-		li.textContent = texte;
-		if (ecran === 'ecran') li.dataset.teinte = numero % 4;
+		if (ecran === 'ecran') remplirLignePalmaresSalle(li, ligne);
+		else li.textContent = ligne.texte;
 		return li;
 	}));
 }

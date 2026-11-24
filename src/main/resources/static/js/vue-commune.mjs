@@ -10,8 +10,10 @@ function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes,
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
 	const pseudos = interpretes.map(interprete => interprete.pseudo).join(', ');
 	const votes = formaterNombreVotes(nombreVotes);
-	const resultat = moyenneDixiemes === null ? votes : `${formaterMoyenne(moyenneDixiemes)} (${votes})`;
-	return { texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}`, numero };
+	const note = moyenneDixiemes === null ? null : formaterMoyenne(moyenneDixiemes);
+	const resultat = note === null ? votes : `${note} (${votes})`;
+	return { numero, rang, titre: chanson.titre, interpretes: pseudos, note, votes,
+		texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}` };
 }
 
 // Aucune règle de jeu ici : l'éligibilité du retardataire vient du serveur (eligiblePourMancheActive).

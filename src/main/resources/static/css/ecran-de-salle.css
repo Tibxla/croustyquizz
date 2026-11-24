@@ -285,9 +285,6 @@
   padding: 0.7vw 1vw 0.7vw 2.5vw;
   border-radius: var(--rayon);
   background: var(--fond-1);
-  overflow-wrap: anywhere;
-  font-size: 1.8vw;
-  line-height: 1.2;
 }
 .salle--coquille .palmares li::before {
   position: absolute;
@@ -303,3 +300,39 @@
 .salle--coquille .palmares li[data-teinte="2"] { --teinte: var(--bleu); }
 .salle--coquille .palmares li[data-teinte="3"] { --teinte: var(--rose); }
 .salle--coquille .palmares p { font-size: 1.8vw; }
+
+.palmares__ligne {
+  display: grid;
+  grid-template-columns: 3.4vw 4.6vw minmax(0, 1.4fr) minmax(0, 1fr) max-content 6.2vw;
+  align-items: center;
+  gap: 1.2vw;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.palmares__rang,
+.palmares__note {
+  font: 800 3vw/1 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+.palmares__note,
+.palmares__votes { text-align: right; }
+.palmares__interpretes {
+  font-size: 2.15vw;
+  font-weight: 700;
+}
+.palmares__chanson {
+  color: var(--texte-2);
+  font-size: 1.55vw;
+}
+.palmares__numero,
+.palmares__votes {
+  color: var(--texte-2);
+  font-size: 1.35vw;
+  font-variant-numeric: tabular-nums;
+}
+.palmares__numero,
+.palmares__interpretes,
+.palmares__chanson {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

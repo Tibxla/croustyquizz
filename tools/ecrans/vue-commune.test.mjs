@@ -48,7 +48,9 @@ test('le Palmarès affiche le rang éventuel, le numéro, les Interprètes et le
 			nombreVotes: 0, moyenneDixiemes: null },
 	] };
 	assert.deepEqual(decrireVue(vue).palmares, [
-		{ texte: '1. n° 12 · Les quais · Alizé, Basile · 4,3 sur 5 (7 votes)', numero: 12 },
-		{ texte: 'n° 9 · Le phare · Joueur parti · Aucun vote', numero: 9 },
+		{ numero: 12, rang: 1, titre: 'Les quais', interpretes: 'Alizé, Basile', note: '4,3 sur 5', votes: '7 votes',
+			texte: '1. n° 12 · Les quais · Alizé, Basile · 4,3 sur 5 (7 votes)' },
+		{ numero: 9, rang: null, titre: 'Le phare', interpretes: 'Joueur parti', note: null, votes: 'Aucun vote',
+			texte: 'n° 9 · Le phare · Joueur parti · Aucun vote' },
 	]);
 });
