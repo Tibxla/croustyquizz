@@ -38,24 +38,61 @@ export function decrireVue(vue) {
 
 export function decrireClassementDeSalle(vue) {
 	if (vue.soiree.etat === 'TERMINEE') {
-		return { titre: 'Podium final', podium: true, lignes: vue.classement.filter(ligne => ligne.rang <= 3).map(decrireLigne) };
+		const marches = [1, 2, 3]
+			.map(rang => ({ rang, concurrents: vue.classement.filter(ligne => ligne.rang === rang) }))
+			.filter(marche => marche.concurrents.length > 0);
+		return { titre: 'Podium final', podium: true, marches };
 	}
 	if (vue.mancheActive || (vue.soiree.etat !== 'EN_COURS' && vue.classement.length === 0)) return null;
 	return { titre: 'Classement général · Top 10', podium: false, lignes: vue.classement.slice(0, 10).map(decrireLigne) };
 }
 
-export function afficherClassementDeSalle(zone, vue) {
+function rendreMarche(document, { rang, concurrents }) {
+	const marche = document.createElement('li');
+	marche.className = 'salle__podium-marche';
+	marche.setAttribute('data-rang', rang);
+	const numero = document.createElement('h3');
+	numero.className = 'salle__podium-rang';
+	numero.textContent = rang;
+	numero.setAttribute('aria-label', `Rang ${rang}`);
+	const liste = document.createElement('ul');
+	liste.className = 'salle__podium-concurrents';
+	liste.setAttribute('role', 'list');
+	for (const concurrent of concurrents) {
+		const ligne = document.createElement('li');
+		const nom = document.createElement('span');
+		nom.className = 'salle__podium-nom';
+		nom.textContent = concurrent.nom;
+		const points = document.createElement('span');
+		points.className = 'salle__podium-points';
+		points.textContent = libellePoints(concurrent.points);
+		ligne.append(nom, points);
+		liste.append(ligne);
+	}
+	marche.append(numero, liste);
+	return marche;
+}
+
+export function afficherClassementDeSalle(zone, vue, origine) {
 	const classement = decrireClassementDeSalle(vue);
+	const podium = classement?.podium ?? false;
+	const entreSurEvenement = podium && origine?.source === 'evenement' && !zone.classList.contains('salle__classement--podium');
 	zone.hidden = classement === null;
+	zone.classList.toggle('salle__classement--podium', podium);
+	zone.classList.toggle('salle__classement--entree', entreSurEvenement);
 	if (!classement) return false;
-	zone.classList.toggle('salle__classement--podium', classement.podium);
 	zone.querySelector('h2').textContent = classement.titre;
-	zone.querySelector('p').hidden = classement.lignes.length > 0;
 	const liste = zone.querySelector('ol');
-	liste.replaceChildren(...classement.lignes.map(texte => {
-		const li = liste.ownerDocument.createElement('li');
-		li.textContent = texte;
-		return li;
-	}));
+	const document = liste.ownerDocument;
+	const elements = classement.podium
+		? classement.marches.map(marche => rendreMarche(document, marche))
+		: classement.lignes.map(texte => {
+			const li = document.createElement('li');
+			li.textContent = texte;
+			return li;
+		});
+	liste.replaceChildren(...elements);
+	liste.hidden = elements.length === 0;
+	zone.querySelector('p').hidden = elements.length > 0;
 	return true;
 }

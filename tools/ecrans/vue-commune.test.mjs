@@ -1,6 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireClassementDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { afficherClassementDeSalle, decrireClassementDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { creerDocument } from './karaoke-dom-factice.mjs';
+
+function creerZoneClassement() {
+	const document = creerDocument();
+	const zone = document.createElement('section');
+	zone.hidden = true;
+	const message = document.createElement('p');
+	message.textContent = 'Aucun point attribué.';
+	zone.append(document.createElement('h2'), document.createElement('ol'), message);
+	return zone;
+}
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
 	const description = decrireVue({ soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
@@ -26,19 +37,63 @@ test('la salle affiche dix lignes entre deux Manches et retire le classement pen
 	assert.equal(decrireClassementDeSalle({ ...vue, mancheActive: { ordre: 1, etat: 'EN_PAUSE' } }), null);
 	assert.deepEqual(decrireClassementDeSalle({ ...vue, classement: [] }).lignes, []);
 	assert.equal(decrireClassementDeSalle({ ...vue, soiree: { etat: 'OUVERTE' }, classement: [] }), null);
+
+	const zone = creerZoneClassement();
+	assert.equal(afficherClassementDeSalle(zone, vue), true);
+	assert.equal(zone.querySelector('ol').childElementCount, 10);
+	assert.equal(zone.querySelector('ol').children.at(-1).textContent, '10. Joueur 10 · 6 points');
+	assert.equal(afficherClassementDeSalle(zone, { ...vue, mancheActive: { ordre: 1, etat: 'EN_PAUSE' } }), false);
+	assert.equal(zone.hidden, true);
 });
 
-test('le podium garde tous les ex æquo aux rangs donnés par le serveur', () => {
+test('le podium réunit les ex æquo sur la même marche et distingue le rang, les noms et les points', () => {
+	const zone = creerZoneClassement();
 	const vue = { soiree: { etat: 'TERMINEE' }, mancheActive: null, classement: [
 		{ rang: 1, nom: 'Lou', points: 10 }, { rang: 1, nom: 'Sam', points: 10 },
-		{ rang: 3, nom: 'Léa', points: 8 }, { rang: 3, nom: 'Maé', points: 8 },
-		{ rang: 5, nom: 'Noémie', points: 1 },
+		{ rang: 3, nom: 'Léa', points: 1 }, { rang: 4, nom: 'Maé', points: 0 },
 	] };
-	assert.deepEqual(decrireClassementDeSalle(vue), {
-		titre: 'Podium final', podium: true,
-		lignes: ['1. Lou · 10 points', '1. Sam · 10 points', '3. Léa · 8 points', '3. Maé · 8 points'],
-	});
-	assert.deepEqual(decrireClassementDeSalle({ ...vue, classement: [] }).lignes, []);
+	assert.equal(afficherClassementDeSalle(zone, vue, { source: 'capture' }), true);
+	assert.equal(zone.hidden, false);
+	assert.equal(zone.querySelector('h2').textContent, 'Podium final');
+	assert.equal(zone.querySelector('p').hidden, true);
+	assert.deepEqual(zone.querySelector('ol').children.map(marche => marche.getAttribute('data-rang')), ['1', '3']);
+	assert.deepEqual(zone.querySelector('ol').children.map(marche => ({
+		rang: marche.querySelector('.salle__podium-rang')?.textContent,
+		noms: marche.querySelectorAll('.salle__podium-nom').map(nom => nom.textContent),
+		points: marche.querySelectorAll('.salle__podium-points').map(points => points.textContent),
+	})), [
+		{ rang: '1', noms: ['Lou', 'Sam'], points: ['10 points', '10 points'] },
+		{ rang: '3', noms: ['Léa'], points: ['1 point'] },
+	]);
+});
+
+test('seul le premier affichage du podium par événement déclenche son entrée', () => {
+	const vue = { soiree: { etat: 'TERMINEE' }, classement: [{ rang: 1, nom: 'Lou', points: 10 }] };
+	const capture = { source: 'capture', type: 'capture' };
+	const evenement = { source: 'evenement', type: 'soiree-terminee' };
+	const zoneEnDirect = creerZoneClassement();
+	const zoneRestauree = creerZoneClassement();
+	const entree = 'salle__classement--entree';
+
+	afficherClassementDeSalle(zoneRestauree, vue, capture);
+	assert.equal(zoneRestauree.classList.contains(entree), false);
+	afficherClassementDeSalle(zoneRestauree, vue, evenement);
+	assert.equal(zoneRestauree.classList.contains(entree), false);
+
+	afficherClassementDeSalle(zoneEnDirect, { ...vue, soiree: { etat: 'EN_COURS' } }, capture);
+	afficherClassementDeSalle(zoneEnDirect, vue, evenement);
+	assert.equal(zoneEnDirect.classList.contains(entree), true);
+	afficherClassementDeSalle(zoneEnDirect, vue, capture);
+	assert.equal(zoneEnDirect.classList.contains(entree), false);
+});
+
+test('sans point attribué, la fin de Soirée affiche le message à la place des marches', () => {
+	const zone = creerZoneClassement();
+	afficherClassementDeSalle(zone, { soiree: { etat: 'TERMINEE' }, classement: [] }, { source: 'capture' });
+	assert.equal(zone.querySelector('ol').hidden, true);
+	const message = zone.querySelector('p');
+	assert.equal(message.hidden, false);
+	assert.equal(message.textContent, 'Aucun point attribué.');
 });
 
 test('la Manette affiche le rang hors du Top 10 et indique les Joueurs encore sans classement', () => {

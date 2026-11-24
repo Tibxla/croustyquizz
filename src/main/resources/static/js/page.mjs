@@ -30,12 +30,14 @@ function lister(nom, valeurs, vide, maximum = Infinity) {
 		return li;
 	}));
 }
-function afficherCommun(vue) {
+function afficherCommun(vue, origine) {
 	const description = decrireVue(vue);
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
-	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
+	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue, origine);
+	const choisirDossier = element('choisir-dossier');
+	if (choisirDossier) choisirDossier.hidden = vue.soiree.etat === 'TERMINEE';
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
 	if (talon) {
@@ -93,7 +95,7 @@ async function demarrer() {
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
-			afficherCommun(vue);
+			afficherCommun(vue, origine);
 			programme?.afficher(vue);
 			void gestionnaire.afficher(vue, origine);
 		},
