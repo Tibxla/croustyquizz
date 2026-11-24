@@ -1,8 +1,10 @@
 package fr.croustyquizz.soiree;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,10 +19,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
+import fr.croustyquizz.manche.RefusDeCommande;
+import fr.croustyquizz.tempsreel.ResolveurDActeur;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -39,6 +45,9 @@ class SoireeHttpTest {
 
 	@Autowired
 	private JdbcTemplate jdbc;
+
+	@Autowired
+	private ResolveurDActeur resolveur;
 
 	@AfterEach
 	void effacerLaBase() {
@@ -268,6 +277,33 @@ class SoireeHttpTest {
 		assertThat(salle.getStatusCode().value()).isEqualTo(200);
 		assertThat(json.readTree(salle.getBody()).at("/vue/soiree/titre").asString())
 				.isEqualTo("Soirée de démonstration");
+	}
+
+	@Test
+	void uneIdentiteDeDemonstrationDeJoueurOuDEcranNeVisePasUneSoireeEnregistree() throws Exception {
+		String soiree = soireeOuverte().path("id").asString();
+		String joueur = "demo:JOUEUR:" + soiree + ":" + UUID.randomUUID();
+		String ecran = "demo:ECRAN:" + soiree + ":" + UUID.randomUUID();
+
+		verifierRefus("retrouverEtatManette",
+				envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/manette", null, joueur), 401, "AUTHENTIFICATION_REQUISE");
+		verifierRefus("retrouverEtatSalle",
+				envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/salle", null, ecran), 401, "AUTHENTIFICATION_REQUISE");
+		for (String jeton : List.of(joueur, ecran)) {
+			var connexion = StompHeaderAccessor.create(StompCommand.CONNECT);
+			connexion.setNativeHeader("Authorization", "Bearer " + jeton);
+			assertThatThrownBy(() -> resolveur.resoudre(connexion)).as(jeton)
+					.isInstanceOfSatisfying(RefusDeCommande.class, refus -> {
+						assertThat(refus.refus().statutHttp()).isEqualTo(401);
+						assertThat(refus.refus().code()).isEqualTo("AUTHENTIFICATION_REQUISE");
+					});
+		}
+
+		// L'Animateur de démonstration reste accepté jusqu'à la connexion du Lieu (#5).
+		var console = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/console", null,
+				"demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID());
+		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", console);
+		assertThat(console.getStatusCode().value()).isEqualTo(200);
 	}
 
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps) {
