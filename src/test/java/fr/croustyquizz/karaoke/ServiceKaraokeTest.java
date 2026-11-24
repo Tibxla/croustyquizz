@@ -259,6 +259,29 @@ class ServiceKaraokeTest {
         assertThat(banc.diffuseur.envois()).hasSize(publications);
     }
 
+    @Test void unRappelSansClotureNeDemandeNiCauseNiPublication() {
+        var fabrique = spy(new FabriqueKaraoke(Duration.ofSeconds(30)));
+        var appels = new java.util.concurrent.atomic.AtomicInteger();
+        doAnswer(invocation -> {
+            ContexteDeManche contexte = invocation.getArgument(0);
+            contexte.horloge().programmer(Duration.ofSeconds(1), appels::incrementAndGet);
+            return invocation.callRealMethod();
+        }).when(fabrique).creer(any(), any());
+        var bancAvecRappel = new BancKaraoke(fabrique);
+        UUID manche = bancAvecRappel.service.creer(soiree, Map.of());
+        assertThat(bancAvecRappel.service.demarrer(manche, envoi(animateur, UUID.randomUUID(), "POST", "/demarrer", Map.of())))
+                .isInstanceOf(Accepte.class);
+        int publications = bancAvecRappel.diffuseur.envois().size();
+        var avant = bancAvecRappel.service.instantane(soiree, manche);
+        clearInvocations(bancAvecRappel.passages);
+        bancAvecRappel.horloge.avancer(Duration.ofSeconds(1));
+        assertThat(appels).hasValue(1);
+        verify(fabrique, never()).typeEvenementMinuteur(any());
+        verify(bancAvecRappel.passages, never()).enregistrer(any(), any());
+        assertThat(bancAvecRappel.diffuseur.envois()).hasSize(publications);
+        assertThat(bancAvecRappel.service.instantane(soiree, manche)).isEqualTo(avant);
+    }
+
     void piloter(UUID manche, InterventionDeManche.Action action) {
         var corps = new InterventionDeManche(action, null);
         assertThat(banc.service.piloter(manche, envoi(animateur, UUID.randomUUID(), "POST", "/commandes", corps), corps)).isInstanceOf(Accepte.class);
@@ -327,6 +350,9 @@ class ServiceKaraokeTest {
         boolean echouerCommit;
         final ThreadLocal<Sauvegarde> sauvegarde = new ThreadLocal<>();
         BancKaraoke() {
+            this(new FabriqueKaraoke(Duration.ofSeconds(30)));
+        }
+        BancKaraoke(FabriqueKaraoke fabrique) {
             setRollbackOnCommitFailure(true);
             when(source.charger(anyLong())).thenAnswer(a -> Optional.of(contenu(a.getArgument(0))));
             when(source.rechercher(anyString())).thenReturn(List.of(contenu(1).chanson()));
@@ -342,7 +368,7 @@ class ServiceKaraokeTest {
                     var etat = (InstantaneKaraoke) valeur; passages.enregistrer(id, etat.file()); contenus.put(id, etat.contenus());
                 }
             };
-            service = new ServiceKaraoke(new FabriqueKaraoke(Duration.ofSeconds(30)), persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE);
+            service = new ServiceKaraoke(fabrique, persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE);
             beans.addBean("service", service);
         }
         @Override protected Object doGetTransaction() { return new Object(); }

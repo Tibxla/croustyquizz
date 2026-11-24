@@ -88,17 +88,26 @@ public final class FileAttente {
         return Collections.unmodifiableMap(positions);
     }
 
-    private Passage trouver(UUID id) {
+    public Passage trouver(UUID id) {
         return passages.stream().filter(p -> p.id().equals(id)).findFirst().orElse(null);
     }
 
     private Refuse verifierCible(CiblePassage cible) {
-        Passage passage = trouver(cible.passageId());
-        if (passage == null) { return new Refuse(404, "RESSOURCE_INTROUVABLE", "Ce Passage est introuvable."); }
-        if (passage.etat() != EtatPassage.EN_ATTENTE || passage.numeroModification() != cible.numeroModification()) {
-            return new Refuse(409, "COMMANDE_PERIMEE", "Ce Passage a changé ; consulte la File actualisée.");
-        }
+        return verifierCible(cible, trouver(cible.passageId()), Set.of(EtatPassage.EN_ATTENTE));
+    }
+
+    private static Refuse verifierCible(CiblePassage cible, Passage passage, Set<EtatPassage> etats) {
+        if (passage == null) { return introuvable(); }
+        if (!etats.contains(passage.etat()) || passage.numeroModification() != cible.numeroModification()) { return perimee(); }
         return null;
+    }
+
+    private static Refuse introuvable() {
+        return new Refuse(404, "RESSOURCE_INTROUVABLE", "Ce Passage est introuvable.");
+    }
+
+    static Refuse perimee() {
+        return new Refuse(409, "COMMANDE_PERIMEE", "Ce Passage a changé ; consulte la File actualisée.");
     }
 
     private void remplacer(Passage passage) {
@@ -227,6 +236,44 @@ public final class FileAttente {
         return Optional.of(appele);
     }
 
+    public ResultatFile appelerPassage(CiblePassage cible) {
+        return appelerPassage(cible, () -> { });
+    }
+
+    /** Prépare la chronologie du cycle après les gardes et avant de consommer le Tour. */
+    ResultatFile appelerPassage(CiblePassage cible, Runnable preparerAppel) {
+        Refuse refus = verifierCible(cible);
+        if (refus != null) { return new ResultatFile.Refus(refus); }
+        if (!ordreEffectif().getFirst().id().equals(cible.passageId())) { return new ResultatFile.Refus(perimee()); }
+        preparerAppel.run();
+        extraireProchainPassage(false);
+        return new ResultatFile.Modifiee();
+    }
+
+    public ResultatFile demarrerPassage(CiblePassage cible) {
+        return transiter(cible, EtatPassage.EN_COURS, null, Set.of(EtatPassage.APPELE));
+    }
+
+    public ResultatFile clorePassage(CiblePassage cible, EtatPassage etatTerminal, TraceTerminale trace) {
+        Set<EtatPassage> departs = switch (etatTerminal) {
+            case TERMINE -> Set.of(EtatPassage.EN_COURS);
+            case SAUTE, ANNULE -> Set.of(EtatPassage.APPELE, EtatPassage.EN_COURS);
+            default -> Set.of();
+        };
+        return transiter(cible, etatTerminal, trace, departs);
+    }
+
+    private ResultatFile transiter(CiblePassage cible, EtatPassage etat, TraceTerminale trace, Set<EtatPassage> departs) {
+        Passage passage = trouver(cible.passageId());
+        Refuse refus = verifierCible(cible, passage, departs);
+        if (refus != null) { return new ResultatFile.Refus(refus); }
+        if (etat != EtatPassage.EN_COURS && (trace == null || !trace.correspondA(etat))) {
+            throw new IllegalArgumentException("La clôture exige un motif, un instant et l’acteur correspondant.");
+        }
+        remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), etat, passage.tourConsomme(), trace, true));
+        return new ResultatFile.Modifiee();
+    }
+
     public ResultatFile reglerLimite(long limitePassagesEnAttente) {
         EtatFileAttente.verifierLimite(limitePassagesEnAttente);
         if (limite == limitePassagesEnAttente) { return new ResultatFile.SansEffet(); }
@@ -239,7 +286,7 @@ public final class FileAttente {
         for (Passage passage : List.copyOf(passages)) {
             if (passage.etat() == EtatPassage.EN_ATTENTE) {
                 remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.ANNULE,
-                        null, new TraceTerminale("MANCHE_TERMINEE", acteurId, recueLe), true));
+                        null, new TraceTerminale(TraceTerminale.MANCHE_TERMINEE, acteurId, recueLe), true));
                 modifiee = true;
             }
         }
