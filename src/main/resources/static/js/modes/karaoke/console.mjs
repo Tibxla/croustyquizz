@@ -30,7 +30,7 @@ function installerPassage(ui, commande) {
 		decalage = e('p'), mesure = e('p'), erreur = e('p');
 	erreur.setAttribute('role', 'status');
 	fiche.append(titre, identite, phase, temps, source, lecteur, decalage, mesure, erreur);
-	const votes = e('section', 'panneau karaoke__votes');
+	const votes = e('section', 'karaoke__votes');
 	const titreVotes = e('h2', '', 'Vote du public');
 	titreVotes.id = 'karaoke-votes-console';
 	votes.setAttribute('aria-labelledby', titreVotes.id);
