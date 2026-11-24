@@ -29,22 +29,38 @@ class ComptesAnimateur {
 
 	@Transactional
 	CompteCree inscrire(SaisiesAnimateur.Inscription saisie) {
-		String hachage = encodeur.encode(empreinte(saisie.motDePasse()));
 		var lieu = new Lieu(UUID.randomUUID(), saisie.lieu().nom(), saisie.lieu().ville());
-		var animateur = new IdentiteAnimateur(UUID.randomUUID(), saisie.nom(), lieu.id());
 		jdbc.sql("insert into lieu (id, nom, ville) values (:id, :nom, :ville)")
 				.param("id", lieu.id()).param("nom", lieu.nom()).param("ville", lieu.ville()).update();
+		return new CompteCree(creerCompte(lieu.id(), saisie.nom(), saisie.email(), saisie.motDePasse()), lieu);
+	}
+
+	void verifierEmailDisponible(String email) {
+		boolean existe = jdbc.sql("select exists (select 1 from animateur where lower(email) = lower(:email))")
+				.param("email", email).query(Boolean.class).single();
+		if (existe) {
+			throw emailDejaUtilise().exception();
+		}
+	}
+
+	IdentiteAnimateur creerCompte(UUID lieuId, String nom, String email, String motDePasse) {
+		String hachage = encodeur.encode(empreinte(motDePasse));
+		var animateur = new IdentiteAnimateur(UUID.randomUUID(), nom, lieuId);
 		int insertions = jdbc.sql("""
 				insert into animateur (id, lieu_id, nom, email, mot_de_passe_hache)
 				values (:id, :lieuId, :nom, :email, :hachage)
 				on conflict (lower(email)) do nothing
 				""")
-				.param("id", animateur.id()).param("lieuId", lieu.id()).param("nom", animateur.nom())
-				.param("email", saisie.email()).param("hachage", hachage).update();
+				.param("id", animateur.id()).param("lieuId", lieuId).param("nom", animateur.nom())
+				.param("email", email).param("hachage", hachage).update();
 		if (insertions == 0) {
-			throw new Refuse(409, "EMAIL_DEJA_UTILISE", "Cet e-mail est déjà utilisé.").exception();
+			throw emailDejaUtilise().exception();
 		}
-		return new CompteCree(animateur, lieu);
+		return animateur;
+	}
+
+	private static Refuse emailDejaUtilise() {
+		return new Refuse(409, "EMAIL_DEJA_UTILISE", "Cet e-mail est déjà utilisé.");
 	}
 
 	IdentiteAnimateur reconnaitre(SaisiesAnimateur.Connexion saisie) {
