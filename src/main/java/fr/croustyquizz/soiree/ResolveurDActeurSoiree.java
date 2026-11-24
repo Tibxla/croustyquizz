@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
  *
  * Un Joueur ou un Écran de démonstration ne vise qu'une Soirée fictive : sur une
  * Soirée enregistrée, seuls le jeton de reconnexion et la clé d'Écran comptent.
+ * Un Joueur de démonstration ne porte pas non plus l'UUID d'un vrai Joueur.
  * L'Animateur de démonstration reste accepté jusqu'à #5, pour les routes de test
  * des Manches (#106).
  */
@@ -32,11 +33,14 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 	private final ServiceDesAcces acces;
 	private final ObjectProvider<ResolveurDActeur> resolveurs;
 	private final DepotDeSoirees soirees;
+	private final DepotDeJoueurs joueurs;
 
-	ResolveurDActeurSoiree(ServiceDesAcces acces, ObjectProvider<ResolveurDActeur> resolveurs, DepotDeSoirees soirees) {
+	ResolveurDActeurSoiree(ServiceDesAcces acces, ObjectProvider<ResolveurDActeur> resolveurs, DepotDeSoirees soirees,
+			DepotDeJoueurs joueurs) {
 		this.acces = acces;
 		this.resolveurs = resolveurs;
 		this.soirees = soirees;
+		this.joueurs = joueurs;
 	}
 
 	@Override
@@ -57,8 +61,16 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 		return acces.reconnaitre(autorisation.substring(PREFIXE.length()));
 	}
 
+	/**
+	 * Le canal d'une Manette et sa dernière vue ne dépendent que de l'UUID du
+	 * Joueur : un vrai Joueur est donc refusé même derrière une Soirée fictive.
+	 */
 	private Acteur limiter(Acteur acteur) {
-		if (acteur.type() != Acteur.Type.ANIMATEUR && soirees.existsById(acteur.soireeId())) {
+		if (acteur.type() == Acteur.Type.ANIMATEUR) {
+			return acteur;
+		}
+		if (soirees.existsById(acteur.soireeId())
+				|| acteur.type() == Acteur.Type.JOUEUR && joueurs.existsById(acteur.identifiant())) {
 			throw new Refuse(401, "AUTHENTIFICATION_REQUISE",
 					"Cette Soirée n'accepte pas d'identité de démonstration : rejoins-la avec son code.").exception();
 		}

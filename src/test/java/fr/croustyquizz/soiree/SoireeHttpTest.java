@@ -290,13 +290,7 @@ class SoireeHttpTest {
 		verifierRefus("retrouverEtatSalle",
 				envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/salle", null, ecran), 401, "AUTHENTIFICATION_REQUISE");
 		for (String jeton : List.of(joueur, ecran)) {
-			var connexion = StompHeaderAccessor.create(StompCommand.CONNECT);
-			connexion.setNativeHeader("Authorization", "Bearer " + jeton);
-			assertThatThrownBy(() -> resolveur.resoudre(connexion)).as(jeton)
-					.isInstanceOfSatisfying(RefusDeCommande.class, refus -> {
-						assertThat(refus.refus().statutHttp()).isEqualTo(401);
-						assertThat(refus.refus().code()).isEqualTo("AUTHENTIFICATION_REQUISE");
-					});
+			verifierRefusAuConnect(jeton);
 		}
 
 		// L'Animateur de démonstration reste accepté jusqu'à la connexion du Lieu (#5).
@@ -304,6 +298,31 @@ class SoireeHttpTest {
 				"demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID());
 		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", console);
 		assertThat(console.getStatusCode().value()).isEqualTo(200);
+	}
+
+	@Test
+	void uneSoireeFictiveNePretePasSonIdentiteDeDemonstrationAUnVraiJoueur() throws Exception {
+		String code = soireeOuverte().path("codeAcces").asString();
+		String lea = json.readTree(envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
+				Map.of("codeAcces", code, "pseudo", "Léa")).getBody()).at("/joueur/id").asString();
+		UUID fictive = UUID.randomUUID();
+		String jeton = "demo:JOUEUR:" + fictive + ":" + lea;
+
+		verifierRefus("retrouverEtatManette",
+				envoyer(HttpMethod.GET, "/api/soirees/" + fictive + "/etat/manette", null, jeton), 401,
+				"AUTHENTIFICATION_REQUISE");
+		verifierRefusAuConnect(jeton);
+	}
+
+	/** Le CONNECT STOMP passe par le même résolveur que HTTP ; son refus devient une trame ERROR. */
+	private void verifierRefusAuConnect(String jeton) {
+		var connexion = StompHeaderAccessor.create(StompCommand.CONNECT);
+		connexion.setNativeHeader("Authorization", "Bearer " + jeton);
+		assertThatThrownBy(() -> resolveur.resoudre(connexion)).as(jeton)
+				.isInstanceOfSatisfying(RefusDeCommande.class, refus -> {
+					assertThat(refus.refus().statutHttp()).isEqualTo(401);
+					assertThat(refus.refus().code()).isEqualTo("AUTHENTIFICATION_REQUISE");
+				});
 	}
 
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps) {
