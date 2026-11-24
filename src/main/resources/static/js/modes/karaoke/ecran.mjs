@@ -1,23 +1,187 @@
-import { creerInterface, creerTicket, texteAutresPassages } from './commun.mjs';
+import { creerInterface, creerTicket, creerUuid, texteAutresPassages } from './commun.mjs';
+import { creerCycleLecture } from './cycle-lecture.mjs';
+import { delaiAppelRestant, determinerLignes, positionChronologique } from './paroles.mjs';
+import { formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
+
+const designations = new WeakMap();
 
 export function monter(zones, contexte) {
-	const ui = creerInterface(zones, contexte), { e } = ui;
-	const invitation = e('h2', 'karaoke__invitation');
-	const prochain = e('div', 'karaoke__prochain'); ui.principale.append(invitation, prochain);
+	const document = zones.principale.ownerDocument;
+	const navigateur = document.defaultView;
+	return creerEcranKaraoke(zones, contexte, {
+		document, performance: navigateur.performance,
+		requestAnimationFrame: f => navigateur.requestAnimationFrame(f), cancelAnimationFrame: id => navigateur.cancelAnimationFrame(id),
+		setTimeout: (f, ms) => navigateur.setTimeout(f, ms), clearTimeout: id => navigateur.clearTimeout(id),
+	});
+}
+
+export function creerEcranKaraoke(zones, contexte, dependances) {
+	const { document, requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout } = dependances;
+	const audio = contexte.audioSalle;
+	const { lecteur, lecteurId } = audio;
+	const designation = designations.get(audio) ?? { fichiers: null, aEteLectrice: false };
+	designations.set(audio, designation);
+	const ui = creerInterface(zones, contexte, { annoncerConnexion: false }), { e, ecouter } = ui;
+	const invitation = e('h2', 'karaoke__invitation'), prochain = e('div', 'karaoke__prochain');
+	const minutes = e('p', 'karaoke__delai chiffres'), paroles = e('div', 'karaoke__paroles');
+	ui.principale.append(invitation, prochain, minutes, paroles);
+	const courantAffiche = e('div', 'karaoke__courant-salle');
 	const titre = e('h2', '', 'Ensuite'), file = e('ol', 'rouleau'), autres = e('p');
-	ui.laterale.append(titre, file, autres);
-	ui.surRendu = () => {
-		if (!ui.bloc) return;
-		const passages = ui.bloc.prochainsPassages;
-		invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
-		prochain.hidden = !passages.length;
-		prochain.replaceChildren(...(passages.length ? [creerTicket(ui, passages[0])] : []));
-		// Le premier Passage est déjà en grand : « Ensuite » montre seulement les suivants.
-		const suivants = passages.slice(1);
-		file.hidden = !suivants.length; titre.hidden = !suivants.length && !ui.bloc.nombreAutresPassages;
+	ui.laterale.append(courantAffiche, titre, file, autres);
+
+	const autreLecteur = e('p', '', 'Un autre Écran de salle est désigné pour lire les Chansons.');
+	autreLecteur.hidden = true;
+	ui.principale.append(autreLecteur);
+	let cycle, requetes, ticketCourant, descriptionCourant, etiquetteCourant, blocAffiche, trame, versionParoles, lignes = [], indexAffiche;
+	function actualiserDossier({ fichiers, sonDebloque } = audio.etat()) {
+		if (ui.synchronisee && fichiers !== designation.fichiers) {
+			designation.fichiers = fichiers;
+			cycle.choisirDossier(fichiers);
+		}
+		if (sonDebloque && !cycle.etat().sonDebloque) void cycle.debloquer({ attendreVue: () => !ui.synchronisee });
+	}
+	function monterCycle() {
+		requetes = new AbortController();
+		const signal = requetes.signal;
+		cycle = creerCycleLecture({
+			lecteur, lecteurId, horloge: contexte, setTimeout, clearTimeout,
+			envoyer: (methode, chemin, corps) => contexte.envoyer(methode, `${ui.racine()}${chemin}`, corps,
+				{ entetes: { 'Idempotency-Key': creerUuid() }, signal, annoncer: false }),
+			surEtat(etat) {
+				designation.aEteLectrice = etat.aEteLectrice;
+				autreLecteur.hidden = !etat.autreLecteur;
+			},
+		});
+		const dossier = audio.etat();
+		if (dossier.fichiers !== null) {
+			cycle.reprendreDossier({ ...dossier, aEteLectrice: designation.aEteLectrice || dossier.fichiers !== designation.fichiers });
+			designation.fichiers = dossier.fichiers;
+		}
+	}
+	function detruireCycle() {
+		requetes.abort();
+		cycle.detruire();
+	}
+	monterCycle();
+	const retirerAudio = audio.surChangement(actualiserDossier);
+	ui.surManche = precedent => {
+		if (!precedent) return;
+		detruireCycle();
+		monterCycle();
+		ticketCourant = descriptionCourant = etiquetteCourant = undefined;
+	};
+	function rendreCourant(courant, origine) {
+		const description = courant ? JSON.stringify([courant.passageId, courant.numero, courant.chanson.titre,
+			courant.chanson.artiste, courant.interpretes.map(i => i.pseudo), Boolean(courant.prioritaire)]) : null;
+		if (description !== descriptionCourant) {
+			descriptionCourant = description;
+			courantAffiche.hidden = !courant;
+			if (!courant) {
+				courantAffiche.replaceChildren();
+				ticketCourant = etiquetteCourant = undefined;
+				return;
+			}
+			const memePassage = ticketCourant?.getAttribute('data-passage-id') === courant.passageId;
+			ticketCourant = creerTicket(ui, courant, { courant: true });
+			ticketCourant.classList.add('ticket--detache');
+			if (memePassage || origine?.source !== 'evenement') ticketCourant.classList.add('ticket--immobile');
+			etiquetteCourant = ticketCourant.querySelector('.karaoke__etat-ticket');
+			courantAffiche.replaceChildren(ticketCourant);
+		}
+		if (etiquetteCourant) {
+			const libelle = libelleEtatTicketPublic(courant);
+			if (etiquetteCourant.textContent !== libelle) etiquetteCourant.textContent = libelle;
+		}
+	}
+	function rendreParoles(bloc) {
+		const { courant, lecture } = bloc;
+		if (!bloc.paroles || paroles.hidden) return;
+		if (versionParoles !== bloc.paroles.parolesId) {
+			versionParoles = bloc.paroles.parolesId;
+			lignes = bloc.paroles.lignes.filter(ligne => ligne.texte.trim());
+			indexAffiche = undefined;
+		}
+		const etat = cycle.etat(), maintenant = contexte.maintenantServeur();
+		const joue = etat.etat === 'lecture' || etat.etat === 'pause';
+		const dureeReferenceMs = joue && etat.dureeMs > 0 ? etat.dureeMs : bloc.paroles.dureeMs;
+		const position = joue ? Math.min(lecteur.position(), dureeReferenceMs) : positionChronologique({
+			...courant, maintenant, enPause: bloc.etat === 'EN_PAUSE', dureeReferenceMs,
+		});
+		const { indexEnCours, avantPremiere } = determinerLignes(lignes, position, lecture?.decalageMs ?? 0);
+		paroles.style.setProperty('--teinte-passage', `var(--${teintePassage(courant.numero)})`);
+		if (indexEnCours === indexAffiche) return;
+		indexAffiche = indexEnCours;
+		const debut = avantPremiere ? 0 : Math.max(0, indexEnCours - 1);
+		const fin = avantPremiere ? 3 : indexEnCours + 3;
+		paroles.replaceChildren(...lignes.slice(debut, fin).map((ligne, i) => e('p',
+			debut + i === indexEnCours ? 'paroles__ligne paroles__ligne--en-cours paroles__chante' : 'paroles__ligne', ligne.texte)));
+	}
+	function actualiserTemps() {
+		const bloc = ui.bloc;
+		if (!bloc || !passageActif(bloc.courant)) return;
+		if (!minutes.hidden) {
+			const restant = delaiAppelRestant({ ...bloc.courant, maintenant: contexte.maintenantServeur(), enPause: bloc.etat === 'EN_PAUSE' });
+			const texte = formaterTempsRestant(restant);
+			if (minutes.textContent !== texte) minutes.textContent = texte;
+		}
+		rendreParoles(bloc);
+	}
+	function animer() {
+		trame = undefined;
+		actualiserTemps();
+		planifier();
+	}
+	function planifier() {
+		const animee = !document.hidden && passageActif(ui.bloc?.courant);
+		if (animee && trame === undefined) trame = requestAnimationFrame(animer);
+		if (!animee && trame !== undefined) {
+			cancelAnimationFrame(trame);
+			trame = undefined;
+		}
+	}
+	ecouter(document, 'visibilitychange', () => { if (!document.hidden) actualiserTemps(); planifier(); });
+	ui.surRendu = origine => {
+		const bloc = ui.bloc;
+		if (!bloc) return;
+		const { courant, prochainsPassages: passages, lecture } = bloc;
+		const actif = passageActif(courant), appel = actif?.etat === 'APPELE', pause = bloc.etat === 'EN_PAUSE';
+		if (origine || blocAffiche !== bloc) {
+			blocAffiche = bloc;
+			const sonDeManche = Boolean(actif && !appel);
+			if (sonDeManche) void contexte.signalerSonDeManche(true);
+			cycle.surVue(bloc, origine);
+			if (!sonDeManche) void contexte.signalerSonDeManche(false);
+		}
+		actualiserDossier();
+		const enErreur = lecture?.etat === 'EN_ERREUR';
+		if (!actif) invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
+		else if (enErreur) invitation.textContent = "La musique ne se lance pas. L'Animateur choisit la suite.";
+		else if (appel) invitation.textContent = pause ? 'Prépare-toi · Pause' : 'Prépare-toi';
+		else invitation.textContent = pause ? 'Pause' : '';
+		invitation.hidden = !invitation.textContent;
+		prochain.hidden = Boolean(actif) || !passages.length;
+		prochain.replaceChildren(...(prochain.hidden ? [] : [creerTicket(ui, passages[0])]));
+		minutes.hidden = !appel || enErreur;
+		paroles.hidden = !actif || appel || enErreur || !bloc.paroles;
+		if (paroles.hidden) {
+			paroles.replaceChildren();
+			versionParoles = indexAffiche = undefined;
+		}
+
+		rendreCourant(courant, origine);
+		const suivants = actif ? passages : passages.slice(1);
+		file.hidden = !suivants.length; titre.hidden = !suivants.length && !bloc.nombreAutresPassages;
 		file.replaceChildren(...suivants.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }));
-		autres.hidden = !ui.bloc.nombreAutresPassages;
-		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
+		autres.hidden = !bloc.nombreAutresPassages;
+		autres.textContent = texteAutresPassages(bloc.nombreAutresPassages);
+		actualiserTemps();
+		planifier();
+	};
+	ui.surDestruction = () => {
+		if (trame !== undefined) cancelAnimationFrame(trame);
+		retirerAudio();
+		detruireCycle();
+		void contexte.signalerSonDeManche(false);
 	};
 	return { afficher: ui.afficher, demonter: ui.demonter };
 }

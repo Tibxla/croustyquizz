@@ -3,6 +3,7 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { decrireVue } from './vue-commune.mjs';
+import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { memoire } from './api.js';
@@ -98,10 +99,13 @@ async function demarrer() {
 		csrf = reponse.corps.token;
 	}
 	const transport = creerTransport({ jeton, csrf });
+	const zoneAudio = element('audio-salle');
+	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
 	let suivi;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
 		resynchroniser: () => suivi?.resynchroniser(),
+		maintenantServeur: () => suivi?.maintenantServeur() ?? Date.now(),
 		surEnvoi(etat, detail) {
 			const envoi = element('envoi');
 			// Envoi annulé : plus rien n'est en cours, le bandeau disparaît.
@@ -111,6 +115,7 @@ async function demarrer() {
 			envoi.textContent = detail;
 		},
 	});
+	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
 	// Alias de recette explicite : le serveur continue à publier son vrai mode et son bloc.
 	const factice = jeton?.startsWith('demo:') && new URLSearchParams(location.search).get('factice') === '1';
 	const gestionnaire = creerGestionnaireDeMode({ ecran, zones, contexte,
@@ -138,10 +143,14 @@ async function demarrer() {
 		},
 	}, { transport });
 	addEventListener('pagehide', evenement => {
-		if (evenement.persisted) return;
+		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		annulation.abort();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
 		pilotage?.demonter();
+		void audioSalle?.detruire();
+	});
+	addEventListener('pageshow', evenement => {
+		if (evenement.persisted) audioSalle?.suspendre(false);
 	});
 }
 

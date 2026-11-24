@@ -19,6 +19,13 @@
     <p class="coupure" role="status" data-connexion>Synchronisation…</p><p class="envoi envoi--refuse" role="alert" data-erreur hidden></p><p class="envoi" role="status" data-envoi hidden></p>
     <div class="coquille__mode" data-principale></div>
     <p class="coquille__note" data-attente>La prochaine Manche s’affichera ici.</p>
+    <div class="salle__audio" data-audio-salle hidden>
+      <button class="bouton" type="button" data-choisir-dossier>Choisir le dossier de musique</button>
+      <input type="file" webkitdirectory multiple hidden>
+      <p data-aide-son role="status"></p>
+      <p data-son-bloque hidden>Son bloqué</p>
+      <button class="bouton" type="button" data-activer-son hidden>Activer le son</button>
+    </div>
     <footer class="salle__pied"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span><span>Écran de salle</span></footer>
   </section>
   <aside class="salle__cote" aria-label="La salle">

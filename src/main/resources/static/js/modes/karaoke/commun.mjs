@@ -1,7 +1,7 @@
 import { ouvrirDialogue } from '../../dialogue.mjs';
 import { creerMachineEnvoi, exigeCapture, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
-import { teintePassage, formaterDuree, formaterAttente, etatInscription } from './presentation.mjs';
+import { teintePassage, formaterDuree, formaterAttente, etatInscription, libelleEtatTicketPublic } from './presentation.mjs';
 
 export const texteAutresPassages = n => (n ? `et ${n} ${n > 1 ? 'autres' : 'autre'}` : '');
 
@@ -27,7 +27,7 @@ export function texteEnvoi(e) {
 }
 
 // Adaptateur commun aux trois modules : cycle de vie, connexion, reçus et DOM sûr.
-export function creerInterface(zones, contexte) {
+export function creerInterface(zones, contexte, { annoncerConnexion = true } = {}) {
 	const document = zones.principale.ownerDocument;
 	const ecouteurs = [], dialogues = new Set();
 	let detruite = false, machine, quitter, bloc, rendue = false, etatConnexion = 'synchronisation';
@@ -50,8 +50,10 @@ export function creerInterface(zones, contexte) {
 	feuille.nombre++;
 	const principale = e('section', 'karaoke'), laterale = zones.laterale ? e('section', 'karaoke') : null;
 	zones.principale.replaceChildren(principale); if (laterale) zones.laterale.replaceChildren(laterale);
-	const connexion = e('p', 'coupure'); connexion.setAttribute('role', 'status'); connexion.hidden = true; principale.append(connexion);
-	function rendre() {
+	const connexion = e('p', 'coupure');
+	if (annoncerConnexion) connexion.setAttribute('role', 'status');
+	connexion.hidden = true; principale.append(connexion);
+	function rendre(origine) {
 		if (detruite || suspendre) return;
 		for (const d of [...dialogues]) {
 			if (d.valide && !d.valide()) {
@@ -59,7 +61,7 @@ export function creerInterface(zones, contexte) {
 			} else if (d.confirmer) d.confirmer.disabled = !d.confirmationPermise();
 		}
 		connexion.hidden = etatConnexion !== 'coupure'; connexion.textContent = 'Connexion perdue, on réessaie.';
-		ui.surRendu();
+		ui.surRendu(origine);
 		// Les listes réécrites ne gardent pas leurs anciens écouteurs en mémoire.
 		for (let i = ecouteurs.length - 1; i >= 0; i--) if (!ecouteurs[i][0].isConnected) {
 			const [element, type, rappel] = ecouteurs.splice(i, 1)[0]; element.removeEventListener(type, rappel);
@@ -94,6 +96,22 @@ export function creerInterface(zones, contexte) {
 		envoiInscription: chansonId => [...envois.values()].filter(e => e.commande.chansonId === chansonId && !e.commande.passageId).at(-1),
 		capacite(commande) {
 			if (!bloc) return false;
+			switch (commande.type) {
+				case 'CONFIRMER_PRESENCE':
+					return bloc.peutConfirmerPresence && commande.passageId === bloc.courant?.passageId;
+				case 'APPELER': return bloc.peutAppeler && bloc.passagesEnAttente.some(p => p.position === 1 && p.passageId === commande.passageId);
+				case 'MARQUER_DEBUT':
+				case 'CORRIGER_CALAGE': return bloc.peutCaler;
+				case 'REPRENDRE_EN_PAROLES_SEULES': return bloc.peutReprendreEnParolesSeules;
+				case 'PILOTER':
+					switch (commande.corps.action) {
+						case 'METTRE_EN_PAUSE': return bloc.etat === 'EN_COURS';
+						case 'REPRENDRE': return bloc.peutReprendre;
+						case 'PASSER_ETAPE': return bloc.peutPasser;
+						case 'TERMINER': return true;
+						default: return false;
+					}
+			}
 			if (commande.acteurType === 'JOUEUR') return commande.passageId ?
 				bloc.mesPassagesEnAttente.some(p => p.passageId === commande.passageId) : bloc.peutInscrire;
 			return commande.chemin.endsWith('/limite') ? bloc.peutReglerLimite : bloc.peutGererFile;
@@ -106,8 +124,8 @@ export function creerInterface(zones, contexte) {
 		reessaiPossible(fiche) { return Boolean(fiche && peutReessayer(fiche) && ui.mutationsPermises &&
 			captures >= (fiche.captureRequise ?? 0) && ui.capacite(fiche.commande)); },
 		reessayer(cle) { if (ui.reessaiPossible(envois.get(cle))) machine.reessayer(cle); },
-		dernierEnvoi() { return [...envois.values()].sort((a, b) => b.ordre - a.ordre)[0]; },
-		dernierEchec() { return [...envois.values()].filter(e => ['refuse', 'inconnu', 'indisponible'].includes(e.etat) || e.reessaiEnCours).sort((a, b) => b.ordre - a.ordre)[0]; },
+		dernierEnvoi(filtre) { return [...envois.values()].filter(filtre).sort((a, b) => b.ordre - a.ordre)[0]; },
+		dernierEchec(filtre) { return ui.dernierEnvoi(e => filtre(e) && (['refuse', 'inconnu', 'indisponible'].includes(e.etat) || e.reessaiEnCours)); },
 		dialogue({ titre, declencheur, valide, fermer = () => {}, confirmation }) {
 			const dialog = e('dialog', 'dialogue');
 			const titreElement = e('h3', '', titre); titreElement.id = `karaoke-dialogue-${++ordre}`;
@@ -148,19 +166,25 @@ export function creerInterface(zones, contexte) {
 					const confirmationInvalidee = [...dialogues].some(d => d.valide);
 					machine?.detruire(); envois.clear(); attendCapture = false;
 					for (const d of [...dialogues]) d.fermer();
-					bloc = vue.karaoke; machine = creerMachine(); ui.surManche();
+					const blocPrecedent = bloc;
+					bloc = vue.karaoke; machine = creerMachine(); ui.surManche(blocPrecedent);
 					if (confirmationInvalidee) ui.messageInvalidation();
 				} else bloc = vue.karaoke;
 				rendue = true;
-				if (origine.source === 'capture') { captures++; attendCapture = false; }
+				if (origine?.source === 'capture') { captures++; attendCapture = false; }
 				const personnels = bloc.mesPassagesEnAttente ?? [];
 				const visibles = [...envois.values()].filter(e => e.commande.acteurType === 'JOUEUR' && e.commande.chansonId &&
 					personnels.some(p => p.chanson.chansonId === e.commande.chansonId)).map(e => e.cle);
 				for (const cle of machine.reconcilier(visibles)) envois.delete(cle);
-				for (const [cle, e] of envois) if (e.commande.acteurType === 'JOUEUR' && e.commande.passageId &&
-					!personnels.some(p => p.passageId === e.commande.passageId)) { machine.oublier(cle); envois.delete(cle); }
+				for (const [cle, e] of envois) {
+					const { acteurType, passageId, type } = e.commande;
+					if (acteurType !== 'JOUEUR' || !passageId) continue;
+					const visible = type === 'CONFIRMER_PRESENCE' ? bloc.courant?.passageId === passageId
+						: personnels.some(p => p.passageId === passageId);
+					if (!visible) { machine.oublier(cle); envois.delete(cle); }
+				}
 			} finally { suspendre = false; }
-			rendre();
+			rendre(origine);
 		},
 		demonter() {
 			if (detruite) return;
@@ -176,7 +200,7 @@ export function creerInterface(zones, contexte) {
 	return ui;
 }
 
-export function creerTicket(ui, passage, { personnel = false, selectionner, estimation = false, details = false } = {}) {
+export function creerTicket(ui, passage, { personnel = false, courant = false, selectionner, estimation = false, details = false } = {}) {
 	const { e } = ui;
 	const teinte = teintePassage(passage.numero);
 	const ticket = e(selectionner ? 'button' : 'article', personnel ? 'mon-ticket' : `ticket ticket--${teinte}`);
@@ -190,10 +214,11 @@ export function creerTicket(ui, passage, { personnel = false, selectionner, esti
 	bas.append(e('p', personnel ? 'mon-ticket__quoi' : 'ticket__qui', passage.interpretes.map(i => i.pseudo).join(', ')),
 		e('p', personnel ? 'mon-ticket__quoi' : 'ticket__quoi', passage.chanson.titre),
 		e('p', 'ticket__quoi', passage.chanson.artiste));
-	if (personnel || details) bas.append(e('p', 'karaoke__position', `Position ${passage.position} · Tour ${passage.tour}`));
+	if ((personnel && !courant) || details) bas.append(e('p', 'karaoke__position', `Position ${passage.position} · Tour ${passage.tour}`));
 	if (details) bas.append(e('p', 'chiffres', formaterDuree(passage.chanson.dureeMs)));
 	if (estimation) bas.append(e('p', personnel ? 'mon-ticket__place' : 'karaoke__attente', formaterAttente(passage.attente, personnel)));
 	if (passage.prioritaire && !personnel) bas.append(e('p', 'karaoke__priorite', 'Prioritaire'));
+	if (courant && !personnel) bas.append(e('p', 'karaoke__etat-ticket', libelleEtatTicketPublic(passage)));
 	ticket.append(haut, bas);
 	if (selectionner) { ticket.type = 'button'; ticket.setAttribute('aria-pressed', 'false'); ui.ecouter(ticket, 'click', () => selectionner(passage.passageId)); }
 	return ticket;

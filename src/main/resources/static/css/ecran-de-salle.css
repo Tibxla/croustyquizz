@@ -1,5 +1,5 @@
 /*
- * Écran de salle : vu à 5 m, dans une salle sombre, sans aucune commande.
+ * Écran de salle : vu à 5 m, dans une salle sombre. Seules les commandes du lecteur sont disponibles.
  * Les tailles suivent la largeur de l'écran (vw) pour rester lisibles quelle
  * que soit la télé ; une seule échelle porte la hiérarchie.
  */
@@ -139,7 +139,7 @@
   line-height: 1.15;
   text-wrap: balance;
 }
-/* La partie déjà chantée de la ligne en cours. */
+/* Sans minutage par mot, toute la ligne en cours reçoit la teinte du Passage. */
 .paroles__chante {
   color: var(--teinte-passage, var(--orange));
 }
@@ -267,3 +267,6 @@
 .salle--coquille .mode__contenu { font-size: 1.5vw; max-height: 48vh; overflow: auto; }
 .salle--coquille .coquille__note { font-size: 1.2vw; }
 .salle--coquille .salle__pied { gap: 1vw; }
+.salle__audio:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
+.salle__audio .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
+.salle__audio p:empty { display: none; }
