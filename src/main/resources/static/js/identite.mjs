@@ -25,11 +25,15 @@ export function lireAcces(ecran, recherche, jeton) {
 	};
 }
 
-export async function preparerIdentite(type, soireeId, acteurId, requete) {
+export async function preparerIdentite(type, soireeId, acteurId, requete, rangJoueur = 1) {
 	if (!Object.values(roles).includes(type) || !uuid.test(soireeId) || !uuid.test(acteurId)) {
 		throw new Error('Choisis un rôle et un UUID de Soirée valide.');
 	}
-	// Le fournisseur commun est l'autorité pour l'UUID Java nameUUIDFromBytes du Joueur.
+	const joueurAbsent = 'Ce Joueur de démonstration n’existe pas dans cette Soirée.';
+	if (type === 'JOUEUR' && (!Number.isInteger(rangJoueur) || rangJoueur < 1 || rangJoueur > 4)) {
+		throw new Error(joueurAbsent);
+	}
+	// Le fournisseur commun donne l’UUID du Joueur au rang choisi.
 	const reponse = await requete(`/api/soirees/${soireeId}/etat/salle`, {
 		headers: { Authorization: `Bearer demo:ECRAN:${soireeId}:${acteurId}` },
 		cache: 'no-store', credentials: 'same-origin',
@@ -37,7 +41,14 @@ export async function preparerIdentite(type, soireeId, acteurId, requete) {
 	const { lisible, corps } = await lireCorps(reponse);
 	if (!lisible) throw new Error(reponseIllisible);
 	if (!reponse.ok) throw new Error(corps?.detail ?? `Identité refusée (HTTP ${reponse.status}).`);
-	const identifiant = type === 'JOUEUR' ? corps.vue?.joueurs?.[0]?.id : acteurId;
-	if (!uuid.test(identifiant ?? '')) throw new Error('Le serveur n’a pas fourni de Joueur de démonstration.');
+	let identifiant = acteurId;
+	if (type === 'JOUEUR') {
+		const joueur = corps?.vue?.joueurs?.[rangJoueur - 1];
+		if (joueur === undefined) throw new Error(joueurAbsent);
+		identifiant = joueur?.id;
+		if (typeof identifiant !== 'string' || !uuid.test(identifiant)) {
+			throw new Error('Le serveur n’a pas fourni de Joueur de démonstration.');
+		}
+	}
 	return { jeton: `demo:${type}:${soireeId}:${identifiant}`, page: { JOUEUR: 'manette', ANIMATEUR: 'console', ECRAN: 'ecran' }[type] };
 }

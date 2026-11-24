@@ -59,6 +59,34 @@ test('une priorité apparue pendant la confirmation et un changement de Manche i
 	assert.equal(b.appels.length, 0); b.module.demonter();
 });
 
+for (const [nom, monter, acteur, action, confirmation] of [
+	['Console', consoleKaraoke, 'ANIMATEUR', 'Retirer', 'Confirmer'],
+	['Manette', manette, 'JOUEUR', 'Me désinscrire', 'Confirmer la désinscription'],
+]) {
+	test(`${nom} : la confirmation reste désactivée pendant une coupure quel que soit son libellé`, t => {
+		const b = creerBanc(monter, acteur), p = passage();
+		t.after(() => b.module.demonter());
+		b.module.afficher(vue({ passagesEnAttente: [p], mesPassagesEnAttente: [p] }), capture);
+		b.connecter('synchronisee');
+		if (acteur === 'ANIMATEUR') b.principale.querySelector('button.ticket').click();
+		bouton(b.principale, action).click();
+		const dialogue = b.principale.querySelector('dialog');
+		const confirmer = bouton(dialogue, confirmation);
+		assert.equal(b.document.activeElement, bouton(dialogue, 'Annuler'));
+		confirmer.textContent = 'Valider';
+		b.connecter('coupure');
+		assert.equal(confirmer.disabled, true);
+		confirmer.click();
+		assert.equal(b.appels.length, 0);
+		assert.equal(dialogue.open, true);
+		b.connecter('synchronisee');
+		assert.equal(confirmer.disabled, false);
+		confirmer.click();
+		assert.equal(b.appels.length, 1);
+		assert.equal(dialogue.open, false);
+	});
+}
+
 test('la commande Console focalisée reste joignable après envoi et événement, ou revient au titre si elle disparaît', () => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'), passages = [passage('a', 12), passage('b', 13)];
 	b.module.afficher(vue({ passagesEnAttente: passages }), capture); b.connecter('synchronisee');
@@ -93,7 +121,12 @@ test('Console : un seul réessai manuel après capture puis synchronisée, conte
 	assert.equal(b.appels.length, 2); assert.deepEqual(b.appels[1].args[2], b.appels[0].args[2]);
 	assert.equal(b.appels[1].args[3].entetes['Idempotency-Key'], b.appels[0].args[3].entetes['Idempotency-Key']);
 	b.appels[1].resolve({ statut: 409, corps: { code: 'COMMANDE_PERIMEE', detail: 'Trop tard' } }); await terminerMicrotaches();
+	assert.equal(b.captures(), 2);
+	assert.equal(bouton(b.principale, 'Appliquer').disabled, true);
+	b.module.afficher(vue({ passagesEnAttente: [p] }), evenement);
+	assert.equal(bouton(b.principale, 'Appliquer').disabled, true);
 	b.module.afficher(vue({ passagesEnAttente: [p] }), capture); assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	assert.equal(bouton(b.principale, 'Appliquer').disabled, false);
 	b.module.demonter();
 });
 
@@ -216,7 +249,7 @@ test('la Manette conserve la recherche au quota, consulte par GET puis attend le
 
 test('salle : le premier Passage en grand, seulement les suivants dans « Ensuite », pas de commande ni de détachement', () => {
 	const b = creerBanc(ecran, 'ECRAN');
-	b.module.afficher(vue({ prochainsPassages: [passage(), passage({ passageId: 'p2', numero: 2 })], nombreAutresPassages: 1 }), capture);
+	b.module.afficher(vue({ prochainsPassages: [passage(), passage('p2', 15)], nombreAutresPassages: 1 }), capture);
 	assert.match(b.principale.textContent, /Prépare-toi/); assert.equal(b.principale.querySelectorAll('.ticket').length, 1);
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 1, 'le premier Passage n’est pas répété');
 	assert.match(b.laterale.textContent, /et 1 autre$/);
@@ -224,7 +257,7 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 	assert.equal(b.laterale.querySelectorAll('.ticket').length, 0); assert.match(b.laterale.textContent, /et 2 autres/);
 	assert.equal(b.document.body.querySelectorAll('button').length, 0);
 	assert.equal(b.document.body.querySelectorAll('.ticket--detache').length, 0);
-	b.module.afficher({ karaoke: null }, capture); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
+	b.module.demonter(); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
 });
 
 test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async () => {
@@ -248,6 +281,25 @@ test('changer de Manche ou démonter annule les lectures et ignore toute répons
 	b.module.demonter(); assert.equal(b.appels[1].args[3].signal.aborted, true);
 	b.appels[1].reject(new Error()); await terminerMicrotaches(); assert.equal(b.principale.childElementCount, 0);
 	assert.equal(b.captures(), 0);
+});
+
+test('changer de Manche annule les mutations précédentes et leurs réponses tardives', async () => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	b.module.afficher(vue(), capture);
+	b.connecter('synchronisee');
+	const formulaire = b.principale.querySelector('form');
+	formulaire.dispatchEvent({ type: 'submit' });
+	b.module.afficher(vue({ mancheId: 'nouvelle' }), evenement);
+	assert.equal(b.appels[0].args[3].signal.aborted, true);
+	assert.doesNotMatch(b.principale.textContent, /Envoi en cours/);
+	b.appels[0].resolve({ statut: 503, corps: {} });
+	await terminerMicrotaches();
+	assert.equal(b.captures(), 0);
+	assert.equal(bouton(b.principale, 'Réessayer le même envoi'), undefined);
+	formulaire.dispatchEvent({ type: 'submit' });
+	assert.match(b.appels[1].args[1], /\/manches\/nouvelle\//);
+	assert.notEqual(b.appels[1].args[3].entetes['Idempotency-Key'], b.appels[0].args[3].entetes['Idempotency-Key']);
+	b.module.demonter();
 });
 
 test('les mutations Karaoké se taisent dans le bandeau de la coquille : un seul statut annoncé, près de l’action', () => {

@@ -1,6 +1,8 @@
 package fr.croustyquizz.karaoke;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
@@ -11,8 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.*;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -26,6 +30,7 @@ class KaraokeHttpTest {
     @Autowired ServiceKaraoke service;
     @Autowired PortsDePassageFactices ports;
     @Autowired DepotDeManches depot;
+    @MockitoSpyBean PersistanceKaraokeJpa persistance;
     final UUID soiree = UUID.randomUUID();
     final Acteur animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
     final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
@@ -193,6 +198,262 @@ class KaraokeHttpTest {
         refuser("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", joueur,
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(503)), null), 409, "ETAT_INCOMPATIBLE");
     }
+    @Test void lePassageDemarreSurConfirmationEtLInterpretationEstVerifieeAvantLeRecu() throws Exception {
+        UUID manche = demarrer();
+        String racine = racine(manche);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString();
+        var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        verifier("appelerPassage", appel, 200);
+        verifierRestauration(manche, EtatManche.EN_COURS);
+        String etape = json.readTree(appel.getBody()).path("etapeId").asString();
+        UUID envoiId = UUID.randomUUID();
+        var corps = Map.of("envoiId", envoiId, "etapeId", etape, "numeroModification", 1);
+        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        refuser("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", autre, corps, null),
+                404, "RESSOURCE_INTROUVABLE");
+        assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(autre, route + "/presence", envoiId))).isNull();
+        var confirme = envoyer(HttpMethod.POST, route + "/presence", joueur, corps, null);
+        verifier("confirmerPresencePassage", confirme, 200);
+        assertThat(json.readTree(confirme.getBody()).path("etatApres").asString()).isEqualTo("EN_COURS");
+        verifierRestauration(manche, EtatManche.EN_COURS);
+        var rejeu = envoyer(HttpMethod.POST, route + "/presence", joueur, corps, null);
+        verifier("confirmerPresencePassage", rejeu, 200);
+        assertThat(json.readTree(rejeu.getBody())).isEqualTo(json.readTree(confirme.getBody()));
+        verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
+                Map.of("action", "TERMINER", "etapeId", etape), UUID.randomUUID()), 200);
+        refuser("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", autre, corps, null),
+                404, "RESSOURCE_INTROUVABLE");
+        assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(autre, route + "/presence", envoiId))).isNull();
+        var apresFin = envoyer(HttpMethod.POST, route + "/presence", joueur, corps, null);
+        verifier("confirmerPresencePassage", apresFin, 200);
+        assertThat(json.readTree(apresFin.getBody())).isEqualTo(json.readTree(confirme.getBody()));
+    }
+
+    @Test void leLecteurCaleSignaleUneErreurEtLaConsoleReprendEnParolesSeules() throws Exception {
+        UUID manche = demarrer();
+        String racine = racine(manche);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = UUID.randomUUID();
+        var designation = Map.of("lecteurId", lecteur);
+        refuser("designerLecteurChanson", envoyer(HttpMethod.PUT, racine + "/lecteur", null, designation, UUID.randomUUID()),
+                401, "AUTHENTIFICATION_REQUISE");
+        refuser("designerLecteurChanson", envoyer(HttpMethod.PUT, racine + "/lecteur", animateur, designation, UUID.randomUUID()),
+                403, "ACCES_REFUSE");
+        verifier("designerLecteurChanson", envoyer(HttpMethod.PUT, racine + "/lecteur", ecran, designation, UUID.randomUUID()), 200);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString();
+        var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        verifier("appelerPassage", appel, 200);
+        String etape = json.readTree(appel.getBody()).path("etapeId").asString();
+        String fichier = """
+                {"lecteurId":"%s","etapeId":"%s","numeroModification":1,"source":"FICHIER_LOCAL",
+                 "fichier":{"nom":"Chanson.mp3","tailleOctets":120,"dureeMs":0},"motifParolesSeules":null}
+                """.formatted(lecteur, etape);
+        for (String invalide : List.of(fichier.replace("Chanson.mp3", "dossier/Chanson.mp3"),
+                fichier.replace(",\"dureeMs\":0", ""), fichier.replace("120", "-1"),
+                fichier.replace("FICHIER_LOCAL", "PAROLES_SEULES"), fichier.replace("null", "\"ECRAN_NON_PRET\""))) {
+            refuser("declarerLectureChanson", envoyer(HttpMethod.POST, route + "/lecture", null, invalide, UUID.randomUUID()),
+                    400, "REQUETE_INVALIDE");
+        }
+        UUID cleRefus = UUID.randomUUID();
+        UUID autre = UUID.randomUUID();
+        String nonDesigne = fichier.replace(lecteur.toString(), autre.toString());
+        refuser("declarerLectureChanson", envoyer(HttpMethod.POST, route + "/lecture", ecran, nonDesigne, cleRefus),
+                409, "LECTEUR_NON_DESIGNE");
+        var declare = envoyer(HttpMethod.POST, route + "/lecture", ecran, fichier, UUID.randomUUID());
+        verifier("declarerLectureChanson", declare, 200);
+        String lecture = json.readTree(declare.getBody()).path("lectureId").asString();
+        var presence = Map.of("envoiId", UUID.randomUUID(), "etapeId", etape, "numeroModification", 1);
+        verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", joueur, presence, null), 200);
+        refuser("declarerLectureChanson", envoyer(HttpMethod.POST, route + "/lecture", ecran, nonDesigne, cleRefus),
+                409, "LECTEUR_NON_DESIGNE");
+        refuser("declarerLectureChanson", envoyer(HttpMethod.POST, route + "/lecture", ecran, fichier, UUID.randomUUID()),
+                409, "COMMANDE_PERIMEE");
+        var cible = Map.of("etapeId", etape, "lectureId", lecture);
+        var debut = envoyer(HttpMethod.POST, route + "/calage/debut", animateur, cible, UUID.randomUUID());
+        verifier("marquerDebutParoles", debut, 200);
+        String demande = json.readTree(debut.getBody()).path("demandeId").asString();
+        var releve = Map.of("lecteurId", lecteur, "etapeId", etape, "lectureId", lecture, "demandeId", demande, "positionMs", 0);
+        verifier("releverPositionLecture", envoyer(HttpMethod.POST, route + "/calage/position", ecran, releve, UUID.randomUUID()), 200);
+        var correction = Map.of("etapeId", etape, "lectureId", lecture, "numeroModificationCalage", 0, "sens", "RETARDER");
+        UUID cleCorrection = UUID.randomUUID();
+        var cale = envoyer(HttpMethod.POST, route + "/calage/correction", animateur, correction, cleCorrection);
+        verifier("corrigerCalage", cale, 200);
+        assertThat(json.readTree(cale.getBody()).path("numeroModificationCalage").asInt()).isEqualTo(1);
+        var rejeu = envoyer(HttpMethod.POST, route + "/calage/correction", animateur, correction, cleCorrection);
+        verifier("corrigerCalage", rejeu, 200);
+        assertThat(json.readTree(rejeu.getBody())).isEqualTo(json.readTree(cale.getBody()));
+        refuser("corrigerCalage", envoyer(HttpMethod.POST, route + "/calage/correction", animateur, correction, UUID.randomUUID()),
+                409, "COMMANDE_PERIMEE");
+        var signal = Map.of("lecteurId", lecteur, "etapeId", etape, "lectureId", lecture);
+        verifier("signalerErreurLectureChanson", envoyer(HttpMethod.POST, route + "/erreur-lecture", ecran, signal, UUID.randomUUID()), 200);
+        verifierRestauration(manche, EtatManche.EN_PAUSE);
+        refuser("marquerDebutParoles", envoyer(HttpMethod.POST, route + "/calage/debut", animateur, cible, UUID.randomUUID()),
+                409, "ETAT_INCOMPATIBLE");
+        verifier("reprendreEnParolesSeules", envoyer(HttpMethod.POST, route + "/paroles-seules", animateur, cible, UUID.randomUUID()), 200);
+        verifierRestauration(manche, EtatManche.EN_COURS);
+        refuser("signalerFinLectureChanson", envoyer(HttpMethod.POST, route + "/fin-lecture", ecran,
+                Map.of("lecteurId", lecteur, "etapeId", etape, "lectureId", lecture, "positionMs", 0), UUID.randomUUID()),
+                409, "ETAT_INCOMPATIBLE");
+    }
+
+    @Test void laFinLocaleEnPauseClotLePassageEtLaisseLaMancheEnPause() throws Exception {
+        UUID manche = demarrer();
+        String racine = racine(manche);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = UUID.randomUUID();
+        verifier("designerLecteurChanson", envoyer(HttpMethod.PUT, racine + "/lecteur", ecran,
+                Map.of("lecteurId", lecteur), UUID.randomUUID()), 200);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString();
+        var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        verifier("appelerPassage", appel, 200);
+        String etape = json.readTree(appel.getBody()).path("etapeId").asString();
+        String corps = """
+                {"lecteurId":"%s","etapeId":"%s","numeroModification":1,"source":"FICHIER_LOCAL",
+                 "fichier":{"nom":"Chanson.mp3","tailleOctets":120,"dureeMs":null},"motifParolesSeules":null}
+                """.formatted(lecteur, etape);
+        var declare = envoyer(HttpMethod.POST, route + "/lecture", ecran, corps, UUID.randomUUID());
+        verifier("declarerLectureChanson", declare, 200);
+        String lecture = json.readTree(declare.getBody()).path("lectureId").asString();
+        verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "etapeId", etape, "numeroModification", 1), null), 200);
+        verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
+                Map.of("action", "METTRE_EN_PAUSE", "etapeId", etape), UUID.randomUUID()), 200);
+        verifierRestauration(manche, EtatManche.EN_PAUSE);
+        var signal = Map.of("lecteurId", lecteur, "etapeId", etape, "lectureId", lecture, "positionMs", 120);
+        verifier("signalerFinLectureChanson", envoyer(HttpMethod.POST, route + "/fin-lecture", ecran, signal, UUID.randomUUID()), 200);
+        verifierRestauration(manche, EtatManche.EN_PAUSE);
+        var vue = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/salle", ecran, null, null);
+        verifier("retrouverEtatSalle", vue, 200);
+        assertThat(json.readTree(vue.getBody()).at("/vue/karaoke/courant/etat").asString()).isEqualTo("TERMINE");
+        refuser("signalerFinLectureChanson", envoyer(HttpMethod.POST, route + "/fin-lecture", ecran, signal, UUID.randomUUID()),
+                409, "COMMANDE_PERIMEE");
+    }
+
+    @Test void lesDixOperationsAppliquentLesRefusCommunsEtConserventSeulementLesRecusDurables() throws Exception {
+        UUID manche = demarrer();
+        UUID passage = inscrire(manche, joueur, 1);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        for (var cas : operationsDuPassage(passage, ecran)) {
+            String route = racine(manche) + cas.chemin();
+            UUID envoi = UUID.randomUUID();
+            var corps = cas.avecEnvoi(envoi);
+            UUID cle = cas.acteur().type() == Acteur.Type.JOUEUR ? null : envoi;
+            var autreRole = cas.acteur().type() == Acteur.Type.ANIMATEUR ? ecran : animateur;
+            refuser(cas.operation(), envoyer(cas.methode(), route, null, corps, cle), 401, "AUTHENTIFICATION_REQUISE");
+            refuser(cas.operation(), envoyer(cas.methode(), route, autreRole, corps, cle), 403, "ACCES_REFUSE");
+            refuser(cas.operation(), envoyer(cas.methode(), racine(UUID.randomUUID()) + cas.chemin(), cas.acteur(), corps, cle),
+                    404, "RESSOURCE_INTROUVABLE");
+            ports.inactives.add(manche);
+            try {
+                refuser(cas.operation(), envoyer(cas.methode(), route, cas.acteur(), corps, cle), 409, "ETAPE_INACTIVE");
+                assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(cas.acteur(), route, envoi))).isNull();
+            } finally { ports.inactives.remove(manche); }
+
+            socle.registre().retirer(manche);
+            doThrow(new DataAccessResourceFailureException("Stockage indisponible pour ce test")).when(persistance).charger(manche);
+            try {
+                refuser(cas.operation(), envoyer(cas.methode(), route, cas.acteur(), corps, cle), 503, "SERVICE_INDISPONIBLE");
+                assertThat(depot.retrouverEnvoi(EnvoiDeManche.cle(cas.acteur(), route, envoi))).isNull();
+            } finally { doCallRealMethod().when(persistance).charger(manche); }
+
+            var premier = envoyer(cas.methode(), route, cas.acteur(), corps, cle);
+            if (cas.methode() == HttpMethod.PUT) { verifier(cas.operation(), premier, 200); }
+            else { refuser(cas.operation(), premier, 409, "COMMANDE_PERIMEE"); }
+            var autreCorps = new HashMap<>(corps);
+            autreCorps.put(cas.champModifie(), cas.autreValeur());
+            refuser(cas.operation(), envoyer(cas.methode(), route, cas.acteur(), autreCorps, cle), 409, "ENVOI_REUTILISE");
+        }
+    }
+
+    @Test void appelerRefuseLaPausePuisLeCourantActif() throws Exception {
+        UUID manche = demarrer();
+        String racine = racine(manche);
+        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        UUID premier = inscrire(manche, joueur, 1);
+        UUID second = inscrire(manche, autre, 2);
+        var corps = Map.of("numeroModification", 0);
+        String premierAppel = racine + "/passages/" + premier + "/appel";
+        String secondAppel = racine + "/passages/" + second + "/appel";
+        piloter(racine, "METTRE_EN_PAUSE");
+        UUID cleEnPause = UUID.randomUUID();
+        refuser("appelerPassage", envoyer(HttpMethod.POST, premierAppel, animateur, corps, cleEnPause), 409, "ETAT_INCOMPATIBLE");
+        piloter(racine, "REPRENDRE");
+        refuser("appelerPassage", envoyer(HttpMethod.POST, premierAppel, animateur, corps, cleEnPause), 409, "ETAT_INCOMPATIBLE");
+        refuser("appelerPassage", envoyer(HttpMethod.POST, secondAppel, animateur, corps, UUID.randomUUID()), 409, "COMMANDE_PERIMEE");
+        verifier("appelerPassage", envoyer(HttpMethod.POST, premierAppel, animateur, corps, UUID.randomUUID()), 200);
+        refuser("appelerPassage", envoyer(HttpMethod.POST, secondAppel, animateur, corps, UUID.randomUUID()), 409, "ETAT_INCOMPATIBLE");
+    }
+
+    private UUID inscrire(UUID manche, Acteur interprete, long chanson) throws Exception {
+        var reponse = envoyer(HttpMethod.POST, racine(manche) + "/passages", interprete,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(chanson)), null);
+        verifier("inscrirePassage", reponse, 201);
+        return UUID.fromString(json.readTree(reponse.getBody()).path("passageId").asString());
+    }
+
+    private void piloter(String racine, String action) throws Exception {
+        verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
+                Map.of("action", action), UUID.randomUUID()), 200);
+    }
+
+    private List<OperationDuPassage> operationsDuPassage(UUID passage, Acteur ecran) {
+        String chemin = "/passages/" + passage;
+        UUID etape = UUID.randomUUID(), lecteur = UUID.randomUUID(), lecture = UUID.randomUUID(), demande = UUID.randomUUID();
+        Map<String, Object> cible = Map.of("etapeId", etape, "lectureId", lecture);
+        var signal = Map.<String, Object>of("etapeId", etape, "lectureId", lecture, "lecteurId", lecteur);
+        var declaration = new HashMap<String, Object>(Map.of("etapeId", etape, "lecteurId", lecteur, "numeroModification", 1,
+                "source", "PAROLES_SEULES", "motifParolesSeules", "FICHIER_ABSENT"));
+        declaration.put("fichier", null);
+        return List.of(
+                new OperationDuPassage("appelerPassage", HttpMethod.POST, chemin + "/appel", animateur,
+                        Map.of("numeroModification", 1), "numeroModification", 0),
+                new OperationDuPassage("confirmerPresencePassage", HttpMethod.POST, chemin + "/presence", joueur,
+                        Map.of("etapeId", etape, "numeroModification", 1), "numeroModification", 2),
+                new OperationDuPassage("designerLecteurChanson", HttpMethod.PUT, "/lecteur", ecran,
+                        Map.of("lecteurId", lecteur), "lecteurId", UUID.randomUUID()),
+                new OperationDuPassage("declarerLectureChanson", HttpMethod.POST, chemin + "/lecture", ecran,
+                        declaration, "numeroModification", 2),
+                new OperationDuPassage("signalerFinLectureChanson", HttpMethod.POST, chemin + "/fin-lecture", ecran,
+                        Map.of("etapeId", etape, "lectureId", lecture, "lecteurId", lecteur, "positionMs", 0), "positionMs", 1),
+                new OperationDuPassage("signalerErreurLectureChanson", HttpMethod.POST, chemin + "/erreur-lecture", ecran,
+                        signal, "lectureId", UUID.randomUUID()),
+                new OperationDuPassage("reprendreEnParolesSeules", HttpMethod.POST, chemin + "/paroles-seules", animateur,
+                        cible, "etapeId", UUID.randomUUID()),
+                new OperationDuPassage("marquerDebutParoles", HttpMethod.POST, chemin + "/calage/debut", animateur,
+                        cible, "lectureId", UUID.randomUUID()),
+                new OperationDuPassage("corrigerCalage", HttpMethod.POST, chemin + "/calage/correction", animateur,
+                        Map.of("etapeId", etape, "lectureId", lecture, "sens", "RETARDER", "numeroModificationCalage", 0), "sens", "AVANCER"),
+                new OperationDuPassage("releverPositionLecture", HttpMethod.POST, chemin + "/calage/position", ecran,
+                        Map.of("etapeId", etape, "lectureId", lecture, "lecteurId", lecteur, "demandeId", demande, "positionMs", 0),
+                        "demandeId", UUID.randomUUID()));
+    }
+
+    private record OperationDuPassage(String operation, HttpMethod methode, String chemin, Acteur acteur, Map<String, Object> corps,
+            String champModifie, Object autreValeur) {
+        Map<String, Object> avecEnvoi(UUID id) {
+            if (acteur.type() != Acteur.Type.JOUEUR) { return corps; }
+            var avecEnvoi = new HashMap<>(corps);
+            avecEnvoi.put("envoiId", id);
+            return avecEnvoi;
+        }
+    }
+
+    private void verifierRestauration(UUID manche, EtatManche etat) {
+        var avant = (InstantaneKaraoke) service.instantane(soiree, manche);
+        assertThat(depot.charger(manche).getEtat()).isEqualTo(etat);
+        socle.registre().retirer(manche);
+        assertThat(service.instantane(soiree, manche)).isEqualTo(avant);
+    }
+
     void refuser(String operation, ResponseEntity<String> reponse, int statut, String code) throws Exception {
         verifier(operation, reponse, statut);
         assertThat(json.readTree(reponse.getBody()).path("code").asString()).isEqualTo(code);

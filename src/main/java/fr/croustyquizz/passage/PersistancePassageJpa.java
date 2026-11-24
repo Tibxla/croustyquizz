@@ -35,6 +35,15 @@ public class PersistancePassageJpa {
         }
         etat.derniersToursConsommes().forEach((id, tour) -> entites.merge(new TourConsommePersistant(mancheId, id, tour)));
     }
+    public EtatCyclePassage chargerCycle(UUID mancheId) {
+        var cycle = entites.find(CyclePassagePersistant.class, mancheId);
+        return cycle == null ? EtatCyclePassage.vide() : cycle.restaurer();
+    }
+
+    public void enregistrerCycle(UUID mancheId, EtatCyclePassage cycle) {
+        entites.merge(new CyclePassagePersistant(mancheId, cycle));
+    }
+
     public long numeroPropose(UUID soireeId) {
         var numero = entites.find(NumeroSoireePersistant.class, soireeId);
         return numero == null ? 1 : numero.getProchainNumero();

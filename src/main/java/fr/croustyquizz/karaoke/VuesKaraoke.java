@@ -7,7 +7,7 @@ import java.util.*;
 
 /**
  * Projections par destination, sans identifiant de fournisseur. Les paroles ne vont qu’à la salle, le fichier
- * local qu’à la Console ; tant que le Passage courant n’est pas implémenté, ces champs restent à leur valeur de repos.
+ * local qu’à la Console.
  */
 public final class VuesKaraoke {
     private VuesKaraoke() { }
@@ -27,7 +27,9 @@ public final class VuesKaraoke {
     public record PassageEnAttentePublic(UUID passageId, long numeroModification, long numero, ResumeChanson chanson,
             List<InterpretePublic> interpretes, long position, long tour, boolean prioritaire, AttenteEstimee attente) { }
     public record CourantPourFile(UUID passageId, long numeroModification, long numero, ResumeChanson chanson,
-            List<InterpretePublic> interpretes, UUID etapeId, String etat, Instant prochainAppelPrevuLe) { }
+            List<InterpretePublic> interpretes, UUID etapeId, String etat, Instant prochainAppelPrevuLe,
+            Instant appeleLe, Instant echeanceAppelLe, Long delaiAppelRestantMs, Instant demarreLe, Instant finPrevueLe,
+            Long positionChronologiqueMs, long tempsPauseMs, Instant calculeLe, Instant clotureLe) { }
     public record BlocKaraokeSalle(UUID mancheId, EtatManche etat, long limitePassagesEnAttente, long nombreEnAttente, long tourOuvert,
             UUID passagePrioritaireId, CourantPourFile courant, ConfigurationInterfaceKaraoke configurationInterface,
             List<PassageEnAttentePublic> prochainsPassages, long nombreAutresPassages,
@@ -43,12 +45,9 @@ public final class VuesKaraoke {
             List<PassageEnAttentePublic> mesPassagesEnAttente, long nombrePersonnelEnAttente,
             boolean peutRechercher, boolean peutInscrire, String motifInscriptionRefusee, boolean peutConfirmerPresence) { }
     public record DemandePositionLecture(UUID demandeId, Instant demandeeLe) { }
-    public record LectureDeChanson(UUID lectureId, UUID lecteurId, String etat, String source, String motifParolesSeules,
-            String origineParoles, long decalageMs, long numeroModificationCalage, DemandePositionLecture demandePosition) { }
-    public record ParolesDuPassage(UUID parolesId, long dureeMs, List<LigneParoles> lignes) {
-        public ParolesDuPassage { lignes = List.copyOf(lignes); }
-    }
-    public record FichierAudioLocal(String nom, long tailleOctets, Long dureeMs) { }
+    public record LectureDeChanson(UUID lectureId, UUID lecteurId, EtatLecture etat, SourceLecture source,
+            MotifParolesSeules motifParolesSeules, OrigineParoles origineParoles, long decalageMs,
+            long numeroModificationCalage, DemandePositionLecture demandePosition) { }
 
     public static Object projeter(InstantaneKaraoke instantane, Destination destination, Map<UUID, String> pseudos,
             Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
@@ -57,36 +56,69 @@ public final class VuesKaraoke {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Joueur introuvable.").exception();
         }
         var file = FileAttente.depuis(etat);
-        var ordre = file.ordreEffectif();
+        boolean enPause = instantane.etatManche() == EtatManche.EN_PAUSE;
+        boolean enCours = instantane.etatManche() == EtatManche.EN_COURS;
+        var projection = CycleDePassage.projeter(etat, instantane.cycle(), enPause, maintenant);
+        var courant = courant(instantane, projection, pseudos);
         var positions = file.positions();
-        var attentes = file.estimerAttentes(maintenant, instantane.etatManche() == EtatManche.EN_PAUSE, null, false,
-                Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()));
-        List<PassageEnAttentePublic> publics = ordre.stream().map(p -> new PassageEnAttentePublic(p.id(), p.numeroModification(),
-                p.numero(), ResumeChanson.de(instantane.contenus().get(p.id()).chanson()),
-                p.interpretes().stream().map(id -> new InterpretePublic(id, pseudos.getOrDefault(id, ParticipantsDePassage.JOUEUR_PARTI))).toList(),
-                positions.get(p.id()), p.tourNormal(), p.id().equals(etat.passagePrioritaireId()), attentes.get(p.id()))).toList();
+        var delaiAppel = Duration.ofSeconds(proprietes.passage().delaiAppelSecondes());
+        var attentes = file.estimerAttentes(maintenant, enPause, projection.prochainAppelPrevuLe(), projection.actif(), delaiAppel);
+        List<PassageEnAttentePublic> publics = file.ordreEffectif().stream()
+                .map(p -> new PassageEnAttentePublic(p.id(), p.numeroModification(), p.numero(),
+                        ResumeChanson.de(instantane.contenus().get(p.id()).chanson()), interpretes(p, pseudos),
+                        positions.get(p.id()), p.tourNormal(), p.id().equals(etat.passagePrioritaireId()), attentes.get(p.id())))
+                .toList();
         var configuration = new ConfigurationInterfaceKaraoke(source.longueurRechercheMax(),
                 proprietes.karaoke().delaiConsultationNavigateurMs(), proprietes.karaoke().delaiConfirmationNavigateurMs(),
-                Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()).toMillis());
+                delaiAppel.toMillis());
         var trois = publics.stream().limit(3).toList();
-        // Sans courant actif ni lecture, seules ces deux capacités dépendent déjà de la File d'attente et de la Manche.
-        boolean peutAppeler = instantane.etatManche() == EtatManche.EN_COURS && !publics.isEmpty();
-        boolean peutReprendre = instantane.etatManche() == EtatManche.EN_PAUSE;
+        LecturePassage lecture = projection.actif() ? instantane.lectures().get(projection.courant().id()) : null;
+        boolean lectureEnErreur = lecture != null && lecture.etat() == EtatLecture.EN_ERREUR;
+        var lecturePublique = lecturePublique(lecture);
         return switch (destination.type()) {
             case SALLE -> new BlocKaraokeSalle(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
-                    etat.tourOuvert(), etat.passagePrioritaireId(), null, configuration, trois, publics.size() - trois.size(),
-                    null, null, null);
+                    etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
+                    instantane.lecteurDesigneId(), lecturePublique,
+                    lecture != null && projection.courant().etat() == EtatPassage.EN_COURS ? lecture.paroles() : null);
             case CONSOLE -> new BlocKaraokeConsole(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
-                    etat.tourOuvert(), etat.passagePrioritaireId(), null, configuration, publics, true, true, true,
-                    false, peutAppeler, false, peutReprendre, false, false, null, null);
+                    etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, publics, true, true, true,
+                    instantane.lecteurDesigneId() != null, enCours && !projection.actif() && !publics.isEmpty(),
+                    projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
+                            && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
+                    lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier());
             case JOUEUR -> {
-                var personnels = publics.stream().filter(p -> p.interpretes().stream().anyMatch(i -> i.joueurId().equals(destination.joueurId()))).toList();
+                UUID joueur = destination.joueurId();
+                var personnels = publics.stream().filter(p -> p.interpretes().stream().anyMatch(i -> i.joueurId().equals(joueur))).toList();
                 boolean peutInscrire = personnels.size() < etat.limitePassagesEnAttente();
+                boolean peutConfirmer = enCours && projection.actif() && projection.courant().etat() == EtatPassage.APPELE
+                        && projection.courant().interpretes().contains(joueur);
                 yield new BlocKaraokeManette(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
-                        etat.tourOuvert(), etat.passagePrioritaireId(), null, configuration, trois, publics.size() - trois.size(),
-                        personnels, personnels.size(), true, peutInscrire, peutInscrire ? null : "LIMITE_ATTEINTE", false);
+                        etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
+                        personnels, personnels.size(), true, peutInscrire, peutInscrire ? null : "LIMITE_ATTEINTE", peutConfirmer);
             }
             default -> throw new IllegalArgumentException("Une destination concrète est requise.");
         };
+    }
+
+    private static CourantPourFile courant(InstantaneKaraoke instantane, ProjectionCycle cycle, Map<UUID, String> pseudos) {
+        Passage passage = cycle.courant();
+        if (passage == null) { return null; }
+        return new CourantPourFile(passage.id(), passage.numeroModification(), passage.numero(),
+                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage, pseudos),
+                cycle.etapeId(), cycle.etat(), cycle.prochainAppelPrevuLe(), cycle.appeleLe(), cycle.echeanceAppelLe(),
+                cycle.delaiAppelRestantMs(), cycle.demarreLe(), cycle.finPrevueLe(), cycle.positionChronologiqueMs(),
+                cycle.tempsPauseMs(), cycle.calculeLe(), cycle.clotureLe());
+    }
+
+    private static List<InterpretePublic> interpretes(Passage passage, Map<UUID, String> pseudos) {
+        return passage.interpretes().stream()
+                .map(id -> new InterpretePublic(id, pseudos.getOrDefault(id, ParticipantsDePassage.JOUEUR_PARTI))).toList();
+    }
+
+    private static LectureDeChanson lecturePublique(LecturePassage lecture) {
+        if (lecture == null) { return null; }
+        return new LectureDeChanson(lecture.lectureId(), lecture.lecteurId(), lecture.etat(), lecture.source(),
+                lecture.motifParolesSeules(), lecture.origineParoles(), lecture.decalageMs(), lecture.numeroModificationCalage(),
+                lecture.demandeId() == null ? null : new DemandePositionLecture(lecture.demandeId(), lecture.demandeeLe()));
     }
 }

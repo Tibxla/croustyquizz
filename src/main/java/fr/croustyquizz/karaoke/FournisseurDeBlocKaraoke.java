@@ -12,12 +12,11 @@ public final class FournisseurDeBlocKaraoke implements FournisseurDeBloc {
     private final DepotDeManches depot;
     private final ObjectProvider<ServiceKaraoke> service;
     private final ParticipantsDePassage participants;
-    private final Horloge horloge;
     private final ProprietesKaraoke proprietes;
     private final ProprietesSourceKaraoke source;
     public FournisseurDeBlocKaraoke(DepotDeManches depot, ObjectProvider<ServiceKaraoke> service,
-            ParticipantsDePassage participants, Horloge horloge, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
-        this.depot = depot; this.service = service; this.participants = participants; this.horloge = horloge;
+            ParticipantsDePassage participants, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
+        this.depot = depot; this.service = service; this.participants = participants;
         this.proprietes = proprietes; this.source = source;
     }
     @Override public ModeDeJeu mode() { return ModeDeJeu.KARAOKE; }
@@ -30,6 +29,7 @@ public final class FournisseurDeBlocKaraoke implements FournisseurDeBloc {
         if (active.isEmpty()) { return destination -> null; }
         var instantane = (InstantaneKaraoke) service.getObject().instantane(soireeId, active.get().getMancheId());
         var pseudos = participants.pseudos(soireeId);
-        return destination -> VuesKaraoke.projeter(instantane, destination, pseudos, horloge.maintenant(), proprietes, source);
+        var maintenant = active.get().getModifieLe();
+        return destination -> VuesKaraoke.projeter(instantane, destination, pseudos, maintenant, proprietes, source);
     }
 }

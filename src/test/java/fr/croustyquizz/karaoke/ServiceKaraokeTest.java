@@ -9,6 +9,9 @@ import fr.croustyquizz.tempsreel.*;
 import java.net.URI;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.transaction.*;
@@ -260,6 +263,226 @@ class ServiceKaraokeTest {
         assertThat(banc.diffuseur.envois()).hasSize(publications);
     }
 
+    @Test void unRappelSansClotureNeDemandeNiCauseNiPublication() {
+        var fabrique = spy(new FabriqueKaraoke(Duration.ofSeconds(30)));
+        var appels = new java.util.concurrent.atomic.AtomicInteger();
+        doAnswer(invocation -> {
+            ContexteDeManche contexte = invocation.getArgument(0);
+            contexte.horloge().programmer(Duration.ofSeconds(1), appels::incrementAndGet);
+            return invocation.callRealMethod();
+        }).when(fabrique).creer(any(), any());
+        var bancAvecRappel = new BancKaraoke(fabrique);
+        UUID manche = bancAvecRappel.service.creer(soiree, Map.of());
+        assertThat(bancAvecRappel.service.demarrer(manche, envoi(animateur, UUID.randomUUID(), "POST", "/demarrer", Map.of())))
+                .isInstanceOf(Accepte.class);
+        int publications = bancAvecRappel.diffuseur.envois().size();
+        var avant = bancAvecRappel.service.instantane(soiree, manche);
+        clearInvocations(bancAvecRappel.passages);
+        bancAvecRappel.horloge.avancer(Duration.ofSeconds(1));
+        assertThat(appels).hasValue(1);
+        verify(fabrique, never()).typeEvenementMinuteur(any());
+        verify(bancAvecRappel.passages, never()).enregistrer(any(), any());
+        assertThat(bancAvecRappel.diffuseur.envois()).hasSize(publications);
+        assertThat(bancAvecRappel.service.instantane(soiree, manche)).isEqualTo(avant);
+    }
+
+    @Test void laConfirmationPeutDevancerLaPreparationExterneEtRendreLaDeclarationPerimee() throws Exception {
+        UUID manche = demarrer();
+        var appel = appeler(manche, inscrire(manche, 1).passageId());
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = designer(manche, ecran);
+        var sourceConsultee = new CountDownLatch(1);
+        var libererSource = new CountDownLatch(1);
+        when(banc.source.rechercher(anyString())).thenAnswer(a -> {
+            sourceConsultee.countDown();
+            attendre(libererSource);
+            return List.of(contenu(1).chanson());
+        });
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            try {
+                var declaration = fils.submit(() -> declarer(manche, appel, ecran, lecteur, 180_000L));
+                attendre(sourceConsultee);
+                assertThat(fils.submit(() -> confirmer(manche, appel)).get(2, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
+                libererSource.countDown();
+                assertThat(declaration.get(2, TimeUnit.SECONDS)).isInstanceOfSatisfying(Refuse.class,
+                        refus -> assertThat(refus.code()).isEqualTo("COMMANDE_PERIMEE"));
+            } finally { libererSource.countDown(); }
+        }
+        assertThat(lectureDe(manche, appel).motifParolesSeules()).isEqualTo(MotifParolesSeules.ECRAN_NON_PRET);
+        verifyNoInteractions(banc.calages);
+    }
+
+    @Test void uneDesignationPendantLaPreparationNeValidePasUneDeclarationSansSelectionDesParoles() throws Exception {
+        UUID manche = demarrer();
+        var appel = appeler(manche, inscrire(manche, 1).passageId());
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = UUID.randomUUID();
+        var corps = new CorpsKaraoke.DeclarationLectureChanson(lecteur, appel.etapeId(), 1L, "FICHIER_LOCAL",
+                new CorpsKaraoke.Fichier("Titre.mp3", 120L, 180_000L), null);
+        var envoi = envoi(ecran, UUID.randomUUID(), "POST", "/lecture", corps);
+        var service = spy(banc.service);
+        var capture = new CountDownLatch(1);
+        var reprendre = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            Object instantane = invocation.callRealMethod();
+            capture.countDown();
+            attendre(reprendre);
+            return instantane;
+        }).when(service).instantane(soiree, manche);
+        clearInvocations(banc.source);
+        Refuse refus;
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            try {
+                var declaration = fils.submit(() -> service.declarerLectureChanson(manche, appel.passageId(), envoi, corps));
+                attendre(capture);
+                var designation = new CorpsKaraoke.DesignationLecteur(lecteur);
+                assertThat(fils.submit(() -> banc.service.designerLecteurChanson(manche,
+                        envoi(ecran, UUID.randomUUID(), "PUT", "/lecteur", designation), designation))
+                        .get(2, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
+                reprendre.countDown();
+                var resultat = declaration.get(2, TimeUnit.SECONDS);
+                assertThat(resultat).isInstanceOf(Refuse.class);
+                refus = (Refuse) resultat;
+            } finally { reprendre.countDown(); }
+        }
+        assertThat(refus.statutHttp()).isEqualTo(409);
+        assertThat(refus.code()).isEqualTo("COMMANDE_PERIMEE");
+        assertThat(banc.service.declarerLectureChanson(manche, appel.passageId(), envoi, corps)).isEqualTo(refus);
+        assertThat(lectureDe(manche, appel)).isNull();
+        verifyNoInteractions(banc.source, banc.calages);
+    }
+
+    @Test void leBancRestaureLeCycleLaLectureEtLeLecteurApresEviction() {
+        UUID manche = demarrer();
+        var appel = appeler(manche, inscrire(manche, 1).passageId());
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = designer(manche, ecran);
+        declarer(manche, appel, ecran, lecteur, 180_000L);
+        var avant = banc.service.instantane(soiree, manche);
+        banc.registre.retirer(manche);
+        assertThat(banc.service.instantane(soiree, manche)).isEqualTo(avant);
+    }
+
+    @Test void uneMesureAuDecalageDejaMemoriseSoldeLaDemandeSansRecrireLaMemoire() {
+        UUID manche = demarrer();
+        var appel = appeler(manche, inscrire(manche, 1).passageId());
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = designer(manche, ecran);
+        when(banc.calages.lire(anyString(), anyLong(), anyString(), anyLong())).thenReturn(500L);
+        declarer(manche, appel, ecran, lecteur, 180_000L);
+        confirmer(manche, appel);
+        UUID lecture = lectureDe(manche, appel).lectureId();
+        var geste = new CorpsKaraoke.MarqueDebutParoles(appel.etapeId(), lecture);
+        var marque = (Accepte) banc.service.marquerDebutParoles(manche, appel.passageId(),
+                envoi(animateur, UUID.randomUUID(), "POST", "/calage/debut", geste), geste);
+        UUID demande = ((AccuseCalage) marque.accuse()).demandeId();
+        var position = new CorpsKaraoke.RelevePositionLecture(lecteur, appel.etapeId(), lecture, demande, 500L);
+        assertThat(banc.service.releverPositionLecture(manche, appel.passageId(),
+                envoi(ecran, UUID.randomUUID(), "POST", "/calage/position", position), position))
+                .isInstanceOfSatisfying(Accepte.class, accepte -> assertThat(accepte.typeEvenement()).isEqualTo("calage-chanson-modifie"));
+        assertThat(lectureDe(manche, appel).demandeId()).isNull();
+        assertThat(lectureDe(manche, appel).numeroModificationCalage()).isZero();
+        verify(banc.calages, never()).memoriser(anyString(), anyLong(), any(), anyLong(), any());
+    }
+
+    @Test void deuxConfirmationsConcurrentesNePublientQuUnDepartEtLeursRecusSeRejouent() throws Exception {
+        UUID manche = demarrer();
+        var appel = appeler(manche, inscrire(manche, 1).passageId());
+        var premiere = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), appel.etapeId(), 1L);
+        var seconde = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), appel.etapeId(), 1L);
+        var envoiInitial = envoi(joueur, premiere.envoiId(), "POST", "/presence", premiere);
+        var envoiConcurrent = envoi(joueur, seconde.envoiId(), "POST", "/presence", seconde);
+        var depart = new CountDownLatch(1);
+        try (var fils = Executors.newFixedThreadPool(2)) {
+            var premier = fils.submit(() -> {
+                attendre(depart);
+                return banc.service.confirmerPresencePassage(manche, appel.passageId(), envoiInitial, premiere);
+            });
+            var second = fils.submit(() -> {
+                attendre(depart);
+                return banc.service.confirmerPresencePassage(manche, appel.passageId(), envoiConcurrent, seconde);
+            });
+            depart.countDown();
+            ResultatDeCommande resultatInitial = premier.get(5, TimeUnit.SECONDS);
+            ResultatDeCommande resultatConcurrent = second.get(5, TimeUnit.SECONDS);
+            assertThat(List.of(resultatInitial, resultatConcurrent))
+                    .extracting(ReponsesDeCommande::statut).containsExactlyInAnyOrder(200, 409);
+            assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(banc.service.confirmerPresencePassage(
+                    manche, appel.passageId(), envoiInitial, premiere), envoiInitial.route())))
+                    .isEqualTo(banc.json.writeValueAsString(ReponsesDeCommande.corps(resultatInitial, envoiInitial.route())));
+            assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(banc.service.confirmerPresencePassage(
+                    manche, appel.passageId(), envoiConcurrent, seconde), envoiConcurrent.route())))
+                    .isEqualTo(banc.json.writeValueAsString(ReponsesDeCommande.corps(resultatConcurrent, envoiConcurrent.route())));
+        }
+        assertThat(banc.horloge.minuteursEnAttente()).isEqualTo(1);
+        assertThat(banc.diffuseur.envois().stream().filter(e -> e.evenement().type().equals("passage-demarre"))).hasSize(5);
+    }
+
+    @Test void leRepliSansDureeUtiliseLaMemoireDeLInscriptionMemeApresUneVersionAdaptee() {
+        UUID manche = demarrer();
+        var appel = appeler(manche, inscrire(manche, 1).passageId());
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = designer(manche, ecran);
+        String chanson = contenu(1).chanson().chansonId();
+        var adaptee = new Chanson(IdentifiantsChanson.encoder(2), 2, "Chanson 1", "Artiste", null, 200_000L, EtatParoles.SYNCHRONISEES);
+        when(banc.source.rechercher(anyString())).thenReturn(List.of(adaptee));
+        when(banc.source.charger(2L)).thenReturn(Optional.of(new ContenuKaraoke(adaptee, contenu(1).lignes())));
+        when(banc.calages.lire(chanson, 2L, "Titre.mp3", 120L)).thenReturn(500L);
+        assertThat(declarer(manche, appel, ecran, lecteur, 200_000L)).isInstanceOf(Accepte.class);
+        confirmer(manche, appel);
+        var lecture = lectureDe(manche, appel);
+        assertThat(lecture.decalageMs()).isEqualTo(500);
+        var correction = new CorpsKaraoke.CorrectionCalage(appel.etapeId(), lecture.lectureId(), 0L, "RETARDER");
+        assertThat(banc.service.corrigerCalage(manche, appel.passageId(),
+                envoi(animateur, UUID.randomUUID(), "POST", "/correction", correction), correction)).isInstanceOf(Accepte.class);
+        verify(banc.calages).memoriser(eq(chanson), eq(2L), eq(lecture.fichier()), eq(600L), any());
+
+        var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, appel.etapeId());
+        assertThat(banc.service.piloter(manche, envoi(animateur, UUID.randomUUID(), "POST", "/commandes", passer), passer))
+                .isInstanceOf(Accepte.class);
+        var second = appeler(manche, inscrire(manche, 1).passageId());
+        clearInvocations(banc.source, banc.calages);
+        for (Long duree : Arrays.asList(0L, null)) {
+            assertThat(declarer(manche, second, ecran, lecteur, duree)).isInstanceOf(Accepte.class);
+            var repli = lectureDe(manche, second);
+            assertThat(repli.origineParoles()).isEqualTo(OrigineParoles.REPLI_INSCRIPTION);
+            assertThat(repli.decalageMs()).isZero();
+        }
+        verifyNoInteractions(banc.source);
+        verify(banc.calages, times(2)).lire(chanson, 1L, "Titre.mp3", 120L);
+        verifyNoMoreInteractions(banc.calages);
+    }
+
+    AccuseCyclePassage appeler(UUID manche, UUID passage) {
+        var corps = new CorpsKaraoke.AppelPassage(0L);
+        return (AccuseCyclePassage) ((Accepte) banc.service.appelerPassage(manche, passage,
+                envoi(animateur, UUID.randomUUID(), "POST", "/appel", corps), corps)).accuse();
+    }
+
+    UUID designer(UUID manche, Acteur ecran) {
+        var corps = new CorpsKaraoke.DesignationLecteur(UUID.randomUUID());
+        assertThat(banc.service.designerLecteurChanson(manche, envoi(ecran, UUID.randomUUID(), "PUT", "/lecteur", corps), corps))
+                .isInstanceOf(Accepte.class);
+        return corps.lecteurId();
+    }
+
+    ResultatDeCommande declarer(UUID manche, AccuseCyclePassage appel, Acteur ecran, UUID lecteur, Long dureeMs) {
+        var corps = new CorpsKaraoke.DeclarationLectureChanson(lecteur, appel.etapeId(), 1L, "FICHIER_LOCAL",
+                new CorpsKaraoke.Fichier("Titre.mp3", 120L, dureeMs), null);
+        return banc.service.declarerLectureChanson(manche, appel.passageId(),
+                envoi(ecran, UUID.randomUUID(), "POST", "/lecture", corps), corps);
+    }
+
+    ResultatDeCommande confirmer(UUID manche, AccuseCyclePassage appel) {
+        var corps = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), appel.etapeId(), 1L);
+        return banc.service.confirmerPresencePassage(manche, appel.passageId(),
+                envoi(joueur, corps.envoiId(), "POST", "/presence", corps), corps);
+    }
+
+    private LecturePassage lectureDe(UUID manche, AccuseCyclePassage appel) {
+        return ((InstantaneKaraoke) banc.service.instantane(soiree, manche)).lectures().get(appel.passageId());
+    }
+
     void piloter(UUID manche, InterventionDeManche.Action action) {
         var corps = new InterventionDeManche(action, null);
         assertThat(banc.service.piloter(manche, envoi(animateur, UUID.randomUUID(), "POST", "/commandes", corps), corps)).isInstanceOf(Accepte.class);
@@ -314,13 +537,14 @@ class ServiceKaraokeTest {
                 v.withFieldVisibility(com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY)).build();
         final DepotDeManchesMemoire depot = new DepotDeManchesMemoire();
         final PersistancePassageMemoire passages = spy(new PersistancePassageMemoire());
-        Map<UUID, Map<UUID, ContenuKaraoke>> contenus = new HashMap<>();
+        Map<UUID, EtatKaraokePersiste> etats = new HashMap<>();
         final PortsDePassageFactices ports = new PortsDePassageFactices(ConfigurationTroisJoueurs.JOUEURS);
         final ParticipantsDePassage participantsDesVues = mock(ParticipantsDePassage.class, delegatesTo(ports));
         final HorlogeFactice horloge = new HorlogeFactice();
         final DiffuseurFactice diffuseur = new DiffuseurFactice();
         final RegistreDesDeroulements registre = new RegistreDesDeroulements();
         final SourceDeParoles source = mock(SourceDeParoles.class);
+        final MemoireDeCalageJpa calages = mock(MemoireDeCalageJpa.class);
         final VerrousSoiree verrous = new VerrousSoiree();
         final SocleDeManche socle;
         final ServiceKaraoke service;
@@ -329,22 +553,28 @@ class ServiceKaraokeTest {
         boolean echouerCommit;
         final ThreadLocal<Sauvegarde> sauvegarde = new ThreadLocal<>();
         BancKaraoke() {
+            this(new FabriqueKaraoke(Duration.ofSeconds(30)));
+        }
+        BancKaraoke(FabriqueKaraoke fabrique) {
             setRollbackOnCommitFailure(true);
             when(source.charger(anyLong())).thenAnswer(a -> Optional.of(contenu(a.getArgument(0))));
             when(source.rechercher(anyString())).thenReturn(List.of(contenu(1).chanson()));
             var commun = new ConfigurationTroisJoueurs.Commun(depot);
             var beans = new StaticListableBeanFactory();
-            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, horloge, PROPRIETES, SOURCE);
+            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE);
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json);
             PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {
-                public EtatKaraokePersiste charger(UUID id) { return new EtatKaraokePersiste(passages.charger(id), contenus.get(id)); }
+                public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
                 public void enregistrer(UUID id, Object valeur) {
-                    var etat = (InstantaneKaraoke) valeur; passages.enregistrer(id, etat.file()); contenus.put(id, etat.contenus());
+                    var etat = (InstantaneKaraoke) valeur;
+                    passages.enregistrer(id, etat.file());
+                    etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId()));
                 }
             };
-            service = new ServiceKaraoke(new FabriqueKaraoke(Duration.ofSeconds(30)), persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE);
+            service = new ServiceKaraoke(fabrique, persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE,
+                    new ChoixDeVersionParoles(source, SOURCE), calages);
             beans.addBean("service", service);
         }
         @Override protected Object doGetTransaction() { return new Object(); }
@@ -353,14 +583,12 @@ class ServiceKaraokeTest {
             Map<UUID, ManchePersistante> manches = new HashMap<>();
             depot.manches.forEach((id, m) -> {
                 var copie = new ManchePersistante(id, m.getSoireeId(), m.getMode(), m.getReglages(), horloge.maintenant());
-                copie.changerEtat(m.getEtat(), horloge.maintenant()); manches.put(id, copie);
+                copie.changerEtat(m.getEtat(), m.getModifieLe()); manches.put(id, copie);
             });
-            Map<UUID, Map<UUID, ContenuKaraoke>> copieContenus = new HashMap<>();
-            contenus.forEach((id, valeurs) -> copieContenus.put(id, Map.copyOf(valeurs)));
             Map<UUID, EnvoiDeManche> recus = new HashMap<>();
             depot.recus.forEach((id, recu) -> recus.put(id, copieEntites.readValue(copieEntites.writeValueAsString(recu), EnvoiDeManche.class)));
             sauvegarde.set(new Sauvegarde(manches, recus, new HashMap<>(passages.files),
-                    new HashMap<>(passages.sequences), copieContenus));
+                    new HashMap<>(passages.sequences), new HashMap<>(etats)));
         }
         @Override protected void doCommit(DefaultTransactionStatus statut) {
             if (echouerCommit) { echouerCommit = false; throw new TransactionSystemException("Commit refusé"); }
@@ -368,10 +596,10 @@ class ServiceKaraokeTest {
         }
         @Override protected void doRollback(DefaultTransactionStatus statut) {
             var avant = sauvegarde.get();
-            depot.manches = avant.manches(); depot.recus = avant.recus(); contenus = avant.contenus();
+            depot.manches = avant.manches(); depot.recus = avant.recus(); etats = avant.etats();
             passages.files = avant.files(); passages.sequences = avant.sequences(); sauvegarde.remove();
         }
         record Sauvegarde(Map<UUID, ManchePersistante> manches, Map<UUID, EnvoiDeManche> recus,
-                Map<UUID, EtatFileAttente> files, Map<UUID, Long> sequences, Map<UUID, Map<UUID, ContenuKaraoke>> contenus) { }
+                Map<UUID, EtatFileAttente> files, Map<UUID, Long> sequences, Map<UUID, EtatKaraokePersiste> etats) { }
     }
 }

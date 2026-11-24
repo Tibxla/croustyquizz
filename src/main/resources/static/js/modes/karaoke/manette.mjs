@@ -14,16 +14,14 @@ export function monter(zones, contexte) {
 		const mancheId = ui.bloc.mancheId, cible = structuredClone(passage);
 		const valide = () => ui.bloc.mancheId === mancheId && ui.bloc.mesPassagesEnAttente.some(p =>
 			p.passageId === cible.passageId && p.numeroModification === cible.numeroModification && p.tour === cible.tour);
-		const dialogue = ui.dialogue({ titre: 'Me désinscrire', declencheur, valide });
+		const dialogue = ui.dialogue({ titre: 'Me désinscrire', declencheur, valide, confirmation: {
+			libelle: 'Confirmer la désinscription',
+			permise: () => ui.mutationsPermises,
+			executer: () => ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages/${encodeURIComponent(cible.passageId)}/desinscription`,
+				corps: { numeroModification: cible.numeroModification }, mancheId, acteurType: 'JOUEUR', passageId: cible.passageId }),
+		} });
 		dialogue.annuler.textContent = 'Annuler';
-		dialogue.contenu.append(e('p', '', `Retirer ton Passage ${cible.numero} · ${cible.chanson.titre} ?`));
-		const confirmer = bouton('Confirmer la désinscription', () => {
-			if (!valide() || !ui.mutationsPermises) return;
-			dialogue.fermer();
-			ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages/${encodeURIComponent(cible.passageId)}/desinscription`,
-				corps: { numeroModification: cible.numeroModification }, mancheId, acteurType: 'JOUEUR', passageId: cible.passageId });
-		});
-		dialogue.contenu.append(confirmer);
+		dialogue.contenu.append(e('p', '', `Retirer ton Passage ${cible.numero} · ${cible.chanson.titre} ?`), dialogue.confirmer);
 	}
 	ui.surRendu = () => {
 		if (!ui.bloc) return;
@@ -45,10 +43,6 @@ export function monter(zones, contexte) {
 		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
 		autres.hidden = !ui.bloc.nombreAutresPassages;
 		catalogue.rendre();
-		for (const dialogue of ui.principale.querySelectorAll('dialog')) {
-			const confirmer = Array.from(dialogue.querySelectorAll('button')).find(b => b.textContent === 'Confirmer la désinscription');
-			if (confirmer) confirmer.disabled = !ui.mutationsPermises;
-		}
 	};
 	ui.surManche = () => { catalogue.reinitialiser(); invalidation.textContent = ''; };
 	ui.surDestruction = () => catalogue.detruire();
