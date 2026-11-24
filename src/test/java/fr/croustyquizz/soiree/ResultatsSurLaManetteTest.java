@@ -3,7 +3,6 @@ package fr.croustyquizz.soiree;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,9 +29,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Une Manette rechargée retrouve sa Réponse déjà enregistrée, son résultat et le
- * Classement général par HTTP, tels que les fournit le Mode de jeu. La vraie
- * source est le Quiz (#14) : une fausse implémentation en tient lieu ici.
+ * Une Manette rechargée retrouve sa Réponse et son résultat par HTTP.
+ * Une fausse implémentation tient lieu du Quiz (#14).
  */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @Import({ TestcontainersConfiguration.class, ResultatsSurLaManetteTest.Resultats.class })
@@ -61,7 +59,7 @@ class ResultatsSurLaManetteTest {
 	}
 
 	@Test
-	void uneManetteRechargeeRetrouveSaReponseSonResultatEtLeClassementSansCeuxDesAutres() throws Exception {
+	void uneManetteRechargeeRetrouveSaReponseEtSonResultatSansCeuxDesAutres() throws Exception {
 		JsonNode soiree = soireeOuverte();
 		UUID soireeId = UUID.fromString(soiree.path("id").asString());
 		JsonNode lea = rejoindre(soiree.path("codeAcces").asString(), "Léa");
@@ -71,8 +69,7 @@ class ResultatsSurLaManetteTest {
 		var accuse = new ResultatsDeSoiree.AccuseReponse(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
 				UUID.randomUUID(), Instant.parse("2026-11-24T20:15:03.250Z"));
 		var resultat = new ResultatsDeSoiree.ResultatPersonnel(accuse.etapeId(), true, 87);
-		var ligne = new ResultatsDeSoiree.LigneClassement(leaId, "Léa", 1, 87, 1, 2_750);
-		resultats.donner(soireeId, leaId, accuse, resultat, List.of(ligne));
+		resultats.donner(leaId, accuse, resultat);
 
 		String route = "/api/soirees/" + soireeId + "/etat/manette";
 		var vueDeLea = envoyer(HttpMethod.GET, route, null, lea.path("jetonReconnexion").asString());
@@ -83,41 +80,28 @@ class ResultatsSurLaManetteTest {
 		assertThat(Instant.parse(vue.at("/derniereReponse/recueLe").asString())).isEqualTo(accuse.recueLe());
 		assertThat(vue.at("/resultatPersonnel/pointsGagnes").asInt()).isEqualTo(87);
 		assertThat(vue.at("/resultatPersonnel/juste").asBoolean()).isTrue();
-		assertThat(vue.at("/classement/0/nom").asString()).isEqualTo("Léa");
-		assertThat(vue.at("/classement/0/tempsCumuleMs").asLong()).isEqualTo(2_750);
 
 		var vueDeTom = envoyer(HttpMethod.GET, route, null, tom.path("jetonReconnexion").asString());
 		ContratApi.verifier(CONTRAT, "retrouverEtatManette", vueDeTom);
 		JsonNode autre = json.readTree(vueDeTom.getBody()).path("vue");
 		assertThat(autre.path("derniereReponse").isNull()).isTrue();
 		assertThat(autre.path("resultatPersonnel").isNull()).isTrue();
-		// Le Classement général est commun à toutes les destinations.
-		assertThat(autre.at("/classement/0/concurrentId").asString()).isEqualTo(leaId.toString());
 	}
 
 	/** Ce que la vraie implémentation du Quiz rendra, fixé par le test. */
 	static final class FauxResultats implements ResultatsDeSoiree {
 
-		private final Map<UUID, List<LigneClassement>> classements = new ConcurrentHashMap<>();
 		private final Map<UUID, AccuseReponse> accuses = new ConcurrentHashMap<>();
 		private final Map<UUID, ResultatPersonnel> resultats = new ConcurrentHashMap<>();
 
-		void donner(UUID soireeId, UUID joueurId, AccuseReponse accuse, ResultatPersonnel resultat,
-				List<LigneClassement> classement) {
-			classements.put(soireeId, classement);
+		void donner(UUID joueurId, AccuseReponse accuse, ResultatPersonnel resultat) {
 			accuses.put(joueurId, accuse);
 			resultats.put(joueurId, resultat);
 		}
 
 		void vider() {
-			classements.clear();
 			accuses.clear();
 			resultats.clear();
-		}
-
-		@Override
-		public List<LigneClassement> classement(UUID soireeId) {
-			return classements.getOrDefault(soireeId, List.of());
 		}
 
 		@Override
