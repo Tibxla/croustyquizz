@@ -1,6 +1,6 @@
 asyncapi: 3.1.0
 info:
-  title: CroustyQuizz — événements du Quiz et du Karaoké
+  title: CroustyQuizz — événements du Quiz, du Blind test et du Karaoké
   version: 0.1.0
   description: 'Application décrite : serveur CroustyQuizz. Contrat cible à relire (#34, #82, #98).
     STOMP 1.2 sur WebSocket, du serveur vers les écrans seulement : toute commande passe par HTTP, celles
@@ -40,7 +40,7 @@ channels:
       (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
       et paroles du Passage démarré, votes), sans fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
-      Aucun événement par seconde."
+      Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele et morceau-saute ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon publié."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -65,7 +65,7 @@ channels:
       geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
       la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
       ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
-      effet et rollback sans publication. Aucun événement par seconde."
+      effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -90,7 +90,7 @@ channels:
       (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »
       et ses votes), sans lecture, paroles, fichier local ni secret ;
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
-      effet et rollback sans publication. Aucun événement par seconde."
+      effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle, chaque Joueur recevant sa propre vue ; brouillon-depose uniquement à la Manette de l’auteur d’un brouillon retenu ; bloc blindtest (BlocBlindTestManette : main, blocage, champs encore demandés et brouillon de son seul auteur), sans lien d’extrait ni réponse avant la Révélation."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
