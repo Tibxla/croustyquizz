@@ -33,9 +33,12 @@ export async function preparerIdentite(type, soireeId, acteurId, requete, rangJo
 	if (type === 'JOUEUR' && (!Number.isInteger(rangJoueur) || rangJoueur < 1 || rangJoueur > 4)) {
 		throw new Error(joueurAbsent);
 	}
-	// Le fournisseur commun donne l’UUID du Joueur au rang choisi.
-	const reponse = await requete(`/api/soirees/${soireeId}/etat/salle`, {
-		headers: { Authorization: `Bearer demo:ECRAN:${soireeId}:${acteurId}` },
+	// L’Animateur reste accepté sur une Soirée enregistrée, l’Écran de démonstration non :
+	// il vérifie la Soirée avec son propre jeton. Pour les autres rôles, le fournisseur
+	// commun de la salle donne l’UUID du Joueur au rang choisi.
+	const [capture, verificateur] = type === 'ANIMATEUR' ? ['console', 'ANIMATEUR'] : ['salle', 'ECRAN'];
+	const reponse = await requete(`/api/soirees/${soireeId}/etat/${capture}`, {
+		headers: { Authorization: `Bearer demo:${verificateur}:${soireeId}:${acteurId}` },
 		cache: 'no-store', credentials: 'same-origin',
 	});
 	const { lisible, corps } = await lireCorps(reponse);
