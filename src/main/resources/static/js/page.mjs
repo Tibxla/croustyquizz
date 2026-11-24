@@ -5,6 +5,7 @@ import { lireAcces } from './identite.mjs';
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
+import { monterProgramme } from './programme-console.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -34,7 +35,6 @@ function afficherCommun(vue) {
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.', ecran === 'ecran' ? 3 : Infinity);
-	lister('programme', description.programme, 'Aucune Manche préparée.');
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
 	if (talon) {
@@ -82,11 +82,13 @@ async function demarrer() {
 		...(factice ? { charger: () => import(`./modes/factice/${ecran}.mjs`) } : {}),
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
+	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
+			programme?.afficher(vue);
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
 			musiqueSalle?.afficher(vue, modeAffiche);
@@ -101,7 +103,7 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		suivi.arreter(); gestionnaire.demonter();
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
 	});
