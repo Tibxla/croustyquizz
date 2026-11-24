@@ -97,6 +97,9 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 		capacite(commande) {
 			if (!bloc) return false;
 			switch (commande.type) {
+				case 'SUGGERER_CHANSON':
+				case 'RETIRER_SUGGESTION_CHANSON':
+				case 'DEFINIR_FAVORI_CHANSON': return bloc.peutRechercher;
 				case 'VOTER': return (bloc.votes ?? []).some(vote => vote.passageId === commande.passageId && vote.peutVoter);
 				case 'CONFIRMER_PRESENCE':
 					return bloc.peutConfirmerPresence && commande.passageId === bloc.courant?.passageId;
@@ -152,11 +155,14 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 		},
 		remplacerListe(liste, enfants, titre) {
 			const actif = document.activeElement, avaitFocus = liste.contains(actif);
-			const id = actif?.getAttribute('data-passage-id') ?? actif?.getAttribute('data-chanson-id');
+			const attributs = ['data-passage-id', 'data-chanson-id', 'data-suggestion-id'];
+			const attribut = attributs.find(nom => actif?.getAttribute(nom) != null);
+			const id = attribut && actif.getAttribute(attribut);
 			liste.replaceChildren(...enfants);
 			if (avaitFocus) {
-				(Array.from(liste.querySelectorAll('[data-passage-id], [data-chanson-id]')).find(e =>
-					e.tagName === actif.tagName && (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id) ?? titre)?.focus();
+				const equivalent = attribut && Array.from(liste.querySelectorAll(`[${attribut}]`))
+					.find(e => e.tagName === actif.tagName && e.getAttribute(attribut) === id);
+				(equivalent || titre)?.focus();
 			}
 		},
 		afficher(vue, origine) {
@@ -248,6 +254,10 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	const resultats = e(inscrire ? 'ul' : 'table', `karaoke__resultats${inscrire ? '' : ' resultats'}`);
 	parent.append(titre, formulaire, etatLecture, resultats);
 	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur;
+	let boutonFavori, statutFavori, reessaiFavori, favorisVus;
+	const estFavorite = chansonId => ui.bloc.chansonsFavorites?.includes(chansonId) ?? false;
+	const envoiFavori = () => ui.dernierEnvoi(e => e.commande.type === 'DEFINIR_FAVORI_CHANSON'
+		&& e.commande.chansonId === fiche?.chansonId);
 	const machine = creerMachineRecherche({ envoyer: (...args) => ui.contexte.envoyer(...args), creerUuid,
 		programmerDelai: (f, ms) => setTimeout(f, ms), annulerDelai: clearTimeout,
 		surEtat(etat) {
@@ -318,11 +328,28 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			etatAction = e('p'); etatAction.setAttribute('role', 'status');
 			reessai = bouton('Réessayer le même envoi', () => ui.reessayer(ui.envoiInscription(fiche.chansonId)?.cle));
 			contenu.append(boutonInscription, etatAction, reessai);
+		} else {
+			boutonFavori = bouton('', () => {
+				const id = fiche.chansonId;
+				ui.commande({ type: 'DEFINIR_FAVORI_CHANSON', methode: 'PUT', acteurType: 'ANIMATEUR',
+					chemin: `${ui.racine()}/chansons/${encodeURIComponent(id)}/favori`,
+					mancheId: ui.bloc.mancheId, chansonId: id, corps: { favorite: !estFavorite(id) } });
+			});
+			statutFavori = e('p'); statutFavori.setAttribute('role', 'status');
+			reessaiFavori = bouton('Réessayer le même envoi', () => ui.reessayer(envoiFavori()?.cle));
+			contenu.append(boutonFavori, statutFavori, reessaiFavori);
 		}
 		rendre();
 	}
 	function rendre() {
 		chercher.disabled = !ui.bloc?.peutRechercher;
+		if (!inscrire) {
+			const precedents = favorisVus;
+			favorisVus = JSON.stringify(ui.bloc?.chansonsFavorites ?? []);
+			if (precedents != null && favorisVus !== precedents && recherche?.donnees?.recherche && fiche?.etat !== 'chargement') {
+				void machine.chercher(recherche.donnees.recherche, contexteLecture());
+			}
+		}
 		if (!dialogue || !fiche?.donnees) return;
 		const etat = etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises);
 		motif.textContent = etat.motif ?? '';
@@ -331,6 +358,15 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			boutonInscription.disabled = !etat.possible || Boolean(cle);
 			etatAction.textContent = texteEnvoi(envoi);
 			reessai.hidden = !ui.reessaiPossible(envoi);
+		} else {
+			const recu = envoiFavori();
+			const libelle = estFavorite(fiche.chansonId) ? 'Retirer des favoris' : 'Ajouter aux favoris';
+			if (boutonFavori.textContent !== libelle) boutonFavori.textContent = libelle;
+			boutonFavori.disabled = !ui.mutationsPermises || !ui.bloc.peutRechercher
+				|| recu?.etat === 'en-cours' || Boolean(peutReessayer(recu));
+			const texte = texteEnvoi(recu);
+			if (statutFavori.textContent !== texte) statutFavori.textContent = texte;
+			reessaiFavori.hidden = !ui.reessaiPossible(recu);
 		}
 	}
 	ecouter(formulaire, 'submit', evenement => {

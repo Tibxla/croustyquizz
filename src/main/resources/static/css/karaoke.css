@@ -32,6 +32,9 @@
 .karaoke__resultats > li { padding-block: var(--espace-3); border-bottom: 1px solid var(--fond-3); }
 .karaoke__resultats .titre { text-align: left; }
 .karaoke__resultats td:last-child { width: auto; }
+.karaoke__suggestions { display: grid; gap: var(--espace-2); }
+.karaoke__suggestions .bouton, .karaoke__suggestion .bouton { justify-self: start; }
+.karaoke__suggestions li > .bouton { margin-top: var(--espace-2); }
 .karaoke__commandes {
   display: flex;
   flex-wrap: wrap;
