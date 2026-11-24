@@ -32,16 +32,20 @@ class PortsDePassageDemonstrationTest {
 		UUID joueur = FournisseurCommunDemonstration.joueurId(soiree, rang);
 		assertThat(participants.estPresent(soiree, joueur)).isTrue();
 		assertThat(participants.estPresent(UUID.randomUUID(), joueur)).isFalse();
-		assertThat(participants.pseudo(soiree, joueur)).isEqualTo("Joueur de démonstration " + rang);
+		assertThat(participants.pseudos(soiree)).containsEntry(joueur, "Joueur de démonstration " + rang);
 		assertThatCode(() -> portee.verifier(new Acteur(Acteur.Type.JOUEUR, joueur, soiree), soiree, manche))
 				.doesNotThrowAnyException();
 	}
 
 	@Test
-	void unJoueurInconnuEstRefuse() {
+	void unJoueurInconnuNEstPasParticipantEtLaPorteeNeJugeQueLaManche() {
 		UUID inconnu = UUID.randomUUID();
 		assertThat(participants.estPresent(soiree, inconnu)).isFalse();
-		assertThatThrownBy(() -> portee.verifier(new Acteur(Acteur.Type.JOUEUR, inconnu, soiree), soiree, manche))
+		assertThat(participants.pseudos(soiree)).doesNotContainKey(inconnu).hasSize(FournisseurCommunDemonstration.NOMBRE_JOUEURS);
+		// La présence n'est vérifiée que par ParticipantsDePassage (#125) : le service refuse ce Joueur en 404.
+		assertThatCode(() -> portee.verifier(new Acteur(Acteur.Type.JOUEUR, inconnu, soiree), soiree, manche))
+				.doesNotThrowAnyException();
+		assertThatThrownBy(() -> portee.verifier(new Acteur(Acteur.Type.JOUEUR, inconnu, soiree), soiree, UUID.randomUUID()))
 				.isInstanceOfSatisfying(RefusDeCommande.class, exception -> {
 					assertThat(exception.refus().statutHttp()).isEqualTo(404);
 					assertThat(exception.refus().code()).isEqualTo("RESSOURCE_INTROUVABLE");

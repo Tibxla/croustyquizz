@@ -49,23 +49,23 @@ public final class VuesKaraoke {
             MotifParolesSeules motifParolesSeules, OrigineParoles origineParoles, long decalageMs,
             long numeroModificationCalage, DemandePositionLecture demandePosition) { }
 
-    public static Object projeter(InstantaneKaraoke instantane, Destination destination, ParticipantsDePassage participants,
+    public static Object projeter(InstantaneKaraoke instantane, Destination destination, Map<UUID, String> pseudos,
             Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
         var etat = instantane.file();
-        if (destination.type() == Destination.Type.JOUEUR && !participants.estPresent(etat.soireeId(), destination.joueurId())) {
+        if (destination.type() == Destination.Type.JOUEUR && !pseudos.containsKey(destination.joueurId())) {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Joueur introuvable.").exception();
         }
         var file = FileAttente.depuis(etat);
         boolean enPause = instantane.etatManche() == EtatManche.EN_PAUSE;
         boolean enCours = instantane.etatManche() == EtatManche.EN_COURS;
         var projection = CycleDePassage.projeter(etat, instantane.cycle(), enPause, maintenant);
-        var courant = courant(instantane, projection, participants);
+        var courant = courant(instantane, projection, pseudos);
         var positions = file.positions();
         var delaiAppel = Duration.ofSeconds(proprietes.passage().delaiAppelSecondes());
         var attentes = file.estimerAttentes(maintenant, enPause, projection.prochainAppelPrevuLe(), projection.actif(), delaiAppel);
         List<PassageEnAttentePublic> publics = file.ordreEffectif().stream()
                 .map(p -> new PassageEnAttentePublic(p.id(), p.numeroModification(), p.numero(),
-                        ResumeChanson.de(instantane.contenus().get(p.id()).chanson()), interpretes(p, participants),
+                        ResumeChanson.de(instantane.contenus().get(p.id()).chanson()), interpretes(p, pseudos),
                         positions.get(p.id()), p.tourNormal(), p.id().equals(etat.passagePrioritaireId()), attentes.get(p.id())))
                 .toList();
         var configuration = new ConfigurationInterfaceKaraoke(source.longueurRechercheMax(),
@@ -100,19 +100,19 @@ public final class VuesKaraoke {
         };
     }
 
-    private static CourantPourFile courant(InstantaneKaraoke instantane, ProjectionCycle cycle, ParticipantsDePassage participants) {
+    private static CourantPourFile courant(InstantaneKaraoke instantane, ProjectionCycle cycle, Map<UUID, String> pseudos) {
         Passage passage = cycle.courant();
         if (passage == null) { return null; }
         return new CourantPourFile(passage.id(), passage.numeroModification(), passage.numero(),
-                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage, participants),
+                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage, pseudos),
                 cycle.etapeId(), cycle.etat(), cycle.prochainAppelPrevuLe(), cycle.appeleLe(), cycle.echeanceAppelLe(),
                 cycle.delaiAppelRestantMs(), cycle.demarreLe(), cycle.finPrevueLe(), cycle.positionChronologiqueMs(),
                 cycle.tempsPauseMs(), cycle.calculeLe(), cycle.clotureLe());
     }
 
-    private static List<InterpretePublic> interpretes(Passage passage, ParticipantsDePassage participants) {
+    private static List<InterpretePublic> interpretes(Passage passage, Map<UUID, String> pseudos) {
         return passage.interpretes().stream()
-                .map(id -> new InterpretePublic(id, participants.pseudo(passage.soireeId(), id))).toList();
+                .map(id -> new InterpretePublic(id, pseudos.getOrDefault(id, ParticipantsDePassage.JOUEUR_PARTI))).toList();
     }
 
     private static LectureDeChanson lecturePublique(LecturePassage lecture) {

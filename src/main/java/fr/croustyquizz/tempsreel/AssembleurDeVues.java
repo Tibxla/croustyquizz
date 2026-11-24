@@ -4,7 +4,9 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -31,24 +33,41 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 		}
 	}
 	public VueComposee assembler(UUID soireeId, Destination destination, String type) {
+		return assembler(soireeId, Set.of(destination), type).get(destination);
+	}
+	Map<Destination, VueComposee> assembler(UUID soireeId, Set<Destination> destinations, String type) {
 		return verrous.executer(soireeId, () -> {
-			Map<String, Object> vue = new LinkedHashMap<>(commun.fournir(soireeId, destination));
-			Object mode = vue.get("modeEnCours");
-			ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());
-			for (var valeur : ModeDeJeu.values()) {
-				String cle = cle(valeur);
-				Object bloc = null;
-				if (valeur == actif) {
-					var fournisseur = blocs.get(actif);
-					if (fournisseur == null) { JOURNAL.warn("Bloc absent pour le mode {} de la Soirée {}", actif, soireeId); }
-					else { bloc = fournisseur.fournir(soireeId, destination); }
-				}
-				vue.put(cle, bloc);
+			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
+			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
+			for (var destination : destinations) {
+				vues.put(destination, composer(soireeId, destination, type, projections));
 			}
-			// Détache aussi les structures imbriquées avant de quitter la transaction.
-			Map<String, Object> copie = json.convertValue(vue, new TypeReference<Map<String, Object>>() { });
-			return new VueComposee(type, copie);
+			return vues;
 		});
+	}
+	private VueComposee composer(UUID soireeId, Destination destination, String type,
+			Map<ModeDeJeu, Function<Destination, Object>> projections) {
+		Map<String, Object> vue = new LinkedHashMap<>(commun.fournir(soireeId, destination));
+		Object mode = vue.get("modeEnCours");
+		ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());
+		for (var valeur : ModeDeJeu.values()) {
+			vue.put(cle(valeur), null);
+		}
+		if (actif != null) {
+			var projection = projections.computeIfAbsent(actif, valeur -> preparer(soireeId, valeur));
+			vue.put(cle(actif), projection.apply(destination));
+		}
+		// Détache aussi les structures imbriquées avant de quitter la transaction.
+		Map<String, Object> copie = json.convertValue(vue, new TypeReference<Map<String, Object>>() { });
+		return new VueComposee(type, copie);
+	}
+	private Function<Destination, Object> preparer(UUID soireeId, ModeDeJeu mode) {
+		var fournisseur = blocs.get(mode);
+		if (fournisseur == null) {
+			JOURNAL.warn("Bloc absent pour le mode {} de la Soirée {}", mode, soireeId);
+			return destination -> null;
+		}
+		return fournisseur.preparer(soireeId);
 	}
 	private static String cle(ModeDeJeu mode) {
 		return switch (mode) { case QUIZ -> "quiz"; case BLIND_TEST -> "blindtest";

@@ -1,6 +1,8 @@
 package fr.croustyquizz.karaoke;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mockingDetails;
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.manche.*;
 import java.util.*;
@@ -11,6 +13,22 @@ import org.springframework.http.*;
 class FournisseurDeBlocKaraokeTest {
     final ServiceKaraokeTest parcours = new ServiceKaraokeTest();
     final ServiceKaraokeTest.BancKaraoke banc = parcours.banc;
+
+    @Test void unePublicationLitLesParticipantsUneFoisPourTousLesPassagesEtToutesLesManettes() {
+        UUID manche = parcours.demarrer();
+        var limite = new CorpsKaraoke.LimitePassages(4L);
+        banc.service.reglerLimitePassages(manche, parcours.envoi(parcours.animateur, UUID.randomUUID(), "PUT", "/limite", limite), limite);
+        parcours.inscrire(manche, 1);
+        parcours.inscrire(manche, 2);
+        parcours.inscrire(manche, 3);
+        clearInvocations(banc.participantsDesVues);
+        int publications = banc.diffuseur.envois().size();
+
+        parcours.inscrire(manche, 4);
+
+        assertThat(banc.diffuseur.envois()).hasSize(publications + 5);
+        assertThat(mockingDetails(banc.participantsDesVues).getInvocations()).hasSize(1);
+    }
 
     @Test void ordreEffectifPersonnelEtTroisProchainesSansSecrets() throws Exception {
         UUID manche = parcours.demarrer();
