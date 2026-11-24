@@ -22,11 +22,14 @@ public final class PublicationDeVues {
 		this.assembleur = assembleur; this.commun = commun; this.apresCommit = apresCommit; this.diffuseur = diffuseur;
 	}
 	public void publier(UUID soireeId, Accepte resultat) {
-		Set<Destination> destinations = new LinkedHashSet<>(resultat.aRepublier());
+		publier(soireeId, resultat.aRepublier(), resultat.typeEvenement());
+	}
+	void publier(UUID soireeId, Set<Destination> aRepublier, String typeEvenement) {
+		Set<Destination> destinations = new LinkedHashSet<>(aRepublier);
 		if (destinations.remove(Destination.TOUTES_LES_MANETTES)) {
 			commun.joueurs(soireeId).forEach(id -> destinations.add(Destination.joueur(id)));
 		}
-		var captures = assembleur.assembler(soireeId, destinations, resultat.typeEvenement());
+		var captures = assembleur.assembler(soireeId, destinations, typeEvenement);
 		apresCommit.publier(() -> captures.forEach((destination, vue) -> {
 			try { envoyer(soireeId, destination, vue); }
 			catch (RuntimeException erreur) {
