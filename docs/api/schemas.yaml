@@ -303,10 +303,12 @@ $defs:
         enum:
         - QUIZ
         - KARAOKE
+        - FREESTYLE
       reglages:
         oneOf:
         - $ref: '#/$defs/ReglagesQuiz'
         - $ref: '#/$defs/ReglagesKaraoke'
+        - $ref: '#/$defs/ReglagesFreestyle'
     required:
     - mode
     - reglages
@@ -319,10 +321,22 @@ $defs:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesQuiz'
-      else:
+    - if:
+        properties:
+          mode:
+            const: KARAOKE
+      then:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesKaraoke'
+    - if:
+        properties:
+          mode:
+            const: FREESTYLE
+      then:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesFreestyle'
   Manche:
     type: object
     additionalProperties: false
@@ -338,6 +352,7 @@ $defs:
         enum:
         - QUIZ
         - KARAOKE
+        - FREESTYLE
       etat:
         type: string
         enum:
@@ -349,6 +364,7 @@ $defs:
         oneOf:
         - $ref: '#/$defs/ReglagesQuiz'
         - $ref: '#/$defs/ReglagesKaraoke'
+        - $ref: '#/$defs/ReglagesFreestyle'
     required:
     - id
     - ordre
@@ -364,12 +380,24 @@ $defs:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesQuiz'
-      else:
+    - if:
+        properties:
+          mode:
+            const: KARAOKE
+      then:
         properties:
           reglages:
             $ref: '#/$defs/ReglagesKaraoke'
             required:
             - limitePassagesEnAttente
+    - if:
+        properties:
+          mode:
+            const: FREESTYLE
+      then:
+        properties:
+          reglages:
+            $ref: '#/$defs/ReglagesFreestyle'
   OrdreManches:
     type: object
     additionalProperties: false
@@ -883,6 +911,25 @@ $defs:
                 enum:
                 - EN_COURS
                 - EN_PAUSE
+    - if:
+        required:
+        - freestyle
+        properties:
+          freestyle:
+            not:
+              type: 'null'
+      then:
+        properties:
+          mancheActive:
+            type: object
+            properties:
+              mode:
+                const: FREESTYLE
+              etat:
+                type: string
+                enum:
+                - EN_COURS
+                - EN_PAUSE
   VueSalle:
     allOf:
     - $ref: '#/$defs/BlocsDeMode'
@@ -910,7 +957,9 @@ $defs:
         - $ref: '#/$defs/BlocKaraokeSalle'
         - type: 'null'
       freestyle:
-        type: 'null'
+        oneOf:
+        - $ref: '#/$defs/BlocFreestyleSalle'
+        - type: 'null'
       joueurs:
         type: array
         items:
@@ -957,7 +1006,9 @@ $defs:
         - $ref: '#/$defs/BlocKaraokeConsole'
         - type: 'null'
       freestyle:
-        type: 'null'
+        oneOf:
+        - $ref: '#/$defs/BlocFreestyleConsole'
+        - type: 'null'
       joueurs:
         type: array
         items:
@@ -1007,7 +1058,9 @@ $defs:
         - $ref: '#/$defs/BlocKaraokeManette'
         - type: 'null'
       freestyle:
-        type: 'null'
+        oneOf:
+        - $ref: '#/$defs/BlocFreestyleManette'
+        - type: 'null'
       joueurs:
         type: array
         items:
@@ -1027,7 +1080,7 @@ $defs:
         type: boolean
         description: 'Participation du Joueur à la Manche active. Pour un Joueur arrivé pendant la Manche, vrai
           quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Karaoké ; Freestyle), faux
-          sinon ; le Blind test tranchera dans #17. Jamais une garde du Karaoké, où la présence suffit.'
+          sinon ; le Blind test tranchera dans #17. La présence suffit au Karaoké et au Freestyle.'
       derniereReponse:
         oneOf:
         - $ref: '#/$defs/AccuseReponse'
@@ -1070,7 +1123,7 @@ $defs:
         - modeEnCours
         properties:
           modeEnCours:
-            const: KARAOKE
+            enum: [KARAOKE, FREESTYLE]
       then:
         properties:
           derniereReponse:
@@ -1224,6 +1277,7 @@ $defs:
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
+        - instrumentales-modifiees
       soireeId:
         type: string
         format: uuid
@@ -1275,6 +1329,7 @@ $defs:
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
+        - instrumentales-modifiees
       soireeId:
         type: string
         format: uuid
@@ -1342,6 +1397,8 @@ $defs:
         - LIMITE_ATTEINTE
         - ROTATION_PROTEGEE
         - CHANSON_INDISPONIBLE
+        - INSTRUMENTALE_INDISPONIBLE
+        - GRILLE_INDISPONIBLE
         - SOURCE_PAROLES_INDISPONIBLE
         - LECTEUR_NON_DESIGNE
         - VOTE_INTERDIT
@@ -3044,3 +3101,378 @@ $defs:
     - parolesId
     - dureeMs
     - lignes
+  IdentifiantInstrumentale:
+    type: string
+    format: uuid
+    description: Identifiant opaque attribué par l’Écran de salle, stable tant que le fichier et sa fiche sont inchangés.
+  Instrumentale:
+    type: object
+    additionalProperties: false
+    properties:
+      instrumentaleId:
+        $ref: '#/$defs/IdentifiantInstrumentale'
+      titre:
+        type: string
+        minLength: 1
+        maxLength: 120
+        pattern: '\S'
+      tempoBpm:
+        type: integer
+        minimum: 1
+        maximum: 1000
+      departBeatMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required: [instrumentaleId, titre, tempoBpm, departBeatMs]
+  InstrumentalesDisponibles:
+    type: object
+    additionalProperties: false
+    properties:
+      instrumentales:
+        type: array
+        uniqueItems: true
+        description: Les identifiants sont uniques dans la liste. Une liste vide retire la disponibilité de toutes les fiches.
+        items:
+          $ref: '#/$defs/Instrumentale'
+    required: [instrumentales]
+  DifficulteFreestyle:
+    type: string
+    enum: [TOUS, PREMIER, DERNIER, AUCUN]
+    description: Visibilité des mots de chaque famille de rimes, sur l’ensemble de la Grille.
+  NombreMesuresFreestyle:
+    type: integer
+    enum: [8, 16, 32]
+  ReglagesFreestyle:
+    type: object
+    additionalProperties: false
+    properties:
+      theme:
+        type: string
+        enum: [SOIREE, VILLE, SPORT]
+        description: Thème de départ fourni par le dictionnaire de rimes (#69).
+      schemaDeRimes:
+        type: string
+        enum: [AABB, ABAB, AAAA]
+      difficulte:
+        $ref: '#/$defs/DifficulteFreestyle'
+      nombreMesures:
+        $ref: '#/$defs/NombreMesuresFreestyle'
+      instrumentaleIds:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          $ref: '#/$defs/IdentifiantInstrumentale'
+    required: [theme, schemaDeRimes, difficulte, nombreMesures, instrumentaleIds]
+  InscriptionFreestyle:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      instrumentaleId:
+        oneOf:
+        - $ref: '#/$defs/IdentifiantInstrumentale'
+        - type: 'null'
+        description: Null pour tirer au hasard parmi les Instrumentales sélectionnées, disponibles et admissibles pour le Joueur.
+    required: [envoiId, instrumentaleId]
+  InscriptionSelonMode:
+    oneOf:
+    - $ref: '#/$defs/InscriptionPassage'
+    - $ref: '#/$defs/InscriptionFreestyle'
+  MotDeGrilleFreestyle:
+    type: object
+    additionalProperties: false
+    properties:
+      mesure:
+        type: integer
+        minimum: 1
+        maximum: 32
+      temps:
+        type: integer
+        const: 3
+      positionMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+        description: Position depuis le début du fichier audio, arrondie à la milliseconde la plus proche.
+      famille:
+        type: string
+        enum: [A, B]
+      mot:
+        type: [string, 'null']
+        minLength: 1
+        description: Null quand la difficulté masque le mot sur la salle et la Manette.
+    required: [mesure, temps, positionMs, famille, mot]
+  GrilleFreestyle:
+    type: object
+    additionalProperties: false
+    properties:
+      nombreMesures:
+        $ref: '#/$defs/NombreMesuresFreestyle'
+      mots:
+        type: array
+        description: Un mot par mesure à quatre temps, au troisième temps. Le schéma de rimes se répète toutes les quatre mesures.
+        items:
+          $ref: '#/$defs/MotDeGrilleFreestyle'
+    required: [nombreMesures, mots]
+    allOf:
+    - if:
+        properties:
+          nombreMesures: { const: 8 }
+      then:
+        properties:
+          mots: { minItems: 8, maxItems: 8 }
+    - if:
+        properties:
+          nombreMesures: { const: 16 }
+      then:
+        properties:
+          mots: { minItems: 16, maxItems: 16 }
+    - if:
+        properties:
+          nombreMesures: { const: 32 }
+      then:
+        properties:
+          mots: { minItems: 32, maxItems: 32 }
+  PassageFreestyle:
+    type: object
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+      numero:
+        type: integer
+        minimum: 1
+      instrumentale:
+        $ref: '#/$defs/Instrumentale'
+      interprete:
+        $ref: '#/$defs/InterpretePublic'
+    required: [passageId, numeroModification, numero, instrumentale, interprete]
+  PassageFreestyleEnAttente:
+    allOf:
+    - $ref: '#/$defs/PassageFreestyle'
+    - type: object
+      properties:
+        position:
+          type: integer
+          minimum: 1
+      required: [position]
+    unevaluatedProperties: false
+  CourantFreestyle:
+    allOf:
+    - $ref: '#/$defs/PassageFreestyle'
+    - type: object
+      properties:
+        etapeId:
+          type: string
+          format: uuid
+        etat:
+          type: string
+          enum: [APPELE, EN_COURS, EN_PAUSE, TERMINE, SAUTE]
+        delaiAppelRestantMs:
+          type: [integer, 'null']
+          minimum: 0
+        demarreLe:
+          type: [string, 'null']
+          format: date-time
+        finPrevueLe:
+          type: [string, 'null']
+          format: date-time
+        positionChronologiqueMs:
+          type: [integer, 'null']
+          minimum: 0
+          description: Chronologie serveur, utile notamment à la reprise de la lecture. La position du lecteur local cadence la Grille.
+        calculeLe:
+          type: string
+          format: date-time
+      required: [etapeId, etat, delaiAppelRestantMs, demarreLe, finPrevueLe, positionChronologiqueMs, calculeLe]
+    unevaluatedProperties: false
+  CycleVoteFreestyle:
+    type: object
+    properties:
+      etat:
+        type: string
+        enum: [OUVERT, CLOS]
+      delaiRestantMs:
+        type: integer
+        minimum: 0
+      calculeLe:
+        type: string
+        format: date-time
+      clotureLe:
+        type: [string, 'null']
+        format: date-time
+    required: [etat, delaiRestantMs, calculeLe, clotureLe]
+  VoteFreestylePublic:
+    allOf:
+    - $ref: '#/$defs/PassageFreestyle'
+    - $ref: '#/$defs/CycleVoteFreestyle'
+    - type: object
+      properties:
+        nombreVotes:
+          type: integer
+          minimum: 0
+      required: [nombreVotes]
+    unevaluatedProperties: false
+  VoteFreestyleManette:
+    allOf:
+    - $ref: '#/$defs/PassageFreestyle'
+    - $ref: '#/$defs/CycleVoteFreestyle'
+    - type: object
+      properties:
+        maNote:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 5
+        peutVoter:
+          type: boolean
+      required: [maNote, peutVoter]
+    unevaluatedProperties: false
+  FreestyleCommun:
+    type: object
+    properties:
+      mancheId:
+        type: string
+        format: uuid
+      etat:
+        type: string
+        enum: [EN_COURS, EN_PAUSE]
+      difficulte:
+        $ref: '#/$defs/DifficulteFreestyle'
+      courant:
+        oneOf:
+        - $ref: '#/$defs/CourantFreestyle'
+        - type: 'null'
+      grille:
+        oneOf:
+        - $ref: '#/$defs/GrilleFreestyle'
+        - type: 'null'
+      passagesEnAttente:
+        type: array
+        items:
+          $ref: '#/$defs/PassageFreestyleEnAttente'
+      nombreEnAttente:
+        type: integer
+        minimum: 0
+      limitePassagesEnAttente:
+        type: integer
+        minimum: 1
+        maximum: 20
+      tourOuvert:
+        type: integer
+        minimum: 1
+      passagePrioritaireId:
+        type: [string, 'null']
+        format: uuid
+    required: [mancheId, etat, difficulte, courant, grille, passagesEnAttente, nombreEnAttente, limitePassagesEnAttente, tourOuvert, passagePrioritaireId]
+    if:
+      properties:
+        courant:
+          type: object
+          properties:
+            etat:
+              enum: [EN_COURS, EN_PAUSE]
+      required: [courant]
+    then:
+      properties:
+        grille:
+          $ref: '#/$defs/GrilleFreestyle'
+    else:
+      properties:
+        grille:
+          type: 'null'
+  GrilleFreestylePublique:
+    allOf:
+    - $ref: '#/$defs/FreestyleCommun'
+    - properties:
+        passagesEnAttente:
+          maxItems: 3
+    - if:
+        properties:
+          difficulte: { const: AUCUN }
+      then:
+        properties:
+          grille:
+            properties:
+              mots:
+                items:
+                  properties:
+                    mot: { type: 'null' }
+    - if:
+        properties:
+          difficulte: { const: TOUS }
+      then:
+        properties:
+          grille:
+            properties:
+              mots:
+                items:
+                  properties:
+                    mot: { type: string }
+  BlocFreestyleSalle:
+    allOf:
+    - $ref: '#/$defs/GrilleFreestylePublique'
+    - type: object
+      properties:
+        votes:
+          type: array
+          items:
+            $ref: '#/$defs/VoteFreestylePublic'
+      required: [votes]
+    unevaluatedProperties: false
+  BlocFreestyleConsole:
+    allOf:
+    - $ref: '#/$defs/FreestyleCommun'
+    - type: object
+      properties:
+        grille:
+          properties:
+            mots:
+              items:
+                properties:
+                  mot: { type: string }
+        instrumentales:
+          type: array
+          items:
+            $ref: '#/$defs/Instrumentale'
+          description: Fiches disponibles pour la Soirée.
+        peutAppeler:
+          type: boolean
+        peutPasser:
+          type: boolean
+        votes:
+          type: array
+          items:
+            $ref: '#/$defs/VoteFreestylePublic'
+      required: [instrumentales, peutAppeler, peutPasser, votes]
+    unevaluatedProperties: false
+  BlocFreestyleManette:
+    allOf:
+    - $ref: '#/$defs/GrilleFreestylePublique'
+    - type: object
+      properties:
+        instrumentales:
+          type: array
+          items:
+            $ref: '#/$defs/Instrumentale'
+          description: Fiches sélectionnées et disponibles dans cette Manche.
+        mesPassagesEnAttente:
+          type: array
+          items:
+            $ref: '#/$defs/PassageFreestyleEnAttente'
+        peutInscrire:
+          type: boolean
+        peutConfirmerPresence:
+          type: boolean
+        votes:
+          type: array
+          items:
+            $ref: '#/$defs/VoteFreestyleManette'
+      required: [instrumentales, mesPassagesEnAttente, peutInscrire, peutConfirmerPresence, votes]
+    unevaluatedProperties: false
