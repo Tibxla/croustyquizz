@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { choisirPilotage, lireAcces, preparerIdentite } from '../../src/main/resources/static/js/identite.mjs';
+import { choisirPilotage, lireAcces, lireJeton, preparerIdentite } from '../../src/main/resources/static/js/identite.mjs';
 
 const soiree = '00000001-0000-4000-8000-000000000000';
 const joueur = '65c5618c-10e0-357e-8f8e-eb7295ba6c74';
@@ -35,6 +35,20 @@ test('les accès d’une Soirée enregistrée ouvrent les mêmes coquilles avec 
 	assert.equal(manette.destination, `/topic/joueurs/${joueur}`);
 	assert.equal(manette.acteur.identifiant, joueur);
 	assert.throws(() => lireAcces('manette', recherche, 'jeton-opaque'), /identité/);
+});
+
+test('l’Écran retire la clé de l’adresse et la retrouve dans le même onglet', () => {
+	const donnees = new Map();
+	const adresse = `https://exemple.test/ecran.html?soiree=${soiree}`;
+	const onglet = {
+		location: new URL(`${adresse}#cle=cle-opaque%2B`),
+		history: { replaceState(_etat, _titre, chemin) { onglet.location = new URL(chemin, adresse); } },
+		memoire: { lire: cle => donnees.get(cle) ?? null, ecrire: (cle, valeur) => donnees.set(cle, valeur) },
+	};
+	assert.equal(lireJeton('ecran', soiree, onglet), 'cle-opaque+');
+	assert.equal(onglet.location.href, adresse);
+	assert.equal(lireJeton('ecran', soiree, onglet), 'cle-opaque+');
+	assert.equal(lireJeton('ecran', joueur, onglet), null);
 });
 
 test('la vérification de l’accès Animateur utilise son propre rôle', async () => {

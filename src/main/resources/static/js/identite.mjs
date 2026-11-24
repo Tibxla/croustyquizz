@@ -3,6 +3,22 @@ import { lireCorps, reponseIllisible } from './transport.mjs';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const roles = { manette: 'JOUEUR', console: 'ANIMATEUR', ecran: 'ECRAN' };
 
+export function lireJeton(ecran, soireeId, { location, history, memoire }) {
+	if (ecran === 'ecran') {
+		const cle = new URLSearchParams(location.hash.slice(1)).get('cle');
+		if (cle && soireeId) {
+			memoire.ecrire('croustyquizz.cleEcran', cle);
+			memoire.ecrire('croustyquizz.soireeEcran', soireeId);
+			history.replaceState(null, '', location.pathname + location.search);
+			return cle;
+		}
+		if (memoire.lire('croustyquizz.soireeEcran') === soireeId) {
+			return memoire.lire('croustyquizz.cleEcran');
+		}
+	}
+	return memoire.lire('croustyquizz.jeton');
+}
+
 export function lireAcces(ecran, recherche, jeton, joueurId) {
 	const soireeId = new URLSearchParams(recherche).get('soiree');
 	if (!uuid.test(soireeId ?? '')) throw new Error('Lien incomplet : une Soirée valide est requise (?soiree=UUID).');

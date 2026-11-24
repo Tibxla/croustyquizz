@@ -1,7 +1,7 @@
 import { suivreVue, creerTransport } from './tempsreel.js';
 import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
-import { lireAcces } from './identite.mjs';
+import { lireAcces, lireJeton } from './identite.mjs';
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -46,22 +46,6 @@ function afficherCommun(vue) {
 	zoneErreur.hidden = true;
 }
 
-function lireJeton(soireeId) {
-	if (ecran === 'ecran') {
-		const cle = new URLSearchParams(location.hash.slice(1)).get('cle');
-		if (cle && soireeId) {
-			memoire.ecrire('croustyquizz.cleEcran', cle);
-			memoire.ecrire('croustyquizz.soireeEcran', soireeId);
-			history.replaceState(null, '', location.pathname + location.search);
-			return cle;
-		}
-		if (memoire.lire('croustyquizz.soireeEcran') === soireeId) {
-			return memoire.lire('croustyquizz.cleEcran');
-		}
-	}
-	return memoire.lire('croustyquizz.jeton');
-}
-
 function chargerQr(soireeId, jeton, signal) {
 	const qr = element('qr');
 	let occupe = false;
@@ -87,7 +71,7 @@ function chargerQr(soireeId, jeton, signal) {
 
 async function demarrer() {
 	const soireeId = new URLSearchParams(location.search).get('soiree');
-	const jeton = lireJeton(soireeId);
+	const jeton = lireJeton(ecran, soireeId, { location, history, memoire });
 	const joueurId = memoire.lire('croustyquizz.soiree') === soireeId ? memoire.lire('croustyquizz.joueurId') : null;
 	const acces = lireAcces(ecran, location.search, jeton, joueurId);
 	const annulation = new AbortController();
