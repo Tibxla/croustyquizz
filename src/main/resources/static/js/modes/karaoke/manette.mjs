@@ -3,7 +3,7 @@ import { creerInterface, creerTicket, creerCatalogue, texteEnvoi, texteAutresPas
 import { peutReessayer } from './envois.mjs';
 import { formaterTempsRestant } from './presentation.mjs';
 import { delaiAppelRestant } from './paroles.mjs';
-import { corpsVote, delaiVoteRestant, etatVoteManette, formaterNote } from './vote.mjs';
+import { corpsVote, delaiVoteRestant, etatVoteManette, formaterMoyenne, formaterNombreVotes, formaterNote } from './vote.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton } = ui;
@@ -110,7 +110,7 @@ export function monter(zones, contexte) {
 	const horloge = setInterval(() => { decompter(); votes.decompter(); }, 1000);
 	ui.surRendu = origine => {
 		if (!ui.bloc) return;
-		votes.rendre(titre);
+		votes.rendre(titre, origine);
 		rendreScene(origine);
 		const tickets = ui.bloc.mesPassagesEnAttente.map(p => {
 			const ticket = creerTicket(ui, p, { personnel: true, estimation: true });
@@ -149,13 +149,18 @@ function installerVotes(ui) {
 	titre.tabIndex = -1;
 	section.setAttribute('aria-labelledby', titre.id);
 	const liste = e('div', 'karaoke__liste-votes');
+	const annonce = e('p', 'karaoke__annonce-vote visuellement-cache');
+	annonce.setAttribute('role', 'status');
 	const tickets = new Map();
+	const cloturesAnnoncees = new Set();
 	section.hidden = true;
 	section.append(titre, liste);
-	ui.principale.append(section);
+	ui.principale.append(section, annonce);
 
 	const envoiDuVote = passageId => ui.dernierEnvoi(e => e.commande.type === 'VOTER' && e.commande.passageId === passageId);
 	const contexteVote = () => ({ joueurId: contexte.acteur.identifiant, enPause: ui.bloc.etat === 'EN_PAUSE' });
+	const resultat = vote => vote.moyenneDixiemes == null ? 'Aucun vote.'
+		: `Moyenne : ${formaterMoyenne(vote.moyenneDixiemes)} (${formaterNombreVotes(vote.nombreVotes)}).`;
 
 	function creer(vote) {
 		const passageId = vote.passageId;
@@ -163,6 +168,7 @@ function installerVotes(ui) {
 		ticket.classList.add('karaoke__ticket-vote');
 		ticket.querySelector('.mon-ticket__etiquette').remove();
 		const message = e('p', 'karaoke__etat-vote');
+		const notePersonnelle = e('p');
 		const temps = e('span', 'chiffres');
 		const choix = e('div', 'karaoke__notes');
 		choix.setAttribute('role', 'group');
@@ -182,26 +188,27 @@ function installerVotes(ui) {
 		const reessayer = bouton('Réessayer le même envoi', () => ui.reessayer(envoiDuVote(passageId)?.cle));
 		const statut = e('p');
 		statut.setAttribute('role', 'status');
-		ticket.querySelector('.mon-ticket__bas').append(message, temps, choix, envoyer, statut, reessayer);
-		return Object.assign(fiche, { message, choix, notes, envoyer, statut, reessayer });
+		ticket.querySelector('.mon-ticket__bas').append(message, notePersonnelle, temps, choix, envoyer, statut, reessayer);
+		return Object.assign(fiche, { message, notePersonnelle, choix, notes, envoyer, statut, reessayer });
 	}
 
 	function dessiner(fiche, etat, principale) {
-		const { vote, note, message, temps, choix, notes, envoyer, statut, reessayer } = fiche;
+		const { vote, note, message, notePersonnelle, temps, choix, notes, envoyer, statut, reessayer } = fiche;
 		const envoi = envoiDuVote(vote.passageId);
 		const accepte = envoi?.etat === 'accepte';
 		const enCours = envoi?.etat === 'en-cours';
 		const actionsVisibles = etat === 'a-voter' && !accepte;
 		const interdit = !ui.mutationsPermises || !vote.peutVoter || enCours || Boolean(peutReessayer(envoi));
-		message.textContent = {
+		message.textContent = etat === 'clos' ? resultat(vote) : {
 			'a-voter': accepte ? '' : 'Note ce Passage',
 			interprete: 'Le public vote pour ton Passage.',
 			enregistre: enCours || accepte ? ''
 				: `Ta note : ${formaterNote(vote.maNote)}. Résultat à la fin du vote.`,
 			pause: 'Pause : tu pourras voter à la reprise.',
-			clos: vote.maNote == null ? 'Vote clos.' : `Vote clos. Ta note : ${formaterNote(vote.maNote)}.`,
 		}[etat];
 		message.hidden = !message.textContent;
+		notePersonnelle.hidden = etat !== 'clos' || vote.maNote == null;
+		notePersonnelle.textContent = notePersonnelle.hidden ? '' : `Ta note : ${formaterNote(vote.maNote)}.`;
 		temps.hidden = choix.hidden = envoyer.hidden = !actionsVisibles;
 		envoyer.className = principale && actionsVisibles ? 'bouton bouton--action bouton--grand' : 'bouton';
 		envoyer.disabled = interdit || note == null;
@@ -210,7 +217,7 @@ function installerVotes(ui) {
 			action.setAttribute('aria-pressed', String(index + 1 === note));
 		});
 		reessayer.hidden = !actionsVisibles || !ui.reessaiPossible(envoi);
-		const texte = enCours ? 'Envoi de ta note…' : accepte
+		const texte = etat === 'clos' ? '' : enCours ? 'Envoi de ta note…' : accepte
 			? `Ta note est enregistrée : ${formaterNote(envoi.corps.note)}. Résultat à la fin du vote.` : texteEnvoi(envoi);
 		const variante = envoi?.etat === 'indisponible' ? 'refuse' : envoi?.etat;
 		statut.className = texte ? `envoi envoi--${variante}` : '';
@@ -224,10 +231,24 @@ function installerVotes(ui) {
 		}
 	}
 
+	function annoncerClotures(votes, origine) {
+		if (origine?.source === 'capture' && annonce.textContent) annonce.textContent = '';
+		if (origine?.source !== 'evenement') return;
+		const nouvelles = [];
+		for (const vote of votes) {
+			const id = vote.passageId;
+			if (vote.etat !== 'CLOS' || tickets.get(id)?.vote.etat !== 'OUVERT' || cloturesAnnoncees.has(id)) continue;
+			cloturesAnnoncees.add(id);
+			nouvelles.push(`Passage ${vote.numero}. ${resultat(vote)}`);
+		}
+		if (nouvelles.length) annonce.textContent = nouvelles.join(' ');
+	}
+
 	return {
 		decompter,
-		rendre(titreRepli) {
+		rendre(titreRepli, origine) {
 			const votes = ui.bloc.votes ?? [];
+			annoncerClotures(votes, origine);
 			const actif = ui.document.activeElement;
 			const avaitFocus = section.contains(actif);
 			section.hidden = votes.length === 0;
@@ -255,6 +276,11 @@ function installerVotes(ui) {
 				} else if (ui.document.activeElement !== actif) actif.focus();
 			}
 		},
-		reinitialiser() { tickets.clear(); liste.replaceChildren(); },
+		reinitialiser() {
+			tickets.clear();
+			cloturesAnnoncees.clear();
+			liste.replaceChildren();
+			annonce.textContent = '';
+		},
 	};
 }

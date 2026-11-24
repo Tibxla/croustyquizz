@@ -281,6 +281,29 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
     }
 
     @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void seulLeDemarrageDuPassageSuivantMarqueLeVoteMemeApresUnSautEtUnNouvelAppel(boolean demarre) {
+        ouvrirPassage();
+        confirmerCourant();
+        horloge.avancer(Duration.ofSeconds(210));
+        inscrire(SUIVANT);
+        inscrire(INCONNU);
+        accepter(appeler(cible(SUIVANT)), "passage-appele", true);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).singleElement().satisfies(vote -> {
+            assertThat(vote.ouvert()).isFalse();
+            assertThat(vote.suivantDemarre()).isFalse();
+        });
+        if (demarre) {
+            accepter(confirmer(INTERPRETE, cible(SUIVANT), projection().etapeId()), "passage-demarre", true);
+            assertThat(karaoke().instantane().voteDuPublic().votes().getFirst().suivantDemarre()).isTrue();
+        }
+        accepter(deroulement.passerEtape(pilotage()), "passage-saute", true);
+        accepter(appeler(cible(INCONNU)), "passage-appele", true);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).singleElement()
+                .satisfies(vote -> assertThat(vote.suivantDemarre()).isEqualTo(demarre));
+    }
+
+    @ParameterizedTest
     @CsvSource({"true, false", "true, true", "false, false", "false, true"})
     void laFinLocaleDevanceLaFinPrevueEtAttendLaRepriseSiBesoin(boolean automatique, boolean enPause) {
         ouvrirPremierPassage(automatique);

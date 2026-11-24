@@ -123,6 +123,8 @@ http:
           delaiConfirmationNavigateurMs: 10000
           delaiAppelMs: 30000
           dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        votes: []
         prochainsPassages: &a7 []
         nombreAutresPassages: 0
 - nom: Capture initiale console
@@ -986,6 +988,7 @@ http:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a31
           - &a28
             passageId: 82000000-0000-4000-8000-000000000041
@@ -1331,6 +1334,7 @@ http:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a164 []
         nombreAutresPassages: 0
 - nom: Terminer explicitement
@@ -1676,6 +1680,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a49
           - &a48
             passageId: 82000000-0000-4000-8000-000000000041
@@ -1808,6 +1813,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a55
           - &a53
             passageId: 82000000-0000-4000-8000-000000000041
@@ -1954,6 +1960,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a61
           - &a58
             passageId: 82000000-0000-4000-8000-000000000041
@@ -2115,6 +2122,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a67
           - &a64
             passageId: 82000000-0000-4000-8000-000000000041
@@ -2276,6 +2284,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a73
           - &a70
             passageId: 82000000-0000-4000-8000-000000000041
@@ -2450,6 +2459,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a80
           - &a77
             passageId: 82000000-0000-4000-8000-000000000041
@@ -2619,6 +2629,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: *a84
         nombreAutresPassages: 1
 - nom: Baisse de limite sans retrait — console
@@ -2712,6 +2723,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a94
           - &a91
             passageId: 82000000-0000-4000-8000-000000000043
@@ -2885,6 +2897,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a100
           - &a97
             passageId: 82000000-0000-4000-8000-000000000042
@@ -3059,6 +3072,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a107
           - &a104
             passageId: 82000000-0000-4000-8000-000000000041
@@ -3233,6 +3247,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a114
           - &a111
             passageId: 82000000-0000-4000-8000-000000000044
@@ -3407,6 +3422,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a121
           - &a118
             passageId: 82000000-0000-4000-8000-000000000041
@@ -3581,6 +3597,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a128
           - &a125
             passageId: 82000000-0000-4000-8000-000000000041
@@ -3742,6 +3759,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a134
           - &a131
             passageId: 82000000-0000-4000-8000-000000000041
@@ -3918,6 +3936,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a141
           - &a138
             passageId: 82000000-0000-4000-8000-000000000041
@@ -4103,6 +4122,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a150
           - &a147
             passageId: 82000000-0000-4000-8000-000000000041
@@ -4264,6 +4284,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a155
           - &a153
             passageId: 82000000-0000-4000-8000-000000000044
@@ -4405,6 +4426,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &a160
           - *a158
         nombreAutresPassages: 0
@@ -4601,6 +4623,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: []
         nombreAutresPassages: 0
 - nom: Démarrer la Manche suivante — console
@@ -4714,6 +4737,7 @@ evenements:
         lecture: null
         paroles: null
         configurationInterface: *a6
+        votes: []
         prochainsPassages: &passagesMancheSuivante
         - passageId: 82000000-0000-4000-8000-000000000046
           numeroModification: 0
@@ -4941,6 +4965,7 @@ cases:
         - positionMs: 16500
           texte: Une seconde ligne fictive
       configurationInterface: *a6
+      votes: []
       prochainsPassages: *a84
       nombreAutresPassages: 1
   valide: false
@@ -4970,6 +4995,7 @@ cases:
       lecture: null
       paroles: null
       configurationInterface: *a6
+      votes: []
       prochainsPassages: *a84
       nombreAutresPassages: 1
       jetonReconnexion: interdit
@@ -4995,6 +5021,7 @@ cases:
       lecture: null
       paroles: null
       configurationInterface: *a6
+      votes: []
       prochainsPassages: *a84
       nombreAutresPassages: 1
       cleEcran: interdit
@@ -5288,9 +5315,9 @@ cases:
       passagePrioritaireId: null
       courant: null
       configurationInterface: *a6
+      votes: []
       prochainsPassages: *a84
       nombreAutresPassages: 1
-      votes: []
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
       peutRechercher: true
@@ -5680,6 +5707,7 @@ cases:
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
     dureeVoteMs: 30000
+    dureeAffichageMoyenneMs: 10000
   valide: false
 - nom: Limite de recherche configurée à 1
   schema: ConfigurationInterfaceKaraoke
@@ -5689,6 +5717,7 @@ cases:
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
     dureeVoteMs: 30000
+    dureeAffichageMoyenneMs: 10000
   valide: true
 - nom: Limite de recherche configurée à 120
   schema: ConfigurationInterfaceKaraoke
@@ -5698,6 +5727,7 @@ cases:
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
     dureeVoteMs: 30000
+    dureeAffichageMoyenneMs: 10000
   valide: true
 - nom: Limite de recherche configurée à 121
   schema: ConfigurationInterfaceKaraoke
@@ -5707,6 +5737,7 @@ cases:
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
     dureeVoteMs: 30000
+    dureeAffichageMoyenneMs: 10000
   valide: false
 - nom: Commande valide — InscriptionPassage
   schema: InscriptionPassage
@@ -6062,6 +6093,7 @@ cases:
     lecture: null
     paroles: null
     configurationInterface: *a6
+    votes: []
     prochainsPassages:
     - passageId: 82000000-0000-4000-8000-000000000041
       numeroModification: 0
