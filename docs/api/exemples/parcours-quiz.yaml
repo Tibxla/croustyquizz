@@ -340,6 +340,7 @@ http:
       quiz: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 00000002-0000-4000-8000-000000000000
@@ -470,6 +471,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
@@ -879,6 +881,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
@@ -988,6 +991,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
@@ -1097,6 +1101,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
@@ -1192,6 +1197,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
       programme:
       - id: 00000002-0000-4000-8000-000000000000
@@ -1246,6 +1252,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
 - nom: Buzz du socle diffusé à la salle
   canal: salle
@@ -1285,6 +1292,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
 - nom: Ouverture de la Question
   canal: salle
@@ -1353,6 +1361,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
 - nom: Projection privée de la Console
   canal: console
@@ -1421,6 +1430,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
       programme:
       - id: 00000002-0000-4000-8000-000000000000
@@ -1798,6 +1808,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
 - nom: Résultat personnel après révélation
   canal: joueur
@@ -1955,6 +1966,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
 - nom: Question suivante 3
   canal: salle
@@ -2023,6 +2035,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
 - nom: Fin de Soirée et Classement général
   canal: salle
@@ -2070,6 +2083,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: *buzzDuSocle
 cases:
 - nom: Une commande périmée utilise le corps Probleme commun
@@ -2583,6 +2597,7 @@ cases:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
     cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 resynchronisation:

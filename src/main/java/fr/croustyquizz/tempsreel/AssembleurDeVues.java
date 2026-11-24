@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.ModeDeJeu;
@@ -22,10 +23,24 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 	private final FournisseurPartieCommune commun;
 	private final VerrousSoiree verrous;
 	private final JsonMapper json;
+	private final Function<UUID, MusiqueDAttente> lireMusiqueDAttente;
 	private final Map<ModeDeJeu, FournisseurDeBloc> blocs = new EnumMap<>(ModeDeJeu.class);
+
+	@Autowired
+	AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
+			VerrousSoiree verrous, JsonMapper json, DepotMusiqueDAttente musique) {
+		this(commun, fournisseurs, verrous, json, musique::lire);
+	}
+
 	public AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
 			VerrousSoiree verrous, JsonMapper json) {
+		this(commun, fournisseurs, verrous, json, soireeId -> MusiqueDAttente.PAR_DEFAUT);
+	}
+
+	private AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
+			VerrousSoiree verrous, JsonMapper json, Function<UUID, MusiqueDAttente> lireMusiqueDAttente) {
 		this.commun = commun; this.verrous = verrous; this.json = json;
+		this.lireMusiqueDAttente = lireMusiqueDAttente;
 		for (var fournisseur : fournisseurs) {
 			if (blocs.put(fournisseur.mode(), fournisseur) != null) {
 				throw new IllegalArgumentException("Deux fournisseurs pour le même mode.");
@@ -37,18 +52,23 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 	}
 	Map<Destination, VueComposee> assembler(UUID soireeId, Set<Destination> destinations, String type) {
 		return verrous.executer(soireeId, () -> {
+			MusiqueDAttente musique = destinations.contains(Destination.SALLE) || destinations.contains(Destination.CONSOLE)
+					? lireMusiqueDAttente.apply(soireeId) : null;
 			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
 			var parties = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
-				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections));
+				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, musique));
 			}
 			return vues;
 		});
 	}
 	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partieCommune,
-			Map<ModeDeJeu, Function<Destination, Object>> projections) {
+			Map<ModeDeJeu, Function<Destination, Object>> projections, MusiqueDAttente musique) {
 		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
+		if (destination.equals(Destination.SALLE) || destination.equals(Destination.CONSOLE)) {
+			vue.put("musiqueAttente", musique);
+		}
 		Object mode = vue.get("modeEnCours");
 		ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());
 		for (var valeur : ModeDeJeu.values()) {

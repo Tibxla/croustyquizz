@@ -28,14 +28,20 @@ public final class PublicationDeVues {
 		publier(soireeId, resultat, false);
 	}
 	public void publier(UUID soireeId, Accepte resultat, boolean classementModifie) {
-		Set<Destination> destinations = new LinkedHashSet<>(resultat.aRepublier());
+		publier(soireeId, resultat.aRepublier(), resultat.typeEvenement(), classementModifie);
+	}
+	void publier(UUID soireeId, Set<Destination> aRepublier, String typeEvenement) {
+		publier(soireeId, aRepublier, typeEvenement, false);
+	}
+	private void publier(UUID soireeId, Set<Destination> aRepublier, String typeEvenement, boolean classementModifie) {
+		Set<Destination> destinations = new LinkedHashSet<>(aRepublier);
 		if (destinations.remove(Destination.TOUTES_LES_MANETTES)) {
 			commun.joueurs(soireeId).forEach(id -> destinations.add(Destination.joueur(id)));
 		}
-		var captures = new LinkedHashMap<>(assembleur.assembler(soireeId, destinations, resultat.typeEvenement()));
+		var captures = new LinkedHashMap<>(assembleur.assembler(soireeId, destinations, typeEvenement));
 		if (classementModifie) {
 			Set<Destination> autres = new LinkedHashSet<>(Set.of(Destination.SALLE, Destination.CONSOLE));
-			if (!resultat.aRepublier().contains(Destination.TOUTES_LES_MANETTES)) {
+			if (!aRepublier.contains(Destination.TOUTES_LES_MANETTES)) {
 				commun.joueurs(soireeId).forEach(id -> autres.add(Destination.joueur(id)));
 			}
 			autres.removeAll(destinations);
