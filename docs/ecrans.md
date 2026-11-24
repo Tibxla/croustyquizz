@@ -134,6 +134,15 @@ La coordination locale utilise `BroadcastChannel` et les Web Locks. La fenêtre 
 
 Pour la recette, ouvrir deux fenêtres du même profil de navigateur en HTTPS ou sur `localhost`. Choisir dans la première un dossier avec plusieurs morceaux dans `Attente`. Vérifier l'enchaînement puis l'appel d'un Passage de Karaoké. Confirmer le départ, vérifier le silence de la Musique d'attente puis sa reprise à la clôture. Choisir le dossier dans la deuxième fenêtre et vérifier qu'elle prend la main. Fermer la deuxième, puis rouvrir ou recharger l'Écran de salle et choisir à nouveau le dossier. À chaque relais, écouter la fin de la première lecture avant la suivante. Refaire l'essai avec un dossier sans `Attente`, puis avec une Chanson présente uniquement dans `Attente`.
 
+### Pilotage de la Musique d’attente (#141)
+
+La Console coupe ou relance la Musique d’attente depuis la barre de pilotage, y compris sans Manche en cours. La Musique d’attente se tait pendant la resynchronisation puis suit le réglage de la Soirée. La Console affiche « Aucun morceau dans Attente » lorsque le dernier dossier signalé est vide. Le serveur ne reçoit que la présence ou l’absence de morceaux.
+
+1. En `dev` ou `recette`, utiliser un UUID neuf pour une Soirée de démonstration sans Manche. Ouvrir la Console et l’Écran de salle avec les identités correspondantes. La même recette s’applique à une Soirée enregistrée.
+2. Hors Manche, choisir un dossier avec des morceaux dans `Attente`. Vérifier leur lecture et l’état affiché dans la Console. Couper la musique, recharger l’Écran de salle et choisir de nouveau le dossier. Vérifier le silence, puis relancer depuis la Console.
+3. Couper de nouveau et redémarrer le serveur avec la même base. Après resynchronisation, vérifier que la Console propose toujours de relancer et que la salle reste silencieuse. Choisir un dossier sans morceaux dans `Attente` et vérifier le message dans la Console.
+4. Avec un dossier contenant des morceaux, vérifier que la relance pendant un Passage laisse la Chanson audible seule et que la Musique d’attente reprend à la clôture.
+
 ### Recharger l’Écran pendant l’appel (#144)
 
 1. Appeler un Passage dont la Chanson correspond à un fichier audio lisible. Pendant l’appel, recharger l’Écran de salle.

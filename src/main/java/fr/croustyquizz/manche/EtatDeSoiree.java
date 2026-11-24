@@ -9,6 +9,9 @@ import java.util.UUID;
  */
 public interface EtatDeSoiree {
 
+	/** La Soirée est connue, enregistrée ou de démonstration, quel que soit son état. */
+	boolean existe(UUID soireeId);
+
 	/** Une Soirée porte cet identifiant en base, quel que soit son état. */
 	boolean estEnregistree(UUID soireeId);
 

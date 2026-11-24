@@ -15,6 +15,10 @@
     <div class="pilotage__soiree"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span><span>Console d’animation</span></div>
     <div class="pilotage__manche"><p class="coupure" role="status" data-connexion>Synchronisation…</p></div>
     <div class="pilotage__commandes" data-pilotage-soiree>
+      <div class="pilotage__musique">
+        <button type="button" class="bouton" data-musique-attente aria-describedby="musique-attente-statut" disabled>Couper la musique</button>
+        <p id="musique-attente-statut" data-musique-attente-statut role="status"></p>
+      </div>
       <button type="button" class="bouton" data-reprise disabled>Resynchroniser</button>
       <button type="button" class="bouton" data-piloter-soiree="TERMINER" aria-disabled="true" aria-haspopup="dialog">Terminer la Soirée</button>
       <button type="button" class="bouton bouton--action" data-piloter-soiree="LANCER" aria-disabled="true">Lancer la Soirée</button>
