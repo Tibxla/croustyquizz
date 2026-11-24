@@ -3,7 +3,7 @@ import { peutReessayer } from '../karaoke/envois.mjs';
 import { texteInvitation } from '../karaoke/invitations.mjs';
 
 // Invitations reçues : le contenu, qui invite, et deux gestes, Accepter ou Refuser (#138). Commun aux Modes à Passages.
-export function installerInvitations(ui) {
+export function installerInvitations(ui, { verbe = 'chanter' } = {}) {
 	const { e, bouton } = ui;
 	const titreInvitations = e('h2', '', 'Invitations'); titreInvitations.tabIndex = -1;
 	const invitations = e('div', 'karaoke__invitations');
@@ -32,7 +32,7 @@ export function installerInvitations(ui) {
 			}
 			const actions = e('div', 'karaoke__commandes'); actions.append(accepter, refuser);
 			const etat = e('p', '', texteEnvoi(envoi)); etat.setAttribute('role', 'status');
-			bas.append(e('p', 'karaoke__texte-invitation', texteInvitation(invitation)), actions, etat);
+			bas.append(e('p', 'karaoke__texte-invitation', texteInvitation(invitation, verbe)), actions, etat);
 			if (ui.reessaiPossible(envoi)) bas.append(bouton('Réessayer le même envoi', () => ui.reessayer(envoi.cle)));
 			return ticket;
 		});

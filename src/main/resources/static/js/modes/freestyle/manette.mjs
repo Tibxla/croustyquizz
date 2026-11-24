@@ -1,24 +1,41 @@
-import { creerInterface, creerTicket, texteEnvoi } from '../karaoke/commun.mjs';
+import { creerChoixInvites, creerInterface, creerTicket, invitesPossibles, texteEnvoi } from '../karaoke/commun.mjs';
+import { estInscripteur, lignesInvitations } from '../karaoke/invitations.mjs';
 import { installerScene } from '../passage/scene-manette.mjs';
 import { installerVotes } from '../passage/votes-manette.mjs';
+import { installerInvitations } from '../passage/invitations-manette.mjs';
+import { cleVibration, texteCouplet } from './couplets.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
 	const { e, bouton } = ui;
 	const votes = installerVotes(ui, { afficheMoyenne: false });
 	const scene = installerScene(ui, 'À toi d’improviser !');
+	// Une mesure avant ton Couplet : le serveur l'annonce et cette Manette vibre une fois (#74).
+	const annonce = e('p', 'freestyle__annonce-manette');
+	annonce.setAttribute('role', 'status');
+	const couplet = e('p', 'freestyle__couplet-manette');
+	ui.principale.append(annonce, couplet);
+	const invitations = installerInvitations(ui, { verbe: 'rapper' });
+	const vibrations = new Set();
 	const titre = e('h2', '', 'S’inscrire à un Passage'); titre.tabIndex = -1;
 	const choix = e('select'); choix.id = 'freestyle-instrumentale';
 	const label = e('label', '', 'Instrumentale'); label.setAttribute('for', choix.id);
 	const inscription = envoi => envoi.commande.type === 'INSCRIRE_FREESTYLE';
-	const envoyer = bouton('M’inscrire', () => ui.commande({ methode: 'POST', chemin: ui.racine() + '/passages',
-		acteurType: 'JOUEUR', mancheId: ui.bloc.mancheId, type: 'INSCRIRE_FREESTYLE',
-		corps: { instrumentaleId: choix.value || null } }), 'bouton bouton--action bouton--grand');
+	const moi = contexte.acteur.identifiant;
+	let invites, signatureInvites;
+	const zoneInvites = e('div');
+	const envoyer = bouton('M’inscrire', () => {
+		const invitesIds = invites?.choisis() ?? [];
+		// Sans invité, le corps reste celui d'une inscription seule.
+		ui.commande({ methode: 'POST', chemin: ui.racine() + '/passages',
+			acteurType: 'JOUEUR', mancheId: ui.bloc.mancheId, type: 'INSCRIRE_FREESTYLE',
+			corps: invitesIds.length ? { instrumentaleId: choix.value || null, invitesIds } : { instrumentaleId: choix.value || null } });
+	}, 'bouton bouton--action bouton--grand');
 	const statut = e('p'); statut.setAttribute('role', 'status');
 	const reessayer = bouton('Réessayer le même envoi', () => ui.reessayer(ui.dernierEchec(inscription)?.cle));
 	const aide = e('p');
 	const panneau = e('div', 'champ');
-	panneau.append(label, choix, aide, envoyer, statut, reessayer);
+	panneau.append(label, choix, zoneInvites, aide, envoyer, statut, reessayer);
 	const file = e('div', 'karaoke__personnels');
 	ui.principale.append(titre, panneau, e('h2', '', 'Tes Passages en attente'), file);
 
@@ -29,6 +46,25 @@ export function monter(zones, contexte) {
 		if (!bloc) return;
 		votes.rendre(titre, origine);
 		scene.rendre(origine, titre);
+		invitations.rendre(titre);
+		const couplets = bloc.courant?.couplets;
+		const interprete = bloc.courant?.interpretes.some(i => i.joueurId === moi);
+		const texteAnnonce = bloc.monCoupletAnnonce ? 'À toi dans une mesure !' : '';
+		if (annonce.textContent !== texteAnnonce) annonce.textContent = texteAnnonce;
+		couplet.hidden = !couplets || !interprete;
+		couplet.textContent = couplet.hidden ? '' : `${texteCouplet(couplets)} · ${couplets.courant.interprete.pseudo}`;
+		const cle = cleVibration(bloc, origine);
+		if (cle && !vibrations.has(cle)) {
+			vibrations.add(cle);
+			ui.document.defaultView?.navigator?.vibrate?.(200);
+		}
+		const candidats = invitesPossibles(ui.joueurs, moi).map(j => `${j.id}:${j.pseudo}`).join();
+		if (candidats !== signatureInvites) {
+			const choisis = invites?.choisis() ?? [];
+			invites = creerChoixInvites(ui, moi, { verbe: 'Rapper', choisis });
+			zoneInvites.replaceChildren(...(invites ? [invites.element] : []));
+			signatureInvites = candidats;
+		}
 		const disponibles = bloc.instrumentales;
 		const signature = JSON.stringify(disponibles);
 		if (signature !== choixPrecedents) {
@@ -45,16 +81,28 @@ export function monter(zones, contexte) {
 		const envoi = ui.dernierEnvoi(inscription);
 		const enCours = envoi?.etat === 'en-cours';
 		envoyer.disabled = choix.disabled = !ui.mutationsPermises || !bloc.peutInscrire || enCours;
+		if (invites) invites.element.disabled = envoyer.disabled;
 		aide.textContent = disponibles.length ? (bloc.peutInscrire ? '' : 'Tu ne peux pas ajouter de Passage pour le moment.')
 			: 'Aucune Instrumentale disponible pour le moment.';
 		const texte = texteEnvoi(envoi);
 		if (statut.textContent !== texte) statut.textContent = texte;
 		reessayer.hidden = !ui.reessaiPossible(ui.dernierEchec(inscription));
-		const tickets = bloc.mesPassagesEnAttente.map(passage => creerTicket(ui, passage, { personnel: true }));
+		const tickets = bloc.mesPassagesEnAttente.map(passage => {
+			const ticket = creerTicket(ui, passage, { personnel: true });
+			const lignes = estInscripteur(passage, moi) ? lignesInvitations(bloc.invitationsEmises, passage.passageId) : [];
+			if (lignes.length) {
+				const liste = e('ul', 'karaoke__etat-invitations');
+				liste.setAttribute('aria-label', 'Invitations');
+				for (const ligne of lignes) liste.append(e('li', '', ligne));
+				ticket.querySelector('.mon-ticket__bas').append(liste);
+			}
+			return ticket;
+		});
 		ui.remplacerListe(file, tickets.length ? tickets : [e('p', '', 'Tu n’attends aucun Passage.')], titre);
 	};
 	ui.surManche = () => {
 		choixPrecedents = undefined;
+		vibrations.clear();
 		votes.reinitialiser();
 		scene.reinitialiser();
 	};

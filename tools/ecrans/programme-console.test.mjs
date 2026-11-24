@@ -27,7 +27,7 @@ function banc(avecFreestyle = false) {
 		for (const [nom, balise, valeur] of [
 			['instrumentales', 'div', ''], ['catalogue-etat', 'p', ''], ['catalogue-actualiser', 'button', ''],
 			['theme-rimes', 'select', 'VILLE'], ['schema-rimes', 'select', 'ABAB'],
-			['difficulte-rimes', 'select', 'PREMIER'], ['nombre-mesures', 'select', '16'],
+			['difficulte-rimes', 'select', 'PREMIER'], ['nombre-mesures', 'select', '16'], ['mesures-couplet', 'select', '2'],
 		]) {
 			const element = creer(nom, balise);
 			element.value = valeur;
@@ -138,7 +138,8 @@ test('le programme ajoute une Manche de Freestyle avec les fiches cochées aprè
 	assert.deepEqual(b.appels[1].args.slice(0, 3), [
 		'POST', '/api/soirees/s/manches', {
 			mode: 'FREESTYLE',
-			reglages: { theme: 'VILLE', schemaDeRimes: 'ABAB', difficulte: 'PREMIER', nombreMesures: 16, instrumentaleIds: ['i'] },
+			reglages: { theme: 'VILLE', schemaDeRimes: 'ABAB', difficulte: 'PREMIER', nombreMesures: 16, mesuresParCouplet: 2,
+				instrumentaleIds: ['i'] },
 		},
 	]);
 	b.programme.demonter();

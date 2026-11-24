@@ -40,3 +40,20 @@ test('un Passage sans vote conserve sa souche et affiche « Aucun vote » sans r
 	assert.equal(ligne.querySelector('.palmares__votes')?.textContent, 'Aucun vote');
 	assert.equal(ligne.querySelector('.visuellement-cache')?.textContent, 'n° 9 · Le phare · Alizé · Aucun vote');
 });
+
+test('le Palmarès du Freestyle dit les victoires des Interprètes avant les Passages notés (#74)', () => {
+	const { palmares } = decrireVue({ soiree: {}, joueurs: [], classement: [], palmaresFreestyle: [
+		{ rang: 1, interprete: { joueurId: 'z', pseudo: 'Zoé' }, nombreVictoires: 2, nombrePassages: 2 },
+		{ rang: null, interprete: { joueurId: 'i', pseudo: 'Inès' }, nombreVictoires: 0, nombrePassages: 1 },
+		{ passageId: 'p', numero: 3, rang: 1, instrumentale: { titre: 'Pavés mouillés' }, interprete: { pseudo: 'Lou' },
+			nombreVotes: 2, moyenneDixiemes: 45 },
+	] });
+	assert.deepEqual(palmares.map(ligne => ligne.texte), [
+		'1. Zoé · 2 victoires · 2 Passages à plusieurs',
+		'Inès · Aucune victoire · 1 Passage à plusieurs',
+		'1. n° 3 · Pavés mouillés · Lou · 4,5 sur 5 (2 votes)',
+	]);
+	const ligne = creerLignePalmaresSalle(creerDocument(), palmares[0]);
+	assert.equal(Boolean(ligne.querySelector('.palmares__numero')), false);
+	assert.equal(ligne.querySelector('.palmares__chanson')?.textContent, '2 victoires');
+});

@@ -9,7 +9,7 @@ import { positionDansGrille } from '../../src/main/resources/static/js/modes/fre
 const capture = { source: 'capture' };
 const instrumentale = { instrumentaleId: 'i', titre: 'À la lueur', tempoBpm: 120, departBeatMs: 250 };
 const passage = { passageId: 'p', numero: 1, numeroModification: 1, instrumentale, position: 1,
-	interprete: { joueurId: 'j', pseudo: 'Jo' }, etapeId: 'e', etat: 'APPELE', delaiAppelRestantMs: 30000, calculeLe: new Date().toISOString() };
+	interpretes: [{ joueurId: 'j', pseudo: 'Jo' }], etapeId: 'e', etat: 'APPELE', delaiAppelRestantMs: 30000, calculeLe: new Date().toISOString() };
 const grille = { nombreMesures: 8, mots: [
 	{ mesure: 1, temps: 3, positionMs: 1250, famille: 'A', mot: 'lumière' },
 	{ mesure: 2, temps: 3, positionMs: 3250, famille: 'B', mot: null },
@@ -65,8 +65,8 @@ test('la Manette peut laisser le hasard choisir, confirmer sa présence et envoy
 		assert.equal(banc.appels[1].args[2].etapeId, 'e');
 		banc.appels[1].resolve({ statut: 200, corps: {} });
 		await terminerMicrotaches();
-		banc.module.afficher(vue({ votes: [{ ...passage, interprete: { joueurId: 'autre', pseudo: 'Léa' },
-			etat: 'OUVERT', delaiRestantMs: 30000, peutVoter: true, maNote: null }] }), capture);
+		banc.module.afficher(vue({ votes: [{ ...passage, interpretes: [{ joueurId: 'autre', pseudo: 'Léa' }],
+			etat: 'OUVERT', delaiRestantMs: 30000, peutVoter: true, scrutin: 'NOTE', maNote: null, monChoix: null }] }), capture);
 		bouton(banc, '5').click();
 		bouton(banc, 'Envoyer ma note').click();
 		assert.match(banc.appels[2].args[1], /\/vote$/);
@@ -142,4 +142,84 @@ test('la détection lit le sous-dossier direct et le JSON prioritaire, sans expo
 	]);
 	assert.deepEqual((await lireInstrumentales([...selection].reverse())).map(({ fiche }) => fiche.instrumentaleId),
 		disponibles.map(({ fiche }) => fiche.instrumentaleId));
+});
+
+// Freestyle à plusieurs (#74).
+const zoe = { joueurId: 'z', pseudo: 'Zoé' }, ines = { joueurId: 'i', pseudo: 'Inès' };
+const trio = [{ joueurId: 'j', pseudo: 'Jo' }, ines, zoe];
+const couplets = suivantAnnonce => ({ mesuresParCouplet: 2, nombreCouplets: 4, ordre: [zoe, { joueurId: 'j', pseudo: 'Jo' }, ines],
+	courant: { numero: 1, interprete: zoe, premiereMesure: 1, derniereMesure: 2 },
+	suivant: { numero: 2, interprete: { joueurId: 'j', pseudo: 'Jo' }, premiereMesure: 3, derniereMesure: 4 }, suivantAnnonce });
+const enScene = suivantAnnonce => ({ ...passage, interpretes: trio, etat: 'EN_COURS', couplets: couplets(suivantAnnonce) });
+
+test('la Manette invite des Joueurs présents et répond à une Invitation reçue', async () => {
+	const banc = creerBanc(monterManette);
+	try {
+		banc.connecter('synchronisee');
+		const joueurs = [{ id: 'j', pseudo: 'Jo' }, { id: 'i', pseudo: 'Inès' }, { id: 'z', pseudo: 'Zoé' }];
+		banc.module.afficher({ ...vue({ peutInscrire: true, invitationsRecues: [{ passage: { passageId: 'q', numeroModification: 0 },
+			numero: 2, instrumentale, inscrivant: ines, interpretes: [ines] }] }), joueurs }, capture);
+		const cases = banc.principale.querySelectorAll('input');
+		assert.deepEqual(cases.map(c => c.value), ['i', 'z'], 'jamais soi-même');
+		assert.match(banc.principale.textContent, /Inès t'invite à rapper\./);
+		cases[1].checked = true;
+		bouton(banc, 'M’inscrire').click();
+		assert.deepEqual(banc.appels[0].args[2].invitesIds, ['z']);
+		bouton(banc, 'Accepter').click();
+		assert.equal(banc.appels[1].args[1], '/api/soirees/s/manches/m/passages/q/invitation');
+		assert.equal(banc.appels[1].args[2].reponse, 'ACCEPTER');
+	} finally { banc.module.demonter(); }
+});
+
+test('seule la Manette annoncée vibre, une fois, à l’événement d’annonce', () => {
+	const vibrations = [];
+	const banc = creerBanc(monterManette);
+	banc.document.defaultView = { navigator: { vibrate: duree => vibrations.push(duree) } };
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue({ courant: enScene(true), monCoupletAnnonce: true }), capture);
+		assert.equal(vibrations.length, 0, 'jamais sur une capture');
+		const annonce = { source: 'evenement', type: 'couplet-annonce' };
+		banc.module.afficher(vue({ courant: enScene(true), monCoupletAnnonce: true }), annonce);
+		banc.module.afficher(vue({ courant: enScene(true), monCoupletAnnonce: true }), annonce);
+		assert.equal(vibrations.length, 1);
+		assert.match(banc.principale.textContent, /À toi dans une mesure !/);
+		banc.module.afficher(vue({ courant: enScene(true), monCoupletAnnonce: false }), annonce);
+		assert.equal(vibrations.length, 1, 'une autre Manette ne vibre pas');
+	} finally { banc.module.demonter(); }
+});
+
+test('le public désigne le meilleur Interprète au lieu de noter', () => {
+	const banc = creerBanc(monterManette);
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue({ votes: [{ ...passage, interpretes: [ines, zoe], etat: 'OUVERT', delaiRestantMs: 30000,
+			peutVoter: true, scrutin: 'MEILLEUR_INTERPRETE', maNote: null, monChoix: null }] }), capture);
+		assert.equal(bouton(banc, '5'), undefined);
+		assert.match(banc.principale.textContent, /Désigne le meilleur Interprète/);
+		bouton(banc, 'Zoé').click();
+		bouton(banc, 'Envoyer mon choix').click();
+		assert.match(banc.appels[0].args[1], /\/passages\/p\/meilleur-interprete$/);
+		assert.equal(banc.appels[0].args[2].interpreteId, 'z');
+		assert.equal(banc.appels[0].args[2].numeroModification, 1);
+	} finally { banc.module.demonter(); }
+});
+
+test('la salle affiche l’ordre des Couplets, le Couplet courant et l’annonce du suivant', () => {
+	const banc = creerBanc((zones, contexte) => {
+		zones.principale.ownerDocument.defaultView = { requestAnimationFrame: () => 1, cancelAnimationFrame() {} };
+		return monterSalle(zones, contexte);
+	}, 'ECRAN');
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue({ courant: enScene(false), grille }), capture);
+		const texte = classe => banc.principale.querySelector(`.${classe}`);
+		assert.equal(texte('freestyle__interprete').textContent, 'Zoé');
+		assert.equal(texte('freestyle__ordre').textContent, 'Ordre des Couplets : Zoé · Jo · Inès');
+		assert.equal(texte('freestyle__couplet').textContent, 'Couplet 1 sur 4 · mesures 1 à 2');
+		assert.equal(texte('freestyle__annonce').hidden, true);
+		banc.module.afficher(vue({ courant: enScene(true), grille }), { source: 'evenement', type: 'couplet-annonce' });
+		assert.equal(texte('freestyle__annonce').textContent, 'À Jo dans une mesure');
+		assert.equal(texte('freestyle__annonce').hidden, false);
+	} finally { banc.module.demonter(); }
 });

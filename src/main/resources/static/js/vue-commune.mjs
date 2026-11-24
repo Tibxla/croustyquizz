@@ -10,7 +10,19 @@ export const formaterNote = note => `${note} sur 5`;
 export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
 export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
 
-function decrireLignePalmares({ numero, rang, chanson, instrumentale, interpretes, interprete, nombreVotes, moyenneDixiemes }) {
+const pluriel = (nombre, mot) => `${nombre} ${mot}${nombre > 1 ? 's' : ''}`;
+
+// Palmarès du Freestyle (#74) : un Interprète des Passages à plusieurs, classé par victoires.
+function decrireLigneVictoires({ rang, interprete, nombreVictoires, nombrePassages }) {
+	const titre = nombreVictoires === 0 ? 'Aucune victoire' : pluriel(nombreVictoires, 'victoire');
+	const votes = `${pluriel(nombrePassages, 'Passage')} à plusieurs`;
+	return { numero: null, rang, titre, interpretes: interprete.pseudo, note: null, votes,
+		texte: `${rang === null ? '' : `${rang}. `}${interprete.pseudo} · ${titre} · ${votes}` };
+}
+
+function decrireLignePalmares(ligne) {
+	if ('nombreVictoires' in ligne) return decrireLigneVictoires(ligne);
+	const { numero, rang, chanson, instrumentale, interpretes, interprete, nombreVotes, moyenneDixiemes } = ligne;
 	const titre = (chanson ?? instrumentale).titre;
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
 	const pseudos = interpretes?.map(i => i.pseudo).join(' et ') ?? interprete.pseudo;

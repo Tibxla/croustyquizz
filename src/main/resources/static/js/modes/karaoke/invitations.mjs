@@ -27,7 +27,7 @@ export function texteDesinscription(passage, joueurId) {
 	return `Retirer ${titre} ? ${joindrePseudos(autres)} ${autres.length > 1 ? 'perdent' : 'perd'} aussi ce Passage.`;
 }
 
-export function texteInvitation(invitation) {
+export function texteInvitation(invitation, verbe = 'chanter') {
 	const avec = invitation.interpretes.filter(i => i.joueurId !== invitation.inscrivant.joueurId).map(i => i.pseudo);
-	return `${invitation.inscrivant.pseudo} t'invite à chanter${avec.length ? `, avec ${joindrePseudos(avec)}` : ''}.`;
+	return `${invitation.inscrivant.pseudo} t'invite à ${verbe}${avec.length ? `, avec ${joindrePseudos(avec)}` : ''}.`;
 }

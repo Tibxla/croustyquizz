@@ -283,3 +283,18 @@ lisibilité à 5 m.
 
 Les amorces thématiques et les familles de rimes de cette branche sont écrites
 pour la recette. Le dictionnaire issu de Lexique relève de #69.
+
+### Recette du Freestyle à plusieurs (#74)
+
+Reprendre la préparation ci-dessus avec la Console, l’Écran de salle et les Manettes de quatre Joueurs : trois Interprètes et un Joueur du public. Prendre une Instrumentale à 120 BPM, départ du beat à 250 ms, une Grille de 8 mesures et **Mesures par Couplet** à 2 : une mesure dure alors 2 s et la Grille compte quatre Couplets.
+
+1. Dans la Console, vérifier que **Mesures par Couplet** propose 2, 4 et 8, avec 4 par défaut, puis ajouter la Manche à 2.
+2. Sur la Manette du Joueur 1, vérifier que « Rapper avec (trois au plus) » liste les autres Joueurs présents, sans le Joueur 1, et qu’une quatrième case se désactive. Cocher les Joueurs 2 et 3, puis **M’inscrire**. La Console affiche « Joueur 2 n’a pas encore répondu (Passage 1) » ; l’Écran de salle ne montre aucune Invitation.
+3. Sur la Manette du Joueur 2, lire « Joueur 1 t’invite à rapper. » avec l’Instrumentale, puis **Accepter**. Faire de même avec le Joueur 3. Le Joueur 1 lit « a accepté » pour chacun, et le ticket porte les trois pseudos sur les trois écrans.
+4. Appeler le Passage, puis **Je suis prêt** depuis n’importe quel Interprète. Vérifier que l’Écran de salle affiche « Ordre des Couplets : … » avec les trois pseudos, que le titre nomme l’Interprète du premier Couplet et que « Couplet 1 sur 4 · mesures 1 à 2 » est lisible à 5 m. La Console montre le même ordre. Recharger l’Écran de salle : l’ordre ne change pas.
+5. À 2,25 s de lecture, au début de la mesure 2, l’Écran de salle annonce « À <Interprète suivant> dans une mesure ». Sur un vrai téléphone, seule la Manette de cet Interprète vibre, une fois, et affiche « À toi dans une mesure ! » ; les deux autres Manettes ne vibrent pas. Recharger cette Manette pendant l’annonce : le texte reste, sans nouvelle vibration.
+6. À 4,25 s, le titre passe au deuxième Interprète et « Couplet 2 sur 4 ». Mettre la Manche en pause entre deux annonces, attendre, reprendre : l’annonce suivante arrive avec le temps restant, recalée sur la balle. Le quatrième Couplet revient au premier Interprète de l’ordre.
+7. À la fin prévue, la Manette du Joueur du public propose **Désigne le meilleur Interprète** avec un bouton par Interprète, sans note de 1 à 5. Choisir un Interprète et **Envoyer mon choix** : « Ton choix est enregistré : … ». Les Manettes des trois Interprètes affichent « Le public vote pour ton Passage. ».
+8. Jouer ensuite un Passage à un seul Interprète : il n’a ni ordre ni annonce, et le public le note de 1 à 5.
+9. Terminer la Manche. Le Palmarès de l’Écran de salle classe d’abord l’Interprète désigné (« 1 victoire »), puis les Passages seuls par note ; la Console garde aussi les Interprètes sans victoire, sans rang. Le Classement général ne change pas.
+10. À 390 × 844, vérifier que la liste des invités, la section **Invitations** et les boutons de désignation tiennent sans déborder, et qu’un lecteur d’écran annonce « À toi dans une mesure ! » une seule fois.

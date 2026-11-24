@@ -273,17 +273,18 @@ export function invitesPossibles(joueurs, moi) {
 	return (joueurs ?? []).filter(joueur => joueur.id !== moi);
 }
 
-function creerChoixInvites(ui, moi) {
+/** Cases des invités possibles, communes aux Modes à Passages (#138, #74). */
+export function creerChoixInvites(ui, moi, { verbe = 'Chanter', choisis = [] } = {}) {
 	const { e, ecouter } = ui;
 	const candidats = invitesPossibles(ui.joueurs, moi);
 	if (!candidats.length) return null;
 	const groupe = e('fieldset', 'karaoke__invites');
-	const legende = e('legend', '', 'Chanter avec (trois au plus)');
+	const legende = e('legend', '', `${verbe} avec (trois au plus)`);
 	const aide = e('p', 'champ__aide', 'Chaque Joueur coché reçoit une Invitation et choisit de te rejoindre.');
 	groupe.append(legende, aide);
 	const cases = candidats.map(joueur => {
 		const ligne = e('label', 'karaoke__invite'), choix = e('input');
-		choix.type = 'checkbox'; choix.value = joueur.id; choix.checked = false;
+		choix.type = 'checkbox'; choix.value = joueur.id; choix.checked = choisis.includes(joueur.id);
 		ligne.append(choix, e('span', '', joueur.pseudo));
 		groupe.append(ligne);
 		return choix;
@@ -293,6 +294,7 @@ function creerChoixInvites(ui, moi) {
 		for (const c of cases) c.disabled = pleins && !c.checked;
 	};
 	for (const c of cases) ecouter(c, 'change', limiter);
+	limiter();
 	return { element: groupe, choisis: () => cases.filter(c => c.checked).map(c => c.value) };
 }
 
