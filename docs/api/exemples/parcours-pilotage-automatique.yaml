@@ -1,4 +1,4 @@
-description: Extraits d’une Soirée fictive en Pilotage Automatique, de l’ouverture aux sauts à l’échéance de l’appel.
+description: Extraits de deux Soirées fictives en Pilotage Automatique, avec une fin de Manche à l’échéance d’un appel et une autre à la clôture du dernier vote.
 # Les publications intermédiaires de démarrage, de lecture, de File d’attente et de Vote du public sont omises.
 evenementsComplets: false
 parametresCommuns:
@@ -546,12 +546,12 @@ evenements:
         tourOuvert: 2
         passagePrioritaireId: null
         courant:
-          passageId: &passageDeuxiemeTour 11900000-0000-4000-8000-000000000014
+          passageId: 11900000-0000-4000-8000-000000000014
           numero: 3
           chanson: *chansonAlize
           interpretes: *interpretesAlize
           numeroModification: 1
-          etapeId: &etapeDeuxiemeTour 11900000-0000-4000-8000-000000000015
+          etapeId: 11900000-0000-4000-8000-000000000015
           etat: APPELE
           prochainAppelPrevuLe: '2026-11-23T20:03:00.000Z'
           appeleLe: &appelDeuxiemeTour '2026-11-23T20:01:30.000Z'
@@ -581,63 +581,168 @@ evenements:
         lecteurDesigneId: 11900000-0000-4000-8000-000000000008
         lecture: null
         paroles: null
-- nom: L’échéance d’Alizé saute le Passage quand la File d’attente est vide
+- nom: L’échéance d’Alizé termine la Manche, sans attente ni vote ouvert
   canal: salle
   message:
-    type: passage-saute
+    type: manche-terminee
     soireeId: *soireeId
     revision: 12
-    emisLe: &finDeuxiemeTour '2026-11-23T20:02:00.000Z'
+    emisLe: '2026-11-23T20:02:00.000Z'
     donnees:
       soiree: *soireeEnCours
-      mancheActive: *mancheKaraoke
-      modeEnCours: KARAOKE
+      mancheActive: null
+      modeEnCours: null
       joueurs: *joueursKaraoke
       classement: *classementKaraoke
       dernierBuzz: null
+      karaoke: null
+      palmaresKaraoke: []
+# Dans une autre Soirée, l’Animateur retire le seul Passage en attente pendant le chant.
+- nom: Dernier retrait pendant le chant, la Manche continue
+  canal: salle
+  message:
+    type: file-attente-modifiee
+    soireeId: &soireeDernierVoteId 12200000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: '2026-11-23T21:00:45.000Z'
+    donnees:
+      soiree: &soireeDernierVote
+        id: *soireeDernierVoteId
+        titre: Deuxième Soirée fictive en Pilotage Automatique
+        format: SOLO
+        pilotage: AUTOMATIQUE
+        etat: EN_COURS
+        codeAcces: F3M8AB
+      mancheActive:
+        id: &mancheDernierVoteId 12200000-0000-4000-8000-000000000004
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages:
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs: &joueursDernierVote
+      - id: &joueurDernierVoteId 12200000-0000-4000-8000-000000000005
+        pseudo: Ana
+        connecte: true
+      - id: 12200000-0000-4000-8000-000000000006
+        pseudo: Noé
+        connecte: true
+      classement: []
+      dernierBuzz: null
       karaoke:
-        mancheId: 11900000-0000-4000-8000-000000000004
+        mancheId: *mancheDernierVoteId
         etat: EN_COURS
         limitePassagesEnAttente: 2
         nombreEnAttente: 0
-        tourOuvert: 2
+        tourOuvert: 1
         passagePrioritaireId: null
         courant:
-          passageId: *passageDeuxiemeTour
-          numero: 3
-          chanson: *chansonAlize
-          interpretes: *interpretesAlize
-          numeroModification: 2
-          etapeId: *etapeDeuxiemeTour
-          etat: SAUTE
-          prochainAppelPrevuLe: null
-          appeleLe: *appelDeuxiemeTour
-          echeanceAppelLe: null
-          delaiAppelRestantMs: null
-          demarreLe: null
-          finPrevueLe: null
-          positionChronologiqueMs: null
-          tempsPauseMs: 0
-          calculeLe: *finDeuxiemeTour
-          clotureLe: *finDeuxiemeTour
-        configurationInterface: *configurationKaraoke
-        votes:
-        - passageId: 11900000-0000-4000-8000-000000000010
+          passageId: &passageDernierVoteId 12200000-0000-4000-8000-000000000010
           numero: 1
           chanson: *chansonAlize
-          interpretes: *interpretesAlize
-          etat: CLOS
-          delaiRestantMs: 0
-          calculeLe: *finDeuxiemeTour
-          clotureLe: *appelDeuxiemeTour
-          nombreVotes: 0
-          suivantDemarre: false
-          moyenneDixiemes: null
+          interpretes: &interpretesDernierVote
+          - joueurId: *joueurDernierVoteId
+            pseudo: Ana
+          numeroModification: 2
+          etapeId: 12200000-0000-4000-8000-000000000012
+          etat: EN_COURS
+          prochainAppelPrevuLe: '2026-11-23T21:01:20.000Z'
+          appeleLe: '2026-11-23T21:00:10.000Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-23T21:00:20.000Z'
+          finPrevueLe: '2026-11-23T21:01:20.000Z'
+          positionChronologiqueMs: 25000
+          tempsPauseMs: 0
+          calculeLe: '2026-11-23T21:00:45.000Z'
+          clotureLe: null
+        configurationInterface: *configurationKaraoke
+        votes: []
         prochainsPassages: []
         nombreAutresPassages: 0
-        lecteurDesigneId: 11900000-0000-4000-8000-000000000008
-        lecture: null
-        paroles: null
+        lecteurDesigneId: null
+        lecture:
+          lectureId: 12200000-0000-4000-8000-000000000013
+          lecteurId: null
+          etat: DEMARREE
+          source: PAROLES_SEULES
+          motifParolesSeules: ECRAN_NON_PRET
+          origineParoles: INSCRIPTION
+          decalageMs: 0
+          numeroModificationCalage: 0
+          demandePosition: null
+        paroles:
+          parolesId: 12200000-0000-4000-8000-000000000014
+          dureeMs: 60000
+          lignes:
+          - positionMs: 25000
+            texte: Sur les quais de papier
+- nom: Clôture du dernier vote et fin de Manche — salle
+  canal: salle
+  message:
+    type: manche-terminee
+    soireeId: *soireeDernierVoteId
+    revision: 10
+    emisLe: &finDernierVote '2026-11-23T21:01:50.000Z'
+    donnees:
+      soiree: *soireeDernierVote
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueursDernierVote
+      classement: []
+      dernierBuzz: null
+      karaoke: null
+      palmaresKaraoke: &palmaresDernierVote
+      - passageId: *passageDernierVoteId
+        numero: 1
+        chanson: *chansonAlize
+        interpretes: *interpretesDernierVote
+        rang: 1
+        nombreVotes: 1
+        moyenneDixiemes: 40
+- nom: Clôture du dernier vote et fin de Manche — Console
+  canal: console
+  message:
+    type: manche-terminee
+    soireeId: *soireeDernierVoteId
+    revision: 10
+    emisLe: *finDernierVote
+    donnees:
+      soiree: *soireeDernierVote
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueursDernierVote
+      classement: []
+      dernierBuzz: null
+      programme:
+      - id: *mancheDernierVoteId
+        ordre: 0
+        mode: KARAOKE
+        etat: TERMINEE
+        reglages:
+          limitePassagesEnAttente: 2
+      karaoke: null
+      palmaresKaraoke: *palmaresDernierVote
+- nom: Clôture du dernier vote et fin de Manche — Manette
+  canal: joueur
+  message:
+    type: manche-terminee
+    soireeId: *soireeDernierVoteId
+    revision: 9
+    emisLe: *finDernierVote
+    donnees:
+      soiree: *soireeDernierVote
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueursDernierVote
+      classement: []
+      dernierBuzz: null
+      joueurId: *joueurDernierVoteId
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke: null
 resynchronisation:
   destination: /topic/soirees/11900000-0000-4000-8000-000000000001/console
   routeEtat: /api/soirees/11900000-0000-4000-8000-000000000001/etat/console

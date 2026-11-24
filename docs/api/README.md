@@ -113,7 +113,7 @@ Le nouvel inscrit rejoint la fin du Tour ouvert s’il n’y a pas chanté, sino
 
 La limite, de 1 à 20, porte sur les Passages `EN_ATTENTE` de chaque Interprète. La baisser ne retire rien. Une désinscription suivie d’une réinscription rejoint la fin du Tour admissible. Pas de doublon de Chanson personnel en attente ; deux Joueurs peuvent choisir la même Chanson. Un retardataire présent peut s’inscrire ; sa vue porte `eligiblePourMancheActive: true`, mais ce champ n’est jamais une garde de l’inscription.
 
-Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. L’appel fait `EN_ATTENTE` → `APPELE` et sépare le courant de la File d’attente ; la suite du cycle est décrite dans « Passage : appel, lecture et calage ». Un Passage sauté ou annulé garde son Tour. L’appel dure trente secondes. À son échéance, le Passage est sauté en Pilotage Automatique. En Pilotage Manuel, l’échéance reste sans effet. Aucun nombre de Passages n’est fixé. L’Animateur termine la Manche. La fin naturelle en Pilotage Automatique relève du ticket #122. Une File vide au démarrage ou après le dernier retrait laisse la Manche ouverte. Les minuteurs gouvernent l’échéance d’appel en Pilotage Automatique, la fin prévue du Passage et la clôture du Vote du public.
+Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. L’appel fait `EN_ATTENTE` → `APPELE` et sépare le courant de la File d’attente ; la suite du cycle est décrite dans « Passage : appel, lecture et calage ». Un Passage sauté ou annulé garde son Tour. L’appel dure trente secondes. À son échéance, le Passage est sauté en Pilotage Automatique. En Pilotage Manuel, l’échéance reste sans effet. Aucun nombre de Passages n’est fixé. En Pilotage Manuel, l’Animateur termine la Manche. En Pilotage Automatique, après la clôture d’un Passage, la Manche se termine dès qu’aucun Passage n’est actif ni en attente et qu’aucun vote n’est ouvert. Elle attend donc la clôture du vote du dernier Passage chanté, et une inscription pendant ce vote peut déclencher un nouvel appel. Une File vide au démarrage laisse la Manche ouverte et un retrait seul ne la termine jamais. La fin automatique est suspendue pendant une pause, puis les conditions sont réexaminées à la reprise. Les minuteurs gouvernent l’échéance d’appel en Pilotage Automatique, la fin prévue du Passage et la clôture du Vote du public.
 
 Recherche et gestion exigent une Soirée `EN_COURS` et sa Manche Karaoké active `EN_COURS` ou `EN_PAUSE`. Après consultation du reçu, une mutation sur une Manche connue `TERMINEE` donne `ETAT_INCOMPATIBLE` avant toute garde du Passage ; les autres cas inactifs donnent `ETAPE_INACTIVE`. Sans courant actif, le pilotage omet `etapeId` ; `PASSER_ETAPE` donne alors `ETAPE_INACTIVE`, comme le Quiz sans `etapeId`, même si un Passage `TERMINE` ou `SAUTE` reste affiché. Avec un courant actif, `etapeId` est celui de son étape. La Manche passe de `EN_COURS` à `EN_PAUSE` et inversement, puis à `TERMINEE`. Après fin, `karaoke:null`, même si `mancheActive` reste terminée : cette asymétrie avec le Quiz final est assumée.
 
@@ -201,13 +201,13 @@ L’identité vient du résolveur d’acteur (`jetonJoueur`, `cleEcran`, `sessio
 | Lecture `DEMARREE`, fichier local | erreur | `EN_ERREUR`, Manche `EN_PAUSE` |
 | Lecture `EN_ERREUR` | reprise en paroles seules | `DEMARREE`, `PAROLES_SEULES`, Manche `EN_COURS` |
 
-Après une fin locale ou `PASSER_ETAPE` en pause, la Manche reste en pause. `TERMINER`, de `piloterManche` comme de `piloterSoiree`, annule le courant actif (`ANNULE`, Tour conservé, lecture arrêtée) et le bloc devient `null`. `numeroModification` du Passage change à l’appel, à la confirmation et à la clôture seulement.
+Pour `PASSER_ETAPE`, la fin prévue et la fin locale, les causes du tableau s’appliquent par défaut. En Pilotage Automatique, `manche-terminee` puis `passage-appele` sont prioritaires. Après une fin locale ou `PASSER_ETAPE` en pause, la Manche reste en pause. `TERMINER`, de `piloterManche` comme de `piloterSoiree`, annule le courant actif (`ANNULE`, Tour conservé, lecture arrêtée) et le bloc devient `null`. `numeroModification` du Passage change à l’appel, à la confirmation et à la clôture seulement.
 
 **Appel.** L’appel vise le Passage en position 1 ; un seul événement `passage-appele` publie l’appel et la File d’attente recalculée. La pause fige le délai d’appel restant (`echeanceAppelLe` nulle, `delaiAppelRestantMs` figé), la reprise le restitue avec une nouvelle échéance. En Pilotage Automatique, le serveur refuse par `409 HORS_DELAI` toute confirmation reçue à l’échéance ou après si le Passage est encore appelé. En Pilotage Manuel, la confirmation reste acceptée après l’échéance, qui ne publie rien.
 
 **Pilotage Automatique.** En Manche `EN_COURS` et sans courant actif, le serveur prend le premier Passage de l’ordre effectif de la File d’attente, priorité comprise, et crée son étape uniquement s’il l’appelle. Il vérifie ces conditions après chaque commande acceptée et après chaque minuteur de Passage ou de Vote du public. La première inscription, une fin de lecture ou une fin prévue, un saut à l’échéance de l’appel, `PASSER_ETAPE`, une clôture de vote ou la reprise peuvent ainsi déclencher l’appel. Une mutation qui appelle le suivant publie uniquement `passage-appele` à la salle, à la Console et à toutes les Manettes. Le courant devient `APPELE` dans cette même vue et remplace, le cas échéant, le Passage précédent clos. Le statut et l’accusé HTTP gardent le résultat de la commande initiale (par exemple `201`, `EN_ATTENTE` et compteur 0 pour l’inscription). Un refus conserve la File et le courant.
 
-À l’échéance de l’appel en Pilotage Automatique, le Passage passe `SAUTE`, garde son Tour et n’ouvre aucun Vote du public. Si la File d’attente est vide, le serveur publie `passage-saute` avec le Passage clos. Au redémarrage, le serveur réarme le minuteur avec le délai restant. Si l’échéance est déjà dépassée, le saut a lieu au premier rappel. Une Manche restaurée en pause attend la reprise pour réarmer son minuteur.
+À l’échéance de l’appel en Pilotage Automatique, le Passage passe `SAUTE`, garde son Tour et n’ouvre aucun Vote du public. Si la File d’attente est vide, un vote encore ouvert donne `passage-saute` avec le Passage clos. Dès que la File est vide et qu’aucun vote n’est ouvert, le saut termine la Manche et publie `manche-terminee`. Au redémarrage, le serveur réarme le minuteur avec le délai restant. Si l’échéance est déjà dépassée, le saut a lieu au premier rappel. Une Manche restaurée en pause attend la reprise pour réarmer son minuteur.
 
 Le démarrage laisse la File vide. En pause, une fin de lecture ou `PASSER_ETAPE` peut clore le courant, puis la reprise appelle le premier Passage en attente. Après une erreur de lecture, la reprise en paroles seules poursuit le courant. Si la File est vide à la clôture, une inscription pendant le vote appelle aussitôt son Passage. La restauration réarme les minuteurs de fin prévue et de vote sans appeler de Passage. Les estimations d’attente supposent déjà l’enchaînement des Passages.
 
@@ -240,7 +240,8 @@ Le démarrage laisse la File vide. En pause, une fin de lecture ou `PASSER_ETAPE
 | Cause | Mutation | Destinations |
 |---|---|---|
 | `passage-appele` | appel manuel ou mutation déclenchant un appel automatique | salle, Console, toutes les Manettes |
-| `passage-demarre`, `passage-termine`, `passage-saute` | cycle du Passage, dont le saut à l’échéance en Pilotage Automatique sans nouvel appel | salle, Console, toutes les Manettes |
+| `passage-demarre`, `passage-termine`, `passage-saute` | cycle du Passage, dont le saut à l’échéance en Pilotage Automatique sans nouvel appel ni fin de Manche | salle, Console, toutes les Manettes |
+| `manche-terminee` | fin demandée par l’Animateur ou fin automatique après une fin de lecture, une fin prévue, une échéance d’appel, `PASSER_ETAPE`, la clôture du dernier vote ou une reprise | salle, Console, toutes les Manettes |
 | `lecture-chanson-modifiee` | désignation, déclaration | salle, Console |
 | `lecture-chanson-modifiee` | erreur, reprise en paroles seules | salle, Console, toutes les Manettes |
 | `calage-chanson-modifie` | demande, relevé, correction, geste | salle, Console |
@@ -252,8 +253,8 @@ Destinations et captures existantes restent inchangées ; vues complètes après
 Un Passage chanté jusqu’au bout (état `TERMINE`) ouvre un vote indépendant de trente secondes.
 Un saut ou une annulation n’en ouvre aucun. Une pause fige chaque vote ouvert, y compris un vote
 ouvert par une fin de lecture reçue pendant la pause. La reprise restitue le délai restant.
-L’horloge clôt chaque vote à son échéance. Terminer la Manche clôt tous les votes avec les notes reçues
-et conserve la cause `manche-terminee`.
+L’Horloge clôt chaque vote à son échéance. Une fin décidée par l’Animateur clôt tous les votes
+avec les notes reçues et publie `manche-terminee`.
 
 Le Joueur présent envoie `VotePassage` sur `POST M/passages/{passageId}/vote`, avec son jeton,
 un `envoiId`, le compteur du Passage et une note entière de 1 à 5. Le serveur applique les gardes
@@ -264,11 +265,12 @@ métier sont conservés comme le reçu `200 AccuseVote` (`Cache-Control: no-stor
 rend le reçu initial sans publication. Un autre contenu avec le même identifiant donne
 `ENVOI_REUTILISE`. Aucun vote ne rapporte de Point.
 
-`passage-termine` ouvre le vote, et `vote-clos` signale l’échéance à la salle, la Console et toutes
-les Manettes. `vote-enregistre` est publié vers la salle, la Console et la Manette du votant.
-En Pilotage Automatique, si la clôture appelle un Passage, la vue complète arrive avec
-`passage-appele`. Les trois blocs Karaoké portent une liste `votes` avec les votes ouverts et le
-vote clos le plus récemment, triés par date d’ouverture décroissante.
+La clôture d’un vote par minuteur publie une seule cause à la salle, à la Console et
+à toutes les Manettes. En Pilotage Automatique, la cause est `manche-terminee` si la Manche se
+termine, `passage-appele` si un Passage est appelé, et `vote-clos` dans les autres cas. En Pilotage
+Manuel, la clôture par minuteur publie `vote-clos`. `vote-enregistre` est publié vers la salle, la
+Console et la Manette du votant. Les trois blocs Karaoké portent une liste `votes` avec les votes
+ouverts et le vote clos le plus récemment, triés par date d’ouverture décroissante.
 
 Pendant le vote, la salle et la Console reçoivent le nombre de votes. Sur la Manette,
 `nombreVotes` reste nul, avec la note personnelle et la capacité de voter disponibles.
