@@ -10,8 +10,8 @@
 		/* Les classes d'affichage (flex, grid) ne doivent pas l'emporter sur l'attribut hidden. */
 		[hidden] { display: none !important; }
 		.erreur { margin: 0; padding: var(--espace-3) var(--espace-4); border-radius: var(--rayon); background: var(--fond-3); color: var(--texte); }
-		/* Le formulaire et la reconnexion laissent leurs enfants dans la colonne de la Manette : seuls les boutons vont en bas. */
-		#arrivee, #reconnexion { display: contents; }
+		/* Le formulaire, la vérification et la reconnexion laissent leurs enfants dans la colonne de la Manette : seuls les boutons vont en bas. */
+		#arrivee, #verification, #reconnexion { display: contents; }
 		.code-acces { font-family: var(--police-chiffres); letter-spacing: 0.2em; text-transform: uppercase; }
 	</style>
 </head>
@@ -19,7 +19,13 @@
 	<div class="manette">
 		<header class="manette__entete"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
 
-		<form id="arrivee" novalidate>
+		<section id="verification" role="status">
+			<h1 class="manette__titre">Connexion à la Soirée…</h1>
+			<p class="manette__aide">On regarde si tu as déjà rejoint cette Soirée depuis ce téléphone.</p>
+		</section>
+
+		<!-- Masqué tant que l'accès gardé n'est pas vérifié : un pseudo envoyé entre-temps créerait un second Joueur. -->
+		<form id="arrivee" novalidate hidden>
 			<h1 class="manette__titre">Rejoins la Soirée</h1>
 			<p class="manette__aide">Le code s'affiche sur l'Écran de salle. Choisis un pseudo, c'est tout : pas de compte.</p>
 			<div class="champ">
@@ -55,6 +61,8 @@
 		const champPseudo = document.getElementById('pseudo');
 		const bouton = document.getElementById('rejoindre');
 		const erreur = document.getElementById('erreur');
+		const verification = document.getElementById('verification');
+		const reconnexion = document.getElementById('reconnexion');
 		const RECONNEXION_MS = 3000;
 
 		const MESSAGES = {
@@ -94,7 +102,8 @@
 		}
 
 		function afficherFormulaire() {
-			document.getElementById('reconnexion').hidden = true;
+			verification.hidden = true;
+			reconnexion.hidden = true;
 			formulaire.hidden = false;
 			(champCode.value ? champPseudo : champCode).focus();
 		}
@@ -106,8 +115,8 @@
 			} else if (resultat === 'aucune') {
 				afficherFormulaire();
 			} else {
-				formulaire.hidden = true;
-				document.getElementById('reconnexion').hidden = false;
+				verification.hidden = true;
+				reconnexion.hidden = false;
 				setTimeout(demarrer, RECONNEXION_MS);
 			}
 		}
