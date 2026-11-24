@@ -1,0 +1,13 @@
+{"data":[
+ {"id":3135556,"readable":true,"title":"Halo","title_short":"Halo","title_version":"","duration":261,"rank":869218,
+  "preview":"https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc.mp3?hdnea=exp=1764101700~acl=*~hmac=11",
+  "artist":{"id":145,"name":"Beyoncé","type":"artist"},
+  "album":{"id":302127,"title":"I Am... Sasha Fierce","cover_medium":"https://e-cdns-images.dzcdn.net/images/cover/2e0/250x250-000000-80-0-0.jpg","type":"album"},"type":"track"},
+ {"id":67238735,"readable":true,"title":"Get Lucky (Radio Edit - feat. Pharrell Williams and Nile Rodgers)","title_short":"Get Lucky","title_version":"(Radio Edit - feat. Pharrell Williams and Nile Rodgers)",
+  "preview":"https://cdnt-preview.dzcdn.net/api/1/1/d/e/f/0/def.mp3?hdnea=exp=1764101700~acl=*~hmac=22",
+  "artist":{"id":27,"name":"Daft Punk","type":"artist"},
+  "album":{"id":6575789,"title":"Random Access Memories","cover_medium":null,"type":"album"},"type":"track"},
+ {"id":1109731,"readable":false,"title":"Titre retiré","title_short":"Titre retiré",
+  "preview":"https://cdnt-preview.dzcdn.net/api/1/1/0/0/0/0/000.mp3",
+  "artist":{"id":1,"name":"Artiste retiré"},"album":{"id":1,"cover_medium":"https://e-cdns-images.dzcdn.net/images/cover/0/250x250.jpg"},"type":"track"}
+],"total":5,"next":"https://api.deezer.com/playlist/908622995/tracks?index=3&limit=3"}
