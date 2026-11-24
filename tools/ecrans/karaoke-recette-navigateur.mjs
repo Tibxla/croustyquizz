@@ -317,7 +317,7 @@ async page => {
 	await choisirDossier(ongletSalle, dossiers.unique);
 	await attendreTexte(ongletSalle, '1 fichier audio');
 	await attendreTexte(ongletSalle, 'Son bloqué');
-	await attendreTexte(salle2.onglet, 'Cet écran affiche seulement.');
+	await attendreTexte(salle2.onglet, 'Un autre Écran de salle est désigné pour lire les Chansons.');
 	const lecteurInitial = lecteurDesigneId;
 	await ongletSalle.emulateMedia({ reducedMotion: 'reduce' });
 	const premier = await appeler();
@@ -408,12 +408,12 @@ async page => {
 
 	const appelsSalle2 = commandes.filter(e => e.c === salle2).length;
 	await salle2.onglet.reload();
-	await attendreTexte(salle2.onglet, 'Cet écran affiche seulement.');
+	await attendreTexte(salle2.onglet, 'Un autre Écran de salle est désigné pour lire les Chansons.');
 	verifier(await salle2.onglet.evaluate(() => window.recetteAudio.fichiers.length === 0), 'Capture d’une fenêtre rouverte sans son');
 	verifier(await salle2.onglet.locator('.ticket--immobile').count() === 1, 'Capture immobile');
 	verifier(commandes.filter(e => e.c === salle2).length === appelsSalle2, 'Aucun signal de la fenêtre rouverte');
 	await choisirDossier(salle2.onglet, dossiers.absent);
-	await attendreTexte(ongletSalle, 'Cet écran affiche seulement.');
+	await attendreTexte(ongletSalle, 'Un autre Écran de salle est désigné pour lire les Chansons.');
 	verifier(lecteurDesigneId !== lecteurInitial && await salle2.onglet.evaluate(() => window.recetteAudio.fichiers.length === 0),
 		'La nouvelle désignation ne joue pas le Passage déjà engagé');
 	try {

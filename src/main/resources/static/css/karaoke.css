@@ -117,9 +117,6 @@
 .salle .karaoke__priorite { font-size: 1.5vw; }
 .salle .karaoke__delai { font-size: 5vw; }
 .salle .karaoke__paroles { display: grid; gap: 0.4vw; overflow-wrap: anywhere; }
-.salle .karaoke__lecteur { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
-.salle .karaoke__lecteur .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
-.salle .karaoke__lecteur p:empty { display: none; }
 /* Le courant et trois prochains Passages laissent au talon sa place à 1080 px. */
 .salle__cote .karaoke { gap: 0.5vw; }
 .salle__cote .karaoke .ticket { min-height: 4.1vw; }

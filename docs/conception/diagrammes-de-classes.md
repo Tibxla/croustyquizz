@@ -532,6 +532,8 @@ classDiagram
         +UUID concurrentId
         +int valeur
         +String motif
+        +boolean bonneReponse
+        +long tempsMs
     }
     class ActionJoueur {
         <<interface>>

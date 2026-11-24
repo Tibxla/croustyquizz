@@ -32,7 +32,7 @@ import fr.croustyquizz.tempsreel.VerrousSoiree;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceDesAcces.class, TirageAuHasard.class,
+@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceDesAcces.class, TirageAuHasard.class, FiltreParListe.class,
 		ServiceDesAccesTest.Reglages.class, VerrousSoiree.class })
 class ServiceDesAccesTest {
 
