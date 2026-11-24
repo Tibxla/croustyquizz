@@ -31,12 +31,15 @@
 			<div class="champ">
 				<label for="code">Code de la Soirée</label>
 				<input id="code" name="code" class="code-acces" autocomplete="off" autocapitalize="characters"
-					spellcheck="false" maxlength="12" required>
+					spellcheck="false" maxlength="12" required aria-describedby="code-erreur">
+				<p id="code-erreur" class="champ--erreur" hidden></p>
 			</div>
 			<div class="champ">
 				<label for="pseudo">Ton pseudo</label>
-				<input id="pseudo" name="pseudo" autocomplete="nickname" maxlength="30" required>
-				<span class="champ__aide">Il s'affiche sur l'Écran de salle. 30 caractères au plus.</span>
+				<input id="pseudo" name="pseudo" autocomplete="nickname" maxlength="30" required
+					aria-describedby="pseudo-aide pseudo-erreur">
+				<span id="pseudo-aide" class="champ__aide">Il s'affiche sur l'Écran de salle. 30 caractères au plus.</span>
+				<p id="pseudo-erreur" class="champ--erreur" hidden></p>
 			</div>
 			<div class="manette__actions">
 				<p id="erreur" class="erreur" role="alert" hidden></p>
@@ -74,12 +77,33 @@
 			RESEAU_INDISPONIBLE: 'Pas de connexion pour l’instant. Vérifie ton réseau puis réessaie.',
 			ACCES_REFUSE: 'Ton accès à cette Soirée n’est plus valable. Rejoins-la à nouveau avec un pseudo.',
 			STOCKAGE_INDISPONIBLE: 'Ton navigateur bloque l’enregistrement des données de ce site : sans elles, ta Manette ne te retrouverait pas. Quitte la navigation privée ou autorise les données du site, puis réessaie.',
+			CODE_INCOMPLET: 'Le code de la Soirée fait 6 caractères.',
 			ACCES_NON_GARDE: 'Ta place est créée, mais ce téléphone n’a pas pu la garder. Libère de l’espace ou quitte la navigation privée, puis rejoins avec un autre pseudo.',
 		};
 
 		function afficherErreur(message) {
 			erreur.textContent = message;
 			erreur.hidden = false;
+		}
+
+		// Erreur d'un champ : sous lui (DESIGN.md), reliée par aria-describedby et lue quand il reprend le focus.
+		const erreursDeChamp = [[champCode, document.getElementById('code-erreur')], [champPseudo, document.getElementById('pseudo-erreur')]];
+		function signalerChamp(champ, message) {
+			const [, zone] = erreursDeChamp.find(([candidat]) => candidat === champ);
+			zone.textContent = message;
+			zone.hidden = false;
+			champ.setAttribute('aria-invalid', 'true');
+			champ.focus();
+			if (champ === champPseudo) champ.select();
+		}
+
+		function effacerErreurs() {
+			erreur.hidden = true;
+			for (const [champ, zone] of erreursDeChamp) {
+				zone.hidden = true;
+				zone.textContent = '';
+				champ.removeAttribute('aria-invalid');
+			}
 		}
 
 		// La Manette en temps réel est la coquille commune (#80) : elle suit la vue du Joueur et charge le Mode de jeu.
@@ -131,16 +155,14 @@
 
 		formulaire.addEventListener('submit', async (evenement) => {
 			evenement.preventDefault();
-			erreur.hidden = true;
+			effacerErreurs();
 			const code = champCode.value.replace(/\s/g, '').toUpperCase();
 			if (code.length !== 6) {
-				afficherErreur('Le code de la Soirée fait 6 caractères.');
-				champCode.focus();
+				signalerChamp(champCode, MESSAGES.CODE_INCOMPLET);
 				return;
 			}
 			if (!champPseudo.value.trim()) {
-				afficherErreur(MESSAGES.DONNEES_INVALIDES);
-				champPseudo.focus();
+				signalerChamp(champPseudo, MESSAGES.DONNEES_INVALIDES);
 				return;
 			}
 			// Sans stockage, le Joueur serait créé mais sa Manette ne le retrouverait pas : on le dit avant.
@@ -152,9 +174,12 @@
 			const arrivee = await appeler('POST', '/api/soirees/rejoindre', { corps: { codeAcces: code, pseudo: champPseudo.value } });
 			bouton.disabled = false;
 			if (!arrivee.ok) {
-				afficherErreur(MESSAGES[arrivee.code] ?? 'Impossible de rejoindre la Soirée pour l’instant. Réessaie dans un instant.');
 				if (arrivee.code?.startsWith('PSEUDO_') || arrivee.code === 'DONNEES_INVALIDES') {
-					champPseudo.select();
+					signalerChamp(champPseudo, MESSAGES[arrivee.code]);
+				} else if (arrivee.code === 'CODE_ACCES_INVALIDE') {
+					signalerChamp(champCode, MESSAGES.CODE_ACCES_INVALIDE);
+				} else {
+					afficherErreur(MESSAGES[arrivee.code] ?? 'Impossible de rejoindre la Soirée pour l’instant. Réessaie dans un instant.');
 				}
 				return;
 			}
