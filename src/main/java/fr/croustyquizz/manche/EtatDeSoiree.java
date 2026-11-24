@@ -9,6 +9,9 @@ import java.util.UUID;
  */
 public interface EtatDeSoiree {
 
+	/** Une Soirée porte cet identifiant en base, quel que soit son état. */
+	boolean estEnregistree(UUID soireeId);
+
 	/** La Soirée est lancée et pas encore terminée. */
 	boolean estEnCours(UUID soireeId);
 

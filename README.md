@@ -58,6 +58,8 @@ Sous Windows, dans PowerShell, remplacer `./mvnw` par `.\mvnw.cmd`. Dans Git Bas
 
 Le premier lancement télécharge Maven, les dépendances et l'image PostgreSQL : compter quelques minutes. L'application démarre ensuite sa base toute seule et répond sur http://localhost:8080.
 
+En `dev` et `recette`, seules les Soirées de démonstration, dont l'UUID est absent de la base, autorisent un abonnement STOMP anonyme au canal de salle. Pour une Soirée enregistrée, l'Écran de salle transmet sa clé dans l'en-tête `Authorization` de `CONNECT` et le Joueur transmet son jeton de reconnexion. Le contrat prévoit aussi l'accès par la session de l'Animateur de son Lieu. En attendant la connexion du Lieu (#5), le jeton d'Animateur de démonstration reste accepté en `dev` et `recette`. [Contrats HTTP et STOMP](docs/api/README.md)
+
 ### Lancer les tests
 
 ```bash
