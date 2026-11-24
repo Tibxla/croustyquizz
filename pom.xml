@@ -154,6 +154,8 @@
 				<configuration>
 					<targetJdk>${java.version}</targetJdk>
 					<linkXRef>false</linkXRef>
+					<!-- Rapport écrit sans le site Maven : aucun descripteur de site à télécharger, donc plus d'échec 429 de Maven Central en CI (#160). pmd:check lit target/pmd.xml. -->
+					<outputFormat>xhtml</outputFormat>
 					<rulesets>
 						<ruleset>category/java/errorprone.xml</ruleset>
 						<ruleset>category/java/bestpractices.xml</ruleset>

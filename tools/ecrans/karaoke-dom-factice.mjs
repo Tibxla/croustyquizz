@@ -38,8 +38,12 @@ export function creerDocument() {
 		showModal() { this.open = true; }
 		close() { this.open = false; this.dispatchEvent({ type: 'close' }); }
 	}
-	const document = { createElement: tag => new Element(tag), createDocumentFragment: () => new Element('fragment') };
+	const document = { isConnected: true, createElement: tag => new Element(tag), createDocumentFragment: () => new Element('fragment') };
 	document.head = document.createElement('head'); document.body = document.createElement('body'); document.activeElement = document.body;
+	const evenementsDocument = document.createElement('document');
+	for (const methode of ['addEventListener', 'removeEventListener', 'dispatchEvent']) {
+		document[methode] = evenementsDocument[methode].bind(evenementsDocument);
+	}
 	document.querySelectorAll = s => [...document.head.querySelectorAll(s), ...document.body.querySelectorAll(s)];
 	document.querySelector = s => document.querySelectorAll(s)[0] ?? null;
 	return document;
@@ -52,6 +56,7 @@ export function creerBanc(montrer, type = 'JOUEUR', document = creerDocument()) 
 	document.body.append(principale, laterale);
 	const appels = []; let rappel, captures = 0;
 	const contexte = { soireeId: 's', acteur: { type, identifiant: 'j' },
+		maintenantServeur: Date.now,
 		envoyer: (...args) => new Promise((resolve, reject) => appels.push({ args, resolve, reject })),
 		resynchroniser: () => captures++, surEtatConnexion: f => { rappel = f; f('synchronisation'); return () => { rappel = null; }; } };
 	const module = montrer({ principale, laterale }, contexte);

@@ -23,6 +23,7 @@ public class ManchePersistante {
 	@JdbcTypeCode(SqlTypes.JSON) private String reglages;
 	private Instant creeLe;
 	private Instant modifieLe;
+	private Integer positionProgramme;
 	protected ManchePersistante() { }
 	public ManchePersistante(UUID mancheId, UUID soireeId, ModeDeJeu mode, String reglages, Instant maintenant) {
 		this.mancheId = mancheId; this.soireeId = soireeId; this.mode = mode; this.reglages = reglages;
@@ -34,5 +35,7 @@ public class ManchePersistante {
 	public EtatManche getEtat() { return etat; }
 	public String getReglages() { return reglages; }
 	public Instant getModifieLe() { return modifieLe; }
+	public Integer getPositionProgramme() { return positionProgramme; }
+	public void placerDansLeProgramme(int position) { positionProgramme = position; }
 	public void changerEtat(EtatManche valeur, Instant maintenant) { etat = valeur; modifieLe = maintenant.truncatedTo(MICROS); }
 }

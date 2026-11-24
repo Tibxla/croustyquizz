@@ -1,5 +1,6 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static org.assertj.core.api.Assertions.*;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
@@ -56,9 +57,9 @@ class KaraokeJpaTest {
 
     @Test void restaureLesInterpretesOrdonnesEtLeNouvelInscripteurApresEviction() {
         UUID soiree = UUID.randomUUID();
-        UUID ana = ConfigurationTroisJoueurs.JOUEURS.getFirst();
-        UUID boris = ConfigurationTroisJoueurs.JOUEURS.get(1);
-        UUID celia = ConfigurationTroisJoueurs.JOUEURS.get(2);
+        UUID ana = joueursDe(soiree).getFirst();
+        UUID boris = joueursDe(soiree).get(1);
+        UUID celia = joueursDe(soiree).get(2);
         var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
         UUID manche = service.creer(soiree, Map.of());
         service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
@@ -95,7 +96,7 @@ class KaraokeJpaTest {
     @Test void restaurePausePrioriteReservationsEtRecusPuisContinueLesNumerosSurUneAutreManche() {
         UUID soiree = UUID.randomUUID();
         var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
-        var joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+        var joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
         UUID manche = service.creer(soiree, Map.of("limitePassagesEnAttente", 2));
         service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
         var premierCorps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1));
@@ -134,7 +135,7 @@ class KaraokeJpaTest {
     @Test void restaureLeCycleLaLectureEtLeLecteurSansRejouerLeDepart() {
         UUID soiree = UUID.randomUUID();
         var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
-        var joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+        var joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
         UUID manche = service.creer(soiree, Map.of());
         service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
         var inscription = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1));
@@ -167,7 +168,7 @@ class KaraokeJpaTest {
         UUID soiree = UUID.randomUUID();
         var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
         var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
-        var joueur = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.getFirst(), soiree);
+        var joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
         UUID manche = service.creer(soiree, Map.of("limitePassagesEnAttente", 2));
         service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
         UUID premier = inscrire(manche, joueur, 1);
