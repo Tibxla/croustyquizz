@@ -54,7 +54,8 @@
 		import { appeler } from '/js/api.js';
 		import { creerAccesManette, reprendreAcces } from '/js/acces-manette.mjs';
 
-		// Jeton et UUID du Joueur, rangés par Soirée jusqu'au vidage du navigateur ; la coquille (page.mjs) les relit.
+		// Jeton et UUID du Joueur, rangés par Soirée jusqu'au vidage du navigateur (à défaut, le temps de l'onglet) ;
+		// la coquille (page.mjs) les relit.
 		const accesManette = creerAccesManette();
 		const formulaire = document.getElementById('arrivee');
 		const champCode = document.getElementById('code');
@@ -72,6 +73,8 @@
 			PSEUDO_DEJA_PRIS: 'Ce pseudo est déjà pris dans la Soirée. Ajoute une initiale ou choisis-en un autre.',
 			RESEAU_INDISPONIBLE: 'Pas de connexion pour l’instant. Vérifie ton réseau puis réessaie.',
 			ACCES_REFUSE: 'Ton accès à cette Soirée n’est plus valable. Rejoins-la à nouveau avec un pseudo.',
+			STOCKAGE_INDISPONIBLE: 'Ton navigateur bloque l’enregistrement des données de ce site : sans elles, ta Manette ne te retrouverait pas. Quitte la navigation privée ou autorise les données du site, puis réessaie.',
+			ACCES_NON_GARDE: 'Ta place est créée, mais ce téléphone n’a pas pu la garder. Libère de l’espace ou quitte la navigation privée, puis rejoins avec un autre pseudo.',
 		};
 
 		function afficherErreur(message) {
@@ -140,6 +143,11 @@
 				champPseudo.focus();
 				return;
 			}
+			// Sans stockage, le Joueur serait créé mais sa Manette ne le retrouverait pas : on le dit avant.
+			if (!accesManette.disponible()) {
+				afficherErreur(MESSAGES.STOCKAGE_INDISPONIBLE);
+				return;
+			}
 			bouton.disabled = true;
 			const arrivee = await appeler('POST', '/api/soirees/rejoindre', { corps: { codeAcces: code, pseudo: champPseudo.value } });
 			bouton.disabled = false;
@@ -151,7 +159,10 @@
 				return;
 			}
 			const { soireeId, joueur, jetonReconnexion } = arrivee.corps;
-			accesManette.ranger(soireeId, { jeton: jetonReconnexion, joueurId: joueur.id, codeAcces: code });
+			if (!accesManette.ranger(soireeId, { jeton: jetonReconnexion, joueurId: joueur.id, codeAcces: code })) {
+				afficherErreur(MESSAGES.ACCES_NON_GARDE);
+				return;
+			}
 			allerALaManette(soireeId);
 		});
 

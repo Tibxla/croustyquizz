@@ -1,10 +1,13 @@
 // Accès de la Manette à ses Soirées : jeton de reconnexion opaque et UUID du Joueur, rangés par Soirée dans
 // le stockage durable du navigateur. Le PRD (#2) veut un jeton « conservé par sa Manette », que seul le vidage
 // du navigateur fait perdre : il survit à la mise en veille, à la fermeture de l'onglet et à un QR code rescanné.
-// Le stockage peut être refusé (navigation privée, réglages) : chaque accès se rabat alors sur « rien de gardé ».
+// Si le stockage durable est refusé ou plein (navigation privée, réglages), l'accès se replie sur le stockage
+// de l'onglet : il survit alors au rechargement, pas à la fermeture. Sans aucun stockage, la page d'arrivée
+// le dit avant de créer le Joueur, qui ne pourrait pas retrouver sa place.
 
 const PREFIXE = 'croustyquizz.manette.';
 const DERNIERE = 'croustyquizz.manette-derniere';
+const SONDE = 'croustyquizz.manette-sonde';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const opaque = /^[A-Za-z0-9_-]{43,128}$/;
 const code = /^[A-Z0-9]{6}$/;
@@ -12,10 +15,33 @@ const code = /^[A-Z0-9]{6}$/;
 const ANCIEN_JETON = 'croustyquizz.jeton';
 const ANCIENNE_SOIREE = 'croustyquizz.soiree';
 
-export function creerAccesManette(stockage = globalThis.localStorage) {
-	const lireBrut = (cle) => { try { return stockage?.getItem(cle) ?? null; } catch { return null; } };
-	const ecrire = (cle, valeur) => { try { stockage?.setItem(cle, valeur); } catch { /* stockage indisponible */ } };
-	const effacer = (cle) => { try { stockage?.removeItem(cle); } catch { /* stockage indisponible */ } };
+/** Stockages de la fenêtre, durable d'abord ; lire localStorage peut lever (SecurityError) si le site est bloqué. */
+export function stockagesDuNavigateur(fenetre = globalThis) {
+	const stockages = [];
+	for (const nom of ['localStorage', 'sessionStorage']) {
+		try {
+			if (fenetre[nom]) stockages.push(fenetre[nom]);
+		} catch { /* stockage refusé par le navigateur */ }
+	}
+	return stockages;
+}
+
+/** stockages : un stockage ou une liste, par ordre de préférence. Une écriture va au premier qui l'accepte. */
+export function creerAccesManette(stockages = stockagesDuNavigateur()) {
+	const liste = (Array.isArray(stockages) ? stockages : [stockages]).filter(Boolean);
+	const lireDans = (stockage, cle) => { try { return stockage.getItem(cle); } catch { return null; } };
+	const lireBrut = (cle) => liste.map((stockage) => lireDans(stockage, cle)).find((valeur) => valeur != null) ?? null;
+	const effacer = (cle) => liste.forEach((stockage) => { try { stockage.removeItem(cle); } catch { /* stockage indisponible */ } });
+	// Une écriture n'est acquise que relue : un quota atteint peut lever, ou ne rien garder.
+	const ecrireDans = (stockage, cle, valeur) => {
+		try {
+			stockage.setItem(cle, valeur);
+			return stockage.getItem(cle) === valeur;
+		} catch {
+			return false;
+		}
+	};
+	const ecrire = (cle, valeur) => liste.some((stockage) => ecrireDans(stockage, cle, valeur));
 
 	function lire(soireeId) {
 		if (!uuid.test(soireeId ?? '')) return null;
@@ -29,16 +55,16 @@ export function creerAccesManette(stockage = globalThis.localStorage) {
 	}
 
 	function soirees() {
-		try {
-			const ids = [];
-			for (let i = 0; i < stockage.length; i++) {
-				const cle = stockage.key(i);
-				if (cle?.startsWith(PREFIXE)) ids.push(cle.slice(PREFIXE.length));
-			}
-			return ids;
-		} catch {
-			return [];
+		const ids = new Set();
+		for (const stockage of liste) {
+			try {
+				for (let i = 0; i < stockage.length; i++) {
+					const cle = stockage.key(i);
+					if (cle?.startsWith(PREFIXE)) ids.add(cle.slice(PREFIXE.length));
+				}
+			} catch { /* stockage indisponible */ }
 		}
+		return [...ids];
 	}
 
 	return {
@@ -47,9 +73,17 @@ export function creerAccesManette(stockage = globalThis.localStorage) {
 		derniere: () => lire(lireBrut(DERNIERE)),
 		/** Accès gardés pour ce code d'accès : un code peut resservir après la fin d'une Soirée. */
 		parCode: (codeAcces) => soirees().map(lire).filter((acces) => acces && acces.codeAcces === codeAcces),
+		/** Vrai si un stockage accepte d'écrire : à vérifier avant de créer un Joueur. */
+		disponible() {
+			const accepte = liste.some((stockage) => ecrireDans(stockage, SONDE, '1'));
+			effacer(SONDE);
+			return accepte;
+		},
+		/** Range l'accès et rend vrai s'il a pu être relu ; la dernière Soirée n'est qu'une commodité. */
 		ranger(soireeId, { jeton, joueurId, codeAcces }) {
-			ecrire(PREFIXE + soireeId, JSON.stringify({ jeton, joueurId, codeAcces }));
+			if (!ecrire(PREFIXE + soireeId, JSON.stringify({ jeton, joueurId, codeAcces }))) return false;
 			ecrire(DERNIERE, soireeId);
+			return true;
 		},
 		oublier(soireeId) {
 			effacer(PREFIXE + soireeId);
@@ -97,8 +131,7 @@ async function reprendreAncienAcces(accesManette, ancienStockage, consulter) {
 	const vue = corps?.vue;
 	if (statut === 200 && vue?.soiree?.etat !== 'TERMINEE' && uuid.test(vue?.joueurId ?? '')) {
 		const codeAcces = code.test(vue.soiree.codeAcces ?? '') ? vue.soiree.codeAcces : null;
-		accesManette.ranger(soireeId, { jeton, joueurId: vue.joueurId, codeAcces });
-		if (accesManette.lire(soireeId)?.jeton !== jeton) return null;
+		if (!accesManette.ranger(soireeId, { jeton, joueurId: vue.joueurId, codeAcces })) return null;
 		effacer();
 		return { soireeId, codeAcces };
 	}

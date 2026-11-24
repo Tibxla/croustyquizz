@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adresseRetourArrivee, controlerJeton, creerAccesManette, reprendreAcces } from '../../src/main/resources/static/js/acces-manette.mjs';
+import { adresseRetourArrivee, controlerJeton, creerAccesManette, reprendreAcces, stockagesDuNavigateur } from '../../src/main/resources/static/js/acces-manette.mjs';
 
 const soiree = '00000001-0000-4000-8000-000000000001';
 const autre = '00000001-0000-4000-8000-000000000002';
@@ -53,6 +53,57 @@ test('un accès incomplet ou abîmé est ignoré, et un stockage refusé ne lèv
 	assert.deepEqual(sansStockage.parCode('K7PQ2M'), []);
 	assert.doesNotThrow(() => sansStockage.oublier(soiree));
 	assert.equal(creerAccesManette(undefined).derniere(), null);
+});
+
+// Un stockage qui lit mais refuse toute écriture : quota atteint, ou navigation privée stricte.
+function stockagePlein() {
+	return { ...stockageFactice(), setItem() { throw new DOMException('plein', 'QuotaExceededError'); } };
+}
+
+test('sans stockage durable, l’accès se range dans l’onglet et se relit, se retrouve par code puis s’oublie', () => {
+	const durable = stockagePlein();
+	const onglet = stockageFactice();
+	const acces = creerAccesManette([durable, onglet]);
+
+	assert.equal(acces.disponible(), true);
+	assert.equal(acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' }), true);
+	assert.equal(acces.lire(soiree).jeton, jeton);
+	assert.equal(acces.derniere().soireeId, soiree);
+	assert.deepEqual(acces.parCode('K7PQ2M').map((a) => a.soireeId), [soiree]);
+	// La coquille de la Manette relit le même accès avec les stockages par défaut du navigateur.
+	assert.equal(creerAccesManette([durable, onglet]).lire(soiree).joueurId, joueur);
+
+	acces.oublier(soiree);
+	assert.equal(acces.lire(soiree), null);
+	assert.equal(onglet.valeurs.size, 0);
+});
+
+test('aucun stockage utilisable : l’accès le dit avant l’arrivée, et ranger échoue sans lever', () => {
+	const acces = creerAccesManette([stockagePlein(), stockagePlein()]);
+	assert.equal(acces.disponible(), false);
+	assert.equal(acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' }), false);
+	assert.equal(acces.lire(soiree), null);
+	assert.equal(creerAccesManette([]).disponible(), false);
+});
+
+test('un stockage durable utilisable reste le premier choix ; la sonde ne laisse rien derrière elle', () => {
+	const durable = stockageFactice();
+	const onglet = stockageFactice();
+	const acces = creerAccesManette([durable, onglet]);
+	assert.equal(acces.disponible(), true);
+	assert.equal(acces.ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' }), true);
+	assert.ok(durable.valeurs.has(`croustyquizz.manette.${soiree}`));
+	assert.equal(onglet.valeurs.size, 0);
+	assert.deepEqual([...durable.valeurs.keys()].sort(), ['croustyquizz.manette-derniere', `croustyquizz.manette.${soiree}`]);
+});
+
+test('le navigateur qui refuse l’accès à localStorage (SecurityError) ne fait pas lever la page', () => {
+	const onglet = stockageFactice();
+	const fenetre = { get localStorage() { throw new DOMException('refusé', 'SecurityError'); }, sessionStorage: onglet };
+	const stockages = stockagesDuNavigateur(fenetre);
+	assert.deepEqual(stockages, [onglet]);
+	assert.equal(creerAccesManette(stockages).ranger(soiree, { jeton, joueurId: joueur, codeAcces: 'K7PQ2M' }), true);
+	assert.deepEqual(stockagesDuNavigateur({}), []);
 });
 
 function vue(etat = 'EN_COURS', { joueurId = joueur, codeAcces = 'K7PQ2M' } = {}) {
