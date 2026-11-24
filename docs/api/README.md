@@ -50,6 +50,8 @@ La salle suit `/topic/soirees/{soireeId}/salle`, la Console `/topic/soirees/{soi
 
 L’ordre est garanti **par destination et par Soirée**, avec une révision contiguë croissante pour chaque événement publié sur cette destination. Deux destinations ont des compteurs indépendants : une révision de salle n’est pas comparable à une révision de Manette. Les captures HTTP, mutations et attributions de révision doivent être cohérentes avec la sérialisation d’une même Soirée. Les messages ne constituent pas un journal durable ; un écran resynchronise sa vue après toute coupure, erreur d’application ou rupture dans la suite des révisions. Les heartbeats STOMP détectent les connexions inactives ; le rythme prévu dans le contrat est de dix secondes.
 
+La salle et la Console reçoivent le champ facultatif `palmaresKaraoke` hors du bloc `karaoke`. Le serveur le renseigne dans les captures et les événements lorsque la dernière Manche terminée est de Karaoké et qu’aucune Manche n’est en cours ni en pause. Il émet `null` dans les autres cas. Le Palmarès réunit les Passages aux votes clos des Manches de Karaoké de la Soirée. Il les trie par moyenne exacte décroissante, puis par nombre de votes décroissant et enfin par numéro croissant. Les Passages sans vote viennent à la fin, par numéro, sans rang ni moyenne. La Console reçoit la liste complète, la salle jusqu’à trois Passages classés. La Manette ne reçoit pas ce champ. Le Classement général conserve ses propres données.
+
 ## Vues par blocs
 
 Selon l’[ADR 0006](../adr/0006-commandes-de-manche-et-vues-par-blocs.md), les trois vues partagent une partie commune : Soirée, Manche active, Joueurs, Classement général et dernier Buzz ; la Console porte aussi le programme et la Manette ses informations personnelles. Le champ obligatoire `modeEnCours` vaut `QUIZ`, `BLIND_TEST`, `KARAOKE`, `FREESTYLE` ou `null` hors Manche.
@@ -104,7 +106,7 @@ La pause gèle le temps restant ; la reprise crée une nouvelle échéance serve
 
 ## Karaoké
 
-Le contrat fixe la recherche de Chansons, l’inscription personnelle, la gestion de la File d’attente (#82) puis le cycle du Passage : appel, « Je suis prêt », lecture, calage et fin (#98, voir « Passage : appel, lecture et calage »). Le mécanisme commun (File d’attente, appel, « Je suis prêt », fin du Passage) vit dans `passage` ; la Chanson, ses paroles, la lecture et le calage vivent dans `karaoke` (ADR 0006). Un seul Interprète par Passage ici ; les tableaux acceptent déjà un à quatre Interprètes pour #66. Aucun Point n’est attribué au Karaoké, même en Format Équipe. Vote du public (#23), Pilotage Automatique (#25), YouTube (palier 2 de l’ADR 0007), Délégation et ajout pour autrui sont hors périmètre. Le port `LecteurDeChanson` de l’Écran de salle couvre charger, lire, pause, reprise, position, fin, volume et erreur (ADR 0007).
+Le contrat fixe la recherche de Chansons, l’inscription personnelle, la gestion de la File d’attente (#82) puis le cycle du Passage : appel, « Je suis prêt », lecture, calage et fin (#98, voir « Passage : appel, lecture et calage »). Le mécanisme commun (File d’attente, appel, « Je suis prêt », fin du Passage, Vote du public) vit dans `passage` ; la Chanson, ses paroles, la lecture et le calage vivent dans `karaoke` (ADR 0006). Un seul Interprète par Passage ici ; les tableaux acceptent déjà un à quatre Interprètes pour #66. Aucun Point n’est attribué au Karaoké, même en Format Équipe. Les sections suivantes décrivent aussi l’appel en Pilotage Automatique (#120) et le résultat du Vote du public (#116). Le port `LecteurDeChanson` de l’Écran de salle couvre charger, lire, pause, reprise, position, fin, volume et erreur (ADR 0007).
 
 ### Rotation et cycle
 
@@ -263,10 +265,26 @@ rend le reçu initial sans publication. Un autre contenu avec le même identifia
 
 `passage-termine` ouvre le vote, et `vote-clos` signale l’échéance à la salle, la Console et toutes
 les Manettes. `vote-enregistre` est publié vers la salle, la Console et la Manette du votant.
-La Console reçoit le nombre de votes. Chaque Manette reçoit uniquement sa propre note et sa
-capacité de voter. Les deux vues ordonnent les votes ouverts et le dernier vote clos par date
-d’ouverture décroissante. `configurationInterface.dureeVoteMs` expose le réglage
-`croustyquizz.passage.dureeVoteSecondes`.
+En Pilotage Automatique, si la clôture appelle un Passage, la vue complète arrive avec
+`passage-appele`. Les trois blocs Karaoké portent une liste `votes` avec les votes ouverts et le
+vote clos le plus récemment, triés par date d’ouverture décroissante.
+
+Pendant le vote, la salle et la Console reçoivent le nombre de votes. Sur la Manette,
+`nombreVotes` reste nul, avec la note personnelle et la capacité de voter disponibles.
+Sur les trois écrans, `moyenneDixiemes` reste nul jusqu’à la clôture. À la clôture,
+`nombreVotes` est renseigné sur les trois écrans et, si des votes ont été reçus, la moyenne
+est arrondie au dixième le plus proche, une moitié vers le haut. En division entière,
+`moyenneDixiemes = (20 × sommeNotes + nombreVotes) / (2 × nombreVotes)`. Sans vote, la moyenne
+reste nulle et les écrans affichent « Aucun vote ».
+
+La salle affiche jusqu’à deux bandeaux au-dessus du rouleau, dans l’ordre de la liste. Un vote
+ouvert reste visible. Pour un vote clos encore dans la liste, le bandeau reste visible jusqu’au
+plus tardif de deux instants, le démarrage d’un Passage suivant et la fin de
+`configurationInterface.dureeAffichageMoyenneMs` après `clotureLe`. Ce délai court aussi pendant
+la pause, d’après l’heure du serveur. Le champ persistant `suivantDemarre`, disponible dans
+`VoteDuPassage` (salle et Console), devient vrai au démarrage d’un Passage suivant et le reste
+après sa fin ou son saut. Un Passage simplement appelé ne le change pas.
+`configurationInterface.dureeVoteMs` expose le réglage `croustyquizz.passage.dureeVoteSecondes`.
 
 ### Configuration par défaut
 
@@ -274,6 +292,8 @@ d’ouverture décroissante. `configurationInterface.dureeVoteMs` expose le rég
 |---|---|
 | `croustyquizz.passage.limitePassagesEnAttente` | 1 (de 1 à 20) |
 | `croustyquizz.passage.delaiAppelSecondes` | 30 |
+| `croustyquizz.passage.dureeVoteSecondes` | 30 |
+| `croustyquizz.passage.dureeAffichageMoyenneSecondes` | 10 |
 | `croustyquizz.karaoke.longueurRechercheMax` | 120 points de code, réduction seule |
 | `croustyquizz.karaoke.delaiConsultationNavigateurMs` | 8000 |
 | `croustyquizz.karaoke.delaiConfirmationNavigateurMs` | 10000 |

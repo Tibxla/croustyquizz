@@ -79,7 +79,7 @@ public final class VoteDuPublic {
         List<VoteRecu> notes = new ArrayList<>(vote.votes());
         notes.add(new VoteRecu(joueurId, note, recueLe));
         votes.put(passage.id(), new EtatVotePassage(passage.id(), vote.ouvertLe(), vote.echeanceLe(),
-                vote.pauseDepuis(), null, notes));
+                vote.pauseDepuis(), null, notes, vote.suivantDemarre()));
         return Optional.empty();
     }
 
@@ -87,10 +87,16 @@ public final class VoteDuPublic {
         return Optional.of(new Refuse(409, code, detail));
     }
 
+    public void signalerDemarrage(UUID passageId) {
+        votes.replaceAll((id, vote) -> id.equals(passageId) || vote.suivantDemarre() ? vote
+                : new EtatVotePassage(id, vote.ouvertLe(), vote.echeanceLe(), vote.pauseDepuis(), vote.clotureLe(),
+                        vote.votes(), true));
+    }
+
     public void suspendre(Instant maintenant) {
         votesOuverts().stream().filter(vote -> vote.pauseDepuis() == null).forEach(vote -> {
             votes.put(vote.passageId(), new EtatVotePassage(vote.passageId(), vote.ouvertLe(), vote.echeanceLe(),
-                    maintenant, null, vote.votes()));
+                    maintenant, null, vote.votes(), vote.suivantDemarre()));
             annulerRappel(vote.passageId());
         });
     }
@@ -98,7 +104,8 @@ public final class VoteDuPublic {
     public void reprendre(Instant maintenant) {
         votesOuverts().stream().filter(vote -> vote.pauseDepuis() != null).forEach(vote -> {
             Instant echeance = vote.echeanceLe().plus(Duration.between(vote.pauseDepuis(), maintenant));
-            var repris = new EtatVotePassage(vote.passageId(), vote.ouvertLe(), echeance, null, null, vote.votes());
+            var repris = new EtatVotePassage(vote.passageId(), vote.ouvertLe(), echeance, null, null,
+                    vote.votes(), vote.suivantDemarre());
             votes.put(vote.passageId(), repris);
             programmer(repris, maintenant);
         });
@@ -150,9 +157,13 @@ public final class VoteDuPublic {
     private void clore(EtatVotePassage vote, Instant maintenant) {
         annulerRappel(vote.passageId());
         votes.put(vote.passageId(), new EtatVotePassage(vote.passageId(), vote.ouvertLe(), vote.echeanceLe(),
-                null, maintenant, vote.votes()));
-        long somme = vote.votes().stream().mapToLong(VoteRecu::note).sum();
-        surClotureVote.accept(new ClotureVote(vote.passageId(), vote.votes().size(), somme, maintenant));
+                null, maintenant, vote.votes(), vote.suivantDemarre()));
+        surClotureVote.accept(new ClotureVote(vote.passageId(), vote.votes().size(), sommeNotes(vote), maintenant));
+    }
+
+    public static Integer moyenneDixiemes(long nombreVotes, long sommeNotes) {
+        if (nombreVotes == 0) { return null; }
+        return (int) ((20 * sommeNotes + nombreVotes) / (2 * nombreVotes));
     }
 
     /** Les Votes ouverts et le dernier Vote clos, du plus récent au plus ancien. */
@@ -169,8 +180,15 @@ public final class VoteDuPublic {
     }
 
     public static ProjectionVote projeter(EtatVotePassage vote, Instant maintenant) {
+        long nombreVotes = vote.votes().size();
+        long somme = sommeNotes(vote);
         return new ProjectionVote(vote.passageId(), vote.ouvert(), delaiRestant(vote, maintenant).toMillis(),
-                maintenant, vote.clotureLe(), vote.votes().size());
+                maintenant, vote.clotureLe(), nombreVotes, somme, vote.ouvert() ? null : moyenneDixiemes(nombreVotes, somme),
+                vote.suivantDemarre());
+    }
+
+    private static long sommeNotes(EtatVotePassage vote) {
+        return vote.votes().stream().mapToLong(VoteRecu::note).sum();
     }
 
     private static Duration delaiRestant(EtatVotePassage vote, Instant maintenant) {

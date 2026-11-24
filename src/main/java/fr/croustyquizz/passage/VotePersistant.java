@@ -16,6 +16,7 @@ public class VotePersistant {
     private Instant echeanceLe;
     private Instant pauseDepuis;
     private Instant clotureLe;
+    private boolean suivantDemarre;
 
     protected VotePersistant() { }
 
@@ -26,11 +27,12 @@ public class VotePersistant {
         this.echeanceLe = vote.echeanceLe();
         this.pauseDepuis = vote.pauseDepuis();
         this.clotureLe = vote.clotureLe();
+        this.suivantDemarre = vote.suivantDemarre();
     }
 
     UUID getPassageId() { return passageId; }
 
     EtatVotePassage restaurer(List<VoteRecu> notes) {
-        return new EtatVotePassage(passageId, ouvertLe, echeanceLe, pauseDepuis, clotureLe, notes);
+        return new EtatVotePassage(passageId, ouvertLe, echeanceLe, pauseDepuis, clotureLe, notes, suivantDemarre);
     }
 }

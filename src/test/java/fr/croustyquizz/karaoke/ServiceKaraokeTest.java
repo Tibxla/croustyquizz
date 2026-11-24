@@ -21,7 +21,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Service réel, transactions annulables, source et ports factices. */
 class ServiceKaraokeTest {
-    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30, 30), new ProprietesKaraoke.Karaoke(8000, 10000));
+    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30, 30, 10), new ProprietesKaraoke.Karaoke(8000, 10000));
     static final ProprietesSourceKaraoke SOURCE = new ProprietesSourceKaraoke(URI.create("https://source.invalid"), "Test", 5000, 2000000, 120);
     final BancKaraoke banc = new BancKaraoke();
     final UUID soiree = UUID.randomUUID();
@@ -687,9 +687,9 @@ class ServiceKaraokeTest {
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
                     pilotage);
-            PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {
-                public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
-                public void enregistrer(UUID id, Object valeur) {
+            var persistance = new PersistanceKaraokeJpa(null, json, passages) {
+                @Override public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
+                @Override public void enregistrer(UUID id, Object valeur) {
                     var etat = (InstantaneKaraoke) valeur;
                     passages.enregistrer(id, etat.file());
                     etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId(), etat.voteDuPublic()));

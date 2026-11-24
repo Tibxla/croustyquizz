@@ -260,7 +260,7 @@ class KaraokeTempsReelTest {
         }
     }
 
-    @Test void laNoteVaAuVotantEtLaClotureAToutesLesManettes() throws Exception {
+    @Test void leNombreVaALaSalleEtALaConsoleEtLaMoyenneAtoutesLesDestinationsALaCloture() throws Exception {
         UUID manche = service.creer(soiree, Map.of());
         service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
         String racine = "/api/soirees/" + soiree + "/manches/" + manche;
@@ -288,14 +288,79 @@ class KaraokeTempsReelTest {
 
         var corps = Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", 4);
         KaraokeHttpTest.verifier("voterPassage", envoyer(HttpMethod.POST, route + "/vote", votant, corps, null), 200);
-        assertThat(lireEvenement(salle, "vote-enregistre").at("/karaoke/votes").isMissingNode()).isTrue();
-        assertThat(lireEvenement(console, "vote-enregistre").at("/karaoke/votes/0/nombreVotes").asInt()).isEqualTo(1);
-        assertThat(lireEvenement(manette, "vote-enregistre").at("/karaoke/votes/0/maNote").asInt()).isEqualTo(4);
+        for (var abonne : List.of(salle, console)) {
+            var vote = lireEvenement(abonne, "vote-enregistre").at("/karaoke/votes/0");
+            assertThat(vote.path("nombreVotes").asInt()).isEqualTo(1);
+            assertThat(vote.path("moyenneDixiemes").isNull()).isTrue();
+        }
+        var voteManette = lireEvenement(manette, "vote-enregistre").at("/karaoke/votes/0");
+        assertThat(voteManette.path("maNote").asInt()).isEqualTo(4);
+        assertThat(voteManette.path("nombreVotes").isNull()).isTrue();
+        assertThat(voteManette.path("moyenneDixiemes").isNull()).isTrue();
         socle.registre().retirer(manche);
         assertThat(service.instantane(soiree, manche)).isInstanceOf(InstantaneKaraoke.class);
         ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(30));
-        for (var abonne : flux) { lireEvenement(abonne, "vote-clos"); }
+        for (var abonne : flux) {
+            var vote = lireEvenement(abonne, "vote-clos").at("/karaoke/votes/0");
+            assertThat(vote.path("moyenneDixiemes").asInt()).isEqualTo(40);
+            assertThat(vote.path("nombreVotes").asInt()).isEqualTo(1);
+        }
         assertThat(capturer(autreManette).at("/vue/karaoke/votes/0/maNote").isNull()).isTrue();
+    }
+
+    @Test void publieLePalmaresApresLaFinEtLeRetireAuDemarrageSuivant() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        UUID suivante = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var votant = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
+        jouerEtNoter(racine, votant, 1, 3);
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(30));
+        jouerEtNoter(racine, votant, 2, 5);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        var salle = abonner(ecran, Canaux.salle(soiree), "salle");
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var manette = abonner(votant, Canaux.joueur(votant.identifiant()), "manette");
+        assertThat(capturer(salle).at("/vue/palmaresKaraoke").isNull()).isTrue();
+        assertThat(capturer(console).at("/vue/palmaresKaraoke").isNull()).isTrue();
+        assertThat(capturer(salle).at("/vue/karaoke/votes/0/etat").asString()).isEqualTo("OUVERT");
+
+        KaraokeHttpTest.verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
+                Map.of("action", "TERMINER"), UUID.randomUUID()), 200);
+        var vueSalle = lireEvenement(salle, "manche-terminee");
+        assertThat(vueSalle.path("karaoke").isNull()).isTrue();
+        assertThat(vueSalle.path("classement").isEmpty()).isTrue();
+        var palmares = vueSalle.path("palmaresKaraoke");
+        assertThat(palmares.size()).isEqualTo(2);
+        assertThat(palmares.get(0).path("moyenneDixiemes").asInt()).isEqualTo(50);
+        assertThat(palmares.get(0).path("numero").asInt()).isEqualTo(2);
+        assertThat(palmares.get(0).path("rang").asInt()).isEqualTo(1);
+        assertThat(palmares.get(1).path("moyenneDixiemes").asInt()).isEqualTo(30);
+        assertThat(palmares.get(1).path("numero").asInt()).isEqualTo(1);
+        assertThat(palmares.get(1).path("rang").asInt()).isEqualTo(2);
+        assertThat(lireEvenement(console, "manche-terminee").path("palmaresKaraoke")).isEqualTo(palmares);
+        assertThat(lireEvenement(manette, "manche-terminee").has("palmaresKaraoke")).isFalse();
+
+        assertThat(service.demarrer(suivante, new EnvoiDeCommande(animateur, "/demarrer-suivante", UUID.randomUUID(), Map.of())))
+                .isInstanceOf(Accepte.class);
+        assertThat(lireEvenement(salle, "manche-demarree").path("palmaresKaraoke").isNull()).isTrue();
+        assertThat(lireEvenement(console, "manche-demarree").path("palmaresKaraoke").isNull()).isTrue();
+        assertThat(lireEvenement(manette, "manche-demarree").has("palmaresKaraoke")).isFalse();
+    }
+
+    private void jouerEtNoter(String racine, Acteur votant, long chanson, int note) throws Exception {
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(chanson)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString();
+        var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
+        KaraokeHttpTest.verifier("appelerPassage", appel, 200);
+        KaraokeHttpTest.verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, route + "/presence", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "etapeId", json.readTree(appel.getBody()).path("etapeId").asString(),
+                        "numeroModification", 1), null), 200);
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+        KaraokeHttpTest.verifier("voterPassage", envoyer(HttpMethod.POST, route + "/vote", votant,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", note), null), 200);
     }
 
     @Test void laFinPrevueEnAutomatiquePublieUnSeulAppelAToutesLesDestinations() throws Exception {

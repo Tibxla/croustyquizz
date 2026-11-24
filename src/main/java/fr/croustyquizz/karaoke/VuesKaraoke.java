@@ -22,8 +22,10 @@ public final class VuesKaraoke {
     }
     public record FicheChanson(ResumeChanson chanson, boolean inscriptionPossible, MotifIndisponibilite motifIndisponibilite) { }
     public record InterpretePublic(UUID joueurId, String pseudo) { }
+    public record LignePalmaresKaraoke(UUID passageId, long numero, Long rang, ResumeChanson chanson,
+            List<InterpretePublic> interpretes, long nombreVotes, Integer moyenneDixiemes) { }
     public record ConfigurationInterfaceKaraoke(int longueurRechercheMax, long delaiConsultationNavigateurMs, long delaiConfirmationNavigateurMs,
-            long delaiAppelMs, long dureeVoteMs) { }
+            long delaiAppelMs, long dureeVoteMs, long dureeAffichageMoyenneMs) { }
     public record PassageEnAttentePublic(UUID passageId, long numeroModification, long numero, ResumeChanson chanson,
             List<InterpretePublic> interpretes, long position, long tour, boolean prioritaire, AttenteEstimee attente) { }
     public record CourantPourFile(UUID passageId, long numeroModification, long numero, ResumeChanson chanson,
@@ -31,14 +33,15 @@ public final class VuesKaraoke {
             Instant appeleLe, Instant echeanceAppelLe, Long delaiAppelRestantMs, Instant demarreLe, Instant finPrevueLe,
             Long positionChronologiqueMs, long tempsPauseMs, Instant calculeLe, Instant clotureLe) { }
     public record VoteDuPassage(UUID passageId, long numero, ResumeChanson chanson, List<InterpretePublic> interpretes,
-            String etat, long delaiRestantMs, Instant calculeLe, Instant clotureLe, long nombreVotes) { }
+            String etat, long delaiRestantMs, Instant calculeLe, Instant clotureLe, long nombreVotes,
+            boolean suivantDemarre, Integer moyenneDixiemes) { }
     public record VoteDuPassageManette(UUID passageId, long numeroModification, long numero, ResumeChanson chanson,
             List<InterpretePublic> interpretes, String etat, long delaiRestantMs, Instant calculeLe, Instant clotureLe,
-            Integer maNote, boolean peutVoter) { }
+            Integer maNote, boolean peutVoter, Long nombreVotes, Integer moyenneDixiemes) { }
     public record BlocKaraokeSalle(UUID mancheId, EtatManche etat, long limitePassagesEnAttente, long nombreEnAttente, long tourOuvert,
             UUID passagePrioritaireId, CourantPourFile courant, ConfigurationInterfaceKaraoke configurationInterface,
             List<PassageEnAttentePublic> prochainsPassages, long nombreAutresPassages,
-            UUID lecteurDesigneId, LectureDeChanson lecture, ParolesDuPassage paroles) { }
+            UUID lecteurDesigneId, LectureDeChanson lecture, ParolesDuPassage paroles, List<VoteDuPassage> votes) { }
     public record BlocKaraokeConsole(UUID mancheId, EtatManche etat, long limitePassagesEnAttente, long nombreEnAttente, long tourOuvert,
             UUID passagePrioritaireId, CourantPourFile courant, ConfigurationInterfaceKaraoke configurationInterface,
             List<PassageEnAttentePublic> passagesEnAttente, boolean peutGererFile, boolean peutReglerLimite, boolean peutRechercher,
@@ -72,12 +75,13 @@ public final class VuesKaraoke {
         var attentes = file.estimerAttentes(maintenant, enPause, projection.prochainAppelPrevuLe(), projection.actif(), delaiAppel);
         List<PassageEnAttentePublic> publics = file.ordreEffectif().stream()
                 .map(p -> new PassageEnAttentePublic(p.id(), p.numeroModification(), p.numero(),
-                        ResumeChanson.de(instantane.contenus().get(p.id()).chanson()), interpretes(p, pseudos),
+                        ResumeChanson.de(instantane.contenus().get(p.id()).chanson()), interpretes(p.interpretes(), pseudos),
                         positions.get(p.id()), p.tourNormal(), p.id().equals(etat.passagePrioritaireId()), attentes.get(p.id())))
                 .toList();
         var configuration = new ConfigurationInterfaceKaraoke(source.longueurRechercheMax(),
                 proprietes.karaoke().delaiConsultationNavigateurMs(), proprietes.karaoke().delaiConfirmationNavigateurMs(),
-                delaiAppel.toMillis(), Duration.ofSeconds(proprietes.passage().dureeVoteSecondes()).toMillis());
+                delaiAppel.toMillis(), Duration.ofSeconds(proprietes.passage().dureeVoteSecondes()).toMillis(),
+                Duration.ofSeconds(proprietes.passage().dureeAffichageMoyenneSecondes()).toMillis());
         var trois = publics.stream().limit(3).toList();
         LecturePassage lecture = projection.actif() ? instantane.lectures().get(projection.courant().id()) : null;
         boolean lectureEnErreur = lecture != null && lecture.etat() == EtatLecture.EN_ERREUR;
@@ -86,7 +90,8 @@ public final class VuesKaraoke {
             case SALLE -> new BlocKaraokeSalle(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                     etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
                     instantane.lecteurDesigneId(), lecturePublique,
-                    lecture != null && projection.courant().etat() == EtatPassage.EN_COURS ? lecture.paroles() : null);
+                    lecture != null && projection.courant().etat() == EtatPassage.EN_COURS ? lecture.paroles() : null,
+                    projeterVotesPublics(instantane, file, pseudos, maintenant));
             case CONSOLE -> new BlocKaraokeConsole(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                     etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, publics, true, true, true,
                     instantane.lecteurDesigneId() != null,
@@ -94,7 +99,7 @@ public final class VuesKaraoke {
                     projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
                             && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
                     lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier(),
-                    VoteDuPublic.visibles(instantane.voteDuPublic(), file).stream().map(vote -> projeterVote(instantane, file, pseudos, maintenant, vote)).toList());
+                    projeterVotesPublics(instantane, file, pseudos, maintenant));
             case JOUEUR -> {
                 UUID joueur = destination.joueurId();
                 var personnels = publics.stream().filter(p -> p.interpretes().stream().anyMatch(i -> i.joueurId().equals(joueur))).toList();
@@ -111,14 +116,20 @@ public final class VuesKaraoke {
         };
     }
 
+    private static List<VoteDuPassage> projeterVotesPublics(InstantaneKaraoke instantane, FileAttente file,
+            Map<UUID, String> pseudos, Instant maintenant) {
+        return VoteDuPublic.visibles(instantane.voteDuPublic(), file).stream()
+                .map(vote -> projeterVote(instantane, file, pseudos, maintenant, vote)).toList();
+    }
+
     private static VoteDuPassage projeterVote(InstantaneKaraoke instantane, FileAttente file,
             Map<UUID, String> pseudos, Instant maintenant, EtatVotePassage vote) {
         Passage passage = file.trouver(vote.passageId());
         var projection = VoteDuPublic.projeter(vote, maintenant);
         return new VoteDuPassage(passage.id(), passage.numero(),
-                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage, pseudos),
+                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage.interpretes(), pseudos),
                 projection.ouvert() ? "OUVERT" : "CLOS", projection.delaiRestantMs(), projection.calculeLe(),
-                projection.clotureLe(), projection.nombreVotes());
+                projection.clotureLe(), projection.nombreVotes(), projection.suivantDemarre(), projection.moyenneDixiemes());
     }
 
     private static VoteDuPassageManette projeterVoteManette(InstantaneKaraoke instantane, FileAttente file,
@@ -131,21 +142,29 @@ public final class VuesKaraoke {
                 && !passage.interpretes().contains(joueur) && maNote == null;
         return new VoteDuPassageManette(passage.id(), passage.numeroModification(), publicVote.numero(), publicVote.chanson(),
                 publicVote.interpretes(), publicVote.etat(), publicVote.delaiRestantMs(), publicVote.calculeLe(),
-                publicVote.clotureLe(), maNote, peutVoter);
+                publicVote.clotureLe(), maNote, peutVoter, vote.ouvert() ? null : publicVote.nombreVotes(),
+                publicVote.moyenneDixiemes());
     }
 
     private static CourantPourFile courant(InstantaneKaraoke instantane, ProjectionCycle cycle, Map<UUID, String> pseudos) {
         Passage passage = cycle.courant();
         if (passage == null) { return null; }
         return new CourantPourFile(passage.id(), passage.numeroModification(), passage.numero(),
-                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage, pseudos),
+                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage.interpretes(), pseudos),
                 cycle.etapeId(), cycle.etat(), cycle.prochainAppelPrevuLe(), cycle.appeleLe(), cycle.echeanceAppelLe(),
                 cycle.delaiAppelRestantMs(), cycle.demarreLe(), cycle.finPrevueLe(), cycle.positionChronologiqueMs(),
                 cycle.tempsPauseMs(), cycle.calculeLe(), cycle.clotureLe());
     }
 
-    private static List<InterpretePublic> interpretes(Passage passage, Map<UUID, String> pseudos) {
-        return passage.interpretes().stream()
+    static LignePalmaresKaraoke lignePalmares(RangPassage ligne, ContenuKaraoke contenu, Map<UUID, String> pseudos) {
+        var resultat = ligne.resultat();
+        return new LignePalmaresKaraoke(resultat.passageId(), resultat.numero(), ligne.rang(),
+                ResumeChanson.de(contenu.chanson()), interpretes(resultat.interpretes(), pseudos),
+                resultat.nombreVotes(), resultat.moyenneDixiemes());
+    }
+
+    private static List<InterpretePublic> interpretes(List<UUID> interpretes, Map<UUID, String> pseudos) {
+        return interpretes.stream()
                 .map(id -> new InterpretePublic(id, pseudos.getOrDefault(id, ParticipantsDePassage.JOUEUR_PARTI))).toList();
     }
 

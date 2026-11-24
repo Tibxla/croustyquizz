@@ -84,6 +84,56 @@ confirmer « Je suis prêt » depuis sa Manette et laisser le Passage se termine
 Les tests automatisés couvrent le rendu des modules, les reçus et les destinations STOMP. Cette
 recette décrit les vérifications à réaliser dans le navigateur.
 
+### Recette de la note moyenne du Karaoké (#116)
+
+Vérification navigateur à réaliser à 1920 × 1080 puis à 1280 × 720, avec l’Écran de salle
+visible à cinq mètres. Reprendre la Soirée de démonstration et ouvrir deux Manettes de votants
+en plus de celle de l’Interprète.
+
+1. Terminer un Passage et envoyer les notes 4 et 5. La salle affiche le numéro, la Chanson,
+   les Interprètes, le nombre de votes et le temps restant dans le bandeau au-dessus du rouleau.
+   Pendant le vote, vérifier l’absence de moyenne sur les trois écrans et de nombre de votes
+   sur la Manette. Le changement du nombre garde le bandeau en place et l’appel ou les paroles
+   restent dans la zone principale.
+2. Laisser le vote se clore. Vérifier « 4,5 sur 5 » et « 2 votes » sur les trois écrans, la note
+   personnelle sur la Manette et une seule annonce du résultat au lecteur d’écran. Recharger
+   la Manette et vérifier que le résultat reste lisible sans nouvelle annonce. Refaire la
+   clôture sans voter et vérifier « Aucun vote ».
+3. Démarrer un Passage suivant avant la clôture, puis mettre la Manche en pause après la
+   clôture. La moyenne reste dix secondes après la clôture, délai qui continue pendant la
+   pause. Refaire avec un Passage suivant simplement appelé. La moyenne reste au-delà des
+   dix secondes et s’efface dès « Je suis prêt ». Sauter alors ce Passage, en appeler un autre
+   et recharger la salle. Le bandeau échu reste masqué. Refaire en sautant le Passage dès
+   l’appel, avant « Je suis prêt ». Ce saut laisse la moyenne affichée.
+4. Terminer deux Passages en moins de trente secondes pour obtenir deux votes ouverts et
+   mettre la Manche en pause. Vérifier les deux bandeaux au-dessus du rouleau, le plus récent
+   en haut, les temps figés sous « Pause », les textes lisibles, le talon visible et la colonne
+   latérale sans débordement aux deux résolutions. En terminant la Manche pendant un vote,
+   vérifier que les bandeaux disparaissent.
+5. En Pilotage Automatique, provoquer une clôture qui appelle le Passage suivant. Vérifier
+   que la Manette annonce aussi la moyenne à cette clôture et que la salle garde le bandeau
+   jusqu’au démarrage du Passage ou à l’expiration de l’affichage, selon le dernier des deux.
+
+### Recette du Palmarès du Karaoké (#117)
+
+Vérification navigateur à réaliser en Pilotage Manuel avec la Console, l’Écran de salle et
+deux Manettes de la même Soirée de démonstration.
+
+1. Terminer trois Passages de Karaoké et les noter depuis la Manette du public, par exemple
+   3, 5 et 4 dans l’ordre des Passages. Choisir « Terminer la Manche » pendant le dernier vote,
+   après réception de sa note.
+2. Vérifier que « Palmarès du Karaoké » apparaît sur la salle et la Console, dans l’ordre des
+   notes 5, 4, 3, et que le Classement général conserve ses Points. Vérifier que la Manette
+   n’affiche pas de Palmarès. Recharger la salle et la Console et contrôler le même résultat.
+3. Refaire le parcours avec un quatrième Passage sans note. Vérifier qu’il figure à la fin de
+   la liste de la Console, sans rang et avec « Aucun vote ». Sur la salle, vérifier que les trois
+   souches prennent la teinte du numéro de leur Passage et que les lignes restent lisibles à
+   1920 × 1080 et à 1280 × 720.
+4. Démarrer la Manche suivante selon la recette #114. Vérifier que le Palmarès disparaît de
+   la salle et de la Console à la réception de la nouvelle vue.
+5. Terminer une Manche de Karaoké sans Passage terminé dans une Soirée neuve. Vérifier
+   « Aucun Passage noté. » sur la salle et la Console.
+
 ### Musique d'attente (#140)
 
 Sur `/ecran.html`, choisir le dossier de musique depuis la coquille. Les MP3, M4A, OGG et WAV du sous-dossier `Attente`, y compris dans ses sous-dossiers, alimentent la Musique d'attente. La casse et les accents du nom `Attente` sont ignorés. La recherche locale des Chansons écarte ces fichiers. Le navigateur garde le dossier en mémoire le temps de l'ouverture de la page.

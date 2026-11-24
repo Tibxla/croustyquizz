@@ -6,6 +6,7 @@ import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { creerLignePalmaresSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -30,18 +31,33 @@ function lister(nom, valeurs, vide, maximum = Infinity) {
 		return li;
 	}));
 }
+function afficherPalmares(palmares) {
+	const zone = element('zone-palmares');
+	if (!zone) return;
+	zone.hidden = palmares === null;
+	const liste = element('palmares');
+	const vide = element('palmares-vide');
+	vide.hidden = palmares?.length !== 0;
+	liste.replaceChildren(...(palmares ?? []).map(ligne => {
+		if (ecran === 'ecran') return creerLignePalmaresSalle(document, ligne);
+		const li = document.createElement('li');
+		li.textContent = ligne.texte;
+		return li;
+	}));
+}
 function afficherCommun(vue) {
 	const description = decrireVue(vue);
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.', ecran === 'ecran' ? 3 : Infinity);
+	afficherPalmares(description.palmares);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
 	if (talon) {
 		talon.hidden = !description.codeAcces;
 		texte('code', description.codeAcces ?? '');
 	}
-	texte('attente', vue.modeEnCours === null ? 'La prochaine Manche s’affichera ici.' : '');
+	texte('attente', vue.modeEnCours === null && description.palmares === null ? 'La prochaine Manche s’affichera ici.' : '');
 	zoneErreur.hidden = true;
 }
 

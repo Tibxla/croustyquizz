@@ -1,6 +1,8 @@
 package fr.croustyquizz.tempsreel;
 
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +11,8 @@ import java.util.UUID;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.ModeDeJeu;
@@ -22,10 +26,27 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 	private final FournisseurPartieCommune commun;
 	private final VerrousSoiree verrous;
 	private final JsonMapper json;
+	private final List<FournisseurDeChampCommun> champsCommuns;
 	private final Map<ModeDeJeu, FournisseurDeBloc> blocs = new EnumMap<>(ModeDeJeu.class);
 	public AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
 			VerrousSoiree verrous, JsonMapper json) {
+		this(commun, fournisseurs, List.of(), verrous, json);
+	}
+	@Autowired
+	public AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
+			ObjectProvider<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json) {
+		this(commun, fournisseurs, champs.orderedStream().toList(), verrous, json);
+	}
+	private AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
+			List<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json) {
 		this.commun = commun; this.verrous = verrous; this.json = json;
+		champsCommuns = champs;
+		Set<String> noms = new HashSet<>();
+		for (var fournisseur : champsCommuns) {
+			if (!noms.add(fournisseur.champ())) {
+				throw new IllegalArgumentException("Deux fournisseurs pour le champ " + fournisseur.champ() + ".");
+			}
+		}
 		for (var fournisseur : fournisseurs) {
 			if (blocs.put(fournisseur.mode(), fournisseur) != null) {
 				throw new IllegalArgumentException("Deux fournisseurs pour le même mode.");
@@ -47,7 +68,16 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 	}
 	private VueComposee composer(UUID soireeId, Destination destination, String type,
 			Map<ModeDeJeu, Function<Destination, Object>> projections) {
-		Map<String, Object> vue = new LinkedHashMap<>(commun.fournir(soireeId, destination));
+		var partieCommune = Collections.unmodifiableMap(commun.fournir(soireeId, destination));
+		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
+		for (var fournisseur : champsCommuns) {
+			if (!fournisseur.concerne(destination)) { continue; }
+			var nom = fournisseur.champ();
+			if (vue.containsKey(nom)) {
+				throw new IllegalStateException("Champ déjà présent dans la partie commune : " + nom);
+			}
+			vue.put(nom, fournisseur.fournir(soireeId, destination, partieCommune));
+		}
 		Object mode = vue.get("modeEnCours");
 		ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());
 		for (var valeur : ModeDeJeu.values()) {
