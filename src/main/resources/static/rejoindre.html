@@ -111,14 +111,15 @@
 			location.replace(`/manette.html?soiree=${encodeURIComponent(soireeId)}`);
 		}
 
-		// Le QR code met le code dans le fragment : jamais envoyé au serveur, retiré après lecture. La coquille de la
-		// Manette y ajoute acces=refuse quand le serveur ne reconnaît plus le jeton.
+		// Le QR code met le code dans le fragment : jamais envoyé au serveur. La coquille de la Manette y ajoute
+		// acces=refuse quand le serveur ne reconnaît plus le jeton. Le fragment reste dans l'adresse jusqu'à la fin de
+		// la vérification : un rechargement pendant celle-ci reprend la Soirée scannée, pas la précédente.
 		const fragment = new URLSearchParams(location.hash.slice(1));
 		const codeScanne = (fragment.get('code') ?? '').replace(/\s/g, '').toUpperCase();
 		const accesRefuse = fragment.get('acces') === 'refuse';
-		if (location.hash) {
-			champCode.value = codeScanne;
-			history.replaceState(null, '', location.pathname);
+		if (location.hash) champCode.value = codeScanne;
+		function retirerFragment() {
+			if (location.hash) history.replaceState(null, '', location.pathname);
 		}
 
 		// Une Manette qui a déjà rejoint retrouve son Joueur sans repasser par le pseudo, si son jeton vaut encore :
@@ -145,6 +146,7 @@
 			if (resultat === 'reprise') {
 				allerALaManette(soireeId);
 			} else if (resultat === 'aucune') {
+				retirerFragment();
 				afficherFormulaire();
 			} else {
 				verification.hidden = true;
@@ -206,6 +208,7 @@
 
 		// Un QR code scanné reprend le Joueur de cette Soirée s'il l'a déjà rejointe, jamais celui d'une autre Soirée.
 		if (accesRefuse) {
+			retirerFragment();
 			afficherErreur(MESSAGES.ACCES_REFUSE);
 			afficherFormulaire();
 		} else {
