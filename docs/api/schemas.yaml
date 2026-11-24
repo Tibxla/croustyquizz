@@ -2365,7 +2365,7 @@ $defs:
           description: Vrai exactement quand lecteurDesigneId de la salle est non nul.
         peutAppeler:
           type: boolean
-          description: Manche EN_COURS, sans courant actif, File d’attente non vide.
+          description: Vrai exactement en Pilotage Manuel, Manche EN_COURS, sans courant actif et avec au moins un Passage en attente.
         peutPasser:
           type: boolean
           description: Courant actif, pause comprise.
