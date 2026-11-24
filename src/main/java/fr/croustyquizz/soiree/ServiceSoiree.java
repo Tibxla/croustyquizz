@@ -3,6 +3,7 @@ package fr.croustyquizz.soiree;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.hibernate.exception.ConstraintViolationException;
@@ -12,6 +13,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import fr.croustyquizz.manche.Accepte;
+import fr.croustyquizz.manche.Destination;
+import fr.croustyquizz.tempsreel.PublicationDeVues;
+import fr.croustyquizz.tempsreel.VerrousSoiree;
 
 /**
  * Création et ouverture des Soirées, arrivée des Joueurs. Les contrôleurs HTTP
@@ -28,20 +34,25 @@ public class ServiceSoiree {
 
 	/** Index qui garantit qu'un code ne désigne qu'une Soirée qu'on peut rejoindre. */
 	static final String INDEX_CODE_ACTIF = "soiree_code_acces_actif";
+	private static final Accepte SOIREE_OUVERTE = new Accepte(null, Set.of(Destination.CONSOLE), "soiree-ouverte");
 
 	private final DepotDeSoirees depotDeSoirees;
 	private final DepotDeJoueurs depotDeJoueurs;
 	private final Clock horloge;
 	private final TirageDeCode tirage;
 	private final TransactionTemplate nouvelleTransaction;
+	private final VerrousSoiree verrous;
+	private final PublicationDeVues vues;
 	private final SecureRandom hasard = new SecureRandom();
 
 	ServiceSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs, Clock horloge, TirageDeCode tirage,
-			PlatformTransactionManager transactions) {
+			PlatformTransactionManager transactions, VerrousSoiree verrous, PublicationDeVues vues) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.horloge = horloge;
 		this.tirage = tirage;
+		this.verrous = verrous;
+		this.vues = vues;
 		this.nouvelleTransaction = new TransactionTemplate(transactions);
 		this.nouvelleTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 	}
@@ -76,6 +87,18 @@ public class ServiceSoiree {
 	 * @throws SoireeDejaLancee  si la Soirée est en cours ou terminée
 	 */
 	public Soiree ouvrir(UUID soireeId) {
+		Ouverture ouverture = enregistrerOuverture(soireeId);
+		if (ouverture.nouvelle()) {
+			// L'ouverture est déjà validée. Capture la Console sous le verrou du programme.
+			verrous.executer(soireeId, () -> {
+				vues.publier(soireeId, SOIREE_OUVERTE);
+				return null;
+			});
+		}
+		return ouverture.soiree();
+	}
+
+	private Ouverture enregistrerOuverture(UUID soireeId) {
 		for (int essai = 1; essai <= ESSAIS_DE_CODE; essai++) {
 			try {
 				return nouvelleTransaction.execute(statut -> ouvrirAvecUnTirage(soireeId));
@@ -88,18 +111,20 @@ public class ServiceSoiree {
 		throw new IllegalStateException("Aucun code d'accès libre après " + ESSAIS_DE_CODE + " essais");
 	}
 
-	private Soiree ouvrirAvecUnTirage(UUID soireeId) {
+	private Ouverture ouvrirAvecUnTirage(UUID soireeId) {
 		// Le verrou sérialise les ouvertures d'une même Soirée : la seconde la trouve ouverte et garde son code.
 		Soiree soiree = depotDeSoirees.verrouiller(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
 		if (soiree.getEtat() == EtatSoiree.PREPARATION) {
 			soiree.ouvrir(tirage.tirer(), horloge.instant());
 			// Écrit maintenant, pour qu'une collision lève ici une exception traduite par Spring.
 			depotDeSoirees.flush();
-		} else {
-			soiree.ouvrir(soiree.getCodeAcces(), horloge.instant());
+			return new Ouverture(soiree, true);
 		}
-		return soiree;
+		soiree.ouvrir(soiree.getCodeAcces(), horloge.instant());
+		return new Ouverture(soiree, false);
 	}
+
+	private record Ouverture(Soiree soiree, boolean nouvelle) { }
 
 	private static boolean violeIndexCodeActif(Throwable refus) {
 		for (Throwable cause = refus; cause != null; cause = cause.getCause()) {

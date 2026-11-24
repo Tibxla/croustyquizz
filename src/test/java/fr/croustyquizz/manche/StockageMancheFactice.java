@@ -44,6 +44,9 @@ public final class StockageMancheFactice extends AbstractPlatformTransactionMana
 	}
 	@Override
 	public void enregistrer(ManchePersistante manche) { manches.put(manche.getMancheId(), manche); }
+
+	@Override
+	public void retirer(ManchePersistante manche) { manches.remove(manche.getMancheId()); }
 	@Override
 	public List<ManchePersistante> deLaSoiree(UUID soireeId) {
 		return manches.values().stream().filter(m -> m.getSoireeId().equals(soireeId)).toList();
