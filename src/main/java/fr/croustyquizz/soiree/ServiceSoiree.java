@@ -34,7 +34,9 @@ public class ServiceSoiree {
 
 	/** Index qui garantit qu'un code ne désigne qu'une Soirée qu'on peut rejoindre. */
 	static final String INDEX_CODE_ACTIF = "soiree_code_acces_actif";
-	private static final Accepte SOIREE_OUVERTE = new Accepte(null, Set.of(Destination.CONSOLE), "soiree-ouverte");
+	private static final Accepte SOIREE_OUVERTE = new Accepte(null, Set.of(Destination.CONSOLE, Destination.SALLE), "soiree-ouverte");
+	private static final Accepte JOUEURS_MODIFIES = new Accepte(null,
+			Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES), "joueurs-modifies");
 
 	private final DepotDeSoirees depotDeSoirees;
 	private final DepotDeJoueurs depotDeJoueurs;
@@ -157,15 +159,23 @@ public class ServiceSoiree {
 	 * @throws CodeAccesInvalide si aucune Soirée à rejoindre ne porte ce code
 	 * @throws PseudoInvalide    si le pseudo est absent, vide ou trop long
 	 */
-	@Transactional
 	public ArriveeDeJoueur rejoindre(String saisieDuCode, String pseudo) {
 		String code = CodeAcces.normaliser(saisieDuCode).orElseThrow(CodeAccesInvalide::new);
-		Soiree soiree = depotDeSoirees.findByCodeAccesAndEtatIn(code, EtatSoiree.AVEC_CODE_ACTIF)
-				.filter(Soiree::accepteLesArrivees)
-				.orElseThrow(CodeAccesInvalide::new);
-		JetonDeReconnexion jeton = JetonDeReconnexion.generer(hasard);
-		Joueur joueur = depotDeJoueurs.save(new Joueur(soiree.getId(), pseudo, jeton, horloge.instant()));
-		return new ArriveeDeJoueur(joueur, jeton, soiree);
+		ArriveeDeJoueur arrivee = nouvelleTransaction.execute(statut -> {
+			Soiree soiree = depotDeSoirees.findByCodeAccesAndEtatIn(code, EtatSoiree.AVEC_CODE_ACTIF)
+					.filter(Soiree::accepteLesArrivees)
+					.orElseThrow(CodeAccesInvalide::new);
+			JetonDeReconnexion jeton = JetonDeReconnexion.generer(hasard);
+			Joueur joueur = depotDeJoueurs.save(new Joueur(soiree.getId(), pseudo, jeton, horloge.instant()));
+			return new ArriveeDeJoueur(joueur, jeton, soiree);
+		});
+		// L'arrivée est validée : la salle, la Console et les Manettes voient la liste des Joueurs en direct (#8).
+		UUID soireeId = arrivee.soiree().getId();
+		verrous.executer(soireeId, () -> {
+			vues.publier(soireeId, JOUEURS_MODIFIES);
+			return null;
+		});
+		return arrivee;
 	}
 
 }

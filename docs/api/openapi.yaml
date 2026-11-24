@@ -397,7 +397,7 @@ paths:
         pour la reconnexion. Sans identité ni heure fournies par la Manette. La Manette met le code au format du schéma
         (majuscules, sans blancs) avant l’envoi. Un code inconnu, ou celui d’une Soirée en PREPARATION ou TERMINEE, donne 404 CODE_ACCES_INVALIDE, sans
         distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; filtre et unicité du pseudo
-        (PSEUDO_REFUSE, PSEUDO_DEJA_PRIS) relèvent de #10.
+        (PSEUDO_REFUSE, PSEUDO_DEJA_PRIS) relèvent de #10. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes.
       tags:
       - Soirée
       security: []
@@ -817,7 +817,7 @@ paths:
       operationId: ouvrirSoiree
       summary: Ouvrir la Soirée aux Joueurs
       description: PREPARATION vers OUVERTE ; le serveur génère un code de 6 caractères unique parmi les Soirées
-        accessibles (OUVERTE et EN_COURS). Le serveur publie soiree-ouverte sur la Console lors de la transition.
+        accessibles (OUVERTE et EN_COURS). Le serveur publie soiree-ouverte sur la Console et sur la salle lors de la transition, pour qu’un Écran ouvert pendant la préparation affiche le code et le QR code.
         Le programme peut être complété pendant l’accueil. La clé d’envoi garantit
         qu’une répétition ne régénère pas le code ; rouvrir une Soirée déjà OUVERTE la rend aussi inchangée. Soirée
         EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE.

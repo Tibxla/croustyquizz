@@ -68,6 +68,29 @@ class DeroulementSoireeTempsReelTest {
 	}
 
 	@Test
+	void lEcranOuvertPendantLaPreparationSuitLOuvertureEtLesArrivees() throws Exception {
+		var creation = envoyer("creerSoiree", HttpMethod.POST, "/api/soirees", null,
+				Map.of("titre", "Soirée ouverte devant la salle", "format", "SOLO", "pilotage", "MANUEL"), null, 201);
+		UUID soiree = UUID.fromString(creation.path("id").asString());
+		String racine = "/api/soirees/" + soiree;
+		String animateur = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
+		String cleEcran = envoyer("creerAccesEcran", HttpMethod.POST, racine + "/acces-ecran", animateur, null, null, 200)
+				.path("cleEcran").asString();
+		var salle = abonner(cleEcran, Canaux.salle(soiree), "salle", "retrouverEtatSalle");
+		assertThat(capturer(racine, salle).at("/vue/soiree/etat").asString()).isEqualTo("PREPARATION");
+
+		envoyer("ouvrirSoiree", HttpMethod.POST, racine + "/ouverture", animateur, null, UUID.randomUUID(), 200);
+
+		var ouverture = lire(salle, "soiree-ouverte");
+		assertThat(ouverture.at("/donnees/soiree/etat").asString()).isEqualTo("OUVERTE");
+
+		envoyer("rejoindreSoiree", HttpMethod.POST, "/api/soirees/rejoindre", null,
+				Map.of("codeAcces", ouverture.at("/donnees/soiree/codeAcces").asString(), "pseudo", "Camille"), null, 201);
+		assertThat(lire(salle, "joueurs-modifies").at("/donnees/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
+		assertThat(capturer(racine, salle).at("/vue/joueurs").findValuesAsString("pseudo")).containsExactly("Camille");
+	}
+
+	@Test
 	void deuxManchesDansLOrdreAvecPauseRepriseRecaptureEtFinSurTousLesEcrans() throws Exception {
 		var creation = envoyer("creerSoiree", HttpMethod.POST, "/api/soirees", null,
 				Map.of("titre", "Soirée de deux Manches", "format", "SOLO", "pilotage", "MANUEL"), null, 201);
