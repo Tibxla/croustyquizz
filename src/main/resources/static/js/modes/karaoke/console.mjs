@@ -29,7 +29,9 @@ function installerPassage(ui, commande) {
 	const identite = e('p'), phase = e('p'), temps = e('p', 'chiffres'), source = e('p'), lecteur = e('p'),
 		decalage = e('p'), mesure = e('p'), erreur = e('p');
 	erreur.setAttribute('role', 'status');
-	fiche.append(titre, identite, phase, temps, source, lecteur, decalage, mesure, erreur);
+	const noteFin = e('p', 'console__note', "File d'attente vide : la Manche se terminera après ce Passage et son vote.");
+	noteFin.hidden = true;
+	fiche.append(titre, identite, phase, temps, source, lecteur, decalage, mesure, erreur, noteFin);
 	const votes = e('section', 'karaoke__votes');
 	const titreVotes = e('h2', '', 'Vote du public');
 	titreVotes.id = 'karaoke-votes-console';
@@ -102,6 +104,8 @@ function installerPassage(ui, commande) {
 		rendre(automatique) {
 			const bloc = ui.bloc, permis = ui.mutationsPermises, p = bloc.courant, lecture = bloc.lecture;
 			const enPause = bloc.etat === 'EN_PAUSE';
+			const voteOuvert = bloc.votes?.some(vote => vote.etat === 'OUVERT');
+			noteFin.hidden = !(automatique && bloc.passagesEnAttente.length === 0 && (passageActif(p) || voteOuvert));
 			const focusPilotage = boutonsPilotage.indexOf(ui.document.activeElement);
 			basculer.textContent = enPause ? 'Reprendre' : 'Pause';
 			basculer.disabled = !permis || !(enPause ? bloc.peutReprendre : bloc.etat === 'EN_COURS');
