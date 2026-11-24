@@ -299,6 +299,7 @@ classDiagram
             +courantActif() Passage
             +appeler(CiblePassage, UUID, Instant) ResultatFile
             +appeler(CiblePassage, Instant, Supplier~UUID~) ResultatFile
+            +appelerSuivantSiLibre(Supplier~UUID~, Instant) boolean
             +demarrer(CiblePassage, UUID, Duration, Instant) ResultatFile
             +clore(EtatPassage, String, UUID, Instant) ResultatFile
             +suspendre(Instant)
@@ -731,6 +732,7 @@ classDiagram
         +Map lectures
         +UUID lecteurDesigneId
         +EtatVoteDuPublic voteDuPublic
+        +boolean pilotageAutomatique
     }
     class EtatKaraokePersiste {
         <<record>>

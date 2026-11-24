@@ -166,6 +166,22 @@ class FournisseurDeBlocKaraokeTest {
         verifierCapture(Destination.joueur(parcours.joueur.identifiant()), "retrouverEtatManette");
     }
 
+    @Test void enAutomatiqueLaConsoleNePeutPasAppelerUneAttenteRestaureeSansCourant() throws Exception {
+        UUID manche = parcours.demarrer();
+        var inscrit = parcours.inscrire(manche, 1);
+        assertThat(console().peutAppeler()).isTrue();
+
+        // Une attente persistée en Manuel permet d’exercer la capacité avant la prochaine mutation.
+        banc.pilotage.choisir(parcours.soiree, true);
+        banc.registre.retirer(manche);
+        var console = console();
+        assertThat(console.courant()).isNull();
+        assertThat(console.passagesEnAttente()).singleElement()
+                .satisfies(passage -> assertThat(passage.passageId()).isEqualTo(inscrit.passageId()));
+        assertThat(console.peutAppeler()).isFalse();
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+    }
+
     @Test void lesParolesRestentEnSalleEnPauseEtLeFichierResteEnConsole() throws Exception {
         UUID manche = parcours.demarrer();
         var appel = parcours.appeler(manche, parcours.inscrire(manche, 1).passageId());
