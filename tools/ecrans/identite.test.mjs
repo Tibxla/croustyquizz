@@ -28,6 +28,44 @@ test('le Joueur de démonstration prend son UUID dans la projection du serveur',
 	assert.equal(acces.page, 'manette');
 });
 
+test('le rang 3 ouvre la Manette du troisième Joueur de la projection', async () => {
+	const troisieme = '10000000-0000-4000-8000-000000000003';
+	const joueurs = [{ id: joueur }, { id: '10000000-0000-4000-8000-000000000002' }, { id: troisieme }];
+	const acces = await preparerIdentite('JOUEUR', soiree, joueur, async () => Response.json({ vue: { joueurs } }), 3);
+	assert.deepEqual(acces, { jeton: `demo:JOUEUR:${soiree}:${troisieme}`, page: 'manette' });
+	assert.equal(lireAcces(acces.page, `?soiree=${soiree}`, acces.jeton).destination, `/topic/joueurs/${troisieme}`);
+});
+
+test('un rang invalide est refusé avant toute requête', async () => {
+	const requete = () => assert.fail('La requête ne doit pas partir.');
+	for (const rang of [0, 5, 1.5, NaN]) {
+		await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, requete, rang),
+			{ message: 'Ce Joueur de démonstration n’existe pas dans cette Soirée.' });
+	}
+});
+
+test('un Joueur absent de la projection est refusé', async () => {
+	const requete = async () => Response.json({ vue: { joueurs: [{ id: joueur }] } });
+	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, requete, 3),
+		{ message: 'Ce Joueur de démonstration n’existe pas dans cette Soirée.' });
+});
+
+test('une entrée présente sans UUID valide garde le message historique', async () => {
+	for (const entree of [{}, { id: 'invalide' }]) {
+		const requete = async () => Response.json({ vue: { joueurs: [{ id: joueur }, entree] } });
+		await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, requete, 2),
+			{ message: 'Le serveur n’a pas fourni de Joueur de démonstration.' });
+	}
+});
+
+test('l’Animateur et l’Écran de salle ignorent le rang du Joueur', async () => {
+	const requete = async () => Response.json({ vue: { joueurs: [] } });
+	for (const [role, page] of [['ANIMATEUR', 'console'], ['ECRAN', 'ecran']]) {
+		assert.deepEqual(await preparerIdentite(role, soiree, joueur, requete, 5),
+			{ jeton: `demo:${role}:${soiree}:${joueur}`, page });
+	}
+});
+
 test('une page d’erreur HTML ou un Probleme donnent un refus lisible, jamais une SyntaxError', async () => {
 	const html = { ok: false, status: 502, headers: new Headers({ 'Content-Type': 'text/html' }), text: async () => '<html>502 Bad Gateway</html>' };
 	await assert.rejects(preparerIdentite('JOUEUR', soiree, joueur, async () => html), { message: 'Le serveur ne répond pas correctement.' });

@@ -3,17 +3,19 @@ const canonique = valeur => JSON.stringify(valeur, (_, v) => v && typeof v === '
 	Object.fromEntries(Object.keys(v).sort().map(cle => [cle, v[cle]])) : v);
 export const peutReessayer = etat => etat && (['inconnu', 'indisponible'].includes(etat.etat) ||
 	(etat.etat === 'refuse' && etat.code !== 'CSRF_INVALIDE' && (etat.code === 'ETAPE_INACTIVE' || [401, 403].includes(etat.statut))));
+export const exigeCapture = etat => ['inconnu', 'indisponible'].includes(etat.etat) || (etat.etat === 'refuse' &&
+	etat.code !== 'CSRF_INVALIDE' && (['COMMANDE_PERIMEE', 'ETAPE_INACTIVE', 'ETAT_INCOMPATIBLE'].includes(etat.code) ||
+		[401, 403].includes(etat.statut)));
 
 export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annulerDelai,
 	delaiConfirmationMs, resynchroniser, surEtat }) {
 	const envois = new Map();
-	let detruite = false, generation = 0, capturePrevue = false, mancheCourante;
+	let detruite = false, capturePrevue = false;
 	function demanderCapture() {
 		if (capturePrevue) return;
 		capturePrevue = true;
-		const tour = generation;
 		queueMicrotask(() => {
-			if (detruite || tour !== generation) return;
+			if (detruite) return;
 			capturePrevue = false; resynchroniser();
 		});
 	}
@@ -23,9 +25,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 		envoi.etat = { cle: envoi.cle, ...etat };
 		envoi.definitif = etat.etat === 'accepte' || (etat.etat === 'refuse' && !peutReessayer(etat));
 		surEtat(envoi.etat);
-		const capture = ['inconnu', 'indisponible'].includes(etat.etat) || (etat.etat === 'refuse' && etat.code !== 'CSRF_INVALIDE' &&
-			(['COMMANDE_PERIMEE', 'ETAPE_INACTIVE', 'ETAT_INCOMPATIBLE'].includes(etat.code) || [401, 403].includes(etat.statut)));
-		if (capture && precedent !== etat.etat) demanderCapture();
+		if (exigeCapture(etat) && precedent !== etat.etat) demanderCapture();
 	}
 	function partir(envoi) {
 		const tentative = { controleur: new AbortController(), active: true };
@@ -66,10 +66,6 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 		envois.delete(cle);
 		for (const t of envoi.tentatives) { annulerDelai(t.delai); t.controleur.abort(); }
 	}
-	function vider() {
-		generation++; capturePrevue = false;
-		for (const cle of envois.keys()) oublier(cle);
-	}
 	function inscription(envoi) { return envoi.acteurType === 'JOUEUR' && envoi.chansonId !== undefined && !envoi.passageId; }
 	function retrouverInscription(mancheId, chansonId) {
 		for (const e of envois.values()) if (inscription(e) && e.mancheId === mancheId && e.chansonId === chansonId &&
@@ -99,20 +95,22 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 		},
 		retrouverInscription,
 		reconcilier(clesVisibles) {
-			const visibles = new Set(clesVisibles), acceptees = [], oubliees = [];
+			const visibles = new Set(clesVisibles), oubliees = [];
 			for (const e of envois.values()) {
 				if (!inscription(e)) continue;
 				const visible = visibles.has(e.cle);
 				if (visible && ['en-cours', 'inconnu', 'indisponible'].includes(e.etat.etat)) {
-					transition(e, { etat: 'accepte' }); acceptees.push(e.cle);
+					transition(e, { etat: 'accepte' });
 				// Le 2xx peut précéder l'événement qui ajoute le Passage : on n'oublie qu'un Passage déjà vu puis disparu.
 				} else if (!visible && e.etat.etat === 'accepte' && e.vu) { oublier(e.cle); oubliees.push(e.cle); }
 				if (visible) e.vu = true;
 			}
-			return { acceptees, oubliees };
+			return oubliees;
 		},
 		oublier,
-		changerManche(mancheId) { if (mancheId !== mancheCourante) { mancheCourante = mancheId; vider(); } },
-		detruire() { detruite = true; vider(); },
+		detruire() {
+			detruite = true;
+			for (const cle of envois.keys()) oublier(cle);
+		},
 	};
 }

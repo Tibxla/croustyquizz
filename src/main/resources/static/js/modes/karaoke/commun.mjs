@@ -1,5 +1,5 @@
 import { ouvrirDialogue } from '../../dialogue.mjs';
-import { creerMachineEnvoi, peutReessayer } from './envois.mjs';
+import { creerMachineEnvoi, exigeCapture, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
 import { teintePassage, formaterDuree, formaterAttente, etatInscription } from './presentation.mjs';
 
@@ -17,8 +17,6 @@ export function creerUuid(cryptoDisponible = globalThis.crypto) {
 const styles = new WeakMap();
 const paroles = { SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',
 	ABSENTES: 'Sans paroles', SANS_VOIX: 'Sans voix', INCONNU: 'Paroles à vérifier' };
-const exigeCapture = e => ['inconnu', 'indisponible'].includes(e.etat) || (e.etat === 'refuse' && e.code !== 'CSRF_INVALIDE' &&
-	(['COMMANDE_PERIMEE', 'ETAPE_INACTIVE', 'ETAT_INCOMPATIBLE'].includes(e.code) || [401, 403].includes(e.statut)));
 
 export function texteEnvoi(e) {
 	if (!e) return '';
@@ -55,8 +53,10 @@ export function creerInterface(zones, contexte) {
 	const connexion = e('p', 'coupure'); connexion.setAttribute('role', 'status'); connexion.hidden = true; principale.append(connexion);
 	function rendre() {
 		if (detruite || suspendre) return;
-		for (const d of [...dialogues]) if (d.valide && !d.valide()) {
-			d.fermer(); ui.messageInvalidation();
+		for (const d of [...dialogues]) {
+			if (d.valide && !d.valide()) {
+				d.fermer(); ui.messageInvalidation();
+			} else if (d.confirmer) d.confirmer.disabled = !d.confirmationPermise();
 		}
 		connexion.hidden = etatConnexion !== 'coupure'; connexion.textContent = 'Connexion perdue, on réessaie.';
 		ui.surRendu();
@@ -108,19 +108,28 @@ export function creerInterface(zones, contexte) {
 		reessayer(cle) { if (ui.reessaiPossible(envois.get(cle))) machine.reessayer(cle); },
 		dernierEnvoi() { return [...envois.values()].sort((a, b) => b.ordre - a.ordre)[0]; },
 		dernierEchec() { return [...envois.values()].filter(e => ['refuse', 'inconnu', 'indisponible'].includes(e.etat) || e.reessaiEnCours).sort((a, b) => b.ordre - a.ordre)[0]; },
-		dialogue({ titre, declencheur, valide, fermer = () => {} }) {
-		const dialog = e('dialog', 'dialogue');
-		const titreElement = e('h3', '', titre); titreElement.id = `karaoke-dialogue-${++ordre}`;
-		dialog.setAttribute('aria-labelledby', titreElement.id); dialog.setAttribute('tabindex', '-1');
-		const contenu = e('div', 'karaoke__fiche');
-		const annuler = bouton('Fermer', () => dialog.close()); dialog.append(titreElement, contenu, annuler); principale.append(dialog);
-		const d = { element: dialog, contenu, annuler, valide, fermer: () => { if (dialog.open) dialog.close(); terminer(); } };
-		function terminer() {
-			if (!dialogues.delete(d)) return;
-			fermer(); dialog.remove();
-			if (!declencheur?.isConnected) (principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
-		}
-		dialogues.add(d); ecouter(dialog, 'close', terminer); ouvrirDialogue(dialog, declencheur); return d;
+		dialogue({ titre, declencheur, valide, fermer = () => {}, confirmation }) {
+			const dialog = e('dialog', 'dialogue');
+			const titreElement = e('h3', '', titre); titreElement.id = `karaoke-dialogue-${++ordre}`;
+			dialog.setAttribute('aria-labelledby', titreElement.id); dialog.setAttribute('tabindex', '-1');
+			const contenu = e('div', 'karaoke__fiche');
+			const annuler = bouton('Fermer', () => dialog.close());
+			const d = { element: dialog, contenu, annuler, valide, fermer: () => { if (dialog.open) dialog.close(); terminer(); } };
+			if (confirmation) {
+				d.confirmationPermise = confirmation.permise;
+				d.confirmer = bouton(confirmation.libelle, () => {
+					if ((valide && !valide()) || !confirmation.permise()) return;
+					d.fermer(); confirmation.executer();
+				});
+				d.confirmer.disabled = !confirmation.permise();
+			}
+			function terminer() {
+				if (!dialogues.delete(d)) return;
+				fermer(); dialog.remove();
+				if (!declencheur?.isConnected) (principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
+			}
+			dialog.append(titreElement, contenu, annuler); principale.append(dialog);
+			dialogues.add(d); ecouter(dialog, 'close', terminer); ouvrirDialogue(dialog, declencheur); return d;
 		},
 		remplacerListe(liste, enfants, titre) {
 			const actif = document.activeElement, avaitFocus = liste.contains(actif);
@@ -133,7 +142,6 @@ export function creerInterface(zones, contexte) {
 		},
 		afficher(vue, origine) {
 			if (detruite) return;
-			if (!vue.karaoke) { ui.demonter(); return; }
 			suspendre = true;
 			try {
 				if (vue.karaoke.mancheId !== bloc?.mancheId) {
@@ -148,7 +156,7 @@ export function creerInterface(zones, contexte) {
 				const personnels = bloc.mesPassagesEnAttente ?? [];
 				const visibles = [...envois.values()].filter(e => e.commande.acteurType === 'JOUEUR' && e.commande.chansonId &&
 					personnels.some(p => p.chanson.chansonId === e.commande.chansonId)).map(e => e.cle);
-				for (const cle of machine.reconcilier(visibles).oubliees) envois.delete(cle);
+				for (const cle of machine.reconcilier(visibles)) envois.delete(cle);
 				for (const [cle, e] of envois) if (e.commande.acteurType === 'JOUEUR' && e.commande.passageId &&
 					!personnels.some(p => p.passageId === e.commande.passageId)) { machine.oublier(cle); envois.delete(cle); }
 			} finally { suspendre = false; }

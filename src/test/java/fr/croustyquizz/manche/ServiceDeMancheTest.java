@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionSystemException;
+import fr.croustyquizz.tempsreel.DiffuseurFactice;
 
 /** Garanties observables du service : reçus, pause durable, annulation et concurrence. */
 class ServiceDeMancheTest {
@@ -117,7 +118,12 @@ class ServiceDeMancheTest {
 		assertThat(banc.diffuseur.envois()).hasSize(publications);
 		banc.horloge.avancer(Duration.ofSeconds(20));
 		// Vérifier le rappel avant toute lecture qui pourrait restaurer et réarmer le déroulement.
-		assertThat(banc.diffuseur.envois()).hasSize(publications + 3);
+		var envois = banc.diffuseur.envois();
+		assertThat(envois).hasSize(publications + 6);
+		assertThat(envois.subList(publications, envois.size()))
+				.filteredOn(envoi -> envoi.cible() == DiffuseurFactice.Cible.JOUEUR)
+				.extracting(DiffuseurFactice.Envoi::destinataire)
+				.containsExactlyInAnyOrderElementsOf(banc.commun.joueurs(soiree));
 		assertThat(banc.horloge.minuteursEnAttente()).isEqualTo(1);
 		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
 	}
@@ -197,7 +203,7 @@ class ServiceDeMancheTest {
 			minuteur.get(2, TimeUnit.SECONDS);
 		}
 		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
-		assertThat(banc.diffuseur.envois()).hasSize(publications + 3);
+		assertThat(banc.diffuseur.envois()).hasSize(publications + 6);
 		banc.registre.retirer(manche);
 		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
 		banc.horloge.avancer(Duration.ofSeconds(20));
@@ -234,7 +240,7 @@ class ServiceDeMancheTest {
 			assertThat(expiration.get()).isNotNull();
 			expiration.get().get(2, TimeUnit.SECONDS);
 			assertThat(((DeroulementFactice.Etat) restauration.service.instantane(soiree, manche)).etape()).isEqualTo(2);
-			assertThat(restauration.diffuseur.envois()).hasSize(publications + 3);
+			assertThat(restauration.diffuseur.envois()).hasSize(publications + 6);
 			restauration.registre.retirer(manche);
 			assertThat(((DeroulementFactice.Etat) restauration.service.instantane(soiree, manche)).etape()).isEqualTo(2);
 		}
@@ -342,7 +348,7 @@ class ServiceDeMancheTest {
 	private UUID demarrer() {
 		UUID manche = banc.creer(soiree);
 		assertThat(banc.service.demarrer(manche, banc.envoi(soiree, "/demarrer", Map.of()))).isInstanceOf(Accepte.class);
-		assertThat(banc.diffuseur.envois()).hasSize(3);
+		assertThat(banc.diffuseur.envois()).hasSize(6);
 		return manche;
 	}
 	private static void attendre(CountDownLatch verrou) {

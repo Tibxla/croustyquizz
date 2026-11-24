@@ -134,12 +134,16 @@ _Éviter_ : prestation, performance, tour de chant
 Joueur qui fait partie d'un Passage, qu'il l'ait inscrit ou qu'il y ait été invité et ait accepté.
 _Éviter_ : chanteur, rappeur, artiste
 
+**Invitation** :
+Proposition qu'un Joueur fait à un autre, en inscrivant un Passage, de devenir Interprète de ce Passage. L'invité l'accepte ou la refuse ; sans réponse, elle expire à l'appel du Passage.
+_Éviter_ : demande d'ami, ajout
+
 **File d'attente** :
 Liste ordonnée des Passages à venir d'une Manche de Karaoké ou de Freestyle. Elle avance par Tours : le deuxième Passage d'un Interprète vient après le premier de chacun des autres.
 _Éviter_ : playlist, queue
 
 **Tour** :
-Cycle de la File d'attente au cours duquel chaque Interprète a au plus un Passage. Un Passage placé en priorité compte comme le Passage de son Interprète pour le Tour.
+Cycle de la File d'attente au cours duquel chaque Interprète a au plus un Passage. Un Passage à plusieurs compte pour chacun de ses Interprètes, et un Passage placé en priorité compte pour leur Tour.
 _Éviter_ : round, rotation (pour le cycle), tour de chant
 
 **Vote du public** :
@@ -159,6 +163,10 @@ _Éviter_ : extension, appli mobile, client mobile
 **Écran de salle** :
 Page affichée sur la télévision ou le projecteur du lieu, visible par toute la salle : Questions, paroles, Grilles de rimes, scores.
 _Éviter_ : écran principal, TV, affichage
+
+**Musique d'attente** :
+Musique que l'Écran de salle joue entre les Manches et entre les Passages, prise dans les fichiers de l'ordinateur qui l'affiche. Elle se tait pendant tout son de Manche, et l'Animateur peut la couper.
+_Éviter_ : playlist, fond sonore, ambiance
 
 **Console d'animation** :
 Page web ouverte par l'Animateur sur un ordinateur ou une tablette, depuis laquelle il crée une Soirée, lance les Manches et intervient en cours de jeu.
