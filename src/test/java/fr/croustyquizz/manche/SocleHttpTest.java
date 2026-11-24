@@ -39,6 +39,7 @@ class SocleHttpTest {
 	@Autowired private RegistreDesDeroulements registre;
 	@Autowired private ServiceDeManche<?, ?> service;
 	@Autowired private PilotageDeSoiree pilotage;
+	@Autowired private ModeFacticeDuSocle mode;
 
 	@Test
 	void choisirLePilotageAvantLeDemarrageModifieLaCaptureSansPublier() throws Exception {
@@ -72,6 +73,32 @@ class SocleHttpTest {
 		var capture = captureConsole(soiree);
 		assertThat(capture.path("revision").asLong()).isOne();
 		assertThat(capture.at("/vue/soiree/pilotage").asString()).isEqualTo("AUTOMATIQUE");
+	}
+
+	@Test
+	void lesManchesLuesAvantLeChoixRecoiventLeNouveauPilotage() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		var reglages = new ModeFacticeDuSocle.Reglages(3, 20);
+		UUID premiere = service.creer(soiree, reglages);
+		UUID suivante = service.creer(soiree, reglages);
+		service.instantane(soiree, premiere);
+		assertThat(mode.dernierContexte.pilotageAutomatique()).isFalse();
+		service.instantane(soiree, suivante);
+		assertThat(mode.dernierContexte.pilotageAutomatique()).isFalse();
+
+		String route = "/api/test/soirees/" + soiree + "/pilotage";
+		var choix = envoyer(HttpMethod.PUT, route, soiree, Acteur.Type.ANIMATEUR, Map.of("pilotage", "AUTOMATIQUE"), null);
+		assertThat(choix.getStatusCode().value()).isEqualTo(200);
+		ContratApi.verifier(PROTOTYPE, CHOISIR_PILOTAGE, choix);
+
+		service.instantane(soiree, suivante);
+		assertThat(mode.dernierContexte.pilotageAutomatique()).isTrue();
+		var demarrage = envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches/" + premiere + "/demarrer",
+				soiree, Acteur.Type.ANIMATEUR, null, UUID.randomUUID());
+		assertThat(demarrage.getStatusCode().value()).isEqualTo(200);
+		ContratApi.verifier(PROTOTYPE, "demarrerMancheDeTest", demarrage);
+		assertThat(mode.dernierContexte.mancheId()).isEqualTo(premiere);
+		assertThat(mode.dernierContexte.pilotageAutomatique()).isTrue();
 	}
 
 	@Test
