@@ -24,7 +24,7 @@ function bancLecteur() {
 	};
 	return { lecteur, appels, trames,
 		dependances: { lecteur, requestAnimationFrame(f) { trames.set(++numero, f); return numero; },
-			cancelAnimationFrame: id => trames.delete(id), setTimeout, clearTimeout, performance } };
+			cancelAnimationFrame: id => trames.delete(id), performance } };
 }
 function ecran(zones, contexte) {
 	reinitialiserEtatEcranPourTests();

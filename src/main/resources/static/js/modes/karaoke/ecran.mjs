@@ -23,12 +23,11 @@ export function monter(zones, contexte) {
 		}),
 		document, performance: navigateur.performance,
 		requestAnimationFrame: f => navigateur.requestAnimationFrame(f), cancelAnimationFrame: id => navigateur.cancelAnimationFrame(id),
-		setTimeout: (f, ms) => navigateur.setTimeout(f, ms), clearTimeout: id => navigateur.clearTimeout(id),
 	});
 }
 
 export function creerEcranKaraoke(zones, contexte, dependances) {
-	const { document, requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout } = dependances;
+	const { document, requestAnimationFrame, cancelAnimationFrame } = dependances;
 	const page = etatEcranKaraoke;
 	const lecteur = page.lecteur ??= dependances.lecteur;
 	const lecteurId = page.lecteurId ??= creerUuid();
@@ -74,7 +73,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		requetes = new AbortController();
 		const signal = requetes.signal;
 		cycle = creerCycleLecture({
-			lecteur, lecteurId, horloge: contexte, setTimeout, clearTimeout,
+			lecteur, lecteurId,
 			envoyer: (methode, chemin, corps) => contexte.envoyer(methode, `${ui.racine()}${chemin}`, corps,
 				{ entetes: { 'Idempotency-Key': creerUuid() }, signal, annoncer: false }),
 			surEtat(etat) {
