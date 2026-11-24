@@ -6,6 +6,7 @@
   <title>Console d’animation · CroustyQuizz</title>
   <link rel="stylesheet" href="/css/croustyquizz.css">
   <link rel="stylesheet" href="/css/console.css">
+  <link rel="stylesheet" href="/css/photos.css">
   <script defer src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
   <script type="module" src="/js/page.mjs"></script>
 </head>
@@ -54,6 +55,7 @@
           <button class="bouton bouton--action" type="submit" data-soumettre-manche aria-disabled="true">Ajouter une Manche</button>
         </form>
       </section>
+      <section class="panneau photos--console" data-photos hidden></section>
       <details><summary data-nombre-joueurs>Joueurs</summary><ul class="commun__liste" data-joueurs></ul></details>
       <details><summary>Classement général</summary><ol class="commun__liste" data-classement></ol></details>
       <p data-buzz>Aucun Buzz reçu</p>

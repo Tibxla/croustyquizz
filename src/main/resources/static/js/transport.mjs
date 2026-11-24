@@ -19,14 +19,18 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 		...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
 		...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
 	});
-	async function envoyer(methode, chemin, corps, { entetes = {}, signal } = {}) {
+	function adresseLocale(chemin) {
 		const url = new URL(chemin, adresse);
 		if (url.origin !== new URL(adresse).origin) throw new Error('La requête doit rester sur CroustyQuizz.');
-		const reponse = await requete(url, {
+		return url;
+	}
+	async function envoyer(methode, chemin, corps, { entetes = {}, signal } = {}) {
+		const binaire = corps instanceof Blob;
+		const reponse = await requete(adresseLocale(chemin), {
 			method: methode, credentials: 'same-origin', cache: 'no-store', signal,
 			headers: { Accept: 'application/json', ...entetes,
-				...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetesIdentite() },
-			...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
+				...(corps === undefined ? {} : { 'Content-Type': binaire ? corps.type : 'application/json' }), ...entetesIdentite() },
+			...(corps === undefined ? {} : { body: binaire ? corps : JSON.stringify(corps) }),
 		});
 		const { lisible, corps: lu } = await lireCorps(reponse);
 		if (lisible) return { statut: reponse.status, corps: lu };
@@ -36,6 +40,16 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 	}
 	return {
 		envoyer,
+		async chargerImage(chemin, { signal } = {}) {
+			const reponse = await requete(adresseLocale(chemin), {
+				method: 'GET', credentials: 'same-origin', cache: 'no-store', signal,
+				headers: { Accept: 'image/jpeg', ...entetesIdentite() },
+			});
+			if (!reponse.ok || reponse.headers?.get('Content-Type') !== 'image/jpeg') {
+				throw new Error('Cette photo est indisponible.');
+			}
+			return reponse.blob();
+		},
 		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur }) {
 			const url = new URL('/ws', adresse);
 			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';

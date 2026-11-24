@@ -87,6 +87,9 @@ async function demarrer() {
 		...(factice ? { charger: () => import(`./modes/factice/${ecran}.mjs`) } : {}),
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
+	const zonePhotos = element('photos');
+	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
+		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
@@ -94,6 +97,7 @@ async function demarrer() {
 		surVue(vue, origine) {
 			afficherCommun(vue);
 			programme?.afficher(vue);
+			photos?.afficher(vue);
 			void gestionnaire.afficher(vue, origine);
 		},
 		surEtat(etat) {
@@ -106,7 +110,7 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); photos?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {

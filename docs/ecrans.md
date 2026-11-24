@@ -120,3 +120,30 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 4. Confirmer le premier Passage après la préparation de son fichier. À la fin de lecture, vérifier que le Joueur 2 est appelé, que l’Écran de salle prépare son fichier et que le Vote du public du premier Passage s’ouvre sur sa Manette. Confirmer le deuxième Passage une fois préparé et vérifier que le fichier local démarre.
 5. Rejouer avec une pause pendant un Passage alors que le Joueur 2 attend. Cliquer sur « Passer » et vérifier que le Joueur 2 reste en attente jusqu’à « Reprendre ».
 6. Rejouer dans une Soirée neuve en Manuel. Vérifier que « Appeler le suivant » est disponible quand la File d’attente est libre et que l’Animateur doit l’utiliser après la première inscription et après la fin du Passage.
+
+## Photos de la salle (#72)
+
+La Manette propose « Envoyer une photo » tant que les envois sont ouverts.
+Le sélecteur du téléphone peut ouvrir l’appareil photo arrière. La Manette
+respecte l’orientation de l’image, la réduit à 1600 pixels de côté au plus
+et la réencode en JPEG avant l’envoi. Ce réencodage retire les métadonnées
+EXIF, dont la position GPS. Si le JPEG dépasse 1,5 Mo, la Manette réduit de
+nouveau ses dimensions. Une image illisible ou trop lourde affiche une erreur
+sous le champ. « Photo envoyée » confirme la réponse du serveur.
+
+Le panneau « Photos de la salle » de la Console suit l’ordre d’arrivée. Chaque
+vignette et son pseudo permettent d’accepter ou de refuser la photo. Couper
+les envois masque la commande sur les Manettes et laisse les photos déjà
+reçues dans leurs files. L’Écran de salle affiche les photos dans l’ordre
+d’acceptation, huit secondes chacune hors Manche, dans le cadre principal.
+Un début de Manche retire immédiatement la photo à l’affiche. Elle repassera
+au prochain créneau. Une Manche en pause occupe la scène.
+
+Recette sur téléphone Android et iPhone : prendre une photo et en choisir une
+depuis la photothèque, puis vérifier l’orientation d’un portrait et d’un paysage.
+Sur iPhone, inclure une photo au format HEIC et vérifier le message si le
+navigateur ne la décode pas. Provoquer un refus et réessayer sans recharger.
+Côté Console, couper puis rouvrir les envois et valider des photos dans un ordre
+autre que celui de leur arrivée. Sur deux Écrans de salle, recharger l’un d’eux
+au milieu d’un affichage. Vérifier la même photo et la même fin d’affichage,
+puis démarrer et terminer une Manche. Vérifier le portrait et le paysage à 5 m.
