@@ -20,6 +20,8 @@ Le premier parcours est : inscription du premier Animateur d’un Lieu, connexio
 
 Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions : `preparerQuestions` sur une telle Manche répond `409 ETAT_INCOMPATIBLE`, sans modification. Chaque Question a quatre propositions distinctes et une seule solution.
 
+Le [parcours de pilotage manuel](exemples/parcours-pilotage-manuel.yaml) illustre le refus d’un programme vide, la répétition d’un envoi, l’enchaînement de deux Manches dans l’ordre du programme et la fin de la Soirée. La fin publie `soiree-terminee` aux trois types d’écran. La vue finale ne porte aucune Manche active.
+
 La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut être créée en Format `EQUIPE` et en Pilotage `AUTOMATIQUE` (#6), qui sont enregistrés et restitués tels quels : le déroulement en Équipe relève de #26 et l’enchaînement automatique de #25. Le Blind test, le Freestyle, les invitations d’Animateurs, la modération et le serveur MCP étendront ce contrat. Le Buzz est inclus uniquement pour le scénario du socle #7/#8, avant le lancement d’une Manche ; il est refusé pendant le Quiz. Son arbitrage en Blind test relève de #17. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
 
 ## Accès aux vues
@@ -301,8 +303,10 @@ pour le rang 1, et de `croustyquizz:demo:joueur:<soireeId>:<rang>` pour les rang
 `joueurId(soireeId)` renvoie toujours le rang 1. Sur la page d’identité de démonstration,
 le Joueur choisit son rang. La page lit l’UUID correspondant dans la projection et
 l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
-Ces identités fictives ne sont pas
-une authentification ; en production le résolveur refuse systématiquement avec `401`.
+En HTTP et au CONNECT STOMP, les jetons de démonstration `JOUEUR` et `ECRAN`
+sont réservés aux Soirées fictives. Pour une Soirée enregistrée, ils donnent `401 AUTHENTIFICATION_REQUISE`.
+L’Animateur de démonstration reste accepté pour les Soirées enregistrées jusqu’à #5.
+En production, le résolveur refuse les jetons de démonstration avec `401`.
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 

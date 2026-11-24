@@ -878,11 +878,15 @@ paths:
     post:
       operationId: piloterSoiree
       summary: Lancer, enchaîner ou terminer la Soirée
-      description: 'LANCER : OUVERTE vers EN_COURS et démarrage de la première Manche ; programme non vide, sinon
-        409 PROGRAMME_INCOMPLET. Ce code vise aussi les Manches de Quiz sans le nombre de Questions prêtes prévu ;
-        les Manches de Karaoké et de Freestyle ne nécessitent pas de Questions. MANCHE_SUIVANTE : EN_COURS avec Manche précédente terminée
-        ; démarre la suivante ou termine la Soirée si le programme est épuisé. TERMINER : EN_COURS vers TERMINEE
-        et clôture de la Manche active. En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
+      description: 'LANCER : vérifie le programme, passe la Soirée d’OUVERTE à EN_COURS, puis démarre sa première Manche.
+        Un programme vide donne 409 PROGRAMME_INCOMPLET. Ce code vise aussi les Manches de Quiz sans le nombre
+        de Questions prêtes prévu ; les Manches de Karaoké et de Freestyle ne nécessitent pas de Questions.
+        MANCHE_SUIVANTE : en Soirée EN_COURS sans Manche active, démarre la première Manche EN_ATTENTE dans
+        l’ordre enregistré, ou termine la Soirée si le programme est épuisé. Une Manche active (en cours ou en pause),
+        un état de Soirée incompatible ou un Mode de jeu sans service donne 409 ETAT_INCOMPATIBLE.
+        TERMINER : en Soirée EN_COURS, clôt la Manche active éventuelle sans etapeId, puis passe la Soirée à TERMINEE.
+        La fin de Soirée publie soiree-terminee à la Console, à l’Écran de salle et à toutes les Manettes, avec
+        mancheActive et modeEnCours à null. En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
         d’une Question attend PASSER_ETAPE avant la prochaine Question ; le serveur déclenche la correction à l’échéance
         ou sur PASSER_ETAPE. Idempotence selon Idempotency-Key.'
       tags:
@@ -948,7 +952,8 @@ paths:
     post:
       operationId: piloterManche
       summary: Intervenir sur la Manche active
-      description: 'Uniquement la Manche active en Soirée EN_COURS. Idempotence selon Idempotency-Key. Quiz :
+      description: 'Uniquement la Manche active en Soirée EN_COURS. Une nouvelle commande de Manche hors de cet
+        état de Soirée donne 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key. Quiz :
         METTRE_EN_PAUSE gèle une Question ouverte ; REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la
         Question ouverte et révèle la correction, ou passe de CORRECTION à la Question suivante ; après la dernière
         correction, termine la Manche. TERMINER arrête la Manche sans révéler une Question abandonnée ni lui

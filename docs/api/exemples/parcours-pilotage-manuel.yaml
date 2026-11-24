@@ -1,0 +1,182 @@
+description: Deux Manches fictives, dans l’ordre du programme d’une Soirée en Pilotage Manuel.
+parametresCommuns:
+  soireeId: 12000000-0000-4000-8000-000000000001
+  X-CSRF-TOKEN: csrf_session_pilotage_manuel_fictif
+http:
+- nom: Refuser le lancement d’un programme vide
+  operationId: piloterSoiree
+  acteur: animateur
+  parametres:
+    Idempotency-Key: 12000000-0000-4000-8000-000000000010
+  requete: &lancer {action: LANCER}
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: PROGRAMME_INCOMPLET
+    detail: Ajoute une Manche au programme avant de lancer la Soirée.
+    instance: /api/soirees/12000000-0000-4000-8000-000000000001/commandes
+- nom: Lancer après avoir préparé et ordonné les deux Manches
+  operationId: piloterSoiree
+  acteur: animateur
+  parametres: &cleLancement
+    Idempotency-Key: 12000000-0000-4000-8000-000000000011
+  requete: *lancer
+  statut: 200
+  reponse: &accuseLancement
+    envoiId: 12000000-0000-4000-8000-000000000011
+    recueLe: '2026-11-24T20:00:00Z'
+    soireeId: 12000000-0000-4000-8000-000000000001
+- nom: Refuser la suivante pendant la première Manche
+  operationId: piloterSoiree
+  acteur: animateur
+  parametres:
+    Idempotency-Key: 12000000-0000-4000-8000-000000000012
+  requete: &suivante {action: MANCHE_SUIVANTE}
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: Termine la Manche active avant de passer à la suivante.
+    instance: /api/soirees/12000000-0000-4000-8000-000000000001/commandes
+- nom: Rejouer le lancement et retrouver le reçu initial
+  operationId: piloterSoiree
+  acteur: animateur
+  parametres: *cleLancement
+  requete: *lancer
+  statut: 200
+  reponse: *accuseLancement
+- nom: Démarrer la suivante après la fin de la première Manche
+  operationId: piloterSoiree
+  acteur: animateur
+  parametres:
+    Idempotency-Key: 12000000-0000-4000-8000-000000000013
+  requete: *suivante
+  statut: 200
+  reponse:
+    envoiId: 12000000-0000-4000-8000-000000000013
+    recueLe: '2026-11-24T20:01:05Z'
+    soireeId: 12000000-0000-4000-8000-000000000001
+- nom: Terminer la Soirée pendant la deuxième Manche
+  operationId: piloterSoiree
+  acteur: animateur
+  parametres:
+    Idempotency-Key: 12000000-0000-4000-8000-000000000014
+  requete: {action: TERMINER}
+  statut: 200
+  reponse:
+    envoiId: 12000000-0000-4000-8000-000000000014
+    recueLe: '2026-11-24T20:01:15Z'
+    soireeId: 12000000-0000-4000-8000-000000000001
+evenements:
+- nom: Première Manche selon l’ordre enregistré
+  canal: salle
+  message:
+    type: manche-demarree
+    soireeId: 12000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-24T20:00:00Z'
+    donnees:
+      soiree: &enCours
+        id: 12000000-0000-4000-8000-000000000001
+        titre: Soirée de pilotage manuel
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: MANUEL
+      mancheActive:
+        id: 12000000-0000-4000-8000-000000000003
+        ordre: 0
+        mode: QUIZ
+        etat: EN_COURS
+        reglages: &reglages {nombreEtapes: 3, tempsParEtapeSecondes: 20}
+      modeEnCours: QUIZ
+      joueurs: &joueurs [{id: 12000000-0000-4000-8000-000000000004, pseudo: Camille, connecte: true}]
+      classement: []
+      dernierBuzz: null
+- nom: Deuxième Manche selon l’ordre enregistré
+  canal: salle
+  message:
+    type: manche-demarree
+    soireeId: 12000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: '2026-11-24T20:01:05Z'
+    donnees:
+      soiree: *enCours
+      mancheActive:
+        id: 12000000-0000-4000-8000-000000000002
+        ordre: 1
+        mode: QUIZ
+        etat: EN_COURS
+        reglages: *reglages
+      modeEnCours: QUIZ
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+- nom: Fin de Soirée sur l’Écran de salle
+  canal: salle
+  message:
+    type: soiree-terminee
+    soireeId: 12000000-0000-4000-8000-000000000001
+    revision: 9
+    emisLe: '2026-11-24T20:01:15Z'
+    donnees:
+      soiree: &terminee
+        id: 12000000-0000-4000-8000-000000000001
+        titre: Soirée de pilotage manuel
+        format: SOLO
+        pilotage: MANUEL
+        etat: TERMINEE
+        codeAcces: MANUEL
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+- nom: Fin de Soirée sur la Console
+  canal: console
+  message:
+    type: soiree-terminee
+    soireeId: 12000000-0000-4000-8000-000000000001
+    revision: 9
+    emisLe: '2026-11-24T20:01:15Z'
+    donnees:
+      soiree: *terminee
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+      programme:
+      - id: 12000000-0000-4000-8000-000000000003
+        ordre: 0
+        mode: QUIZ
+        etat: TERMINEE
+        reglages: *reglages
+      - id: 12000000-0000-4000-8000-000000000002
+        ordre: 1
+        mode: QUIZ
+        etat: TERMINEE
+        reglages: *reglages
+- nom: Fin de Soirée sur la Manette
+  canal: joueur
+  message:
+    type: soiree-terminee
+    soireeId: 12000000-0000-4000-8000-000000000001
+    revision: 9
+    emisLe: '2026-11-24T20:01:15Z'
+    donnees:
+      soiree: *terminee
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+      joueurId: 12000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+cases: []
