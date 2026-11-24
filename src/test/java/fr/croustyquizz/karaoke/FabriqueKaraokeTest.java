@@ -125,6 +125,60 @@ class FabriqueKaraokeTest {
     private static final UUID SUIVANT = new UUID(0, 37);
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"10, EN_COURS", "45, EN_COURS", "80, EN_PAUSE"})
+    void restaureLEcheanceDAppelAutomatiqueEtAppelleLeSuivantAuRappel(long apresAppel, EtatManche etatManche) {
+        var base = etatAvecCourant(EtatPassage.APPELE, etatManche, EtatLecture.PREPAREE);
+        var file = FileAttente.depuis(base.file());
+        file.inscrire(new NouveauPassage(SUIVANT, soiree, manche, joueur, List.of(joueur), "suivante",
+                Duration.ofMinutes(3), 2, horloge.maintenant()));
+        var persiste = new EtatKaraokePersiste(file.etat(), Map.of(PASSAGE, contenu(), SUIVANT, contenu()),
+                base.cycle(), base.lectures(), base.lecteurDesigneId());
+        var redemarrage = new HorlogeFactice(horloge.maintenant().plusSeconds(apresAppel));
+        var contexteRestaure = new ContexteDeManche(soiree, manche, contexte.reglages(), redemarrage, () -> fins++, true);
+        var restaure = fabrique.restaurer(contexteRestaure, reglages, persiste, etatManche);
+        var avant = restaure.instantane();
+        boolean enPause = etatManche == EtatManche.EN_PAUSE;
+        var projection = CycleDePassage.projeter(avant.file(), avant.cycle(), enPause, redemarrage.maintenant());
+        assertThat(projection.etat()).isEqualTo("APPELE");
+        assertThat(restaure.instantane()).isEqualTo(avant);
+        assertThat(redemarrage.minuteursEnAttente()).isEqualTo(enPause ? 0 : 1);
+
+        long reste = Math.max(0, 30 - apresAppel);
+        if (enPause) {
+            redemarrage.avancer(Duration.ofMinutes(1));
+            assertThat(restaure.instantane()).isEqualTo(avant);
+            assertThat(projection.echeanceAppelLe()).isNull();
+            assertThat(projection.delaiAppelRestantMs()).isEqualTo(10_000L);
+            var joueurInterprete = new Acteur(Acteur.Type.JOUEUR, joueur, soiree);
+            assertThat(restaure.recevoir(new ConfirmerPresencePassage(joueurInterprete, redemarrage.maintenant(),
+                    UUID.randomUUID(), new CiblePassage(PASSAGE, 1), ETAPE))).isInstanceOfSatisfying(
+                        Refuse.class, refus -> assertThat(refus.code()).isEqualTo("ETAT_INCOMPATIBLE"));
+            var animateur = new Acteur(Acteur.Type.ANIMATEUR, joueur, soiree);
+            assertThat(restaure.reprendre(new CommandePilotage(animateur, UUID.randomUUID(), redemarrage.maintenant())))
+                    .isInstanceOf(Accepte.class);
+            reste = 10;
+        }
+        var avantRappel = restaure.instantane();
+        Duration attente = Duration.ofSeconds(reste);
+        if (reste > 0) {
+            redemarrage.avancer(attente.minusMillis(1));
+            assertThat(restaure.instantane()).isEqualTo(avantRappel);
+            attente = Duration.ofMillis(1);
+        }
+        redemarrage.avancer(attente);
+
+        var apres = restaure.instantane();
+        var saute = FileAttente.depuis(apres.file()).trouver(PASSAGE);
+        assertThat(saute.traceTerminale()).isEqualTo(new TraceTerminale("ECHEANCE_APPEL", null, redemarrage.maintenant()));
+        assertThat(saute.etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(apres.cycle().passageId()).isEqualTo(SUIVANT);
+        assertThat(apres.cycle().appeleLe()).isEqualTo(redemarrage.maintenant());
+        assertThat(fabrique.typeEvenementMinuteur(restaure)).isEqualTo("passage-appele");
+        assertThat(apres.voteDuPublic().votes()).isEmpty();
+        assertThat(redemarrage.minuteursEnAttente()).isEqualTo(1);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
     void leMinuteurRestaureAppelleLeSuivantSansAppelPendantLaRestauration(boolean voteSeul) {
         var base = etatAvecCourant(voteSeul ? EtatPassage.TERMINE : EtatPassage.EN_COURS,

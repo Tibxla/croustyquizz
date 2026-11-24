@@ -332,8 +332,8 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         horloge.avancer(Duration.ofMinutes(5));
         assertThat(projection().etapeId()).isEqualTo(etapeApresFin);
         assertThat(passage(PASSAGE).traceTerminale().motif()).isEqualTo(TraceTerminale.FIN_LECTURE);
-        assertThat(passage(SUIVANT).etat()).isEqualTo(automatique ? EtatPassage.APPELE : EtatPassage.EN_ATTENTE);
-        assertThat(karaoke().causeDernierMinuteur()).isEqualTo("vote-clos");
+        assertThat(passage(SUIVANT).etat()).isEqualTo(automatique ? EtatPassage.SAUTE : EtatPassage.EN_ATTENTE);
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo(automatique ? "passage-saute" : "vote-clos");
     }
 
     @Test
@@ -364,6 +364,57 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(recu.accuse()).isEqualTo(commande.accuse());
         assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.SAUTE);
         assertThat(passage(SUIVANT).etat()).isEqualTo(automatique ? EtatPassage.APPELE : EtatPassage.EN_ATTENTE);
+        assertThat(passage(PASSAGE).traceTerminale()).isEqualTo(new TraceTerminale(
+                "PASSE_PAR_ANIMATEUR", commande.acteur().identifiant(), commande.recueLe()));
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(automatique ? 1 : 0);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void sauteALEcheanceSansVoteEtPublieLaCauseDuNouvelAppelSiLaFileAttend(boolean avecSuivant) {
+        ouvrirPremierPassage(true);
+        if (avecSuivant) { inscrire(SUIVANT); }
+
+        horloge.avancer(Duration.ofSeconds(30));
+
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(passage(PASSAGE).traceTerminale()).isEqualTo(new TraceTerminale("ECHEANCE_APPEL", null, horloge.maintenant()));
+        assertThat(karaoke().instantane().voteDuPublic().votes()).isEmpty();
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo(avecSuivant ? "passage-appele" : "passage-saute");
+        assertThat(projection().courant().id()).isEqualTo(avecSuivant ? SUIVANT : PASSAGE);
+        assertThat(projection().etat()).isEqualTo(avecSuivant ? "APPELE" : "SAUTE");
+        assertThat(deroulement.estTerminee()).isFalse();
+    }
+
+    @Test
+    void confirmeEnAutomatiqueUneMillisecondeAvantLEcheance() {
+        ouvrirPremierPassage(true);
+        horloge.avancer(Duration.ofMillis(29_999));
+        confirmerCourant();
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(projection().etat()).isEqualTo("EN_COURS");
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+    }
+
+    @Test
+    void refuseLaConfirmationALEcheanceAvantLeRappelSansMutation() {
+        horloge.programmer(Duration.ofSeconds(30), () -> {
+            var autre = new Acteur(Acteur.Type.JOUEUR, INCONNU, SOIREE);
+            refuserSansMutation(() -> confirmer(autre, cible(PASSAGE), ETAPE), 404, "RESSOURCE_INTROUVABLE", null);
+            refuserSansMutation(() -> confirmer(INTERPRETE, cible(PASSAGE), INCONNU), 409, "COMMANDE_PERIMEE", null);
+            refuserSansMutation(() -> confirmer(INTERPRETE, cible(PASSAGE), ETAPE), 409, "HORS_DELAI",
+                    "Le temps pour confirmer est écoulé.");
+            var tardive = new ConfirmerPresencePassage(INTERPRETE, horloge.maintenant().plusMillis(1),
+                    ENVOI, cible(PASSAGE), ETAPE);
+            refuserSansMutation(() -> deroulement.recevoir(tardive), 409, "HORS_DELAI", null);
+        });
+        ouvrirPremierPassage(true);
+
+        horloge.avancer(Duration.ofSeconds(30));
+
+        assertThat(projection().etat()).isEqualTo("SAUTE");
+        assertThat(karaoke().causeDernierMinuteur()).isEqualTo("passage-saute");
     }
 
     @ParameterizedTest
@@ -469,6 +520,7 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         refuserSansMutation(() -> confirmer(INTERPRETE, new CiblePassage(PASSAGE, 0), ETAPE),
                 409, "COMMANDE_PERIMEE", null);
         horloge.avancer(Duration.ofSeconds(31));
+        assertThat(horloge.minuteursEnAttente()).isZero();
         CiblePassage appele = cible(PASSAGE);
         var recu = accepter(confirmer(INTERPRETE, appele, ETAPE), "passage-demarre", true);
         assertThat(recu.accuse()).isEqualTo(new AccuseCyclePassage(ENVOI, SOIREE, MANCHE, PASSAGE,

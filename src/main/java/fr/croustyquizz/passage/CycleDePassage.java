@@ -1,5 +1,7 @@
 package fr.croustyquizz.passage;
 
+import static java.time.temporal.ChronoUnit.MILLIS;
+
 import fr.croustyquizz.manche.Horloge;
 import fr.croustyquizz.manche.Minuteur;
 import fr.croustyquizz.manche.Refuse;
@@ -16,17 +18,24 @@ public final class CycleDePassage {
     private final Horloge horloge;
     private final Duration delaiAppel;
     private final Consumer<CloturePassage> surCloture;
+    private final boolean sauterALEcheance;
     private EtatCyclePassage chronologie;
-    private Minuteur fin = () -> { };
+    private Minuteur minuteur = () -> { };
     private long generation;
 
     public CycleDePassage(FileAttente file, Horloge horloge, Duration delaiAppel, EtatCyclePassage etat,
             Consumer<CloturePassage> surCloture) {
+        this(file, horloge, delaiAppel, etat, surCloture, false);
+    }
+
+    public CycleDePassage(FileAttente file, Horloge horloge, Duration delaiAppel, EtatCyclePassage etat,
+            Consumer<CloturePassage> surCloture, boolean sauterALEcheance) {
         this.file = file;
         this.horloge = horloge;
         this.delaiAppel = delaiAppel;
         this.chronologie = etat;
         this.surCloture = surCloture;
+        this.sauterALEcheance = sauterALEcheance;
     }
 
     public EtatCyclePassage etat() { return chronologie; }
@@ -49,10 +58,12 @@ public final class CycleDePassage {
     public ResultatFile appeler(CiblePassage cible, Instant maintenant, Supplier<UUID> identifiants) {
         if (courantActif() != null) { return incompatible(); }
         Instant echeance = maintenant.plus(delaiAppel);
-        return file.appelerPassage(cible, () -> {
+        ResultatFile resultat = file.appelerPassage(cible, () -> {
             chronologie = new EtatCyclePassage(cible.passageId(), Objects.requireNonNull(identifiants.get()),
                     maintenant, echeance, null, null, Duration.ZERO, null, null);
         });
+        if (resultat instanceof ResultatFile.Modifiee) { reprogrammerEcheanceAppel(); }
+        return resultat;
     }
 
     public boolean appelerSuivantSiLibre(Supplier<UUID> etapes, Instant maintenant) {
@@ -92,7 +103,7 @@ public final class CycleDePassage {
         ResultatFile resultat = file.clorePassage(new CiblePassage(courant.id(), courant.numeroModification()), etatTerminal, trace);
         if (resultat instanceof ResultatFile.Modifiee) {
             chronologie = cloture;
-            annulerFin();
+            annulerMinuteur();
             surCloture.accept(new CloturePassage(chronologie.passageId(), chronologie.etapeId(), etatTerminal, motif, maintenant));
         }
         return resultat;
@@ -102,7 +113,7 @@ public final class CycleDePassage {
         if (courantActif() == null || chronologie.pauseDepuis() != null) { return; }
         chronologie = new EtatCyclePassage(chronologie.passageId(), chronologie.etapeId(), chronologie.appeleLe(), chronologie.echeanceAppelLe(),
                 chronologie.demarreLe(), chronologie.dureeReference(), chronologie.tempsPause(), maintenant, null);
-        annulerFin();
+        annulerMinuteur();
     }
 
     public void reprendre(Instant maintenant) {
@@ -112,30 +123,57 @@ public final class CycleDePassage {
         Duration pause = dureePositive(Duration.between(chronologie.pauseDepuis(), maintenant));
         boolean enAppel = courant.etat() == EtatPassage.APPELE;
         Instant echeance = enAppel ? chronologie.echeanceAppelLe().plus(pause) : chronologie.echeanceAppelLe();
+        if (enAppel && sauterALEcheance && echeance.isBefore(maintenant)) { echeance = maintenant; }
         Duration tempsPause = enAppel ? chronologie.tempsPause() : chronologie.tempsPause().plus(pause);
         chronologie = new EtatCyclePassage(chronologie.passageId(), chronologie.etapeId(), chronologie.appeleLe(), echeance,
                 chronologie.demarreLe(), chronologie.dureeReference(), tempsPause, null, null);
-        reprogrammerFin();
+        if (enAppel) { reprogrammerEcheanceAppel(); }
+        else { reprogrammerFin(); }
+    }
+
+    /** Réarme l’échéance d’un appel automatique hors pause, notamment après restauration. */
+    public void reprogrammerEcheanceAppel() {
+        if (!sauterALEcheance) { return; }
+        Passage courant = courantActif();
+        if (courant == null || courant.etat() != EtatPassage.APPELE || chronologie.pauseDepuis() != null) { return; }
+        programmerCloture(courant, chronologie.echeanceAppelLe(), EtatPassage.SAUTE, TraceTerminale.ECHEANCE_APPEL);
     }
 
     /** Réarme uniquement la fin d’un Passage chanté et hors pause, notamment après restauration. */
     public void reprogrammerFin() {
         Passage courant = courantActif();
         if (courant == null || courant.etat() != EtatPassage.EN_COURS || chronologie.pauseDepuis() != null) { return; }
-        annulerFin();
+        programmerCloture(courant, chronologie.finPrevue(), EtatPassage.TERMINE, TraceTerminale.FIN_PREVUE);
+    }
+
+    private void programmerCloture(Passage courant, Instant echeance, EtatPassage terminal, String motif) {
+        annulerMinuteur();
         long rappel = generation;
         UUID etapeId = chronologie.etapeId();
-        Duration reste = dureePositive(Duration.between(horloge.maintenant(), chronologie.finPrevue()));
-        fin = horloge.programmer(reste, () -> {
-            if (rappel == generation && Objects.equals(chronologie.etapeId(), etapeId)) {
-                clore(EtatPassage.TERMINE, TraceTerminale.FIN_PREVUE, null, horloge.maintenant());
+        Duration reste = dureePositive(Duration.between(horloge.maintenant(), echeance));
+        if (terminal == EtatPassage.SAUTE) {
+            // L’Horloge réelle tronque le délai à la milliseconde.
+            Duration millisecondes = reste.truncatedTo(MILLIS);
+            if (!millisecondes.equals(reste)) { reste = millisecondes.plusMillis(1); }
+        }
+        minuteur = horloge.programmer(reste, () -> {
+            Passage actif = courantActif();
+            if (rappel != generation || !Objects.equals(chronologie.etapeId(), etapeId)
+                    || actif == null || !actif.id().equals(courant.id()) || actif.etat() != courant.etat()) {
+                return;
             }
+            Instant maintenant = horloge.maintenant();
+            if (terminal == EtatPassage.SAUTE && maintenant.isBefore(echeance)) {
+                programmerCloture(actif, echeance, terminal, motif);
+                return;
+            }
+            clore(terminal, motif, null, maintenant);
         });
     }
 
-    private void annulerFin() {
+    private void annulerMinuteur() {
         generation++;
-        fin.annuler();
+        minuteur.annuler();
     }
 
     private static Duration dureePositive(Duration duree) { return duree.isNegative() ? Duration.ZERO : duree; }
