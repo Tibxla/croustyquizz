@@ -3,6 +3,8 @@ package fr.croustyquizz.karaoke;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.passage.CiblePassage;
 import fr.croustyquizz.passage.VoteRecu;
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 
@@ -28,6 +30,34 @@ public final class CorpsKaraoke {
     static void identifiantChanson(String valeur) {
         if (valeur == null || valeur.isEmpty() || valeur.codePointCount(0, valeur.length()) > LONGUEUR_CHANSON_ID_MAX) { invalide(); }
     }
+    static String nettoyerSuggestion(String texte) {
+        return Normalizer.normalize(texte, Normalizer.Form.NFC).replaceAll("\\p{IsWhite_Space}+", " ").strip();
+    }
+
+    static String normaliserSuggestion(String texte) {
+        return Normalizer.normalize(texte.toLowerCase(Locale.ROOT), Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+    }
+
+    private static void verifierChampSuggestion(String texte) {
+        if (texte == null || texte.codePointCount(0, texte.length()) > 120) { invalide(); }
+        // Le pilote PostgreSQL ne peut pas conserver les contrôles NUL ni les demi-surrogates isolés.
+        String nettoye = nettoyerSuggestion(texte);
+        if (normaliserSuggestion(nettoye).isBlank() || nettoye.codePoints().anyMatch(c ->
+                Character.isISOControl(c) || Character.getType(c) == Character.SURROGATE)) { invalide(); }
+    }
+
+    public record SuggestionChanson(String titre, String artiste) {
+        public SuggestionChanson { verifierChampSuggestion(titre); verifierChampSuggestion(artiste); }
+    }
+
+    public record RetraitSuggestionChanson(Long nombreJoueurs) {
+        public RetraitSuggestionChanson { entier(nombreJoueurs, false); }
+    }
+
+    public record ChoixFavoriChanson(Boolean favorite) {
+        public ChoixFavoriChanson { obligatoire(favorite); }
+    }
+
     public record Cible(UUID passageId, Long numeroModification) {
         public Cible { obligatoire(passageId); entier(numeroModification, true); }
         public CiblePassage cible() { return new CiblePassage(passageId, numeroModification); }

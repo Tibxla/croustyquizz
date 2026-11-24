@@ -18,15 +18,16 @@ public class ConfigurationKaraoke {
     @Bean ServiceKaraoke serviceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance, SocleDeManche socle,
             PorteeDePassage portee, ParticipantsDePassage participants, PersistancePassageJpa passages,
             SourceDeParoles source, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource,
-            ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
+            ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages, CatalogueKaraokeSql catalogue) {
         return new ServiceKaraoke(fabrique, persistance, socle, portee, participants, passages, source, proprietes,
-                proprietesSource, choixParoles, calages);
+                proprietesSource, choixParoles, calages, catalogue);
     }
     @Bean ChoixDeVersionParoles choixDeVersionParoles(SourceDeParoles source, ProprietesSourceKaraoke proprietes) {
         return new ChoixDeVersionParoles(source, proprietes);
     }
     @Bean FournisseurDeBlocKaraoke fournisseurDeBlocKaraoke(DepotDeManches depot, ObjectProvider<ServiceKaraoke> service,
-            ParticipantsDePassage participants, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource) {
-        return new FournisseurDeBlocKaraoke(depot, service, participants, proprietes, proprietesSource);
+            ParticipantsDePassage participants, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource,
+            CatalogueKaraokeSql catalogue) {
+        return new FournisseurDeBlocKaraoke(depot, service, participants, proprietes, proprietesSource, catalogue);
     }
 }

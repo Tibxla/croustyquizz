@@ -22,15 +22,17 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private final ProprietesSourceKaraoke proprietesSource;
     private final ChoixDeVersionParoles choixParoles;
     private final MemoireDeCalageJpa calages;
+    private final CatalogueKaraokeSql catalogue;
 
     public ServiceKaraoke(FabriqueKaraoke fabrique, PersistanceDuMode<EtatKaraokePersiste> persistance,
             SocleDeManche socle, PorteeDePassage portee, ParticipantsDePassage participants,
             PersistancePassageJpa passages, SourceDeParoles source, ProprietesKaraoke proprietes,
-            ProprietesSourceKaraoke proprietesSource, ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
+            ProprietesSourceKaraoke proprietesSource, ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages,
+            CatalogueKaraokeSql catalogue) {
         super(fabrique, persistance, socle);
         this.socle = socle; this.portee = portee; this.participants = participants; this.passages = passages;
         this.source = source; this.proprietes = proprietes; this.proprietesSource = proprietesSource;
-        this.choixParoles = choixParoles; this.calages = calages;
+        this.choixParoles = choixParoles; this.calages = calages; this.catalogue = catalogue;
     }
 
     @Override protected ReglagesKaraoke resoudreReglages(Object reglages) {
@@ -79,6 +81,48 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     }
     @Override protected boolean doitConserverRecu(ResultatDeCommande resultat) {
         return !(resultat instanceof Refuse refus && "ETAPE_INACTIVE".equals(refus.code()));
+    }
+
+    public ResultatDeCommande suggererChanson(UUID mancheId, EnvoiDeCommande envoi, CorpsKaraoke.SuggestionChanson corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+        Acteur acteur = envoi.acteur();
+        return executerPourSoiree(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+                accepterPourConsole(envoi, recueLe, "suggestions-chansons-modifiees",
+                        catalogue.ajouterDemande(acteur.soireeId(), acteur.identifiant(), corps))));
+    }
+
+    public ResultatDeCommande retirerSuggestionChanson(UUID mancheId, UUID suggestionId, EnvoiDeCommande envoi,
+            CorpsKaraoke.RetraitSuggestionChanson corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
+        UUID soireeId = envoi.acteur().soireeId();
+        return executerPourSoiree(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
+            var nombre = catalogue.compterDemandes(soireeId, suggestionId);
+            if (nombre.isEmpty()) { return introuvable(); }
+            if (!nombre.get().equals(corps.nombreJoueurs())) {
+                return new Refuse(409, "COMMANDE_PERIMEE", "De nouvelles demandes ont été reçues pour cette suggestion.");
+            }
+            catalogue.retirerSuggestion(soireeId, suggestionId);
+            return accepterPourConsole(envoi, recueLe, "suggestions-chansons-modifiees", true);
+        }));
+    }
+
+    public ResultatDeCommande definirFavoriChanson(UUID mancheId, String chansonId, EnvoiDeCommande envoi,
+            CorpsKaraoke.ChoixFavoriChanson corps) {
+        CorpsKaraoke.identifiantChanson(chansonId);
+        verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
+        UUID soireeId = envoi.acteur().soireeId();
+        return executerPourSoiree(mancheId, envoi, () -> {
+            if (corps.favorite() && chargerContenu(chansonId).isEmpty()) {
+                return PreparationDeCommande.prete(d -> introuvable());
+            }
+            return PreparationDeCommande.prete((d, recueLe) -> accepterPourConsole(envoi, recueLe,
+                    "favoris-chansons-modifies", catalogue.definirFavori(soireeId, chansonId, corps.favorite())));
+        });
+    }
+
+    private static Accepte accepterPourConsole(EnvoiDeCommande envoi, Instant recueLe, String evenement, boolean modifie) {
+        return new Accepte(new AccuseCommande(envoi.envoiId(), recueLe, envoi.acteur().soireeId()),
+                modifie ? Set.of(Destination.CONSOLE) : Set.of(), evenement);
     }
 
     public ResultatDeCommande inscrirePassage(UUID mancheId, EnvoiDeCommande envoi, CorpsKaraoke.InscriptionPassage corps) {
@@ -290,7 +334,10 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         var chansons = appelerSource(() -> RechercheKaraoke.classer(nettoyee, source.rechercher(nettoyee)));
         return lecture(soireeId, () -> {
             verifierLecture(acteur, soireeId, mancheId);
-            return new VuesKaraoke.ResultatsChansons(rechercheId, nettoyee, chansons.stream().map(VuesKaraoke.ResumeChanson::de).toList());
+            Set<String> favoris = Set.copyOf(catalogue.favoris(soireeId));
+            return new VuesKaraoke.ResultatsChansons(rechercheId, nettoyee, chansons.stream()
+                    .sorted(Comparator.comparing(chanson -> !favoris.contains(chanson.chansonId())))
+                    .map(VuesKaraoke.ResumeChanson::de).toList());
         });
     }
     public VuesKaraoke.FicheChanson consulterChanson(Acteur acteur, UUID soireeId, UUID mancheId, String chansonId) {

@@ -680,9 +680,10 @@ class ServiceKaraokeTest {
             setRollbackOnCommitFailure(true);
             when(source.charger(anyLong())).thenAnswer(a -> Optional.of(contenu(a.getArgument(0))));
             when(source.rechercher(anyString())).thenReturn(List.of(contenu(1).chanson()));
+            var catalogue = mock(CatalogueKaraokeSql.class);
             var commun = new ConfigurationTroisJoueurs.Commun(depot);
             var beans = new StaticListableBeanFactory();
-            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE);
+            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE, catalogue);
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
@@ -696,7 +697,7 @@ class ServiceKaraokeTest {
                 }
             };
             service = new ServiceKaraoke(fabrique, persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE,
-                    new ChoixDeVersionParoles(source, SOURCE), calages);
+                    new ChoixDeVersionParoles(source, SOURCE), calages, catalogue);
             beans.addBean("service", service);
         }
         @Override protected Object doGetTransaction() { return new Object(); }

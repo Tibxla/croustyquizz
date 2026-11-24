@@ -60,12 +60,12 @@ public class ServiceDeManche<R, E> {
 			d.demarrer();
 			return new Accepte(new AccuseCommande(envoi.envoiId(), recueLe, envoi.acteur().soireeId()),
 					TOUT, "manche-demarree");
-		}), EtatManche.EN_COURS, true);
+		}), EtatManche.EN_COURS, true, true);
 	}
 	public ResultatDeCommande piloter(UUID mancheId, EnvoiDeCommande envoi, InterventionDeManche intervention) {
 		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
 				intervention.appliquer(d, new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))),
-				intervention.etatCible(), false);
+				intervention.etatCible(), false, true);
 	}
 	/** La préparation externe est hors verrou ; sa fonction revalide ensuite le domaine sous verrou. */
 	public ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer) {
@@ -73,10 +73,15 @@ public class ServiceDeManche<R, E> {
 	}
 	protected ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi,
 			Supplier<PreparationDeCommande> preparer, EtatManche etatApresAcceptation) {
-		return traiter(mancheId, envoi, preparer, etatApresAcceptation, false);
+		return traiter(mancheId, envoi, preparer, etatApresAcceptation, false, true);
+	}
+	/** Une commande de Soirée conserve les gardes et le reçu de la Manche active, sans modifier son cycle. */
+	protected ResultatDeCommande executerPourSoiree(UUID mancheId, EnvoiDeCommande envoi,
+			Supplier<PreparationDeCommande> preparer) {
+		return traiter(mancheId, envoi, preparer, null, false, false);
 	}
 	private ResultatDeCommande traiter(UUID id, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer,
-			EtatManche cible, boolean demarrage) {
+			EtatManche cible, boolean demarrage, boolean modifierManche) {
 		UUID soireeId = envoi.acteur().soireeId();
 		// Une répétition évite aussi un nouvel appel externe, sans retenir le verrou pendant la préparation.
 		ResultatDeCommande repetition = sousTransaction(soireeId, id, () -> {
@@ -98,11 +103,15 @@ public class ServiceDeManche<R, E> {
 				resultat = verifierEtat(manche, demarrage);
 				if (resultat == null) { resultat = verifierAvantPreparation(manche, envoi, demarrage); }
 				if (resultat == null) {
-					var deroulement = deroulement(manche);
+					var deroulement = modifierManche ? deroulement(manche) : null;
 					Instant recueLe = socle.horloge().maintenant().truncatedTo(MICROS);
 					resultat = preparation.appliquer().apply(deroulement, recueLe);
 					if (resultat instanceof Accepte accepte) {
-						enregistrer(manche, deroulement, cible, accepte, deroulement.instantane(), recueLe);
+						if (modifierManche) {
+							enregistrer(manche, deroulement, cible, accepte, deroulement.instantane(), recueLe);
+						} else if (!accepte.aRepublier().isEmpty()) {
+							socle.vues().publier(soireeId, accepte);
+						}
 					}
 				}
 			}

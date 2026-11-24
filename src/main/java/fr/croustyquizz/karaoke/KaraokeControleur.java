@@ -24,6 +24,36 @@ public class KaraokeControleur {
             @PathVariable String chansonId, Acteur acteur) {
         return lecture(service.consulterChanson(acteur, soireeId, mancheId, chansonId));
     }
+    @PostMapping("/suggestions")
+    public ResponseEntity<?> suggererChanson(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @Valid @RequestBody CorpsKaraoke.SuggestionChanson corps, @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
+            Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
+        String route = racine(soireeId, mancheId) + "/suggestions";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId,
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.suggererChanson(mancheId, envoi, corps), route);
+    }
+    @PostMapping("/suggestions/{suggestionId}/retrait")
+    public ResponseEntity<?> retirerSuggestionChanson(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID suggestionId, @Valid @RequestBody CorpsKaraoke.RetraitSuggestionChanson corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        String route = racine(soireeId, mancheId) + "/suggestions/" + suggestionId + "/retrait";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId,
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.retirerSuggestionChanson(mancheId, suggestionId, envoi, corps), route);
+    }
+    @PutMapping("/chansons/{chansonId}/favori")
+    public ResponseEntity<?> definirFavoriChanson(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable String chansonId, @Valid @RequestBody CorpsKaraoke.ChoixFavoriChanson corps,
+            @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        String route = racine(soireeId, mancheId) + "/chansons/" + chansonId + "/favori";
+        var envoi = new EnvoiDeCommande(acteur, route, envoiId,
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
+        return ReponsesDeCommande.http(service.definirFavoriChanson(mancheId, chansonId, envoi, corps), route);
+    }
     @PostMapping("/passages")
     public ResponseEntity<?> inscrirePassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
             @Valid @RequestBody CorpsKaraoke.InscriptionPassage corps,
