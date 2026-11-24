@@ -1256,16 +1256,22 @@ paths:
     post:
       operationId: envoyerBuzz
       summary: Buzzer, dans le scénario du socle ou pendant un Blind test
-      description: 'Scénario #7/#8, Soirée OUVERTE avant Manche : identité, rang et réception attribués par le serveur,
-        puis événement buzz-recu. Répéter le même envoiId retrouve le résultat sans nouvelle diffusion. Refus pendant
-        le Quiz : 409 BUZZ_NON_AUTORISE. Pendant une Manche de Blind test (ADR 0009), le corps nomme mancheId et
-        l’etapeId du Morceau visé (absents : 400 REQUETE_INVALIDE) et la route transmet le Buzz au déroulement de
-        la Manche. Le premier Buzz accepté d’un Joueur non bloqué, en phase EXTRAIT, lui donne la main, met
-        l’extrait en pause et ouvre 20 s de saisie, puis buzz-recu ; rang est son ordre parmi les Buzz acceptés
-        du Morceau. Cible qui n’est plus la Manche ou le Morceau affiché : 409 COMMANDE_PERIMEE, distinct des
-        refus de jeu ; un Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise,
-        Manche en pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le
-        révèle : 409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.'
+      description: >-
+        Scénario #7/#8, dans une Soirée ouverte ou en cours, hors Manche active. Le serveur déduit le Joueur du
+        jeton de reconnexion (401 si invalide, 404 pour une autre Soirée), attribue le rang dans la Soirée et
+        horodate la réception. Il publie buzz-recu vers la salle, la Console et les Manettes de la Soirée.
+        Fournir envoiId dans le corps ou Idempotency-Key dans les en-têtes. Si les deux sont fournis, ils doivent
+        être identiques ; un identifiant absent, invalide ou contradictoire donne 400 REQUETE_INVALIDE.
+        Une répétition retrouve le résultat initial sans nouvelle diffusion, même si la Manche a changé.
+        Une Manche active autre que le Blind test (y compris en pause) donne 409 BUZZ_NON_AUTORISE.
+        Pendant une Manche de Blind test (ADR 0009), le corps nomme mancheId et l’etapeId du Morceau visé
+        (absents : 400 REQUETE_INVALIDE) et la route transmet le Buzz au déroulement de la Manche. Le premier
+        Buzz accepté d’un Joueur non bloqué, en phase EXTRAIT, lui donne la main, met l’extrait en pause et
+        ouvre 20 s de saisie, puis buzz-recu ; rang est son ordre parmi les Buzz acceptés du Morceau. Cible qui
+        n’est plus la Manche ou le Morceau affiché : 409 COMMANDE_PERIMEE, distinct des refus de jeu ; un
+        Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise, Manche en
+        pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le révèle :
+        409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.
       tags:
       - Socle
       security:
@@ -1304,8 +1310,14 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: Idempotency-Key
+        in: header
+        description: UUID de cet envoi, obligatoire si le corps est absent.
+        schema:
+          type: string
+          format: uuid
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:

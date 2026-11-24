@@ -56,15 +56,16 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 					? lireMusiqueDAttente.apply(soireeId) : null;
 			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
+			var parties = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
-				vues.put(destination, composer(soireeId, destination, type, projections, musique));
+				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, musique));
 			}
 			return vues;
 		});
 	}
-	private VueComposee composer(UUID soireeId, Destination destination, String type,
+	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partieCommune,
 			Map<ModeDeJeu, Function<Destination, Object>> projections, MusiqueDAttente musique) {
-		Map<String, Object> vue = new LinkedHashMap<>(commun.fournir(soireeId, destination));
+		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
 		if (destination.equals(Destination.SALLE) || destination.equals(Destination.CONSOLE)) {
 			vue.put("musiqueAttente", musique);
 		}

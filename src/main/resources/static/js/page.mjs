@@ -7,6 +7,7 @@ import { afficherClassementDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
@@ -105,6 +106,8 @@ async function demarrer() {
 	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
 		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
+	const boutonBuzz = element('buzzer');
+	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
@@ -114,6 +117,7 @@ async function demarrer() {
 			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
 			photos?.afficher(vue);
+			buzz?.afficher(vue);
 			pilotage?.afficher(vue);
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
@@ -130,7 +134,7 @@ async function demarrer() {
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		talon?.demonter();
-		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); photos?.demonter();
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
 		pilotage?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
