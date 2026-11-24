@@ -34,10 +34,14 @@ public final class FabriqueQuiz implements FabriqueDeDeroulement<ReglagesQuiz, E
 
 	@Override
 	public DeroulementQuiz creer(ContexteDeManche contexte, ReglagesQuiz reglages) {
+		List<String> categories = reglages != null ? reglages.categories() : List.of();
+		int nbEtapes = reglages != null ? reglages.nombreEtapes() : 1;
+		VarianteQuiz variante = reglages != null ? reglages.variante() : VarianteQuiz.RAPIDITE;
+
 		List<Question> questions = sourceDeQuestions != null
-				? sourceDeQuestions.tirer(List.of(), Difficulte.FACILE, reglages.nombreEtapes())
+				? sourceDeQuestions.tirer(categories, Difficulte.FACILE, nbEtapes)
 				: List.of();
-		return new DeroulementQuiz(contexte, questions);
+		return new DeroulementQuiz(contexte, questions, variante);
 	}
 
 	@Override

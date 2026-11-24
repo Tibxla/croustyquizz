@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,13 +23,20 @@ import java.util.UUID;
 
 public final class DeroulementQuiz implements DeroulementDeManche {
 
+	private static final int POINTS_FIXES_PAR_BONNE_REPONSE = 100;
+	private static final int POINTS_MIN_RAPIDITE = 50;
+	private static final int POINTS_BONUS_RAPIDITE = 50;
+
 	private record ReponseInterne(UUID joueurId, UUID propositionId, Instant recueLe) {}
 
 	private final ContexteDeManche contexte;
 	private final List<Question> questions;
+	private final VarianteQuiz varianteChoisie;
 	private final List<AttributionDePoints> pointsAttribues = new ArrayList<>();
 	private final Map<UUID, ReponseInterne> reponsesParJoueur = new HashMap<>();
 	private final Map<UUID, AccuseReponse> envoisParEnvoiId = new HashMap<>();
+	private final Set<UUID> idsJoueursElimines = new HashSet<>();
+	private final Set<UUID> joueursAyantParticipe = new HashSet<>();
 
 	private int indexQuestion;
 	private UUID etapeId;
@@ -40,11 +48,16 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 	private boolean terminee;
 
 	public DeroulementQuiz(ContexteDeManche contexte, List<Question> questions) {
+		this(contexte, questions, VarianteQuiz.RAPIDITE);
+	}
+
+	public DeroulementQuiz(ContexteDeManche contexte, List<Question> questions, VarianteQuiz variante) {
 		if (questions == null || questions.isEmpty()) {
 			throw new IllegalArgumentException("Une Manche de Quiz nécessite au moins une Question.");
 		}
 		this.contexte = contexte;
 		this.questions = List.copyOf(questions);
+		this.varianteChoisie = variante != null ? variante : VarianteQuiz.RAPIDITE;
 		this.etapeId = UUID.randomUUID();
 	}
 
@@ -56,6 +69,7 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 		this.phase = etat.phase();
 		this.ouverteLe = etat.ouverteLe();
 		this.echeanceLe = etat.echeanceLe();
+		this.varianteChoisie = etat.variante() != null ? etat.variante() : VarianteQuiz.RAPIDITE;
 		if (etat.resteAuMomentDeLaPauseMs() != null) {
 			this.resteAuMomentDeLaPause = Duration.ofMillis(etat.resteAuMomentDeLaPauseMs());
 		}
@@ -64,6 +78,7 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 			this.reponsesParJoueur.put(entree.getKey(), new ReponseInterne(entree.getKey(), entree.getValue(), ouverteLe != null ? ouverteLe : Instant.EPOCH));
 		}
 		this.pointsAttribues.addAll(etat.points());
+		this.idsJoueursElimines.addAll(etat.joueursElimines());
 		this.terminee = (phase == PhaseQuiz.TERMINEE);
 	}
 
@@ -83,12 +98,22 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 				pauseMs,
 				rep,
 				envoisParEnvoiId,
-				pointsAttribues
+				pointsAttribues,
+				varianteChoisie,
+				idsJoueursElimines
 		);
 	}
 
 	public UUID etapeCouranteId() {
 		return etapeId;
+	}
+
+	public VarianteQuiz variante() {
+		return varianteChoisie;
+	}
+
+	public Set<UUID> joueursElimines() {
+		return Set.copyOf(idsJoueursElimines);
 	}
 
 	@Override
@@ -126,15 +151,34 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 		long totalMs = Duration.between(ouverteLe, echeanceLe).toMillis();
 
 		for (ReponseInterne reponse : reponsesParJoueur.values()) {
-			if (reponse.propositionId().equals(q.propositionJusteId())) {
-				long elapsedMs = Math.max(0, Math.min(totalMs, Duration.between(ouverteLe, reponse.recueLe()).toMillis()));
-				int valeur = 50;
-				if (totalMs > 0) {
-					valeur = (int) (50 + (50 * (totalMs - elapsedMs)) / totalMs);
-				}
+			boolean estJuste = reponse.propositionId().equals(q.propositionJusteId());
+			if (estJuste) {
+				int valeur = calculerPoints(totalMs, reponse.recueLe());
 				pointsAttribues.add(new AttributionDePoints(reponse.joueurId(), valeur, "Bonne réponse à la question " + (indexQuestion + 1)));
+			} else if (varianteChoisie == VarianteQuiz.ELIMINATION) {
+				idsJoueursElimines.add(reponse.joueurId());
 			}
 		}
+
+		if (varianteChoisie == VarianteQuiz.ELIMINATION) {
+			for (UUID joueur : joueursAyantParticipe) {
+				if (!reponsesParJoueur.containsKey(joueur)) {
+					idsJoueursElimines.add(joueur);
+				}
+			}
+		}
+	}
+
+	private int calculerPoints(long totalMs, Instant recueLe) {
+		if (varianteChoisie == VarianteQuiz.POINTS_FIXES || varianteChoisie == VarianteQuiz.ELIMINATION) {
+			return POINTS_FIXES_PAR_BONNE_REPONSE;
+		}
+		long elapsedMs = Math.max(0, Math.min(totalMs, Duration.between(ouverteLe, recueLe).toMillis()));
+		int valeur = POINTS_MIN_RAPIDITE;
+		if (totalMs > 0) {
+			valeur = (int) (POINTS_MIN_RAPIDITE + (POINTS_BONUS_RAPIDITE * (totalMs - elapsedMs)) / totalMs);
+		}
+		return valeur;
 	}
 
 	@Override
@@ -149,6 +193,10 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 				return new Accepte(existant, Set.of(Destination.TOUTES_LES_MANETTES), "reponse-enregistree");
 			}
 			return new Refuse(409, "ENVOI_REUTILISE", "Identifiant d'envoi réutilisé pour un autre contenu.");
+		}
+
+		if (varianteChoisie == VarianteQuiz.ELIMINATION && idsJoueursElimines.contains(envoi.joueurId())) {
+			return new Refuse(409, "ETAT_INCOMPATIBLE", "Le joueur a été éliminé de cette Manche de Quiz.");
 		}
 
 		if (phase != PhaseQuiz.QUESTION_OUVERTE) {
@@ -180,6 +228,7 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 		AccuseReponse accuse = new AccuseReponse(envoi.envoiId(), reponseId, etapeId, envoi.propositionId(), envoi.recueLe());
 		envoisParEnvoiId.put(envoi.envoiId(), accuse);
 		reponsesParJoueur.put(envoi.joueurId(), new ReponseInterne(envoi.joueurId(), envoi.propositionId(), envoi.recueLe()));
+		joueursAyantParticipe.add(envoi.joueurId());
 
 		return new Accepte(accuse, Set.of(Destination.TOUTES_LES_MANETTES), "reponse-enregistree");
 	}
@@ -227,7 +276,7 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 				ouvrirQuestion(indexQuestion + 1);
 				return new Accepte(null, Set.of(Destination.CONSOLE, Destination.SALLE, Destination.TOUTES_LES_MANETTES), "question-ouverte");
 			} else {
-				terminerManche(false);
+				terminerMancheNaturellement();
 				return new Accepte(null, Set.of(Destination.CONSOLE, Destination.SALLE, Destination.TOUTES_LES_MANETTES), "manche-terminee");
 			}
 		}
@@ -240,15 +289,17 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 		if (terminee) {
 			return refusGenerique();
 		}
-		terminerManche(true);
+		minuteur.annuler();
+		phase = PhaseQuiz.TERMINEE;
+		terminee = true;
 		return new Accepte(null, Set.of(Destination.CONSOLE, Destination.SALLE, Destination.TOUTES_LES_MANETTES), "manche-terminee");
 	}
 
-	private void terminerManche(boolean annuleeSansSignalement) {
-		terminee = true;
-		phase = PhaseQuiz.TERMINEE;
+	private void terminerMancheNaturellement() {
 		minuteur.annuler();
-		if (!annuleeSansSignalement) {
+		phase = PhaseQuiz.TERMINEE;
+		terminee = true;
+		if (contexte.signalerFin() != null) {
 			contexte.signalerFin().run();
 		}
 	}
@@ -258,43 +309,33 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 		if (phase == PhaseQuiz.ATTENTE || phase == PhaseQuiz.TERMINEE) {
 			return new InstantaneQuiz(phase, null, null, null, null, null);
 		}
-
 		Question q = questions.get(indexQuestion);
-		List<PropositionPublique> propositions = q.propositions().stream()
-				.map(p -> new PropositionPublique(p.id(), p.texte()))
-				.toList();
-		QuestionPublique questionPublique = new QuestionPublique(
-				etapeId,
-				q.id(),
-				indexQuestion + 1,
-				questions.size(),
-				q.enonce(),
-				propositions
-		);
+		QuestionPublique qPub = new QuestionPublique(etapeId, q.id(), indexQuestion + 1, questions.size(), q.enonce(),
+				q.propositions().stream().map(p -> new PropositionPublique(p.id(), p.texte())).toList());
 
-		if (phase == PhaseQuiz.QUESTION_OUVERTE) {
-			return new InstantaneQuiz(phase, questionPublique, ouverteLe, echeanceLe, null, null);
+		Long tempsRestantMs = null;
+		if (phase == PhaseQuiz.QUESTION_OUVERTE && echeanceLe != null) {
+			tempsRestantMs = Math.max(0, Duration.between(contexte.horloge().maintenant(), echeanceLe).toMillis());
+		} else if (phase == PhaseQuiz.EN_PAUSE && resteAuMomentDeLaPause != null) {
+			tempsRestantMs = resteAuMomentDeLaPause.toMillis();
 		}
 
-		if (phase == PhaseQuiz.EN_PAUSE) {
-			Long restant = resteAuMomentDeLaPause != null ? resteAuMomentDeLaPause.toMillis() : null;
-			return new InstantaneQuiz(phase, questionPublique, ouverteLe, echeanceLe, restant, null);
+		CorrectionPublique correction = null;
+		if (phase == PhaseQuiz.CORRECTION) {
+			Map<UUID, Integer> repartition = new HashMap<>();
+			for (Proposition p : q.propositions()) {
+				repartition.put(p.id(), 0);
+			}
+			for (ReponseInterne r : reponsesParJoueur.values()) {
+				repartition.computeIfPresent(r.propositionId(), (k, v) -> v + 1);
+			}
+			List<ReponseDistribution> dist = repartition.entrySet().stream()
+					.map(e -> new ReponseDistribution(e.getKey(), e.getValue()))
+					.toList();
+			correction = new CorrectionPublique(q.propositionJusteId(), dist);
 		}
 
-		List<ReponseDistribution> repartition = q.propositions().stream()
-				.map(p -> {
-					int count = (int) reponsesParJoueur.values().stream().filter(r -> r.propositionId().equals(p.id())).count();
-					return new ReponseDistribution(p.id(), count);
-				})
-				.toList();
-		CorrectionPublique correction = new CorrectionPublique(q.propositionJusteId(), repartition);
-
-		return new InstantaneQuiz(phase, questionPublique, ouverteLe, echeanceLe, null, correction);
-	}
-
-	@Override
-	public boolean estTerminee() {
-		return terminee;
+		return new InstantaneQuiz(phase, qPub, ouverteLe, echeanceLe, tempsRestantMs, correction);
 	}
 
 	@Override
@@ -302,7 +343,12 @@ public final class DeroulementQuiz implements DeroulementDeManche {
 		return List.copyOf(pointsAttribues);
 	}
 
+	@Override
+	public boolean estTerminee() {
+		return terminee;
+	}
+
 	private ResultatDeCommande refusGenerique() {
-		return new Refuse(409, "ETAT_INCOMPATIBLE", "Action incompatible avec l'état courant de la Manche.");
+		return new Refuse(409, "ETAT_INCOMPATIBLE", "Action non autorisée dans l'état actuel de la Manche de Quiz.");
 	}
 }

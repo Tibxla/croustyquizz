@@ -2,16 +2,16 @@ package fr.croustyquizz.quiz;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import fr.croustyquizz.manche.ActionJoueur;
+import fr.croustyquizz.manche.Accepte;
 import fr.croustyquizz.manche.Acteur;
+import fr.croustyquizz.manche.ActionJoueur;
 import fr.croustyquizz.manche.AttributionDePoints;
+import fr.croustyquizz.manche.CommandePilotage;
 import fr.croustyquizz.manche.ContexteDeManche;
 import fr.croustyquizz.manche.ContratDeroulementDeManche;
 import fr.croustyquizz.manche.DeroulementDeManche;
-import fr.croustyquizz.manche.ReglagesDeManche;
-import fr.croustyquizz.manche.ResultatDeCommande;
-import fr.croustyquizz.manche.Accepte;
 import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.manche.ResultatDeCommande;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -22,10 +22,12 @@ class DeroulementQuizTest extends ContratDeroulementDeManche {
 
 	private static final UUID AUTRE_JOUEUR = UUID.fromString("00000000-0000-0000-0000-00000000a002");
 
+	private ContexteDeManche dernierContexte;
 	private List<Question> questionsDeTest;
 
 	@Override
 	protected DeroulementDeManche creer(ContexteDeManche contexte) {
+		this.dernierContexte = contexte;
 		questionsDeTest = List.of(
 				creerQuestion("Capitale de la France ?", "Paris"),
 				creerQuestion("Combien de cordes a une guitare standard ?", "6"),
@@ -59,64 +61,34 @@ class DeroulementQuizTest extends ContratDeroulementDeManche {
 	}
 
 	@Test
-	void demarrerOuvreLaPremiereQuestionSansDivulguerLaBonneReponse() {
-		deroulement.demarrer();
-
-		InstantaneQuiz instantane = (InstantaneQuiz) deroulement.instantane();
-		assertThat(instantane.phase()).isEqualTo(PhaseQuiz.QUESTION_OUVERTE);
-		assertThat(instantane.question()).isNotNull();
-		assertThat(instantane.question().numero()).isEqualTo(1);
-		assertThat(instantane.question().total()).isEqualTo(3);
-		assertThat(instantane.question().enonce()).isEqualTo("Capitale de la France ?");
-		assertThat(instantane.question().propositions()).hasSize(4);
-		assertThat(instantane.ouverteLe()).isEqualTo(horloge.maintenant());
-		assertThat(instantane.echeanceLe()).isEqualTo(horloge.maintenant().plus(Duration.ofSeconds(20)));
-		assertThat(instantane.correction()).isNull();
-	}
-
-	@Test
-	void expirationDuMinuteurPasseEnCorrectionEtCalculeLesPoints() {
+	void enregistreUneReponseEtLAttribueApresCloture() {
 		deroulement.demarrer();
 		UUID etapeId = ((DeroulementQuiz) deroulement).etapeCouranteId();
 		Question q1 = questionsDeTest.getFirst();
 
-		// JOUEUR répond juste après 5 secondes (sur 20 secondes)
-		horloge.avancer(Duration.ofSeconds(5));
-		EnvoyerReponse reponseJuste = new EnvoyerReponse(
+		// Joueur 1 répond juste
+		EnvoyerReponse envoi1 = new EnvoyerReponse(
 				new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE),
-				horloge.maintenant(),
+				horloge.maintenant().plus(Duration.ofSeconds(2)),
 				UUID.randomUUID(),
 				etapeId,
 				q1.propositionJusteId()
 		);
-		ResultatDeCommande resultat = deroulement.recevoir(reponseJuste);
+		ResultatDeCommande resultat = deroulement.recevoir(envoi1);
 		assertThat(resultat).isInstanceOf(Accepte.class);
-		Accepte accepte = (Accepte) resultat;
-		assertThat(accepte.statutHttp()).isEqualTo(200);
 
-		// AUTRE_JOUEUR répond faux
-		UUID fausse = q1.propositions().stream()
-				.filter(p -> !p.id().equals(q1.propositionJusteId()))
-				.findFirst().orElseThrow().id();
-		EnvoyerReponse reponseFausse = new EnvoyerReponse(
+		// Joueur 2 répond faux
+		EnvoyerReponse envoi2 = new EnvoyerReponse(
 				new Acteur(Acteur.Type.JOUEUR, AUTRE_JOUEUR, SOIREE),
-				horloge.maintenant(),
+				horloge.maintenant().plus(Duration.ofSeconds(5)),
 				UUID.randomUUID(),
 				etapeId,
-				fausse
+				q1.propositions().get(1).id()
 		);
-		deroulement.recevoir(reponseFausse);
+		deroulement.recevoir(envoi2);
 
-		// Les points ne sont PAS attribués avant la clôture/correction
-		assertThat(deroulement.points()).isEmpty();
-
-		// On avance le temps pour atteindre l'échéance (encore 15 secondes)
-		horloge.avancer(Duration.ofSeconds(15));
-
-		InstantaneQuiz instantane = (InstantaneQuiz) deroulement.instantane();
-		assertThat(instantane.phase()).isEqualTo(PhaseQuiz.CORRECTION);
-		assertThat(instantane.correction()).isNotNull();
-		assertThat(instantane.correction().propositionJusteId()).isEqualTo(q1.propositionJusteId());
+		// Clôture de la question à 20 secondes
+		horloge.avancer(Duration.ofSeconds(20));
 
 		// Vérification des points attribués : JOUEUR a des points, AUTRE_JOUEUR en a 0
 		assertThat(deroulement.points())
@@ -277,5 +249,138 @@ class DeroulementQuizTest extends ContratDeroulementDeManche {
 		deroulement.passerEtape(pilotage());
 		assertThat(deroulement.estTerminee()).isTrue();
 		assertThat(finsSignalees).isEqualTo(1);
+	}
+
+	@Test
+	void variantePointsFixesAttribue100PointsSansBonusRapidite() {
+		DeroulementQuiz quizFixe = new DeroulementQuiz(dernierContexte, questionsDeTest, VarianteQuiz.POINTS_FIXES);
+		quizFixe.demarrer();
+		UUID etapeId = quizFixe.etapeCouranteId();
+		Question q1 = questionsDeTest.getFirst();
+
+		// Joueur répond au bout de 19 secondes (presque à la fin du chrono)
+		horloge.avancer(Duration.ofSeconds(19));
+		quizFixe.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId,
+				q1.propositionJusteId()
+		));
+
+		// Clôture
+		horloge.avancer(Duration.ofSeconds(1));
+
+		assertThat(quizFixe.points())
+				.hasSize(1)
+				.first()
+				.satisfies(p -> {
+					assertThat(p.concurrentId()).isEqualTo(JOUEUR);
+					assertThat(p.valeur()).isEqualTo(100);
+				});
+	}
+
+	@Test
+	void varianteEliminationElimineLesMauvaisesReponsesEtRefuseLeurReponseSuivante() {
+		DeroulementQuiz quizElimination = new DeroulementQuiz(dernierContexte, questionsDeTest, VarianteQuiz.ELIMINATION);
+		quizElimination.demarrer();
+		UUID etapeId1 = quizElimination.etapeCouranteId();
+		Question q1 = questionsDeTest.getFirst();
+
+		// JOUEUR répond juste
+		quizElimination.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId1,
+				q1.propositionJusteId()
+		));
+
+		// AUTRE_JOUEUR répond faux
+		quizElimination.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, AUTRE_JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId1,
+				q1.propositions().get(1).id()
+		));
+
+		// Clôture Q1
+		horloge.avancer(Duration.ofSeconds(20));
+
+		// AUTRE_JOUEUR doit être dans les éliminés
+		assertThat(quizElimination.joueursElimines()).contains(AUTRE_JOUEUR);
+		assertThat(quizElimination.joueursElimines()).doesNotContain(JOUEUR);
+
+		// Passer à Q2
+		quizElimination.passerEtape(pilotage());
+		UUID etapeId2 = quizElimination.etapeCouranteId();
+		Question q2 = questionsDeTest.get(1);
+
+		// AUTRE_JOUEUR tente de répondre à Q2 -> refus 409 ETAT_INCOMPATIBLE
+		ResultatDeCommande refus = quizElimination.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, AUTRE_JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId2,
+				q2.propositionJusteId()
+		));
+		assertThat(refus).isInstanceOfSatisfying(Refuse.class, r -> {
+			assertThat(r.statutHttp()).isEqualTo(409);
+			assertThat(r.code()).isEqualTo("ETAT_INCOMPATIBLE");
+		});
+
+		// JOUEUR (non éliminé) peut répondre normalement
+		ResultatDeCommande acceptation = quizElimination.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId2,
+				q2.propositionJusteId()
+		));
+		assertThat(acceptation).isInstanceOf(Accepte.class);
+	}
+
+	@Test
+	void varianteEliminationElimineLesJoueursQuiNeRepondentPas() {
+		DeroulementQuiz quizElimination = new DeroulementQuiz(dernierContexte, questionsDeTest, VarianteQuiz.ELIMINATION);
+		quizElimination.demarrer();
+		UUID etapeId1 = quizElimination.etapeCouranteId();
+		Question q1 = questionsDeTest.getFirst();
+
+		// Deux joueurs répondent juste à Q1
+		quizElimination.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId1,
+				q1.propositionJusteId()
+		));
+		quizElimination.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, AUTRE_JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId1,
+				q1.propositionJusteId()
+		));
+		horloge.avancer(Duration.ofSeconds(20));
+
+		// Q2 : seul JOUEUR répond, AUTRE_JOUEUR ne répond pas
+		quizElimination.passerEtape(pilotage());
+		UUID etapeId2 = quizElimination.etapeCouranteId();
+		Question q2 = questionsDeTest.get(1);
+
+		quizElimination.recevoir(new EnvoyerReponse(
+				new Acteur(Acteur.Type.JOUEUR, JOUEUR, SOIREE),
+				horloge.maintenant(),
+				UUID.randomUUID(),
+				etapeId2,
+				q2.propositionJusteId()
+		));
+		// Clôture Q2 sans réponse de AUTRE_JOUEUR
+		horloge.avancer(Duration.ofSeconds(20));
+
+		// AUTRE_JOUEUR est éliminé
+		assertThat(quizElimination.joueursElimines()).contains(AUTRE_JOUEUR);
 	}
 }

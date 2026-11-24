@@ -10,6 +10,7 @@ import fr.croustyquizz.manche.ModeDeJeu;
 import fr.croustyquizz.manche.ReglagesDeManche;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,7 +44,7 @@ class FabriqueQuizTest {
 						new Proposition(UUID.randomUUID(), "Faux 3")
 				),
 				pJuste
-		);
+			);
 	}
 
 	@Test
@@ -55,6 +56,22 @@ class FabriqueQuizTest {
 		assertThat(fabrique.typeReglages()).isEqualTo(ReglagesQuiz.class);
 		assertThat(fabrique.reglagesCommuns(new ReglagesQuiz(5, 15)))
 				.isEqualTo(new ReglagesDeManche(5, Duration.ofSeconds(15)));
+	}
+
+	@Test
+	void transmetLesCategoriesEtLaVarianteALaCreation() {
+		List<String> categoriesDemandees = new ArrayList<>();
+		SourceDeQuestions source = (cats, diff, n) -> {
+			categoriesDemandees.addAll(cats);
+			return List.of(creerQuestion());
+		};
+		FabriqueQuiz fabrique = new FabriqueQuiz(source);
+		ReglagesQuiz reglages = new ReglagesQuiz(1, 20, VarianteQuiz.ELIMINATION, List.of("Sport", "Cinéma"));
+
+		DeroulementQuiz deroulement = fabrique.creer(contexte, reglages);
+
+		assertThat(categoriesDemandees).containsExactly("Sport", "Cinéma");
+		assertThat(deroulement.variante()).isEqualTo(VarianteQuiz.ELIMINATION);
 	}
 
 	@Test
@@ -75,7 +92,9 @@ class FabriqueQuizTest {
 				null,
 				Map.of(joueurId, q.propositionJusteId()),
 				Map.of(),
-				List.of(new AttributionDePoints(joueurId, 85, "Bonne réponse"))
+				List.of(new AttributionDePoints(joueurId, 85, "Bonne réponse")),
+				VarianteQuiz.RAPIDITE,
+				java.util.Set.of()
 		);
 
 		FabriqueQuiz fabrique = new FabriqueQuiz(null);
