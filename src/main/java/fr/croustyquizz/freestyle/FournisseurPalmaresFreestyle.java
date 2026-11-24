@@ -50,13 +50,17 @@ final class FournisseurPalmaresFreestyle implements FournisseurDeChampCommun {
         });
     }
 
-    private List<VuesFreestyle.LignePalmares> classer(UUID soireeId, UUID mancheId, Destination destination) {
-        var classement = ClassementParVote.classer(passages.resultatsDeVote(List.of(mancheId))).stream();
-        if (Destination.SALLE.equals(destination)) {
-            classement = classement.filter(ligne -> ligne.rang() != null).limit(3);
-        }
-        var contenus = persistance.contenus(mancheId);
+    /** Interprètes des Passages à plusieurs par victoires, puis Passages à un seul Interprète par note (#74). */
+    private List<Object> classer(UUID soireeId, UUID mancheId, Destination destination) {
+        var resultats = passages.resultatsDeVote(List.of(mancheId));
         var pseudos = participants.pseudos(soireeId);
-        return classement.map(ligne -> VuesFreestyle.lignePalmares(ligne, contenus, pseudos)).toList();
+        boolean salle = Destination.SALLE.equals(destination);
+        var victoires = ClassementParVictoires.classer(resultats, pseudos).stream()
+                .filter(ligne -> !salle || ligne.rang() != null).limit(salle ? 3 : Long.MAX_VALUE);
+        var notes = ClassementParVote.classer(resultats.stream().filter(r -> r.interpretes().size() == 1).toList()).stream()
+                .filter(ligne -> !salle || ligne.rang() != null).limit(salle ? 3 : Long.MAX_VALUE);
+        var contenus = persistance.contenus(mancheId);
+        return java.util.stream.Stream.concat(victoires.map(Object.class::cast),
+                notes.map(ligne -> VuesFreestyle.lignePalmares(ligne, contenus, pseudos))).toList();
     }
 }

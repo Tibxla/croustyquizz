@@ -25,13 +25,20 @@ final class CorpsFreestyle {
     }
 
     static ReglagesFreestyle reglages(JsonNode arbre, JsonMapper json) {
-        if (!arbre.isObject() || !arbre.propertyNames().equals(Set.of("theme", "schemaDeRimes", "difficulte", "nombreMesures", "instrumentaleIds"))
+        var champs = new java.util.HashSet<>(arbre.propertyNames());
+        boolean couplets = champs.remove("mesuresParCouplet");
+        if (!arbre.isObject() || !champs.equals(Set.of("theme", "schemaDeRimes", "difficulte", "nombreMesures", "instrumentaleIds"))
+                || (couplets && (!arbre.path("mesuresParCouplet").isIntegralNumber() || !arbre.path("mesuresParCouplet").canConvertToInt()))
                 || !arbre.path("theme").isString() || !arbre.path("schemaDeRimes").isString() || !arbre.path("difficulte").isString()
                 || !arbre.path("nombreMesures").isIntegralNumber() || !arbre.path("nombreMesures").canConvertToInt()
                 || !arbre.path("instrumentaleIds").isArray()) { throw invalide().exception(); }
         arbre.path("instrumentaleIds").forEach(CorpsFreestyle::lireUuid);
-        try { return json.treeToValue(arbre, ReglagesFreestyle.class); }
+        ReglagesFreestyle reglages;
+        try { reglages = json.treeToValue(arbre, ReglagesFreestyle.class); }
         catch (tools.jackson.core.JacksonException | IllegalArgumentException erreur) { throw invalide().exception(erreur); }
+        ReglagesFreestyle.refusDesCouplets(reglages.nombreMesures(), reglages.mesuresParCouplet())
+                .ifPresent(refus -> { throw refus.exception(); });
+        return reglages;
     }
 
     private static void lireUuid(JsonNode noeud) {

@@ -58,7 +58,8 @@ public class ServiceFreestyle extends ServiceDePassages<ReglagesFreestyle, EtatF
             long numero = passages.numeroPropose(soireeId);
             var resultat = deroulement.recevoir(new InscrireFreestyle(envoi.acteur(), recueLe, envoi.envoiId(),
                     UUID.randomUUID(), numero, corps.instrumentaleId(), persistance.instrumentales(soireeId),
-                    DictionnaireFreestyleLocal.amorces(instantane.reglages().theme())));
+                    DictionnaireFreestyleLocal.amorces(instantane.reglages().theme()), corps.invites(),
+                    invitesPresents(soireeId, corps.invites())));
             if (resultat instanceof Accepte) { passages.incrementerNumero(soireeId, numero); }
             return resultat;
         }));

@@ -37,11 +37,17 @@ public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverte
             var corps = json.treeToValue(arbre, CorpsKaraoke.InscriptionPassage.class);
             return new CorpsPassage.Inscription(corps.envoiId(), corps.chansonId(), null, corps.invitesIds());
         }
-        if (arbre.size() != 2) { CorpsPassage.invalide(); }
-        if (!arbre.has("instrumentaleId")) { CorpsPassage.invalide(); }
+        // Freestyle : envoiId et instrumentaleId, puis les invités facultatifs (#74).
+        boolean invites = arbre.has("invitesIds");
+        if (arbre.size() != (invites ? 3 : 2) || !arbre.has("instrumentaleId")) { CorpsPassage.invalide(); }
         var envoi = uuid(arbre.path("envoiId"));
         var choix = arbre.get("instrumentaleId");
-        return new CorpsPassage.Inscription(envoi, null, choix.isNull() ? null : uuid(choix));
+        List<UUID> invitesIds = null;
+        if (invites) {
+            if (!arbre.get("invitesIds").isArray()) { CorpsPassage.invalide(); }
+            invitesIds = arbre.get("invitesIds").valueStream().map(ConvertisseurCorpsKaraoke::uuid).toList();
+        }
+        return new CorpsPassage.Inscription(envoi, null, choix.isNull() ? null : uuid(choix), invitesIds);
     }
     private static UUID uuid(JsonNode valeur) {
         String texte = valeur.asString("");

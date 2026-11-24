@@ -39,12 +39,45 @@ public final class VuesFreestyle {
                 resultat.nombreVotes(), resultat.moyenneDixiemes());
     }
 
-    private static Map<String, Object> interprete(UUID joueur, Map<UUID, String> pseudos) {
-        return Map.of("joueurId", joueur, "pseudo", pseudos.getOrDefault(joueur, ParticipantsDePassage.JOUEUR_PARTI));
+    static Interprete interprete(UUID joueur, Map<UUID, String> pseudos) {
+        return new Interprete(joueur, pseudos.getOrDefault(joueur, ParticipantsDePassage.JOUEUR_PARTI));
     }
 
+    private static List<Interprete> interpretes(List<UUID> joueurs, Map<UUID, String> pseudos) {
+        return joueurs.stream().map(joueur -> interprete(joueur, pseudos)).toList();
+    }
+
+    record Interprete(UUID joueurId, String pseudo) { }
+
     record LignePalmares(UUID passageId, long numero, Long rang, Instrumentale instrumentale,
-            Map<String, Object> interprete, long nombreVotes, Integer moyenneDixiemes) { }
+            Interprete interprete, long nombreVotes, Integer moyenneDixiemes) { }
+
+    /** Invitation en suspens, vue par la seule Manette de l’invité, avec la cible à renvoyer (#74). */
+    record InvitationRecue(CiblePassage passage, long numero, Instrumentale instrumentale, Interprete inscrivant,
+            List<Interprete> interpretes) { }
+
+    record InvitationEmise(UUID passageId, Interprete invite, InvitationPassage.Etat etat) { }
+
+    record InvitationEnAttente(UUID passageId, Interprete invite) { }
+
+    record Couplet(int numero, Interprete interprete, int premiereMesure, int derniereMesure) { }
+
+    record Couplets(int mesuresParCouplet, int nombreCouplets, List<Interprete> ordre, Couplet courant, Couplet suivant,
+            boolean suivantAnnonce) { }
+
+    record VoixInterprete(Interprete interprete, long nombreVoix) { }
+
+    static Couplets couplets(CoupletsDuPassage etat, Map<UUID, String> pseudos) {
+        int suivant = etat.courant() + 1;
+        return new Couplets(etat.mesuresParCouplet(), etat.nombreCouplets(), interpretes(etat.ordre(), pseudos),
+                couplet(etat, etat.courant(), pseudos), suivant > etat.nombreCouplets() ? null : couplet(etat, suivant, pseudos),
+                etat.suivantAnnonce());
+    }
+
+    private static Couplet couplet(CoupletsDuPassage etat, int numero, Map<UUID, String> pseudos) {
+        int premiere = etat.premiereMesure(numero);
+        return new Couplet(numero, interprete(etat.interpreteDu(numero), pseudos), premiere, premiere + etat.mesuresParCouplet() - 1);
+    }
 
     private static final class Projection {
         private final InstantaneFreestyle instantane;
@@ -87,6 +120,8 @@ public final class VuesFreestyle {
                 bloc.put("instrumentales", List.copyOf(disponibles));
                 bloc.put("peutAppeler", !enPause && !instantane.pilotageAutomatique() && !cycle.actif() && !ordre.isEmpty());
                 bloc.put("peutPasser", cycle.actif());
+                bloc.put("invitationsEnAttente", invitations().stream().filter(InvitationPassage::enSuspens)
+                        .map(i -> new InvitationEnAttente(i.passageId(), interprete(i.inviteId(), pseudos))).toList());
             } else if (destination.type() == Destination.Type.JOUEUR) {
                 completerManette(bloc, destination.joueurId(), disponibles, ordre, positions);
             }
@@ -99,10 +134,30 @@ public final class VuesFreestyle {
             var personnels = ordre.stream().filter(passage -> passage.interpretes().contains(joueur)).toList();
             bloc.put("instrumentales", selection);
             bloc.put("mesPassagesEnAttente", personnels.stream().map(p -> enAttente(p, positions)).toList());
+            // Un invité devenu inscripteur après un départ ne voit pas sa propre Invitation.
+            bloc.put("invitationsEmises", invitations().stream().filter(i -> file.trouver(i.passageId()).inscripteurId().equals(joueur)
+                    && !i.inviteId().equals(joueur)).map(i -> new InvitationEmise(i.passageId(), interprete(i.inviteId(), pseudos), i.etat()))
+                    .toList());
+            bloc.put("invitationsRecues", invitations().stream().filter(i -> i.enSuspens() && i.inviteId().equals(joueur)).map(i -> {
+                Passage p = file.trouver(i.passageId());
+                return new InvitationRecue(new CiblePassage(p.id(), p.numeroModification()), p.numero(),
+                        instantane.etat().contenus().get(p.id()).instrumentale(), interprete(p.inscripteurId(), pseudos),
+                        interpretes(p.interpretes(), pseudos));
+            }).toList());
             bloc.put("peutInscrire", selection.stream()
                     .anyMatch(fiche -> file.verifierInscription(joueur, fiche.instrumentaleId().toString()).isEmpty()));
             bloc.put("peutConfirmerPresence", !enPause && cycle.actif() && cycle.courant().etat() == EtatPassage.APPELE
                     && cycle.courant().interpretes().contains(joueur));
+            var couplets = cycle.courant() == null ? null : instantane.etat().contenus().get(cycle.courant().id()).couplets();
+            bloc.put("monCoupletAnnonce", couplets != null && couplets.suivantAnnonce()
+                    && couplets.interpreteDu(couplets.courant() + 1).equals(joueur));
+        }
+
+        /** Invitations des Passages en attente dont l’invité est présent, dans l’ordre de la File puis d’émission. */
+        private List<InvitationPassage> invitations() {
+            var invitations = instantane.etat().file().invitations();
+            return file.ordreEffectif().stream().flatMap(p -> invitations.stream()
+                    .filter(i -> i.passageId().equals(p.id()) && pseudos.containsKey(i.inviteId()))).toList();
         }
 
         private GrilleDeRimes grille(boolean pourConsole) {
@@ -120,6 +175,8 @@ public final class VuesFreestyle {
             donnees.put("finPrevueLe", cycle.finPrevueLe());
             donnees.put("positionChronologiqueMs", cycle.positionChronologiqueMs());
             donnees.put("calculeLe", cycle.calculeLe());
+            var couplets = instantane.etat().contenus().get(passage.id()).couplets();
+            donnees.put("couplets", couplets == null ? null : couplets(couplets, pseudos));
             return Collections.unmodifiableMap(donnees);
         }
 
@@ -137,13 +194,17 @@ public final class VuesFreestyle {
             donnees.put("delaiRestantMs", projection.delaiRestantMs());
             donnees.put("calculeLe", projection.calculeLe());
             donnees.put("clotureLe", projection.clotureLe());
+            boolean designation = passage.interpretes().size() > 1;
+            donnees.put("scrutin", designation ? "MEILLEUR_INTERPRETE" : "NOTE");
             if (joueur == null) {
                 donnees.put("nombreVotes", projection.nombreVotes());
+                donnees.put("voix", !designation || projection.ouvert() ? null : VoteDuPublic.voix(vote, passage).stream()
+                        .map(voix -> new VoixInterprete(interprete(voix.interpreteId(), pseudos), voix.nombre())).toList());
             } else {
-                Integer maNote = vote.votes().stream().filter(recu -> joueur.equals(recu.joueurId()))
-                        .map(VoteRecu::note).findFirst().orElse(null);
-                donnees.put("maNote", maNote);
-                donnees.put("peutVoter", !enPause && projection.ouvert() && maNote == null && !passage.interpretes().contains(joueur));
+                var recu = vote.votes().stream().filter(avis -> joueur.equals(avis.joueurId())).findFirst();
+                donnees.put("maNote", recu.map(VoteRecu::note).orElse(null));
+                donnees.put("monChoix", recu.map(VoteRecu::interpreteDesigneId).orElse(null));
+                donnees.put("peutVoter", !enPause && projection.ouvert() && recu.isEmpty() && !passage.interpretes().contains(joueur));
             }
             return Collections.unmodifiableMap(donnees);
         }
@@ -154,7 +215,7 @@ public final class VuesFreestyle {
             donnees.put("numeroModification", passage.numeroModification());
             donnees.put("numero", passage.numero());
             donnees.put("instrumentale", instantane.etat().contenus().get(passage.id()).instrumentale());
-            donnees.put("interprete", interprete(passage.interpretes().getFirst(), pseudos));
+            donnees.put("interpretes", interpretes(passage.interpretes(), pseudos));
             return donnees;
         }
     }

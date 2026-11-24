@@ -11,5 +11,10 @@ public record EtatFreestyle(EtatFileAttente file, EtatCyclePassage cycle, EtatVo
         Map<UUID, Contenu> contenus) {
     public EtatFreestyle { contenus = Map.copyOf(contenus); }
 
-    public record Contenu(Instrumentale instrumentale, GrilleDeRimes grille) { }
+    /** Fiche et Grille figées à l’inscription ; Couplets tirés à « Je suis prêt » d’un Passage à plusieurs (#74). */
+    public record Contenu(Instrumentale instrumentale, GrilleDeRimes grille, CoupletsDuPassage couplets) {
+        public Contenu(Instrumentale instrumentale, GrilleDeRimes grille) { this(instrumentale, grille, null); }
+
+        Contenu avec(CoupletsDuPassage nouveaux) { return new Contenu(instrumentale, grille, nouveaux); }
+    }
 }
