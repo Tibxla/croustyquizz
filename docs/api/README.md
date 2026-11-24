@@ -10,6 +10,7 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-quiz.yaml](exemples/parcours-quiz.yaml) | Échanges fictifs, événements, refus de données sensibles et exemple de reconnexion |
 | [exemples/parcours-karaoke.yaml](exemples/parcours-karaoke.yaml) | Recherche, inscription, File d’attente, refus, reçus et reconnexion du Karaoké |
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
+| [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
 
@@ -109,7 +110,7 @@ Le nouvel inscrit rejoint la fin du Tour ouvert s’il n’y a pas chanté, sino
 
 La limite, de 1 à 20, porte sur les Passages `EN_ATTENTE` de chaque Interprète. La baisser ne retire rien. Une désinscription suivie d’une réinscription rejoint la fin du Tour admissible. Pas de doublon de Chanson personnel en attente ; deux Joueurs peuvent choisir la même Chanson. Un retardataire présent peut s’inscrire ; sa vue porte `eligiblePourMancheActive: true`, mais ce champ n’est jamais une garde de l’inscription.
 
-Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. L’appel fait `EN_ATTENTE` → `APPELE` et sépare le courant de la File d’attente ; la suite du cycle est décrite dans « Passage : appel, lecture et calage ». Un Passage sauté ou annulé garde son Tour. L’appel dure trente secondes ; son saut automatique relève du Pilotage Automatique (#25) : d’ici là, l’échéance ne publie rien et le Pilotage Manuel s’applique. Aucun nombre de Passages n’est fixé. L’Animateur termine la Manche ; en Automatique, la fin naturelle sera raccordée par #22 quand la File d’attente est vide à la fin d’un Passage, jamais au seul retrait. File vide au démarrage ou après le dernier retrait : elle reste ouverte. Le seul minuteur ajouté est la fin prévue du Passage.
+Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. L’appel fait `EN_ATTENTE` → `APPELE` et sépare le courant de la File d’attente ; la suite du cycle est décrite dans « Passage : appel, lecture et calage ». Un Passage sauté ou annulé garde son Tour. L’appel dure trente secondes ; son saut automatique relève du Pilotage Automatique (#25) : d’ici là, l’échéance ne publie rien et le Pilotage Manuel s’applique. Aucun nombre de Passages n’est fixé. L’Animateur termine la Manche ; en Automatique, la fin naturelle sera raccordée par #22 quand la File d’attente est vide à la fin d’un Passage, jamais au seul retrait. File vide au démarrage ou après le dernier retrait : elle reste ouverte. Deux minuteurs gouvernent la fin prévue du Passage et la clôture du Vote du public.
 
 Recherche et gestion exigent une Soirée `EN_COURS` et sa Manche Karaoké active `EN_COURS` ou `EN_PAUSE`. Après consultation du reçu, une mutation sur une Manche connue `TERMINEE` donne `ETAT_INCOMPATIBLE` avant toute garde du Passage ; les autres cas inactifs donnent `ETAPE_INACTIVE`. Sans courant actif, le pilotage omet `etapeId` ; `PASSER_ETAPE` donne alors `ETAPE_INACTIVE`, comme le Quiz sans `etapeId`, même si un Passage `TERMINE` ou `SAUTE` reste affiché. Avec un courant actif, `etapeId` est celui de son étape. La Manche passe de `EN_COURS` à `EN_PAUSE` et inversement, puis à `TERMINEE`. Après fin, `karaoke:null`, même si `mancheActive` reste terminée : cette asymétrie avec le Quiz final est assumée.
 
@@ -235,6 +236,30 @@ Après une fin locale ou `PASSER_ETAPE` en pause, la Manche reste en pause. `TER
 | `calage-chanson-modifie` | demande, relevé, correction, geste | salle, Console |
 
 Destinations et captures existantes restent inchangées ; vues complètes après validation, sans delta ni événement par seconde ; refus, rejeu et succès sans effet ne publient rien.
+
+### Vote du public
+
+Un Passage chanté jusqu’au bout (état `TERMINE`) ouvre un vote indépendant de trente secondes.
+Un saut ou une annulation n’en ouvre aucun. Une pause fige chaque vote ouvert, y compris un vote
+ouvert par une fin de lecture reçue pendant la pause. La reprise restitue le délai restant.
+L’horloge clôt chaque vote à son échéance. Terminer la Manche clôt tous les votes avec les notes reçues
+et conserve la cause `manche-terminee`.
+
+Le Joueur présent envoie `VotePassage` sur `POST M/passages/{passageId}/vote`, avec son jeton,
+un `envoiId`, le compteur du Passage et une note entière de 1 à 5. Le serveur applique les gardes
+de rôle, de portée et de présence avant de traiter la commande. Après les gardes communes de Manche
+et de rejeu, il refuse dans l’ordre un Passage inconnu, la pause, son propre Passage, un compteur
+périmé, un vote absent ou clos (échéance incluse) et un second vote du même Joueur. Ces refus
+métier sont conservés comme le reçu `200 AccuseVote` (`Cache-Control: no-store`). Un rejeu identique
+rend le reçu initial sans publication. Un autre contenu avec le même identifiant donne
+`ENVOI_REUTILISE`. Aucun vote ne rapporte de Point.
+
+`passage-termine` ouvre le vote, et `vote-clos` signale l’échéance à la salle, la Console et toutes
+les Manettes. `vote-enregistre` est publié vers la salle, la Console et la Manette du votant.
+La Console reçoit le nombre de votes. Chaque Manette reçoit uniquement sa propre note et sa
+capacité de voter. Les deux vues ordonnent les votes ouverts et le dernier vote clos par date
+d’ouverture décroissante. `configurationInterface.dureeVoteMs` expose le réglage
+`croustyquizz.passage.dureeVoteSecondes`.
 
 ### Configuration par défaut
 

@@ -1616,6 +1616,74 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '503':
           $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/vote:
+    post:
+      operationId: voterPassage
+      summary: Noter un Passage terminé
+      description: >-
+        Un Joueur présent peut noter une seule fois un Passage dont il n’est pas Interprète.
+        Le reçu est immuable et un rejeu identique ne republie aucune vue.
+        Refus dans l’ordre : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE,
+        403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche, portée ou présence),
+        409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE
+        (Manche terminée), 404 RESSOURCE_INTROUVABLE (Passage inconnu, avec reçu),
+        409 ETAT_INCOMPATIBLE (pause), 409 VOTE_INTERDIT, 409 COMMANDE_PERIMEE,
+        409 VOTE_CLOS, 409 VOTE_DEJA_ENREGISTRE. En cas de panne, 503 SERVICE_INDISPONIBLE
+        sans reçu.
+      tags:
+      - Karaoké
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/VotePassage
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseVote
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/retrait:
     post:
       operationId: retirerPassage
