@@ -341,7 +341,7 @@ class KaraokeHttpTest {
 
     @Test void leVoteAppliqueLesRefusCommunsEtMetierEtRejoueLeRecuInitial() throws Exception {
         UUID manche = demarrer();
-        var votant = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
+        var votant = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(1), soiree);
         String chemin = racine(manche) + "/passages/" + inscrire(manche, joueur, 1);
         String route = chemin + "/vote";
         UUID cle = UUID.randomUUID();

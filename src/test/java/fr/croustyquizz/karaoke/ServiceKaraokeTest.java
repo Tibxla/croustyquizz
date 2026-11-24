@@ -513,7 +513,7 @@ class ServiceKaraokeTest {
     }
 
     Acteur votant(int index) {
-        return new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(index), soiree);
+        return new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(index), soiree);
     }
 
     ResultatDeCommande voter(UUID manche, UUID passage, Acteur votant, CorpsKaraoke.VotePassage corps) {

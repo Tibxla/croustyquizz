@@ -270,8 +270,8 @@ class KaraokeTempsReelTest {
         var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
         KaraokeHttpTest.verifier("appelerPassage", appel, 200);
         var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
-        var votant = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), soiree);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(2), soiree);
+        var votant = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(1), soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(2), soiree);
         var salle = abonner(ecran, Canaux.salle(soiree), "salle");
         var console = abonner(animateur, Canaux.console(soiree), "console");
         var interprete = abonner(joueur, Canaux.joueur(joueur.identifiant()), "manette");
