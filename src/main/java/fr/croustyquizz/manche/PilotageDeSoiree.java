@@ -11,4 +11,9 @@ import java.util.UUID;
 public interface PilotageDeSoiree {
 	/** Vrai exactement quand la Soirée est en Pilotage Automatique. */
 	boolean estAutomatique(UUID soireeId);
+
+	/** Indique si la Soirée permet un choix de Pilotage de démonstration avant le démarrage. */
+	default boolean estModifiable(UUID soireeId) {
+		return false;
+	}
 }

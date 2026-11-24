@@ -54,6 +54,10 @@ public class ManchesDeTestControleur {
 		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
 		return socle.verrous().executer(soireeId, () -> {
 			lecture.executeWithoutResult(statut -> {
+				if (!socle.pilotage().estModifiable(soireeId)) {
+					throw new Refuse(409, "ETAT_INCOMPATIBLE",
+							"Le Pilotage d'une Soirée enregistrée est celui choisi à sa création.").exception();
+				}
 				if (socle.depot().deLaSoiree(soireeId).stream().anyMatch(manche -> manche.getEtat() != EtatManche.PRETE)) {
 					throw new Refuse(409, "ETAT_INCOMPATIBLE", "La Soirée a commencé : son Pilotage ne change plus.").exception();
 				}
