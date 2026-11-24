@@ -6,6 +6,7 @@ import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { monterBuzz } from './buzz-manette.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -88,12 +89,15 @@ async function demarrer() {
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
+	const boutonBuzz = element('buzzer');
+	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
 			programme?.afficher(vue);
+			buzz?.afficher(vue);
 			void gestionnaire.afficher(vue, origine);
 		},
 		surEtat(etat) {
@@ -106,7 +110,7 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {
