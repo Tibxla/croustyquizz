@@ -6,7 +6,9 @@ import java.util.Set;
 public record Accepte(Object accuse, Set<Destination> aRepublier, String typeEvenement, int statutHttp) implements ResultatDeCommande {
 	private static final Set<String> TYPES = Set.of("soiree-ouverte", "programme-modifie", "joueurs-modifies",
 			"manche-demarree", "question-ouverte", "manche-en-pause", "manche-reprise", "question-corrigee",
-			"file-attente-modifiee", "limite-passages-modifiee", "manche-terminee", "classement-modifie", "soiree-terminee", "buzz-recu", "reponse-enregistree", "resultat-personnel");
+			"file-attente-modifiee", "limite-passages-modifiee", "manche-terminee", "classement-modifie", "soiree-terminee", "buzz-recu", "reponse-enregistree", "resultat-personnel",
+			"passage-appele", "passage-demarre", "passage-termine", "passage-saute",
+			"lecture-chanson-modifiee", "calage-chanson-modifie");
 	public Accepte(Object accuse, Set<Destination> aRepublier, String typeEvenement) {
 		this(accuse, aRepublier, typeEvenement, accuse == null ? 204 : 200);
 	}

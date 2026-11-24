@@ -1,5 +1,6 @@
 package fr.croustyquizz.manche;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -85,7 +86,9 @@ public class ServiceDeManche<R, E> {
 				if (resultat == null) {
 					var deroulement = deroulement(manche);
 					resultat = preparation.appliquer().apply(deroulement);
-					if (resultat instanceof Accepte accepte) { enregistrer(manche, deroulement, cible, accepte); }
+					if (resultat instanceof Accepte accepte) {
+						enregistrer(manche, deroulement, cible, accepte, deroulement.instantane());
+					}
 				}
 			}
 			conserver(envoi, resultat);
@@ -139,14 +142,18 @@ public class ServiceDeManche<R, E> {
 			if (!socle.registre().contient(identite.getMancheId(), d)) { return null; }
 			ManchePersistante manche = charger(identite.getMancheId(), identite.getSoireeId());
 			if (manche.getEtat() != EtatManche.EN_COURS) { return null; }
+			Object avant = d.instantane();
 			rappel.action().run();
-			enregistrer(manche, d, null, new Accepte(null, TOUT, fabrique.typeEvenementMinuteur(d)));
+			Object apres = d.instantane();
+			if (!Objects.equals(avant, apres)) {
+				enregistrer(manche, d, null, new Accepte(null, TOUT, fabrique.typeEvenementMinuteur(d)), apres);
+			}
 			return null;
 		});
 	}
-	private void enregistrer(ManchePersistante manche, DeroulementDeManche d, EtatManche cible, Accepte accepte) {
+	private void enregistrer(ManchePersistante manche, DeroulementDeManche d, EtatManche cible, Accepte accepte, Object instantane) {
 		manche.changerEtat(d.estTerminee() ? EtatManche.TERMINEE : cible == null ? manche.getEtat() : cible, socle.horloge().maintenant());
-		persistance.enregistrer(manche.getMancheId(), d.instantane());
+		persistance.enregistrer(manche.getMancheId(), instantane);
 		socle.depot().enregistrer(manche);
 		socle.vues().publier(manche.getSoireeId(), accepte);
 	}

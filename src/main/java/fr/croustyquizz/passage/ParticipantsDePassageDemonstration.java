@@ -3,12 +3,17 @@ package fr.croustyquizz.passage;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.tempsreel.FournisseurPartieCommune;
 import java.util.*;
+import org.springframework.context.annotation.Fallback;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-/** Pseudos de démonstration, y compris après le départ d'un Interprète. */
+/**
+ * Pseudos des Soirées de démonstration, absentes de la base. {@code @Fallback} : les
+ * participants de la Soirée enregistrée ({@code soiree}, #111) l'emportent et lui confient ces Soirées.
+ */
 @Component
 @Profile({"dev", "recette"})
+@Fallback
 public final class ParticipantsDePassageDemonstration implements ParticipantsDePassage {
     private final FournisseurPartieCommune commun;
     public ParticipantsDePassageDemonstration(FournisseurPartieCommune commun) { this.commun = commun; }
@@ -23,6 +28,6 @@ public final class ParticipantsDePassageDemonstration implements ParticipantsDeP
                 }
             }
         }
-        return "Joueur parti";
+        return JOUEUR_PARTI;
     }
 }
