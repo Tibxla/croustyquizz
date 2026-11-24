@@ -105,6 +105,8 @@ test('la Salle garde le signal de son en pause et recale la lecture après une c
 		assert.ok(appels.includes(true));
 		assert.ok(appels.includes('lire'));
 		assert.equal(banc.principale.querySelector('.freestyle__mot').textContent, 'lumière');
+		assert.equal(banc.principale.querySelector('.freestyle__mot').classList.contains('freestyle__mot--actif'), true);
+		assert.match(banc.principale.querySelector('.freestyle__suivant').textContent, /^Ensuite : /);
 		banc.module.afficher(vue({ courant: { ...courant, etat: 'EN_PAUSE' }, grille, etat: 'EN_PAUSE' }));
 		assert.equal(appels.at(-1), 'pause');
 		assert.equal(appels.includes(false), false);
@@ -114,7 +116,9 @@ test('la Salle garde le signal de son en pause et recale la lecture après une c
 		await terminerMicrotaches();
 		assert.equal(appels.at(-1), 'reprendre');
 		assert.equal(position, 1750);
-		assert.equal(banc.principale.querySelector('.freestyle__mot').textContent, '');
+		// Au quatrième temps, le mot de la mesure reste lisible mais ne s'allume plus.
+		assert.equal(banc.principale.querySelector('.freestyle__mot').textContent, 'lumière');
+		assert.equal(banc.principale.querySelector('.freestyle__mot').classList.contains('freestyle__mot--actif'), false);
 	} finally { banc.module.demonter(); }
 	assert.equal(appels.at(-1), false);
 });

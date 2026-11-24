@@ -15,6 +15,7 @@ export function monter(zones, contexte) {
 	rythme.setAttribute('aria-label', 'Grille de rimes');
 	const mesure = e('p', 'freestyle__mesure');
 	const mot = e('p', 'freestyle__mot');
+	const suivant = e('p', 'freestyle__suivant');
 	const temps = e('ol', 'freestyle__temps');
 	temps.setAttribute('aria-label', 'Temps de la mesure');
 	const points = [1, 2, 3, 4].map(numero => {
@@ -26,7 +27,7 @@ export function monter(zones, contexte) {
 		temps.append(point);
 		return { point, balle, numero };
 	});
-	rythme.append(mesure, temps, mot);
+	rythme.append(mesure, temps, mot, suivant);
 	const etatLecture = e('p', 'freestyle__phase');
 	etatLecture.setAttribute('role', 'status');
 	ui.principale.append(interprete, phase, rythme, etatLecture);
@@ -46,10 +47,15 @@ export function monter(zones, contexte) {
 		const numero = repere.mesure ?? 1;
 		const texte = `Mesure ${numero} sur ${grille.nombreMesures} · Rime ${grille.mots[numero - 1].famille}`;
 		if (mesure.textContent !== texte) mesure.textContent = texte;
-		const affichage = repere.mot ?? (repere.temps === grille.mots[numero - 1].temps ? 'À toi de trouver' : '');
+		// Le mot reste affiché toute sa mesure pour que l'Interprète le lise à 5 m, et il s'allume sur son temps.
+		const motDeLaMesure = grille.mots[numero - 1], prochain = grille.mots[numero];
+		const affichage = repere.mesure === null ? '' : motDeLaMesure.mot ?? 'À toi de trouver';
+		const annonce = repere.mesure === null || !prochain ? '' : `Ensuite : ${prochain.mot ?? '…'}`;
 		if (dernierMot !== affichage) {
 			mot.textContent = dernierMot = affichage;
 		}
+		if (suivant.textContent !== annonce) suivant.textContent = annonce;
+		mot.classList.toggle('freestyle__mot--actif', repere.mesure !== null && repere.temps === motDeLaMesure.temps);
 		if (derniersTemps !== repere.temps) {
 			for (const { point, balle, numero } of points) {
 				balle.hidden = numero !== repere.temps;

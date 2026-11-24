@@ -252,5 +252,18 @@ dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
    l’ordre du Palmarès sur la Console et sur l’Écran de salle, puis
    compare le Classement général avant et après.
 
+Sur l'Écran de salle, le mot de chaque mesure reste affiché toute la mesure, pour qu'il
+se lise à 5 m. Il s'allume sur son temps, et le mot de la mesure suivante est annoncé
+dessous (« Ensuite : … »). Un mot masqué par la difficulté devient « À toi de trouver »,
+et son annonce devient « … ».
+
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans
+interface, avec trois fichiers WAV synthétiques. Deux Instrumentales sont déclarées, dont
+l'une par `instrumentales.json`, et le fichier sans tempo est écarté. Le parcours passe par
+les deux inscriptions, dont une au hasard, l'appel, « Je suis prêt », la Grille en AABB, la
+pause et la reprise, la fin prévue et le Vote. Aucun des quatre écrans ne déborde. Restent
+à vérifier à l'oreille, sur le matériel du Lieu : le calage du son sur la balle et la
+lisibilité à 5 m.
+
 Les amorces thématiques et les familles de rimes de cette branche sont écrites
 pour la recette. Le dictionnaire issu de Lexique relève de #69.

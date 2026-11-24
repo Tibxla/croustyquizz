@@ -15,7 +15,7 @@
 
 .freestyle__grille {
   display: grid;
-  grid-template-rows: auto auto minmax(1.25em, auto);
+  grid-template-rows: auto auto minmax(1.25em, auto) auto;
   gap: .3em;
   font-size: clamp(2rem, 5vw, 6rem);
   font-weight: 800;
@@ -64,7 +64,18 @@
 
 .freestyle__mot {
   margin: 0;
-  color: var(--texte);
+  color: var(--texte-2);
+  overflow-wrap: anywhere;
+}
+
+/* Le mot de la mesure s'allume sur son temps, sans changer de taille ni de place. */
+.freestyle__mot--actif { color: var(--citron); }
+
+.freestyle__suivant {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: clamp(1rem, 2.5vw, 2.5rem);
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
