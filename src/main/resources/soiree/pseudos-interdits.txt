@@ -1,0 +1,36 @@
+# Mots refusés dans un pseudo (#10). Un mot par ligne, sans accent ni majuscule.
+# Sans étoile, le mot n'est refusé qu'entier : « con » refuse « Le con » mais pas « Constance ».
+# Avec une étoile, il est aussi cherché à l'intérieur du pseudo : « connard* » refuse « SuperConnard ».
+# Les lettres doublées et les chiffres à la place des lettres sont ramenés avant comparaison.
+con
+cul
+bite
+pute
+pede
+pd
+fdp
+ntm
+nique
+chier
+gouine
+nazi
+bicot
+zob
+connard*
+connasse*
+encule*
+enfoire*
+salope*
+salaud*
+putain*
+batard*
+merde*
+couille*
+pouffiasse*
+petasse*
+tarlouze*
+bougnoule*
+chinetoque*
+youpin*
+negre*
+hitler*
