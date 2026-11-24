@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import test from 'node:test';
 import { setImmediate } from 'node:timers/promises';
-import { monterInvitationConsole, monterInvitationInvite } from '../../src/main/resources/static/js/invitation.mjs';
+import { lireCleInvitation, monterInvitationConsole, monterInvitationInvite } from '../../src/main/resources/static/js/invitation.mjs';
 import { creerDocument } from './karaoke-dom-factice.mjs';
 
 const CLE = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG';
@@ -121,4 +121,16 @@ test('un lien expiré laisse le formulaire masqué', async t => {
 	assert.equal(appel.mock.callCount(), 1);
 	assert.equal(formulaire.hidden, true);
 	assert.match(statut.textContent, /expiré ou déjà utilisé/);
+});
+
+test('la clé d’invitation quitte l’adresse et reste dans l’onglet', () => {
+	const rangees = new Map();
+	const memoire = { setItem: (k, v) => rangees.set(k, v), getItem: k => rangees.get(k) ?? null };
+	const remplacements = [];
+	const historique = { replaceState: (etat, titre, adresse) => remplacements.push(adresse) };
+	const cle = 'A'.repeat(43);
+	const navigation = { hash: `#cle=${cle}`, pathname: '/invitation.html', search: '' };
+	assert.equal(lireCleInvitation(navigation, memoire, historique), cle);
+	assert.deepEqual(remplacements, ['/invitation.html']);
+	assert.equal(lireCleInvitation({ hash: '', pathname: '/invitation.html', search: '' }, memoire, historique), cle);
 });

@@ -71,9 +71,22 @@ export function monterInvitationConsole(bouton, dialogue, origine = location.ori
 	});
 }
 
+// La clé arrive dans le fragment : elle est rangée dans l'onglet puis retirée de l'adresse et de l'historique,
+// comme la clé d'Écran ; un rechargement la retrouve dans l'onglet.
+const CLE_ONGLET = 'croustyquizz.invitation';
+export function lireCleInvitation(navigation, memoire = globalThis.sessionStorage, historique = globalThis.history) {
+	const depuisFragment = new URLSearchParams(navigation.hash.slice(1)).get('cle');
+	if (depuisFragment) {
+		try { memoire?.setItem(CLE_ONGLET, depuisFragment); } catch { /* onglet sans stockage : la clé reste en mémoire */ }
+		historique?.replaceState?.(null, '', navigation.pathname + navigation.search);
+		return depuisFragment;
+	}
+	try { return memoire?.getItem(CLE_ONGLET) ?? null; } catch { return null; }
+}
+
 export async function monterInvitationInvite(racine, navigation = location) {
 	const statut = racine.querySelector('[role="status"]');
-	const cle = new URLSearchParams(navigation.hash.slice(1)).get('cle');
+	const cle = lireCleInvitation(navigation);
 	if (!FORME_CLE.test(cle)) {
 		statut.textContent = LIEN_INVALIDE;
 		return;
