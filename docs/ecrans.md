@@ -134,6 +134,20 @@ deux Manettes de la même Soirée de démonstration.
 5. Terminer une Manche de Karaoké sans Passage terminé dans une Soirée neuve. Vérifier
    « Aucun Passage noté. » sur la salle et la Console.
 
+### Recette des Passages à plusieurs (#66)
+
+Spécification #135, tickets #138 et #139. Reprendre la Soirée de démonstration du ticket #114 avec la Console, l’Écran de salle et les Manettes des Joueurs 1, 2 et 3, une Manche de Karaoké démarrée en Pilotage Manuel avec `limitePassagesEnAttente` à 1.
+
+1. Sur la Manette du Joueur 1, ouvrir la fiche d’une Chanson. Vérifier que « Chanter avec (trois au plus) » liste les autres Joueurs présents, sans le Joueur 1, et qu’une quatrième case se désactive quand trois sont cochées. Cocher les Joueurs 2 et 3, puis « M’inscrire ».
+2. Vérifier que le Passage entre dans la File avec le seul Joueur 1 sur les trois écrans. La Console ajoute « Invités sans réponse : Joueur 2 et Joueur 3 » sous le ticket ; l’Écran de salle ne montre aucune Invitation. Le Joueur 1 voit sous son ticket « Joueur 2 : pas encore répondu » et « Joueur 3 : pas encore répondu ».
+3. Sur la Manette du Joueur 2, vérifier la section « Invitations » : ticket du Passage, « Joueur 1 t’invite à chanter. », « Accepter » et « Refuser ». Inscrire d’abord un Passage seul avec le Joueur 2, puis cliquer sur « Accepter » : le refus « Ta limite de Passages en attente est atteinte. » s’affiche et l’Invitation reste ouverte. Désinscrire ce Passage seul, puis accepter.
+4. Vérifier que le Joueur 2 rejoint le ticket sur les trois écrans (« Joueur 1, Joueur 2 »), que le Passage apparaît dans « Tes Passages » du Joueur 2 avec « Quitter ce Passage », et que le Joueur 1 lit « Joueur 2 : a accepté ».
+5. Refuser l’Invitation sur la Manette du Joueur 3 : elle disparaît, le Joueur 1 lit « Joueur 3 : a refusé » et la Console ne nomme plus d’invité sans réponse.
+6. Sur la Manette du Joueur 1, cliquer sur « Me désinscrire » : la confirmation nomme « Joueur 2 perd aussi ce Passage. ». Annuler. Sur la Manette du Joueur 2, cliquer sur « Quitter ce Passage » : la confirmation dit que le Passage reste pour le Joueur 1. Confirmer et vérifier que le Passage reste dans la File avec le seul Joueur 1.
+7. Inscrire un nouveau Passage du Joueur 1 avec les Joueurs 2 et 3 (désinscrire le précédent d’abord), faire accepter le Joueur 2, laisser le Joueur 3 sans réponse, puis « Appeler le suivant » sur la Console. Vérifier que l’Invitation du Joueur 3 disparaît de sa Manette sans message d’erreur, que l’appel montre « Joueur 1, Joueur 2 », que la Manette du Joueur 2 propose « Je suis prêt » et qu’une seconde confirmation depuis le Joueur 1 est refusée.
+8. Après la fin du Passage, vérifier que le Vote du public est proposé au Joueur 3 seulement : les Manettes des Joueurs 1 et 2 affichent « Le public vote pour ton Passage. ».
+9. À 390 × 844, dans une Soirée enregistrée où quatre Joueurs ont rejoint par `rejoindre.html` avec des pseudos longs, former un Passage de quatre Interprètes : les pseudos tiennent sur deux lignes au plus dans le ticket de la Manette, de la Console et de l’Écran de salle, sans déborder, et le lecteur d’écran annonce la liste complète.
+
 ### Musique d'attente (#140)
 
 Sur `/ecran.html`, choisir le dossier de musique depuis la coquille. Les MP3, M4A, OGG et WAV du sous-dossier `Attente`, y compris dans ses sous-dossiers, alimentent la Musique d'attente. La casse et les accents du nom `Attente` sont ignorés. La recherche locale des Chansons écarte ces fichiers. Le navigateur garde le dossier en mémoire le temps de l'ouverture de la page.

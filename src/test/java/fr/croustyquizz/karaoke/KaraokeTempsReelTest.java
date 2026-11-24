@@ -510,6 +510,28 @@ class KaraokeTempsReelTest {
         KaraokeHttpTest.verifier("repondreInvitation", tardive, 409);
         assertThat(json.readTree(tardive.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
         assertThat(capturer(salle).at("/vue/karaoke/courant/interpretes").size()).isEqualTo(1);
+        var apresAppel = envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/desinscription", inscrivant,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3), null);
+        KaraokeHttpTest.verifier("desinscrirePassage", apresAppel, 409);
+        assertThat(json.readTree(apresAppel.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
+
+        // L'inscripteur qui se désinscrit retire tout le Passage, et l'Invitation ouverte expire (#139).
+        var autre = envoyer(HttpMethod.POST, racine + "/passages", inscrivant, Map.of("envoiId", UUID.randomUUID(),
+                "chansonId", IdentifiantsChanson.encoder(3), "invitesIds", List.of(silencieux.identifiant())), null);
+        KaraokeHttpTest.verifier("inscrirePassage", autre, 201);
+        String autreId = json.readTree(autre.getBody()).path("passageId").asString();
+        vues = lireTous(flux, "file-attente-modifiee");
+        assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues/0/passage/passageId").asString()).isEqualTo(autreId);
+        var retrait = envoyer(HttpMethod.POST, racine + "/passages/" + autreId + "/desinscription", inscrivant,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0), null);
+        KaraokeHttpTest.verifier("desinscrirePassage", retrait, 200);
+        assertThat(json.readTree(retrait.getBody()).path("etatApres").asString()).isEqualTo("RETIRE");
+        vues = lireTous(flux, "file-attente-modifiee");
+        assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues").isEmpty()).isTrue();
+        assertThat(vues.get(console).at("/karaoke/invitationsEnAttente").isEmpty()).isTrue();
+        assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isZero();
+        KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/" + autreId + "/invitation",
+                silencieux, reponse("ACCEPTER", 1), null), 409);
     }
 
     /** Le Vote du public reste fermé à chacun des Interprètes d'un Passage à deux (#115, #138). */
@@ -525,11 +547,13 @@ class KaraokeTempsReelTest {
         var public_ = new Acteur(Acteur.Type.JOUEUR, joueurs.get(2), soiree);
         var inscription = envoyer(HttpMethod.POST, racine + "/passages", inscrivant, Map.of("envoiId", UUID.randomUUID(),
                 "chansonId", IdentifiantsChanson.encoder(1), "invitesIds", List.of(invite.identifiant())), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
         String passage = json.readTree(inscription.getBody()).path("passageId").asString();
         KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/invitation",
                 invite, reponse("ACCEPTER", 0), null), 200);
         var appel = envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/appel", animateur,
                 Map.of("numeroModification", 1), UUID.randomUUID());
+        KaraokeHttpTest.verifier("appelerPassage", appel, 200);
         String etape = json.readTree(appel.getBody()).path("etapeId").asString();
         var presence = Map.of("envoiId", UUID.randomUUID(), "etapeId", etape, "numeroModification", 2);
         KaraokeHttpTest.verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/presence",
