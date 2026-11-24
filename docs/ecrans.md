@@ -2,7 +2,7 @@
 
 Ouvrir `/test/identite.html?soiree=<UUID>` en profil `dev` ou `recette`. Pour ouvrir deux Manettes, charger la page dans deux onglets avec le même UUID de Soirée, choisir le rôle Joueur dans chacun, puis sélectionner « Joueur 1 » dans le premier et « Joueur 2 » dans le second. Quatre Joueurs de démonstration sont disponibles. La page lit l’UUID stable du Joueur choisi dans la vue du serveur. Le jeton `demo:TYPE:soireeId:acteurId` reste dans le `sessionStorage` de l’onglet (`croustyquizz.jeton`), jamais dans l’URL. La page est stockée dans `resources/demonstration/`, hors de `static/`, et servie par un contrôleur `@Profile({"dev", "recette"})`.
 
-Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. La Console utilise le Bearer de démonstration. Sans ce jeton, elle demande `/api/csrf` et transmet session et CSRF, en prévision de #5. Pour une Soirée enregistrée, `rejoindre.html` transmet à la Manette l’identité issue du serveur. La préparation ouvre l’Écran de salle avec sa clé dans le fragment, aussitôt placé dans le stockage de l’onglet puis effacé de l’adresse. L’Écran de salle envoie les commandes de son lecteur. La Console et la Manette ont un bouton de recapture. Les commandes de Soirée appartiennent à la Console et celles de Manche aux modules des modes.
+Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. Le formulaire d’identité vérifie le jeton de l’Animateur par la capture de la Console. Sans ce jeton, la Console demande `/api/csrf` et transmet session et CSRF, en prévision de #5. Sur une Soirée enregistrée, la Manette relit l’identité renvoyée par le serveur et enregistrée par `rejoindre.html`. La préparation ouvre l’Écran de salle avec `#cle=…` dans l’adresse. La coquille conserve la clé pour cette Soirée dans le stockage de l’onglet, puis retire le fragment. L’Écran de salle envoie les commandes de son lecteur. La Console et la Manette ont un bouton de recapture. Les commandes de Soirée appartiennent à la Console et celles de Manche aux modules des modes.
 
 Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les WebJars à chaque chargement (`Cache-Control: no-cache` et `Last-Modified`) : après un déploiement, il ne mélange pas un module ancien et un module neuf (#132). Un fichier inchangé coûte une réponse `304`. La page `/test/identite.html` reste en `no-store`. Cette revalidation repose sur la date des fichiers dans le JAR : ne pas ajouter `project.build.outputTimestamp` au `pom.xml` (builds reproductibles) sans passer à un ETag calculé sur le contenu, sinon tous les fichiers garderaient la même date et le navigateur resservirait d'anciens modules.
 
@@ -16,12 +16,16 @@ Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les
 ## Recette du déroulement manuel d’une Soirée (#12)
 
 1. En profil `dev`, créer une Soirée en Pilotage Manuel dans `/preparer-soiree.html`. Ouvrir sa Console via `/test/identite.html?soiree=<UUID>`, rôle Animateur, Pilotage actuel et module factice décoché. Ajouter deux Manches de Karaoké, puis déplacer la seconde en tête. Ouvrir la Soirée aux Joueurs depuis la préparation.
-2. Depuis la préparation, ouvrir l’Écran de salle. Rejoindre la Soirée avec le QR code de cet Écran ou saisir le code dans `/rejoindre.html`. La Manette et la salle restent ouvertes pendant tout le parcours.
+2. Depuis la préparation, ouvrir l’Écran de salle et vérifier que `#cle=…` disparaît de l’adresse. Rejoindre la Soirée avec le QR code de cet Écran ou saisir le code dans `/rejoindre.html`. Vérifier que la Manette affiche le pseudo choisi, puis rescanner le QR code dans le même navigateur pour retrouver le même Joueur. Garder la Manette et la salle ouvertes pendant le parcours.
 3. Dans la Console, lancer la Soirée. Vérifier le bandeau d’envoi puis le reçu HTTP. Les trois écrans affichent la première Manche du programme et la Console fige l’ordre. Pendant cette Manche, « Manche suivante » est désactivé. Avec un Passage actif, exercer Pause, Reprendre et Passer dans le module Karaoké. Recharger l’Écran de salle en cours de Manche et vérifier la capture.
 4. Terminer la Manche avec le bouton du Karaoké, puis cliquer sur « Manche suivante » dans la barre. Vérifier que la deuxième Manche arrive sur les trois écrans. Couper puis rétablir la connexion de la Console. Vérifier que les commandes se réactivent après la capture.
 5. Ouvrir « Terminer la Soirée ». Le focus initial est sur « Annuler ». Tester Échap et le retour du focus au déclencheur, puis rouvrir et confirmer. La Console, l’Écran de salle et la Manette affichent « Soirée terminée ». Recharger l’Écran avec la même clé et vérifier cette vue finale.
 
 Le test `DeroulementSoireeTempsReelTest` exécute le parcours HTTP et STOMP avec PostgreSQL, une Horloge factice et deux Manches factices. Pour vérifier la disposition et les interactions des coquilles, utiliser une Console à 1440 × 900 et 1024 × 768, une Manette à 390 × 844 et un Écran de salle à 1920 × 1080.
+
+## Accès d'un vrai Joueur (#10)
+
+Un Joueur arrive par `rejoindre.html`, puis `manette.html?soiree=<UUID>`. Son jeton de reconnexion opaque et son UUID sont rangés par Soirée dans `localStorage` (`js/acces-manette.mjs`, clés `croustyquizz.manette.<soireeId>`), jusqu'au vidage du navigateur, comme le veut le PRD : ils survivent à la mise en veille, à la fermeture de l'onglet et à un QR code rescanné. Si `localStorage` est refusé ou plein, l'accès se replie sur `sessionStorage` : il survit au rechargement, pas à la fermeture de l'onglet. Sans aucun stockage, `rejoindre.html` le dit avant de créer le Joueur ; une écriture qui échoue juste après la création est signalée au lieu d'ouvrir une Manette sans accès. Un QR code rescanné reprend le Joueur de cette Soirée, jamais celui d'une autre. Ouverte sans code, `rejoindre.html` ne reprend que la dernière Soirée rejointe depuis moins de 12 heures : un ancien pseudo ne revient pas tout seul des jours plus tard. Seul un refus du jeton (401 ou 404) ou une Soirée terminée l'efface ; une coupure le garde et réessaie. Les identités de démonstration restent dans `sessionStorage`. Une Manette ouverte avant ce stockage durable avait rangé son jeton et sa Soirée dans `sessionStorage` (`croustyquizz.jeton`, `croustyquizz.soiree`) : `rejoindre.html` les reprend, lit l'UUID du Joueur et le code dans la capture, les range dans `localStorage`, puis efface l'ancien emplacement.
 
 ## Module factice
 
@@ -75,6 +79,15 @@ Sur l'Écran de salle, les modules appellent `contexte.signalerSonDeManche(true)
 La coordination locale utilise `BroadcastChannel` et les Web Locks. La fenêtre ouverte le plus récemment parmi celles dont le son est activé prend la main. Un Passage déjà démarré garde son lecteur désigné jusqu'à sa clôture.
 
 Pour la recette, ouvrir deux fenêtres du même profil de navigateur en HTTPS ou sur `localhost`. Choisir dans la première un dossier avec plusieurs morceaux dans `Attente`. Vérifier l'enchaînement puis l'appel d'un Passage de Karaoké. Confirmer le départ, vérifier le silence de la Musique d'attente puis sa reprise à la clôture. Choisir le dossier dans la deuxième fenêtre et vérifier qu'elle prend la main. Fermer la deuxième, puis rouvrir ou recharger l'Écran de salle et choisir à nouveau le dossier. À chaque relais, écouter la fin de la première lecture avant la suivante. Refaire l'essai avec un dossier sans `Attente`, puis avec une Chanson présente uniquement dans `Attente`.
+
+### Recharger l’Écran pendant l’appel (#144)
+
+1. Appeler un Passage dont la Chanson correspond à un fichier audio lisible. Pendant l’appel, recharger l’Écran de salle.
+2. Une fois le compteur à « 0 s », choisir de nouveau le dossier sur l’Écran. Attendre que la Console affiche « Fichier local » avec le nom du fichier.
+3. Confirmer « Je suis prêt » sur la Manette et vérifier que l’Écran joue le fichier.
+4. Sur un autre Passage, confirmer avant que l’Écran ait déclaré une lecture. Vérifier que les paroles défilent et que la Console affiche « Paroles seules : Écran lecteur pas prêt ». Si le chargement finit ensuite, vérifier que le fichier reste silencieux.
+
+L’échéance de l’appel sert de repère. Tant que le Passage est appelé, l’Écran prépare le fichier et déclare le résultat de la recherche et du chargement, même si les métadonnées arrivent après l’échéance.
 
 ## Recette navigateur du Pilotage de démonstration (#119)
 

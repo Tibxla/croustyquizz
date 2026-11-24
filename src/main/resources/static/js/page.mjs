@@ -2,6 +2,7 @@ import { suivreVue, creerTransport } from './tempsreel.js';
 import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
+import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -46,22 +47,6 @@ function afficherCommun(vue) {
 	zoneErreur.hidden = true;
 }
 
-function lireJeton(soireeId) {
-	if (ecran === 'ecran') {
-		const cle = new URLSearchParams(location.hash.slice(1)).get('cle');
-		if (cle && soireeId) {
-			memoire.ecrire('croustyquizz.cleEcran', cle);
-			memoire.ecrire('croustyquizz.soireeEcran', soireeId);
-			history.replaceState(null, '', location.pathname + location.search);
-			return cle;
-		}
-		if (memoire.lire('croustyquizz.soireeEcran') === soireeId) {
-			return memoire.lire('croustyquizz.cleEcran');
-		}
-	}
-	return memoire.lire('croustyquizz.jeton');
-}
-
 function chargerQr(soireeId, jeton, signal) {
 	const qr = element('qr');
 	let occupe = false;
@@ -87,9 +72,18 @@ function chargerQr(soireeId, jeton, signal) {
 
 async function demarrer() {
 	const soireeId = new URLSearchParams(location.search).get('soiree');
-	const jeton = lireJeton(soireeId);
-	const joueurId = memoire.lire('croustyquizz.soiree') === soireeId ? memoire.lire('croustyquizz.joueurId') : null;
-	const acces = lireAcces(ecran, location.search, jeton, joueurId);
+	const stockageManette = ecran === 'manette' ? creerAccesManette() : null;
+	const accesManette = stockageManette?.lire(soireeId);
+	const cleEnMemoire = ecran === 'ecran' && memoire.lire('croustyquizz.soireeEcran') === soireeId
+		? memoire.lire('croustyquizz.cleEcran') : null;
+	const jetonEnMemoire = accesManette?.jeton ?? cleEnMemoire ?? memoire.lire('croustyquizz.jeton');
+	const { cleEcran, ...acces } = lireAcces(ecran, location.search, jetonEnMemoire, accesManette?.joueurId, location.hash);
+	const jeton = cleEcran ?? jetonEnMemoire;
+	if (cleEcran !== null) {
+		memoire.ecrire('croustyquizz.cleEcran', cleEcran);
+		memoire.ecrire('croustyquizz.soireeEcran', soireeId);
+		history.replaceState(null, '', location.pathname + location.search);
+	}
 	const annulation = new AbortController();
 	const chargerQrSiNecessaire = chargerQr(soireeId, jeton, annulation.signal);
 	let csrf;
@@ -99,6 +93,12 @@ async function demarrer() {
 		csrf = reponse.corps.token;
 	}
 	const transport = creerTransport({ jeton, csrf });
+	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
+	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
+		stockageManette.oublier(acces.soireeId);
+		location.replace(adresseRetourArrivee(accesManette.codeAcces));
+		return;
+	}
 	const zoneAudio = element('audio-salle');
 	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
 	let suivi;

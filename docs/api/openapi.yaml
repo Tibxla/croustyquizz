@@ -393,11 +393,13 @@ paths:
       operationId: rejoindreSoiree
       summary: Rejoindre une Soirée avec un code et un pseudo
       description: Autorisé en OUVERTE ou EN_COURS. Pseudo nettoyé, filtré et unique dans la Soirée ; le serveur
-        attribue l’identité et un jeton opaque. Un Joueur qui arrive pendant une Manche y joue aussitôt (#10). Stocker le jeton
+        attribue l’identité et un jeton opaque. Un Joueur qui arrive pendant une Manche y joue aussitôt si le Mode de jeu admet les arrivées en cours (#10, voir eligiblePourMancheActive). Stocker le jeton
         pour la reconnexion. Sans identité ni heure fournies par la Manette. La Manette met le code au format du schéma
         (majuscules, sans blancs) avant l’envoi. Un code inconnu, ou celui d’une Soirée en PREPARATION ou TERMINEE, donne 404 CODE_ACCES_INVALIDE, sans
-        distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; filtre et unicité du pseudo
-        (PSEUDO_REFUSE, PSEUDO_DEJA_PRIS) relèvent de #10.
+        distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; un pseudo
+        injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
+        pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
+        409 PSEUDO_DEJA_PRIS.
       tags:
       - Soirée
       security: []
@@ -1042,7 +1044,7 @@ paths:
         contenu = 409 ENVOI_REUTILISE ; nouvel envoiId pour modifier la Réponse = 409 REPONSE_DEJA_ENREGISTREE.
         Déduplication conservée jusqu’à expiration de l’accès Joueur, au minimum jusqu’à la fin de la Soirée. L’accusé
         ne révèle pas la justesse. Une Question manquée ne peut être rejouée. Un Joueur arrivé pendant cette Manche
-        n’est pas éligible avant la Manche suivante : 409 ETAT_INCOMPATIBLE.'
+        y répond aussitôt, Question en cours comprise s’il reste du temps (décision de #14).'
       tags:
       - Quiz
       security:
