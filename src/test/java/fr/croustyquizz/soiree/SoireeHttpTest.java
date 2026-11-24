@@ -304,8 +304,11 @@ class SoireeHttpTest {
 	@Test
 	void uneSoireeFictiveNePretePasSonIdentiteDeDemonstrationAUnVraiJoueur() throws Exception {
 		String code = soireeOuverte().path("codeAcces").asString();
-		String lea = json.readTree(envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
-				Map.of("codeAcces", code, "pseudo", "Léa")).getBody()).at("/joueur/id").asString();
+		var arrivee = envoyer(HttpMethod.POST, "/api/soirees/rejoindre", Map.of("codeAcces", code, "pseudo", "Léa"));
+		ContratApi.verifier(CONTRAT, "rejoindreSoiree", arrivee);
+		assertThat(arrivee.getStatusCode().value()).isEqualTo(201);
+		// Un UUID vide ferait refuser le jeton pour une autre raison que le vrai Joueur.
+		String lea = UUID.fromString(json.readTree(arrivee.getBody()).at("/joueur/id").asString()).toString();
 		UUID fictive = UUID.randomUUID();
 		String jeton = "demo:JOUEUR:" + fictive + ":" + lea;
 
