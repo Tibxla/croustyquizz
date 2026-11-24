@@ -2,28 +2,68 @@ package fr.croustyquizz.manche;
 
 import java.util.Map;
 import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import fr.croustyquizz.tempsreel.AccesAuxVues;
 
-/** Création et démarrage temporaires sans Orchestrateur, réservés à dev et recette (#12). */
+/** Création et démarrage sans Orchestrateur (#12) et choix du Pilotage, réservés à dev et recette. */
 @RestController
 @Profile({"dev", "recette"})
 public class ManchesDeTestControleur {
 	public record Creation(@NotNull ModeDeJeu mode, @NotNull Object reglages) {
-		@com.fasterxml.jackson.annotation.JsonAnySetter
+		@JsonAnySetter
 		public void refuserChampInconnu(String nom, Object valeur) { throw new IllegalArgumentException("Champ non prévu dans Creation."); }
 	}
+
+	public record ChoixPilotage(@NotNull @Pattern(regexp = "MANUEL|AUTOMATIQUE") String pilotage) {
+		@JsonAnySetter
+		public void refuserChampInconnu(String nom, Object valeur) {
+			throw new IllegalArgumentException("Champ non prévu dans ChoixPilotage.");
+		}
+	}
+
 	private final RegistreServicesDeManche services;
-	public ManchesDeTestControleur(RegistreServicesDeManche services) { this.services = services; }
+	private final SocleDeManche socle;
+	private final PilotageDeSoireeDemonstration pilotage;
+	private final TransactionTemplate lecture;
+
+	public ManchesDeTestControleur(RegistreServicesDeManche services, SocleDeManche socle,
+			PilotageDeSoireeDemonstration pilotage) {
+		this.services = services;
+		this.socle = socle;
+		this.pilotage = pilotage;
+		lecture = new TransactionTemplate(socle.transactions());
+		lecture.setReadOnly(true);
+	}
+
+	@PutMapping("/api/test/soirees/{soireeId}/pilotage")
+	public ResponseEntity<Map<String, Object>> choisirPilotage(@PathVariable UUID soireeId,
+			@Valid @RequestBody ChoixPilotage choix, Acteur acteur) {
+		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+		return socle.verrous().executer(soireeId, () -> {
+			lecture.executeWithoutResult(statut -> {
+				if (socle.depot().deLaSoiree(soireeId).stream().anyMatch(manche -> manche.getEtat() != EtatManche.PRETE)) {
+					throw new Refuse(409, "ETAT_INCOMPATIBLE", "La Soirée a commencé : son Pilotage ne change plus.").exception();
+				}
+			});
+			pilotage.choisir(soireeId, "AUTOMATIQUE".equals(choix.pilotage()));
+			return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+					.body(Map.of("soireeId", soireeId, "pilotage", choix.pilotage()));
+		});
+	}
+
 	@PostMapping("/api/test/soirees/{soireeId}/manches")
 	public ResponseEntity<?> creer(@PathVariable UUID soireeId, @Valid @RequestBody Creation creation, Acteur acteur) {
 		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);

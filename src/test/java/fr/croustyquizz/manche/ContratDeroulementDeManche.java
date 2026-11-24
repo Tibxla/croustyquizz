@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,7 @@ public abstract class ContratDeroulementDeManche {
 	/** Crée le déroulement du mode testé. */
 	protected abstract DeroulementDeManche creer(ContexteDeManche contexte);
 
-	/** Une action que le mode sait traiter pendant une étape. */
+	/** Une action que le mode accepte après le démarrage de la Manche. */
 	protected abstract ActionJoueur uneAction(UUID joueurId, Instant recueLe);
 
 	protected ReglagesDeManche reglages() {
@@ -48,6 +49,25 @@ public abstract class ContratDeroulementDeManche {
 
 		assertThat(deroulement.estTerminee()).isFalse();
 		assertThat(finsSignalees).isZero();
+	}
+
+	@Test
+	void compareLesInstantanesParValeur() {
+		deroulement.demarrer();
+		Object avant = deroulement.instantane();
+		assertThat(Objects.equals(avant, deroulement.instantane()))
+				.as("Deux lectures successives donnent la même valeur")
+				.isTrue();
+
+		assertThat(deroulement.recevoir(uneAction(JOUEUR, horloge.maintenant())))
+				.isInstanceOf(Accepte.class);
+		Object apres = deroulement.instantane();
+		assertThat(Objects.equals(avant, apres))
+				.as("Une action acceptée change la valeur de l'instantané")
+				.isFalse();
+		assertThat(Objects.equals(apres, deroulement.instantane()))
+				.as("La nouvelle valeur reste stable entre deux lectures")
+				.isTrue();
 	}
 
 	@Test

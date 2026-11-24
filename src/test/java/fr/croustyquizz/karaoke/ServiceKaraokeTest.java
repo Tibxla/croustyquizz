@@ -1,6 +1,7 @@
 package fr.croustyquizz.karaoke;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.*;
 import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.*;
@@ -604,7 +605,8 @@ class ServiceKaraokeTest {
         final DepotDeManchesMemoire depot = new DepotDeManchesMemoire();
         final PersistancePassageMemoire passages = spy(new PersistancePassageMemoire());
         Map<UUID, EtatKaraokePersiste> etats = new HashMap<>();
-        final PortsDePassageFactices ports = new PortsDePassageFactices();
+        final PortsDePassageFactices ports = new PortsDePassageFactices(ConfigurationTroisJoueurs.JOUEURS);
+        final ParticipantsDePassage participantsDesVues = mock(ParticipantsDePassage.class, delegatesTo(ports));
         final HorlogeFactice horloge = new HorlogeFactice();
         final DiffuseurFactice diffuseur = new DiffuseurFactice();
         final RegistreDesDeroulements registre = new RegistreDesDeroulements();
@@ -626,10 +628,11 @@ class ServiceKaraokeTest {
             when(source.rechercher(anyString())).thenReturn(List.of(contenu(1).chanson()));
             var commun = new ConfigurationTroisJoueurs.Commun(depot);
             var beans = new StaticListableBeanFactory();
-            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), ports, PROPRIETES, SOURCE);
+            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE);
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
-            socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json);
+            socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
+                    soireeId -> false);
             PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {
                 public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
                 public void enregistrer(UUID id, Object valeur) {

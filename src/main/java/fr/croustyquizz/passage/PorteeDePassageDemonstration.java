@@ -24,8 +24,7 @@ public final class PorteeDePassageDemonstration implements PorteeDePassage {
     @Override public void verifier(Acteur acteur, UUID soireeId, UUID mancheId) {
         AccesAuxVues.verifier(acteur, soireeId, null);
         ManchePersistante manche = depot.charger(mancheId);
-        if (manche == null || !soireeId.equals(manche.getSoireeId()) || manche.getMode() != ModeDeJeu.KARAOKE
-                || (acteur.type() == Acteur.Type.JOUEUR && !commun.joueurs(soireeId).contains(acteur.identifiant()))) {
+        if (manche == null || !soireeId.equals(manche.getSoireeId()) || manche.getMode() != ModeDeJeu.KARAOKE) {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche ou Joueur introuvable.").exception();
         }
     }

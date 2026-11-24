@@ -10,6 +10,7 @@ public final class ModeFacticeDuSocle implements FabriqueDeDeroulement<ModeFacti
 		PersistanceDuMode<DeroulementFactice.Etat> {
 	public record Reglages(int nombreEtapes, int tempsParEtapeSecondes) { }
 	final Map<UUID, DeroulementFactice.Etat> etats = new HashMap<>();
+	public ContexteDeManche dernierContexte;
 	@Override
 	public ModeDeJeu mode() { return ModeDeJeu.QUIZ; }
 	@Override
@@ -19,9 +20,13 @@ public final class ModeFacticeDuSocle implements FabriqueDeDeroulement<ModeFacti
 		return new ReglagesDeManche(reglages.nombreEtapes(), Duration.ofSeconds(reglages.tempsParEtapeSecondes()));
 	}
 	@Override
-	public DeroulementDeManche creer(ContexteDeManche contexte, Reglages reglages) { return new DeroulementFactice(contexte); }
+	public DeroulementDeManche creer(ContexteDeManche contexte, Reglages reglages) {
+		dernierContexte = contexte;
+		return new DeroulementFactice(contexte);
+	}
 	@Override
 	public DeroulementDeManche restaurer(ContexteDeManche contexte, Reglages reglages, DeroulementFactice.Etat etat, EtatManche cycle) {
+		dernierContexte = contexte;
 		return DeroulementFactice.restaurer(contexte, etat, cycle);
 	}
 	@Override

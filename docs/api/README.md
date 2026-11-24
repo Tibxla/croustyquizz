@@ -11,6 +11,7 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-karaoke.yaml](exemples/parcours-karaoke.yaml) | Recherche, inscription, File d’attente, refus, reçus et reconnexion du Karaoké |
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
 | [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
+| [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console d’une Soirée en Pilotage Automatique |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
 
@@ -330,9 +331,12 @@ une authentification ; en production le résolveur refuse systématiquement avec
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
-Les deux routes temporaires de création et de démarrage sont décrites dans
-[le contrat du prototype](prototype/openapi.yaml), réservées aux profils `dev`/`recette`
-et à l'Animateur de démonstration. Elles nécessitent qu'un service du mode soit installé ;
-aucun vrai mode n'est livré par #79. Le Buzz de test et son format historique restent disponibles.
+Les trois routes temporaires de création, de démarrage et de choix du Pilotage sont
+réservées aux profils `dev`/`recette` et à l'Animateur de démonstration.
+La création et le démarrage d'une Manche nécessitent un service du mode installé.
+Le choix du Pilotage se fait avant le démarrage de toute Manche de la Soirée.
+Il est perdu au redémarrage du serveur. Le Pilotage d'une Soirée enregistrée reste
+celui choisi à sa création. Le Buzz de test et son format historique restent disponibles.
+Voir [le contrat du prototype](prototype/openapi.yaml).
 Le cycle interne `PRETE` apparaît sous le nom HTTP existant `EN_ATTENTE` dans le programme.
 Les schémas des Manches restent limités au Quiz jusqu'aux contrats des autres modes.
