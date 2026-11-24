@@ -147,6 +147,10 @@ class ReconnexionManetteTest {
 		ContratApi.verifier(CONTRAT, "retrouverEtatManette", vueDeTom);
 		assertThat(json.readTree(vueDeTom.getBody()).at("/vue/joueurId").asString())
 				.isEqualTo(tom.at("/joueur/id").asString());
+		// Sans Mode de jeu qui les fournisse, ni classement ni Réponse.
+		assertThat(json.readTree(vueDeTom.getBody()).at("/vue/classement").isEmpty()).isTrue();
+		assertThat(json.readTree(vueDeTom.getBody()).at("/vue/derniereReponse").isNull()).isTrue();
+		assertThat(json.readTree(vueDeTom.getBody()).at("/vue/resultatPersonnel").isNull()).isTrue();
 
 		jdbc.update("update joueur set exclu = true where id = ?::uuid", lea.at("/joueur/id").asString());
 		var apresExclusion = envoyer(HttpMethod.GET, route, null, lea.path("jetonReconnexion").asString());
