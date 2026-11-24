@@ -278,13 +278,19 @@ class SoireeHttpTest {
 
 	@Test
 	void lesTroisEcransDuParcoursSontServis() {
-		for (String page : new String[] { "/preparer-soiree.html", "/ecran-de-salle.html", "/rejoindre.html" }) {
+		for (String page : new String[] { "/preparer-soiree.html", "/ecran.html", "/rejoindre.html" }) {
 			var reponse = envoyer(HttpMethod.GET, page, null);
 			assertThat(reponse.getStatusCode().value()).as(page).isEqualTo(200);
 			assertThat(reponse.getHeaders().getContentType().isCompatibleWith(MediaType.TEXT_HTML)).as(page).isTrue();
-			assertThat(reponse.getBody()).as(page).contains("/js/api.js");
 		}
 		assertThat(envoyer(HttpMethod.GET, "/js/api.js", null).getBody()).contains("export async function appeler");
+	}
+
+	@Test
+	void lEcranDeSalleDuParcoursEstLaCoquilleCommune() {
+		// La préparation ouvre ecran.html avec la clé d'Écran ; l'ancienne page dédiée n'est plus servie (#106).
+		assertThat(envoyer(HttpMethod.GET, "/preparer-soiree.html", null).getBody()).contains("/ecran.html?");
+		assertThat(envoyer(HttpMethod.GET, "/ecran-de-salle.html", null).getStatusCode().value()).isEqualTo(404);
 	}
 
 	@Test
