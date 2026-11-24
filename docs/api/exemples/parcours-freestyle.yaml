@@ -368,6 +368,29 @@ evenements:
           clotureLe: null
           maNote: 4
           peutVoter: false
+- nom: La Salle reçoit le Palmarès quand la Manche se termine
+  canal: salle
+  message:
+    type: manche-terminee
+    soireeId: *soireeId
+    revision: 6
+    emisLe: '2026-11-24T20:01:05Z'
+    donnees:
+      soiree: *soiree
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueurs
+      dernierBuzz: null
+      classement: *classement
+      freestyle: null
+      palmaresFreestyle:
+      - passageId: *passageId
+        numero: 1
+        rang: 1
+        instrumentale: *instrumentale
+        interprete: *interprete
+        nombreVotes: 1
+        moyenneDixiemes: 40
 cases:
 - nom: Inscription avec un choix explicite
   schema: InscriptionSelonMode

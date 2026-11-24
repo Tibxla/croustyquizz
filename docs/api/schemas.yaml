@@ -973,6 +973,16 @@ $defs:
               rang:
                 type: integer
         maxItems: 3
+      palmaresFreestyle:
+        type: [array, 'null']
+        description: Palmarès de la dernière Manche de Freestyle terminée, entre deux Manches.
+        items:
+          allOf:
+          - $ref: '#/$defs/LignePalmaresFreestyle'
+          - properties:
+              rang:
+                type: integer
+        maxItems: 3
       classement:
         type: array
         items:
@@ -1026,6 +1036,11 @@ $defs:
         type: [array, 'null']
         items:
           $ref: '#/$defs/LignePalmaresKaraoke'
+      palmaresFreestyle:
+        type: [array, 'null']
+        description: Palmarès de la dernière Manche de Freestyle terminée, entre deux Manches.
+        items:
+          $ref: '#/$defs/LignePalmaresFreestyle'
       classement:
         type: array
         items:
@@ -3237,6 +3252,20 @@ $defs:
     - parolesId
     - dureeMs
     - lignes
+  LignePalmaresFreestyle:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId: { type: string, format: uuid }
+      numero: { type: integer, minimum: 1, maximum: 9007199254740991 }
+      rang: { type: [integer, 'null'], minimum: 1 }
+      instrumentale:
+        $ref: '#/$defs/Instrumentale'
+      interprete:
+        $ref: '#/$defs/InterpretePublic'
+      nombreVotes: { type: integer, minimum: 0 }
+      moyenneDixiemes: { type: [integer, 'null'], minimum: 10, maximum: 50 }
+    required: [passageId, numero, rang, instrumentale, interprete, nombreVotes, moyenneDixiemes]
   IdentifiantInstrumentale:
     type: string
     format: uuid
