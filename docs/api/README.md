@@ -137,6 +137,14 @@ Pour le placement, `avant:null` signifie fin du Tour ; ancre égale à la cible 
 
 Une transaction unique enregistre la mutation. Après validation de cette transaction et toujours sous le verrou de Soirée, le serveur publie les vues complètes. Le déroulement rend l’accusé, les destinations et le `typeEvenement` commun ; chaque destination possède sa Révision. Refus, rejeu, geste sans effet et rollback ne publient rien. Base ou transaction indisponible : `503 SERVICE_INDISPONIBLE`. Toute autre exception produit un 500 hors contrat, journalisé, sans `ContratApi`.
 
+### Suggestions et favoris de Chansons
+
+La Manette peut envoyer un titre et un artiste pendant le Karaoké, même en pause ou lorsque son quota de Passages est atteint. La Console voit les groupes de la Soirée, classés par nombre de Joueurs décroissant. Chaque Joueur compte une fois par groupe. La première graphie est affichée après nettoyage des blancs. Pour regrouper, le serveur ignore la casse et les marques d’accent, puis compare le titre et l’artiste séparément. Le retrait utilise le compteur affiché pour protéger une demande arrivée depuis.
+
+Les Chansons favorites de la Soirée remontent en tête des résultats pour les deux interfaces. À l’intérieur de chaque groupe, le classement habituel s’applique. La Console reçoit les identifiants des favoris et peut en ajouter ou en retirer. Le rattachement au Lieu suivra #180.
+
+Les trois commandes rendent un reçu JSON après validation de la transaction, selon `Idempotency-Key`. Les événements `suggestions-chansons-modifiees` et `favoris-chansons-modifies` ne sont diffusés qu’à la Console, après un changement effectif. Une suggestion et les identifiants de ses auteurs restent hors des vues de la salle et des Manettes.
+
 ### Routes et codes de refus
 
 `M` désigne `/api/soirees/{soireeId}/manches/{mancheId}`. UUID de chemin requis. A = Animateur du Lieu, J = Joueur présent de la Soirée (inscripteur pour la désinscription). Les codes de chaque groupe ci-dessous font partie de chaque ligne qui le cite ; OpenAPI conserve les réponses partagées `Erreur4xx` et `Erreur503`. Chaque opération OpenAPI nomme ses propres codes et renvoie à ce tableau pour leurs conditions.

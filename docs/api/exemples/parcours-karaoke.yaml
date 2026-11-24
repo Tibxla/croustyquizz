@@ -1581,6 +1581,45 @@ http:
     passageId: 82000000-0000-4000-8000-000000000046
     numeroModification: 0
     etatApres: EN_ATTENTE
+- nom: Un Joueur suggère une Chanson
+  operationId: suggererChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000074
+  requete:
+    titre: Éclat du soir
+    artiste: Les Accords
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000074
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:05.000Z
+- nom: L’Animateur retire la suggestion traitée
+  operationId: retirerSuggestionChanson
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000075
+    suggestionId: 82000000-0000-4000-8000-000000000073
+  requete:
+    nombreJoueurs: 2
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000075
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:06.000Z
+- nom: L’Animateur place une Chanson parmi les favoris
+  operationId: definirFavoriChanson
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000076
+    chansonId: 63726f75-7374-7900-516b-24e8a9d3705e
+  requete:
+    favorite: true
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000076
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:07.000Z
 evenements:
 - nom: File vide au démarrage, ouverte — salle
   canal: salle
@@ -4765,6 +4804,23 @@ evenements:
         motifInscriptionRefusee: LIMITE_ATTEINTE
         peutConfirmerPresence: false
 cases:
+- nom: Une suggestion regroupée contient le nombre de Joueurs
+  schema: SuggestionChansonConsole
+  valide: true
+  valeur:
+    suggestionId: 82000000-0000-4000-8000-000000000073
+    titre: Éclat du soir
+    artiste: Les Accords
+    nombreJoueurs: 2
+- nom: Le pseudo d’un auteur ne peut pas figurer dans le groupe
+  schema: SuggestionChansonConsole
+  valide: false
+  valeur:
+    suggestionId: 82000000-0000-4000-8000-000000000073
+    titre: Éclat du soir
+    artiste: Les Accords
+    nombreJoueurs: 2
+    pseudo: Joueur de démonstration
 - nom: Création avec limite configurée
   schema: CreationManche
   valeur:

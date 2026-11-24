@@ -1366,7 +1366,7 @@ paths:
         extrémités supprimées, puis limite configurée 1..120 sans troncature ; vide, sans lettre ni
         chiffre Unicode ou trop longue : REQUETE_INVALIDE. rechercheId client renvoyé tel quel, sans
         reçu, pour ignorer les réponses tardives. Classement et déduplication déterministes selon le
-        README ; interprétations distinctes et Chansons non inscriptibles conservées, seul le malformé
+        README, avec les Chansons favorites de la Soirée en tête pour la Console et la Manette ; interprétations distinctes et Chansons non inscriptibles conservées, seul le malformé
         est exclu. Aucun résultat : 200 chansons:[]. Aucune publication. Animateur du Lieu ou Joueur
         présent, retardataire compris. Refus (groupes N, V, T, S) : 400 REQUETE_INVALIDE, 401
         AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 503
@@ -1484,6 +1484,229 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas.yaml#/$defs/FicheChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/suggestions:
+    post:
+      operationId: suggererChanson
+      summary: Suggérer une Chanson
+      description: >-
+        Joueur présent, retardataire compris, pendant une Manche de Karaoké active, pause comprise.
+        Titre et artiste de 1 à 120 points de code bruts ; blancs Unicode regroupés, extrémités supprimées.
+        Un champ vide, une clé normalisée vide ou un caractère de contrôle restant rend REQUETE_INVALIDE.
+        Dans la Soirée, la première graphie nettoyée est conservée ; la casse, les accents et les blancs
+        ne distinguent pas les demandes. Un même Joueur ne compte qu’une fois. Publication
+        suggestions-chansons-modifiees sur la Console lorsque le groupe ou son compteur change.
+        Idempotence selon Idempotency-Key, sans publication au rejeu.
+        Autres refus : REQUETE_INVALIDE, AUTHENTIFICATION_REQUISE, ACCES_REFUSE, RESSOURCE_INTROUVABLE, ETAPE_INACTIVE, ETAT_INCOMPATIBLE, ENVOI_REUTILISE, SERVICE_INDISPONIBLE.
+      tags:
+      - Karaoké
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/SuggestionChanson
+      responses:
+        '200':
+          description: Reçu immuable.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/suggestions/{suggestionId}/retrait:
+    post:
+      operationId: retirerSuggestionChanson
+      summary: Retirer une suggestion traitée
+      description: >-
+        Animateur du Lieu pendant une Manche de Karaoké active, pause comprise. Le groupe doit appartenir
+        à la Soirée et porter le nombre de Joueurs affiché. Un compteur différent rend COMMANDE_PERIMEE.
+        Le retrait efface le groupe et ses demandes. Une nouvelle demande peut ensuite créer un nouveau groupe.
+        Publication suggestions-chansons-modifiees sur la Console.
+        Idempotence selon Idempotency-Key, sans publication au rejeu.
+        Autres refus : REQUETE_INVALIDE, AUTHENTIFICATION_REQUISE, ACCES_REFUSE, CSRF_INVALIDE, RESSOURCE_INTROUVABLE, ETAPE_INACTIVE, ETAT_INCOMPATIBLE, ENVOI_REUTILISE, SERVICE_INDISPONIBLE.
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: suggestionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/RetraitSuggestionChanson
+      responses:
+        '200':
+          description: Reçu immuable.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/chansons/{chansonId}/favori:
+    put:
+      operationId: definirFavoriChanson
+      summary: Définir si une Chanson est favorite
+      description: >-
+        Animateur du Lieu pendant une Manche de Karaoké active, pause comprise. L’ajout vérifie que la Chanson
+        existe dans le catalogue ; le retrait reste possible si la Chanson a disparu. Le favori est partagé
+        par les Manches de Karaoké de la Soirée, en attendant le rattachement au Lieu (#180).
+        Publication favoris-chansons-modifies sur la Console uniquement si la préférence change.
+        SOURCE_PAROLES_INDISPONIBLE si la source échoue lors de l’ajout.
+        Idempotence selon Idempotency-Key, sans publication au rejeu.
+        Autres refus : REQUETE_INVALIDE, AUTHENTIFICATION_REQUISE, ACCES_REFUSE, CSRF_INVALIDE, RESSOURCE_INTROUVABLE, ETAPE_INACTIVE, ETAT_INCOMPATIBLE, ENVOI_REUTILISE, SERVICE_INDISPONIBLE.
+      tags:
+      - Karaoké
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: chansonId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ChoixFavoriChanson
+      responses:
+        '200':
+          description: Reçu immuable.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
         '400':
           $ref: '#/components/responses/Erreur400'
         '401':
