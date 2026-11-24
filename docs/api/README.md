@@ -99,6 +99,8 @@ Une base ou une transaction indisponible produit `503 SERVICE_INDISPONIBLE` au f
 
 Un accusé HTTP retrouvé après répétition est un reçu de l’opération initiale : il ne doit pas remplacer une projection temps réel plus récente. Les écrans prennent leur état courant dans les captures cohérentes et événements révisés, même lorsqu’une ancienne réponse HTTP finit par arriver.
 
+Le Buzz du socle est disponible dans une Soirée ouverte ou en cours hors Manche active. Son UUID peut être envoyé comme `envoiId` JSON ou comme `Idempotency-Key` ; les deux formes désignent le même envoi. Un Buzz accepté reçoit un rang croissant à partir de 1 dans la Soirée. Le reçu est conservé, et `buzz-recu` transporte ce Buzz dans `dernierBuzz` des vues complètes de la salle, de la Console et des Manettes. Les captures et événements ultérieurs conservent le dernier Buzz accepté.
+
 La pause gèle le temps restant ; la reprise crée une nouvelle échéance serveur. En Manuel, `PASSER_ETAPE` clôt d’abord une Question ouverte et montre sa correction ; un nouvel appel, avec un nouvel identifiant d’envoi, passe à la Question suivante. Après la dernière correction, la Manche est terminée. L’Animateur demande ensuite `MANCHE_SUIVANTE`, qui clôt la Soirée si le programme est épuisé. L’arrêt explicite d’une Manche abandonne l’étape non corrigée sans lui attribuer de points.
 
 ## Karaoké

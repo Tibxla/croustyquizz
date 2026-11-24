@@ -8,7 +8,8 @@ avec `suivreVue`. Il n'existe pas de troisième page Console dans cette branche.
 - [AsyncAPI](asyncapi.yaml) et [schémas](schemas.yaml) : vues complètes révisées.
 - Les routes `/api/test/...` restent en profils `dev`/`recette` seulement ; `/api/heure` reste publique.
 - La vue conserve les 64 derniers Buzz, du plus ancien au plus récent. Une commande
-  acceptée publie toute la vue, horodatée avec la Clock du serveur.
+  acceptée publie toute la vue, horodatée avec la Clock du serveur. Un Buzz du
+  prototype visant une Soirée enregistrée est refusé avec le statut 404.
 
 La salle suit les six étapes de [reconnexion](../README.md#reconnexion-sans-fenêtre-de-perte).
 La capture et la publication partagent le verrou de la Soirée. La première capture
