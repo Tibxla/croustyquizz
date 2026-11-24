@@ -1,10 +1,13 @@
 package fr.croustyquizz.soiree;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -46,6 +49,9 @@ public class Soiree {
 	private UUID envoiLancement;
 
 	private Instant termineeLe;
+
+	@Embedded
+	private Buzz dernierBuzz;
 
 	protected Soiree() {
 		// Pour JPA.
@@ -118,6 +124,16 @@ public class Soiree {
 	 */
 	public boolean accepteLesArrivees() {
 		return EtatSoiree.AVEC_CODE_ACTIF.contains(etat);
+	}
+
+	Buzz enregistrerBuzz(Joueur joueur, UUID envoiId, Instant reception) {
+		long rang = dernierBuzz == null ? 1 : dernierBuzz.rang() + 1;
+		dernierBuzz = new Buzz(envoiId, joueur.getId(), joueur.getPseudo(), reception.truncatedTo(MICROS), rang);
+		return dernierBuzz;
+	}
+
+	Buzz getDernierBuzz() {
+		return dernierBuzz;
 	}
 
 	public UUID getId() {
