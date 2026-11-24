@@ -96,6 +96,7 @@ evenements:
       modeEnCours: QUIZ
       joueurs: &joueurs [{id: 12000000-0000-4000-8000-000000000004, pseudo: Camille, connecte: true}]
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
 - nom: Deuxième Manche selon l’ordre enregistré
   canal: salle
@@ -115,6 +116,7 @@ evenements:
       modeEnCours: QUIZ
       joueurs: *joueurs
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
 - nom: Clôture de la deuxième Manche avant la fin de la Soirée
   canal: salle
@@ -129,6 +131,7 @@ evenements:
       modeEnCours: null
       joueurs: *joueurs
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
 - nom: Fin de Soirée sur l’Écran de salle
   canal: salle
@@ -149,6 +152,7 @@ evenements:
       modeEnCours: null
       joueurs: *joueurs
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
 - nom: Fin de Soirée sur la Console
   canal: console
@@ -163,6 +167,7 @@ evenements:
       modeEnCours: null
       joueurs: *joueurs
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 12000000-0000-4000-8000-000000000003
