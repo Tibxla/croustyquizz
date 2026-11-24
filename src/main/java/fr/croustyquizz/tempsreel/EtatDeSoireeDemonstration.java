@@ -25,6 +25,11 @@ public final class EtatDeSoireeDemonstration implements EtatDeSoiree {
 	}
 
 	@Override
+	public boolean estEnregistree(UUID soireeId) {
+		return false;
+	}
+
+	@Override
 	public boolean estEnCours(UUID soireeId) {
 		return true;
 	}

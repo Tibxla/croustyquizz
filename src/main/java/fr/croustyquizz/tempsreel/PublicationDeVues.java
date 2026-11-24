@@ -1,11 +1,14 @@
 package fr.croustyquizz.tempsreel;
 
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.UUID;
 import org.springframework.stereotype.Component;
+
 import fr.croustyquizz.manche.Accepte;
 import fr.croustyquizz.manche.Destination;
 
@@ -22,14 +25,28 @@ public final class PublicationDeVues {
 		this.assembleur = assembleur; this.commun = commun; this.apresCommit = apresCommit; this.diffuseur = diffuseur;
 	}
 	public void publier(UUID soireeId, Accepte resultat) {
-		publier(soireeId, resultat.aRepublier(), resultat.typeEvenement());
+		publier(soireeId, resultat, false);
+	}
+	public void publier(UUID soireeId, Accepte resultat, boolean classementModifie) {
+		publier(soireeId, resultat.aRepublier(), resultat.typeEvenement(), classementModifie);
 	}
 	void publier(UUID soireeId, Set<Destination> aRepublier, String typeEvenement) {
+		publier(soireeId, aRepublier, typeEvenement, false);
+	}
+	private void publier(UUID soireeId, Set<Destination> aRepublier, String typeEvenement, boolean classementModifie) {
 		Set<Destination> destinations = new LinkedHashSet<>(aRepublier);
 		if (destinations.remove(Destination.TOUTES_LES_MANETTES)) {
 			commun.joueurs(soireeId).forEach(id -> destinations.add(Destination.joueur(id)));
 		}
-		var captures = assembleur.assembler(soireeId, destinations, typeEvenement);
+		var captures = new LinkedHashMap<>(assembleur.assembler(soireeId, destinations, typeEvenement));
+		if (classementModifie) {
+			Set<Destination> autres = new LinkedHashSet<>(Set.of(Destination.SALLE, Destination.CONSOLE));
+			if (!aRepublier.contains(Destination.TOUTES_LES_MANETTES)) {
+				commun.joueurs(soireeId).forEach(id -> autres.add(Destination.joueur(id)));
+			}
+			autres.removeAll(destinations);
+			captures.putAll(assembleur.assembler(soireeId, autres, "classement-modifie"));
+		}
 		apresCommit.publier(() -> captures.forEach((destination, vue) -> {
 			try { envoyer(soireeId, destination, vue); }
 			catch (RuntimeException erreur) {

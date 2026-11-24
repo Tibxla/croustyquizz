@@ -337,13 +337,15 @@ Elles ne visent que des Soirées fictives : un jeton `demo:JOUEUR` ou `demo:ECRA
 est enregistrée est refusé : en HTTP par `401 AUTHENTIFICATION_REQUISE`, au CONNECT STOMP par une
 trame `ERROR` suivie de la fermeture de la connexion, sans statut HTTP. Le canal
 d'une Manette et sa dernière vue ne dépendant que de l'UUID du Joueur, un jeton `demo:JOUEUR` qui
-porte l'UUID d'un vrai Joueur est refusé de même, quelle que soit la Soirée déclarée. Seuls
-le jeton de reconnexion du Joueur et la clé de l'Écran de salle donnent accès à une Soirée enregistrée.
-`demo:ANIMATEUR`
-reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5) : les routes de test
-des Manches en dépendent. Reste ouvert en `dev` et `recette` : un abonnement STOMP anonyme au canal
-de salle n'est contrôlé que sur la forme de sa destination, pour le [prototype #7](prototype/README.md) :
-il ne protège pas encore la salle d'une Soirée enregistrée et reste à réserver aux canaux du prototype (#181).
+porte l'UUID d'un vrai Joueur est refusé de même, quelle que soit la Soirée déclarée. Sur une Soirée
+enregistrée, le Joueur doit présenter son jeton de reconnexion et l'Écran de salle sa clé.
+`demo:ANIMATEUR` reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5),
+pour les routes de test des Manches. Le [prototype #7](prototype/README.md) peut s'abonner
+anonymement au canal de salle uniquement en `dev` et `recette`, pour un UUID de Soirée absent
+de la base (#181). Le serveur vérifie cette absence à chaque `SUBSCRIBE` anonyme. Si la Soirée
+est enregistrée, le broker n'installe aucun abonnement pour ce `SUBSCRIBE`. La coquille STOMP
+`/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la clé
+dans le stockage de l'onglet, pour cette seule Soirée.
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 

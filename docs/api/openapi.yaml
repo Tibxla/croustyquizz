@@ -1424,8 +1424,9 @@ paths:
     get:
       operationId: consulterClassement
       summary: Consulter le Classement général
-      description: Disponible aux acteurs autorisés de cette Soirée, notamment après sa fin. Ne comprend que les
-        Questions déjà corrigées ; les résultats ne révèlent pas une correction en avance.
+      description: Disponible aux acteurs autorisés de cette Soirée enregistrée, y compris après sa fin.
+        Cumule les Points déjà attribués au Quiz et au Blind test. Au Quiz, les résultats ne révèlent pas
+        de correction en avance.
       tags:
       - Soirée
       security:
@@ -1457,6 +1458,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: soireeId
         in: path

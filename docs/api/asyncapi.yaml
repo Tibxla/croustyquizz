@@ -21,7 +21,10 @@ servers:
 channels:
   salle:
     address: /topic/soirees/{soireeId}/salle
-    description: "Écran avec capacité pour cette Soirée, Joueur de la Soirée ou Animateur du Lieu.
+    description: "Écran avec la clé de cette Soirée, Joueur de la Soirée ou Animateur de son Lieu.
+      Un abonnement anonyme est permis uniquement en dev et recette pour un UUID de Soirée
+      absent de la base. Sur une Soirée enregistrée, le serveur écarte le SUBSCRIBE anonyme
+      avant son installation par le broker.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier, les commandes du lecteur
       de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
       Soirée. musique-attente-modifiee après changement du réglage de l’Animateur ou de la disponibilité
@@ -140,5 +143,6 @@ x-stomp:
   subscribe:
     id: UUID neuf ; utilisé comme abonnementId pour la capture HTTP cohérente
     destination: Adresse autorisée du canal
+    anonyme: Canal de salle d’une Soirée absente de la base, uniquement en dev et recette
   sendMetier: interdit
   heartbeatMs: 10000

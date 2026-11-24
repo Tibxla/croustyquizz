@@ -660,17 +660,21 @@ $defs:
     - points
     - bonnesReponses
     - tempsCumuleMs
-    description: Seules les Questions corrigées contribuent aux valeurs visibles. Rang trié par points, bonnes réponses,
-      puis rapidité ; des ex aequo persistants partagent le même rang.
+    description: Cumul des Points déjà attribués dans les Manches de Quiz et de Blind test de la Soirée.
+      Au Quiz, seuls les Points des Questions corrigées sont visibles. Le rang suit les Points décroissants,
+      puis le nombre de bonnes réponses décroissant, puis leur temps cumulé croissant.
+      Les ex æquo partagent le même rang, avec saut du rang suivant (1, 1, 3).
   Classement:
     type: object
     additionalProperties: false
+    description: Classement général complet par rang croissant, conservé après la fin de la Soirée.
     properties:
       soireeId:
         type: string
         format: uuid
       classement:
         type: array
+        description: Indique tous les Concurrents qui ont des Points attribués, par rang croissant.
         items:
           $ref: '#/$defs/LigneClassement'
     required:
@@ -948,6 +952,7 @@ $defs:
           $ref: '#/$defs/JoueurPublic'
       classement:
         type: array
+        description: Classement général complet par rang croissant.
         items:
           $ref: '#/$defs/LigneClassement'
       dernierBuzz:
@@ -998,6 +1003,7 @@ $defs:
           $ref: '#/$defs/JoueurPublic'
       classement:
         type: array
+        description: Classement général complet par rang croissant, y compris après la Soirée.
         items:
           $ref: '#/$defs/LigneClassement'
       dernierBuzz:
@@ -1049,6 +1055,7 @@ $defs:
           $ref: '#/$defs/JoueurPublic'
       classement:
         type: array
+        description: Classement général complet par rang croissant. En Solo, le concurrentId du Joueur est son joueurId.
         items:
           $ref: '#/$defs/LigneClassement'
       dernierBuzz:
