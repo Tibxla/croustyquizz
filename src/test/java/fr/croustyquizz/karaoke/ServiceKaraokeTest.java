@@ -684,7 +684,7 @@ class ServiceKaraokeTest {
             var beans = new StaticListableBeanFactory();
             bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE);
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
-            var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
+            var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur, evenement -> { });
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
                     pilotage);
             PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {

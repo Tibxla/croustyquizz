@@ -8,7 +8,7 @@ public record Accepte(Object accuse, Set<Destination> aRepublier, String typeEve
 			"manche-demarree", "question-ouverte", "manche-en-pause", "manche-reprise", "question-corrigee",
 			"file-attente-modifiee", "limite-passages-modifiee", "manche-terminee", "classement-modifie", "soiree-terminee", "buzz-recu", "reponse-enregistree", "resultat-personnel",
 			"passage-appele", "passage-demarre", "passage-termine", "vote-enregistre", "vote-clos", "passage-saute",
-			"lecture-chanson-modifiee", "calage-chanson-modifie");
+			"lecture-chanson-modifiee", "calage-chanson-modifie", "photos-modifiees");
 	public Accepte(Object accuse, Set<Destination> aRepublier, String typeEvenement) {
 		this(accuse, aRepublier, typeEvenement, accuse == null ? 204 : 200);
 	}

@@ -14,6 +14,7 @@ import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
 import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.photos.PhotosEnMemoire;
 import fr.croustyquizz.tempsreel.FournisseurPartieCommune;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -36,16 +37,18 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 	private final DepotDeManches depotDeManches;
 	private final JsonMapper json;
 	private final ResultatsDeSoiree resultats;
+	private final PhotosEnMemoire photos;
 	private final ObjectProvider<FournisseurPartieCommune> fournisseurs;
 
 	FournisseurCommunSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs,
 			DepotDeManches depotDeManches, JsonMapper json, ResultatsDeSoiree resultats,
-			ObjectProvider<FournisseurPartieCommune> fournisseurs) {
+			ObjectProvider<FournisseurPartieCommune> fournisseurs, PhotosEnMemoire photos) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.depotDeManches = depotDeManches;
 		this.json = json;
 		this.resultats = resultats;
+		this.photos = photos;
 		this.fournisseurs = fournisseurs;
 	}
 
@@ -70,6 +73,7 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 				.toList());
 		vue.put("classement", resultats.classement(soireeId));
 		vue.put("dernierBuzz", null);
+		vue.put("photos", photos.projection(soireeId, destination, soiree.accepteLesArrivees(), active != null));
 		if (destination.type() == Destination.Type.CONSOLE) {
 			vue.put("programme", programme.stream().map(manche -> ProjectionManche.de(manche, json)).toList());
 		}
