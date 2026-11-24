@@ -32,6 +32,7 @@ croustyquizz:
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30
+    dureeVoteSecondes: 30
   karaoke:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
