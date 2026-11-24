@@ -25,10 +25,20 @@ public interface ResultatsDeSoiree {
 	/** Classement général de la Soirée, rang croissant ; vide tant que rien n'est corrigé. */
 	List<LigneClassement> classement(UUID soireeId);
 
-	/** Réponse enregistrée du Joueur à l'étape courante, sans justesse ni points. */
+	/**
+	 * Réponse enregistrée du Joueur à l'étape courante, sans justesse ni points.
+	 * Absente quand la Manche active n'est pas celle du Mode de jeu qui l'a reçue
+	 * (Karaoké, ou une Manche suivante) : une Réponse de Quiz ne ressort pas dans
+	 * la Manche d'après.
+	 */
 	Optional<AccuseReponse> derniereReponse(UUID soireeId, UUID joueurId);
 
-	/** Résultat du Joueur à la dernière étape corrigée, absent pendant une Question ouverte ou en pause. */
+	/**
+	 * Résultat du Joueur à la dernière étape corrigée. Absent pendant une
+	 * Question ouverte, en pause ou en {@code ATTENTE} de la suivante, et quand la
+	 * Manche active n'est pas celle du Mode de jeu qui l'a corrigé (Karaoké, ou une
+	 * Manche suivante) : le schéma {@code VueManette} l'impose à {@code null}.
+	 */
 	Optional<ResultatPersonnel> resultatPersonnel(UUID soireeId, UUID joueurId);
 
 	/** {@code LigneClassement} dans schemas.yaml. */
