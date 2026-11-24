@@ -92,6 +92,8 @@ class ResultatsSurLaManetteTest {
 				UUID.randomUUID(), Instant.parse("2026-11-24T20:15:03.250Z"));
 		var resultat = new ResultatsDeSoiree.ResultatPersonnel(accuse.etapeId(), true, 87);
 		resultats.donner(leaId, accuse, resultat);
+		// La capture rend la dernière vue publiée : l'arrivée suivante republie les Manettes avec ces résultats.
+		rejoindre(soiree.path("codeAcces").asString(), "Camille");
 
 		String route = "/api/soirees/" + soireeId + "/etat/manette";
 		var vueDeLea = envoyer(HttpMethod.GET, route, null, lea.path("jetonReconnexion").asString());
