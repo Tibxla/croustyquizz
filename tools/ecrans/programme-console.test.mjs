@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { creerContexte } from '../../src/main/resources/static/js/contexte.mjs';
 import { monterProgramme } from '../../src/main/resources/static/js/programme-console.mjs';
 import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
@@ -7,37 +8,124 @@ function banc() {
 	const document = creerDocument();
 	const panneau = document.createElement('section');
 	document.body.append(panneau);
-	const creer = (nom, balise) => {
+	const creer = (nom, balise, parent = panneau) => {
 		const element = document.createElement(balise);
 		element.setAttribute('data-' + nom, '');
-		panneau.append(element);
+		parent.append(element);
 		return element;
 	};
 	const formulaire = creer('ajout-manche', 'form');
-	const mode = creer('mode-manche', 'select');
-	const communs = creer('reglages-communs', 'fieldset');
-	const nombre = creer('nombre-etapes', 'input');
-	const temps = creer('temps-par-etape', 'input');
-	const ajout = creer('soumettre-manche', 'button');
+	const mode = creer('mode-manche', 'select', formulaire);
+	const communs = creer('reglages-communs', 'fieldset', formulaire);
+	const nombre = creer('nombre-etapes', 'input', communs);
+	const temps = creer('temps-par-etape', 'input', communs);
+	const erreurs = {};
+	for (const [nom, champ] of [['mode-manche', mode], ['nombre-etapes', nombre], ['temps-par-etape', temps]]) {
+		const zone = creer(`${nom}-erreur`, 'p', champ.parentNode);
+		zone.id = `${nom}-erreur`;
+		zone.hidden = true;
+		champ.setAttribute('aria-describedby', zone.id);
+		erreurs[nom] = zone;
+	}
+	nombre.setAttribute('min', '1');
+	nombre.setAttribute('max', '100');
+	temps.setAttribute('min', '1');
+	temps.setAttribute('max', '3600');
+	const ajout = creer('soumettre-manche', 'button', formulaire);
 	const liste = creer('programme', 'ol');
 	const programmeFige = creer('programme-fige', 'p');
 	creer('programme-vide', 'p');
 	const appels = [];
-	let rappel, captures = 0;
-	const programme = monterProgramme(panneau, {
+	const annonces = [];
+	let captures = 0;
+	const { contexte, changerEtat } = creerContexte({
 		soireeId: 's',
 		envoyer: (...args) => new Promise((resoudre, rejeter) => appels.push({ args, resoudre, rejeter })),
 		resynchroniser: () => captures++,
-		surEtatConnexion: f => { rappel = f; f('synchronisation'); return () => { rappel = null; }; },
+		surEnvoi: etat => annonces.push(etat),
 	});
+	const programme = monterProgramme(panneau, contexte);
 	return {
-		ajout, appels, communs, formulaire, liste, mode, nombre, programmeFige, temps, programme,
-		captures: () => captures, connecter: etat => rappel?.(etat),
+		ajout, annonces, appels, communs, document, erreurs, formulaire, liste, mode, nombre, programmeFige, temps, programme,
+		captures: () => captures, connecter: changerEtat,
 		afficher: (manches, etat = 'PREPARATION') => programme.afficher({ soiree: { etat }, programme: manches }),
 	};
 }
 
 const manche = (id, ordre, mode = 'QUIZ') => ({ id, ordre, mode, etat: 'EN_ATTENTE', reglages: {} });
+
+test('guide la correction des réglages du Quiz avant tout envoi', () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'QUIZ';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.nombre.value = '0';
+	b.temps.value = '2.5';
+
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	const erreurNombre = b.erreurs['nombre-etapes'];
+	assert.equal(b.appels.length, 0);
+	assert.equal(erreurNombre.hidden, false);
+	assert.equal(erreurNombre.textContent, 'Indique un nombre entier d’étapes entre 1 et 100.');
+	assert.equal(b.nombre.getAttribute('aria-describedby'), erreurNombre.id);
+	assert.equal(b.nombre.getAttribute('aria-invalid'), 'true');
+	assert.equal(b.document.activeElement === b.nombre, true);
+
+	b.nombre.value = '100';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	const erreurTemps = b.erreurs['temps-par-etape'];
+	assert.equal(b.appels.length, 0);
+	assert.equal(erreurNombre.hidden, true);
+	assert.equal(b.nombre.getAttribute('aria-invalid'), null);
+	assert.equal(erreurTemps.hidden, false);
+	assert.equal(erreurTemps.textContent, 'Indique une durée entière entre 1 et 3600 secondes.');
+	assert.equal(b.temps.getAttribute('aria-describedby'), erreurTemps.id);
+	assert.equal(b.temps.getAttribute('aria-invalid'), 'true');
+	assert.equal(b.document.activeElement === b.temps, true);
+
+	b.temps.value = '3600';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
+	assert.equal(erreurTemps.hidden, true);
+	assert.equal(b.temps.getAttribute('aria-invalid'), null);
+});
+
+test('affiche un refus HTTP 400 de l’ajout sous un champ visible de la Manche', async () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'QUIZ';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.nombre.value = '5';
+	b.temps.value = '25';
+	const detail = 'Le Mode de jeu ou les réglages de la Manche sont invalides.';
+
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	b.appels[0].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail } });
+	await terminerMicrotaches();
+	const erreurNombre = b.erreurs['nombre-etapes'];
+	assert.equal(erreurNombre.hidden, false);
+	assert.equal(erreurNombre.textContent, detail);
+	assert.equal(b.nombre.getAttribute('aria-invalid'), 'true');
+	assert.equal(b.document.activeElement === b.nombre, true);
+	assert.deepEqual(b.annonces, ['en-cours', null]);
+	assert.equal(b.captures(), 0);
+
+	b.mode.value = 'KARAOKE';
+	b.mode.dispatchEvent({ type: 'change' });
+	assert.equal(erreurNombre.hidden, true);
+	assert.equal(b.nombre.getAttribute('aria-invalid'), null);
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	b.appels[1].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail } });
+	await terminerMicrotaches();
+	const erreurMode = b.erreurs['mode-manche'];
+	assert.equal(erreurMode.hidden, false);
+	assert.equal(erreurMode.textContent, detail);
+	assert.equal(b.mode.getAttribute('aria-describedby'), erreurMode.id);
+	assert.equal(b.mode.getAttribute('aria-invalid'), 'true');
+	assert.equal(b.document.activeElement === b.mode, true);
+});
 
 test('ajoute les réglages communs du Quiz, puis laisse la vue synchronisée afficher la Manche', async () => {
 	const b = banc();
