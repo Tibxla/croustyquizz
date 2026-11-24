@@ -1,0 +1,2262 @@
+description: Vote du public avec deux Joueurs fictifs, un rejeu et deux votes ouverts en parallèle.
+evenementsComplets: true
+parametresCommuns:
+  soireeId: 98000000-0000-4000-8000-000000000001
+  mancheId: 98000000-0000-4000-8000-000000000002
+  passageId: 98000000-0000-4000-8000-000000000041
+http:
+- nom: Note enregistrée
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete: &id001
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: 4
+  statut: 200
+  reponse: &id002
+    envoiId: 11500000-0000-4000-8000-000000000001
+    soireeId: 98000000-0000-4000-8000-000000000001
+    mancheId: 98000000-0000-4000-8000-000000000002
+    passageId: 98000000-0000-4000-8000-000000000041
+    note: 4
+    recueLe: '2026-11-18T21:00:03Z'
+- nom: Reçu du vote rejoué
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete: *id001
+  statut: 200
+  reponse: *id002
+- nom: La commande est invalide.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000002
+    numeroModification: 3
+    note: 4
+  statut: 400
+  reponse:
+    type: about:blank
+    title: REQUETE_INVALIDE
+    status: 400
+    code: REQUETE_INVALIDE
+    detail: La commande est invalide.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Une authentification est requise.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000003
+    numeroModification: 3
+    note: 4
+  statut: 401
+  reponse:
+    type: about:blank
+    title: AUTHENTIFICATION_REQUISE
+    status: 401
+    code: AUTHENTIFICATION_REQUISE
+    detail: Une authentification est requise.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Cette action est réservée aux Joueurs.
+  operationId: voterPassage
+  acteur: animateur:11500000-0000-4000-8000-000000000098
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000004
+    numeroModification: 3
+    note: 4
+  statut: 403
+  reponse:
+    type: about:blank
+    title: ACCES_REFUSE
+    status: 403
+    code: ACCES_REFUSE
+    detail: Cette action est réservée aux Joueurs.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Ce Joueur est absent de la Soirée.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000005
+    numeroModification: 3
+    note: 4
+  statut: 404
+  reponse:
+    type: about:blank
+    title: RESSOURCE_INTROUVABLE
+    status: 404
+    code: RESSOURCE_INTROUVABLE
+    detail: Ce Joueur est absent de la Soirée.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+  accesRefuse: true
+- nom: Cet envoi a déjà été utilisé avec un autre contenu.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: 5
+  statut: 409
+  reponse:
+    type: about:blank
+    title: ENVOI_REUTILISE
+    status: 409
+    code: ENVOI_REUTILISE
+    detail: Cet envoi a déjà été utilisé avec un autre contenu.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Aucune étape active ne permet cette commande.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000007
+    numeroModification: 3
+    note: 4
+  statut: 409
+  reponse:
+    type: about:blank
+    title: ETAPE_INACTIVE
+    status: 409
+    code: ETAPE_INACTIVE
+    detail: Aucune étape active ne permet cette commande.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: La Manche est terminée.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000008
+    numeroModification: 3
+    note: 4
+  statut: 409
+  reponse:
+    type: about:blank
+    title: ETAT_INCOMPATIBLE
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: La Manche est terminée.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Ce Passage est introuvable.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000009
+    numeroModification: 3
+    note: 4
+  statut: 404
+  reponse:
+    type: about:blank
+    title: RESSOURCE_INTROUVABLE
+    status: 404
+    code: RESSOURCE_INTROUVABLE
+    detail: Ce Passage est introuvable.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/11500000-0000-4000-8000-000000000099/vote
+  parametres:
+    passageId: 11500000-0000-4000-8000-000000000099
+- nom: 'La Manche est en pause : tu pourras voter à la reprise.'
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000010
+    numeroModification: 3
+    note: 4
+  statut: 409
+  reponse:
+    type: about:blank
+    title: ETAT_INCOMPATIBLE
+    status: 409
+    code: ETAT_INCOMPATIBLE
+    detail: 'La Manche est en pause : tu pourras voter à la reprise.'
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Tu ne peux pas voter pour un Passage dont tu es Interprète.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000003
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000011
+    numeroModification: 3
+    note: 4
+  statut: 409
+  reponse:
+    type: about:blank
+    title: VOTE_INTERDIT
+    status: 409
+    code: VOTE_INTERDIT
+    detail: Tu ne peux pas voter pour un Passage dont tu es Interprète.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Ce Passage a changé ; consulte la File actualisée.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000012
+    numeroModification: 2
+    note: 4
+  statut: 409
+  reponse:
+    type: about:blank
+    title: COMMANDE_PERIMEE
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Ce Passage a changé ; consulte la File actualisée.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Le vote de ce Passage est clos.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000013
+    numeroModification: 3
+    note: 4
+  statut: 409
+  reponse:
+    type: about:blank
+    title: VOTE_CLOS
+    status: 409
+    code: VOTE_CLOS
+    detail: Le vote de ce Passage est clos.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Tu as déjà voté pour ce Passage.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000014
+    numeroModification: 3
+    note: 4
+  statut: 409
+  reponse:
+    type: about:blank
+    title: VOTE_DEJA_ENREGISTRE
+    status: 409
+    code: VOTE_DEJA_ENREGISTRE
+    detail: Tu as déjà voté pour ce Passage.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+- nom: Le service est temporairement indisponible.
+  operationId: voterPassage
+  acteur: joueur:98000000-0000-4000-8000-000000000004
+  requete:
+    envoiId: 11500000-0000-4000-8000-000000000015
+    numeroModification: 3
+    note: 4
+  statut: 503
+  reponse:
+    type: about:blank
+    title: SERVICE_INDISPONIBLE
+    status: 503
+    code: SERVICE_INDISPONIBLE
+    detail: Le service est temporairement indisponible.
+    instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/vote
+evenements:
+- nom: passage-termine — salle
+  canal: salle
+  message:
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-18T21:00:00Z'
+    donnees:
+      soiree: &id003
+        id: 98000000-0000-4000-8000-000000000001
+        titre: Soirée fictive du Passage
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: PASSE9
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: &id004
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs: &id005
+      - id: 98000000-0000-4000-8000-000000000003
+        pseudo: Alizé
+        connecte: true
+      - id: 98000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      classement: &id006 []
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id008
+          passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: &id010
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id011
+          - joueurId: 98000000-0000-4000-8000-000000000003
+            pseudo: Alizé
+          numeroModification: 3
+          etapeId: 11500000-0000-4000-8000-000000000081
+          etat: TERMINE
+          prochainAppelPrevuLe: null
+          appeleLe: '2026-11-18T20:56:30Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-18T20:56:35Z'
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:00Z'
+          clotureLe: '2026-11-18T21:00:00Z'
+        configurationInterface: &id009
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: &id012
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 8000
+            etatParoles: SYNCHRONISEES
+          interpretes: &id013
+          - joueurId: 98000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:00Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: passage-termine — console
+  canal: console
+  message:
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-18T21:00:00Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id007
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id007
+      - &id016
+        id: 98000000-0000-4000-8000-000000000020
+        ordre: 1
+        mode: KARAOKE
+        etat: EN_ATTENTE
+        reglages:
+          limitePassagesEnAttente: 1
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id008
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:00Z'
+          clotureLe: null
+          nombreVotes: 0
+        passagesEnAttente:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:00Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: passage-termine — 98000000-0000-4000-8000-000000000003
+  canal: joueur
+  message:
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-18T21:00:00Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id008
+        configurationInterface: *id009
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:00Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:00Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: passage-termine — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message: &id038
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 1
+    emisLe: '2026-11-18T21:00:00Z'
+    donnees: &id037
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id008
+        configurationInterface: *id009
+        prochainsPassages: &id014
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:00Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:00Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: true
+        mesPassagesEnAttente: *id014
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: vote-enregistre — salle
+  canal: salle
+  message:
+    type: vote-enregistre
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-18T21:00:03Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id017
+          passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          numeroModification: 3
+          etapeId: 11500000-0000-4000-8000-000000000081
+          etat: TERMINE
+          prochainAppelPrevuLe: null
+          appeleLe: '2026-11-18T20:56:30Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-18T20:56:35Z'
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:03Z'
+          clotureLe: '2026-11-18T21:00:00Z'
+        configurationInterface: *id009
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:03Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: vote-enregistre — console
+  canal: console
+  message:
+    type: vote-enregistre
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-18T21:00:03Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id015
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id015
+      - *id016
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id017
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 27000
+          calculeLe: '2026-11-18T21:00:03Z'
+          clotureLe: null
+          nombreVotes: 1
+        passagesEnAttente:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:03Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: vote-enregistre — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message: &id039
+    type: vote-enregistre
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-18T21:00:03Z'
+    donnees: &id040
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id017
+        configurationInterface: *id009
+        prochainsPassages: &id018
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:03Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 27000
+          calculeLe: '2026-11-18T21:00:03Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: 4
+          peutVoter: false
+        mesPassagesEnAttente: *id018
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: manche-en-pause — salle
+  canal: salle
+  message:
+    type: manche-en-pause
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-18T21:00:10Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_PAUSE
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_PAUSE
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id020
+          passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          numeroModification: 3
+          etapeId: 11500000-0000-4000-8000-000000000081
+          etat: TERMINE
+          prochainAppelPrevuLe: null
+          appeleLe: '2026-11-18T20:56:30Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-18T20:56:35Z'
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:10Z'
+          clotureLe: '2026-11-18T21:00:00Z'
+        configurationInterface: *id009
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:10Z'
+            etat: SUSPENDUE
+            dureeMs: null
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: manche-en-pause — console
+  canal: console
+  message:
+    type: manche-en-pause
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-18T21:00:10Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id019
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_PAUSE
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id019
+      - *id016
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_PAUSE
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id020
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:10Z'
+          clotureLe: null
+          nombreVotes: 1
+        passagesEnAttente:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:10Z'
+            etat: SUSPENDUE
+            dureeMs: null
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: false
+        peutReprendre: true
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: manche-en-pause — 98000000-0000-4000-8000-000000000003
+  canal: joueur
+  message:
+    type: manche-en-pause
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 2
+    emisLe: '2026-11-18T21:00:10Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_PAUSE
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_PAUSE
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id020
+        configurationInterface: *id009
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:10Z'
+            etat: SUSPENDUE
+            dureeMs: null
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:10Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: manche-en-pause — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message:
+    type: manche-en-pause
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-18T21:00:10Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_PAUSE
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_PAUSE
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id020
+        configurationInterface: *id009
+        prochainsPassages: &id021
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:10Z'
+            etat: SUSPENDUE
+            dureeMs: null
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:10Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: 4
+          peutVoter: false
+        mesPassagesEnAttente: *id021
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: manche-reprise — salle
+  canal: salle
+  message:
+    type: manche-reprise
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: '2026-11-18T21:00:15Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id023
+          passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          numeroModification: 3
+          etapeId: 11500000-0000-4000-8000-000000000081
+          etat: TERMINE
+          prochainAppelPrevuLe: null
+          appeleLe: '2026-11-18T20:56:30Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-18T20:56:35Z'
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:15Z'
+          clotureLe: '2026-11-18T21:00:00Z'
+        configurationInterface: *id009
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:15Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: manche-reprise — console
+  canal: console
+  message:
+    type: manche-reprise
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: '2026-11-18T21:00:15Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id022
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id022
+      - *id016
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id023
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:15Z'
+          clotureLe: null
+          nombreVotes: 1
+        passagesEnAttente:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:15Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: manche-reprise — 98000000-0000-4000-8000-000000000003
+  canal: joueur
+  message:
+    type: manche-reprise
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 3
+    emisLe: '2026-11-18T21:00:15Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id023
+        configurationInterface: *id009
+        prochainsPassages:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:15Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:15Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: manche-reprise — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message:
+    type: manche-reprise
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: '2026-11-18T21:00:15Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id023
+        configurationInterface: *id009
+        prochainsPassages: &id024
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: '2026-11-18T21:00:15Z'
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:15Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: 4
+          peutVoter: false
+        mesPassagesEnAttente: *id024
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: passage-appele — salle
+  canal: salle
+  message:
+    type: passage-appele
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: '2026-11-18T21:00:16Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id026
+          passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          numeroModification: 1
+          etapeId: 11500000-0000-4000-8000-000000000082
+          etat: APPELE
+          prochainAppelPrevuLe: '2026-11-18T21:00:54Z'
+          appeleLe: '2026-11-18T21:00:16Z'
+          echeanceAppelLe: '2026-11-18T21:00:46Z'
+          delaiAppelRestantMs: 30000
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:16Z'
+          clotureLe: null
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: passage-appele — console
+  canal: console
+  message:
+    type: passage-appele
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: '2026-11-18T21:00:16Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id025
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id025
+      - *id016
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id026
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 19000
+          calculeLe: '2026-11-18T21:00:16Z'
+          clotureLe: null
+          nombreVotes: 1
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: true
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: passage-appele — 98000000-0000-4000-8000-000000000003
+  canal: joueur
+  message:
+    type: passage-appele
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 4
+    emisLe: '2026-11-18T21:00:16Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id026
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 19000
+          calculeLe: '2026-11-18T21:00:16Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: passage-appele — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message:
+    type: passage-appele
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: '2026-11-18T21:00:16Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id026
+        configurationInterface: *id009
+        prochainsPassages: &id027 []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 19000
+          calculeLe: '2026-11-18T21:00:16Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: 4
+          peutVoter: false
+        mesPassagesEnAttente: *id027
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: true
+- nom: passage-demarre — salle
+  canal: salle
+  message:
+    type: passage-demarre
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: '2026-11-18T21:00:17Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id029
+          passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          numeroModification: 2
+          etapeId: 11500000-0000-4000-8000-000000000082
+          etat: EN_COURS
+          prochainAppelPrevuLe: '2026-11-18T21:00:25Z'
+          appeleLe: '2026-11-18T21:00:16Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-18T21:00:17Z'
+          finPrevueLe: '2026-11-18T21:00:25Z'
+          positionChronologiqueMs: 0
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:17Z'
+          clotureLe: null
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture:
+          lectureId: 11500000-0000-4000-8000-000000000083
+          lecteurId: null
+          etat: DEMARREE
+          source: PAROLES_SEULES
+          motifParolesSeules: ECRAN_NON_PRET
+          origineParoles: INSCRIPTION
+          decalageMs: 0
+          numeroModificationCalage: 0
+          demandePosition: null
+        paroles:
+          parolesId: 11500000-0000-4000-8000-000000000084
+          dureeMs: 8000
+          lignes:
+          - positionMs: 0
+            texte: Une ligne fictive
+- nom: passage-demarre — console
+  canal: console
+  message:
+    type: passage-demarre
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: '2026-11-18T21:00:17Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id028
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id028
+      - *id016
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id029
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 18000
+          calculeLe: '2026-11-18T21:00:17Z'
+          clotureLe: null
+          nombreVotes: 1
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: true
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture:
+          lectureId: 11500000-0000-4000-8000-000000000083
+          lecteurId: null
+          etat: DEMARREE
+          source: PAROLES_SEULES
+          motifParolesSeules: ECRAN_NON_PRET
+          origineParoles: INSCRIPTION
+          decalageMs: 0
+          numeroModificationCalage: 0
+          demandePosition: null
+        fichierLocal: null
+- nom: passage-demarre — 98000000-0000-4000-8000-000000000003
+  canal: joueur
+  message:
+    type: passage-demarre
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 5
+    emisLe: '2026-11-18T21:00:17Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id029
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 18000
+          calculeLe: '2026-11-18T21:00:17Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: passage-demarre — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message:
+    type: passage-demarre
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: '2026-11-18T21:00:17Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id029
+        configurationInterface: *id009
+        prochainsPassages: &id030 []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 18000
+          calculeLe: '2026-11-18T21:00:17Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: 4
+          peutVoter: false
+        mesPassagesEnAttente: *id030
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: passage-termine — salle
+  canal: salle
+  message:
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: '2026-11-18T21:00:25Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id032
+          passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          numeroModification: 3
+          etapeId: 11500000-0000-4000-8000-000000000082
+          etat: TERMINE
+          prochainAppelPrevuLe: null
+          appeleLe: '2026-11-18T21:00:16Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-18T21:00:17Z'
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: '2026-11-18T21:00:25Z'
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: passage-termine — console
+  canal: console
+  message:
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: '2026-11-18T21:00:25Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id031
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id031
+      - *id016
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id032
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          nombreVotes: 0
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 10000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          nombreVotes: 1
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: passage-termine — 98000000-0000-4000-8000-000000000003
+  canal: joueur
+  message:
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: '2026-11-18T21:00:25Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id032
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: true
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 10000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: passage-termine — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message:
+    type: passage-termine
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: '2026-11-18T21:00:25Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id032
+        configurationInterface: *id009
+        prochainsPassages: &id033 []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 10000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: 4
+          peutVoter: false
+        mesPassagesEnAttente: *id033
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: vote-clos — salle
+  canal: salle
+  message:
+    type: vote-clos
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: '2026-11-18T21:00:35Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &id035
+          passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          numeroModification: 3
+          etapeId: 11500000-0000-4000-8000-000000000082
+          etat: TERMINE
+          prochainAppelPrevuLe: null
+          appeleLe: '2026-11-18T21:00:16Z'
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: '2026-11-18T21:00:17Z'
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: '2026-11-18T21:00:25Z'
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: null
+        lecture: null
+        paroles: null
+- nom: vote-clos — console
+  canal: console
+  message:
+    type: vote-clos
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: '2026-11-18T21:00:35Z'
+    donnees:
+      soiree: *id003
+      mancheActive: &id034
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      programme:
+      - *id034
+      - *id016
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id035
+        configurationInterface: *id009
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: null
+          nombreVotes: 0
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: CLOS
+          delaiRestantMs: 0
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: '2026-11-18T21:00:35Z'
+          nombreVotes: 1
+        passagesEnAttente: []
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: false
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: vote-clos — 98000000-0000-4000-8000-000000000003
+  canal: joueur
+  message:
+    type: vote-clos
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: '2026-11-18T21:00:35Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000003
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id035
+        configurationInterface: *id009
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: true
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: CLOS
+          delaiRestantMs: 0
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: '2026-11-18T21:00:35Z'
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        mesPassagesEnAttente: []
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+- nom: vote-clos — 98000000-0000-4000-8000-000000000004
+  canal: joueur
+  message:
+    type: vote-clos
+    soireeId: 98000000-0000-4000-8000-000000000001
+    revision: 8
+    emisLe: '2026-11-18T21:00:35Z'
+    donnees:
+      soiree: *id003
+      mancheActive:
+        id: 98000000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *id004
+      modeEnCours: KARAOKE
+      joueurs: *id005
+      classement: *id006
+      dernierBuzz: null
+      joueurId: 98000000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: 98000000-0000-4000-8000-000000000002
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *id035
+        configurationInterface: *id009
+        prochainsPassages: &id036 []
+        nombreAutresPassages: 0
+        votes:
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: null
+          numeroModification: 3
+          maNote: null
+          peutVoter: false
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: CLOS
+          delaiRestantMs: 0
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: '2026-11-18T21:00:35Z'
+          numeroModification: 3
+          maNote: 4
+          peutVoter: false
+        mesPassagesEnAttente: *id036
+        nombrePersonnelEnAttente: 0
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+cases:
+- nom: 'Note refusée : zéro'
+  schema: VotePassage
+  valeur:
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: 0
+  valide: false
+  correction:
+    chemin:
+    - note
+    valeur: 4
+- nom: 'Note refusée : six'
+  schema: VotePassage
+  valeur:
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: 6
+  valide: false
+  correction:
+    chemin:
+    - note
+    valeur: 4
+- nom: 'Note refusée : un décimal'
+  schema: VotePassage
+  valeur:
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: 3.5
+  valide: false
+  correction:
+    chemin:
+    - note
+    valeur: 4
+- nom: 'Note refusée : du texte'
+  schema: VotePassage
+  valeur:
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: '4'
+  valide: false
+  correction:
+    chemin:
+    - note
+    valeur: 4
+- nom: 'Champ interdit : joueurId'
+  schema: VotePassage
+  valeur:
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: 4
+    joueurId: 98000000-0000-4000-8000-000000000003
+  valide: false
+- nom: 'Champ interdit : inconnue'
+  schema: VotePassage
+  valeur:
+    envoiId: 11500000-0000-4000-8000-000000000001
+    numeroModification: 3
+    note: 4
+    inconnue: 98000000-0000-4000-8000-000000000003
+  valide: false
+- nom: Un Joueur qui a voté ne peut plus voter
+  schema: VoteDuPassageManette
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: OUVERT
+    delaiRestantMs: 27000
+    calculeLe: '2026-11-18T21:00:03Z'
+    clotureLe: null
+    numeroModification: 3
+    maNote: 4
+    peutVoter: true
+  valide: false
+  correction:
+    chemin:
+    - peutVoter
+    valeur: false
+- nom: Le nombre de votes ne voyage pas vers la Manette
+  schema: VoteDuPassageManette
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: OUVERT
+    delaiRestantMs: 27000
+    calculeLe: '2026-11-18T21:00:03Z'
+    clotureLe: null
+    numeroModification: 3
+    maNote: 4
+    peutVoter: false
+    nombreVotes: 1
+  valide: false
+resynchronisation:
+  destination: /topic/joueurs/98000000-0000-4000-8000-000000000004
+  routeEtat: /api/soirees/98000000-0000-4000-8000-000000000001/etat/manette
+  typeEvenementFinal: vote-enregistre
+  etat:
+    abonnementId: 11500000-0000-4000-8000-000000000090
+    revision: 1
+    heureServeur: '2026-11-18T21:00:02Z'
+    vue: *id037
+  tampon:
+  - *id038
+  - *id039
+  - *id039
+  revisionFinale: 2
+  vueFinale: *id040

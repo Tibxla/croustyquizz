@@ -123,6 +123,7 @@ http:
           delaiConsultationNavigateurMs: 8000
           delaiConfirmationNavigateurMs: 10000
           delaiAppelMs: 30000
+          dureeVoteMs: 30000
         prochainsPassages: &a7 []
         nombreAutresPassages: 0
 - nom: Capture initiale console
@@ -165,6 +166,7 @@ http:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -206,6 +208,7 @@ http:
         configurationInterface: *a6
         prochainsPassages: *a7
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -621,6 +624,7 @@ http:
               etat: ESTIMEE
               dureeMs: 420000
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente: &a175
           - *a15
           - &a87
@@ -1066,6 +1070,7 @@ http:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a28
         - *a29
@@ -1110,6 +1115,7 @@ http:
         configurationInterface: *a6
         prochainsPassages: *a31
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a28
         - *a30
@@ -1255,6 +1261,7 @@ http:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - &a158
           passageId: 82000000-0000-4000-8000-000000000043
@@ -1692,6 +1699,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a48
         peutGererFile: true
@@ -1732,6 +1740,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a49
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a48
         nombrePersonnelEnAttente: 1
@@ -1837,6 +1846,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a53
         - *a54
@@ -1878,6 +1888,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a55
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a53
         nombrePersonnelEnAttente: 1
@@ -1996,6 +2007,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a58
         - *a59
@@ -2038,6 +2050,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a61
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a58
         - *a60
@@ -2157,6 +2170,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a64
         - *a65
@@ -2199,6 +2213,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a67
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a64
         - *a66
@@ -2318,6 +2333,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a70
         - *a71
@@ -2373,6 +2389,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a73
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a70
         - *a74
@@ -2492,6 +2509,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a77
         - *a78
@@ -2547,6 +2565,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a80
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a77
         - *a81
@@ -2622,6 +2641,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente: &a173
           - *a15
           - *a85
@@ -2755,6 +2775,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a91
         - *a92
@@ -2809,6 +2830,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a94
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a91
         - *a92
@@ -2928,6 +2950,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a97
         - *a98
@@ -2983,6 +3006,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a100
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a98
         - *a101
@@ -3102,6 +3126,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a104
         - *a105
@@ -3157,6 +3182,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a107
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a104
         - *a108
@@ -3276,6 +3302,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a111
         - *a112
@@ -3331,6 +3358,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a114
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a112
         - *a115
@@ -3450,6 +3478,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a118
         - *a119
@@ -3505,6 +3534,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a121
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a118
         - *a122
@@ -3624,6 +3654,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a125
         - *a126
@@ -3666,6 +3697,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a128
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a125
         - *a127
@@ -3787,6 +3819,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a131
         - *a132
@@ -3842,6 +3875,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a134
         nombreAutresPassages: 1
+        votes: []
         mesPassagesEnAttente:
         - *a131
         - *a135
@@ -3961,6 +3995,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a138
         - *a139
@@ -4003,6 +4038,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a141
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a138
         - *a140
@@ -4146,6 +4182,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a147
         - *a148
@@ -4188,6 +4225,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a150
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a147
         - *a149
@@ -4294,6 +4332,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente:
         - *a153
         - *a154
@@ -4335,6 +4374,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a155
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a154
         nombrePersonnelEnAttente: 1
@@ -4409,6 +4449,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a160
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente:
         - *a158
         nombrePersonnelEnAttente: 1
@@ -4462,6 +4503,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -4501,6 +4543,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *a164
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -4599,6 +4642,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -4638,6 +4682,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: []
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -4720,6 +4765,7 @@ evenements:
         lecture: null
         fichierLocal: null
         configurationInterface: *a6
+        votes: []
         passagesEnAttente: *passagesMancheSuivante
         peutGererFile: true
         peutReglerLimite: true
@@ -4759,6 +4805,7 @@ evenements:
         configurationInterface: *a6
         prochainsPassages: *passagesMancheSuivante
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: *passagesMancheSuivante
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -5054,6 +5101,7 @@ cases:
       lecture: null
       fichierLocal: null
       configurationInterface: *a6
+      votes: []
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
@@ -5088,6 +5136,7 @@ cases:
       lecture: null
       fichierLocal: null
       configurationInterface: *a6
+      votes: []
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
@@ -5122,6 +5171,7 @@ cases:
       lecture: null
       fichierLocal: null
       configurationInterface: *a6
+      votes: []
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
@@ -5248,6 +5298,7 @@ cases:
       configurationInterface: *a6
       prochainsPassages: *a84
       nombreAutresPassages: 1
+      votes: []
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
       peutRechercher: true
@@ -5280,6 +5331,7 @@ cases:
       configurationInterface: *a6
       prochainsPassages: *a84
       nombreAutresPassages: 1
+      votes: []
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
       peutRechercher: true
@@ -5312,6 +5364,7 @@ cases:
       configurationInterface: *a6
       prochainsPassages: *a84
       nombreAutresPassages: 1
+      votes: []
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
       peutRechercher: true
@@ -5634,6 +5687,7 @@ cases:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
+    dureeVoteMs: 30000
   valide: false
 - nom: Limite de recherche configurée à 1
   schema: ConfigurationInterfaceKaraoke
@@ -5642,6 +5696,7 @@ cases:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
+    dureeVoteMs: 30000
   valide: true
 - nom: Limite de recherche configurée à 120
   schema: ConfigurationInterfaceKaraoke
@@ -5650,6 +5705,7 @@ cases:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
+    dureeVoteMs: 30000
   valide: true
 - nom: Limite de recherche configurée à 121
   schema: ConfigurationInterfaceKaraoke
@@ -5658,6 +5714,7 @@ cases:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
     delaiAppelMs: 30000
+    dureeVoteMs: 30000
   valide: false
 - nom: Commande valide — InscriptionPassage
   schema: InscriptionPassage

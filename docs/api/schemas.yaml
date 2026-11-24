@@ -1205,6 +1205,8 @@ $defs:
         - passage-appele
         - passage-demarre
         - passage-termine
+        - vote-enregistre
+        - vote-clos
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
@@ -1253,6 +1255,8 @@ $defs:
         - passage-appele
         - passage-demarre
         - passage-termine
+        - vote-enregistre
+        - vote-clos
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
@@ -1303,6 +1307,8 @@ $defs:
         - passage-appele
         - passage-demarre
         - passage-termine
+        - vote-enregistre
+        - vote-clos
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
@@ -1375,6 +1381,9 @@ $defs:
         - CHANSON_INDISPONIBLE
         - SOURCE_PAROLES_INDISPONIBLE
         - LECTEUR_NON_DESIGNE
+        - VOTE_INTERDIT
+        - VOTE_DEJA_ENREGISTRE
+        - VOTE_CLOS
       detail:
         type: string
         minLength: 1
@@ -1754,6 +1763,10 @@ $defs:
         type: integer
         minimum: 1
         maximum: 9007199254740991
+      dureeVoteMs:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
       delaiAppelMs:
         type: integer
         minimum: 1
@@ -1763,6 +1776,7 @@ $defs:
     - delaiConsultationNavigateurMs
     - delaiConfirmationNavigateurMs
     - delaiAppelMs
+    - dureeVoteMs
   PassageEnAttentePublic:
     type: object
     additionalProperties: false
@@ -2150,11 +2164,229 @@ $defs:
                 - EN_COURS
                 - EN_PAUSE
     unevaluatedProperties: false
+  VotePassage:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      note:
+        type: integer
+        minimum: 1
+        maximum: 5
+    required:
+    - envoiId
+    - numeroModification
+    - note
+  AccuseVote:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      passageId:
+        type: string
+        format: uuid
+      note:
+        type: integer
+        minimum: 1
+        maximum: 5
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+    required:
+    - envoiId
+    - soireeId
+    - mancheId
+    - passageId
+    - note
+    - recueLe
+  VoteDuPassage:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      chanson:
+        allOf:
+        - $ref: '#/$defs/ResumeChanson'
+        - properties:
+            dureeMs:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            etatParoles:
+              const: SYNCHRONISEES
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 4
+      etat:
+        enum: [OUVERT, CLOS]
+      delaiRestantMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      calculeLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      clotureLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: "null"
+      nombreVotes:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+    required:
+    - passageId
+    - numero
+    - chanson
+    - interpretes
+    - etat
+    - delaiRestantMs
+    - calculeLe
+    - clotureLe
+    - nombreVotes
+    allOf:
+    - if:
+        properties:
+          etat:
+            const: CLOS
+      then:
+        properties:
+          clotureLe:
+            type: string
+          delaiRestantMs:
+            const: 0
+      else:
+        properties:
+          clotureLe:
+            type: "null"
+  VoteDuPassageManette:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      chanson:
+        allOf:
+        - $ref: '#/$defs/ResumeChanson'
+        - properties:
+            dureeMs:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            etatParoles:
+              const: SYNCHRONISEES
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 4
+      etat:
+        enum: [OUVERT, CLOS]
+      delaiRestantMs:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      calculeLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      clotureLe:
+        oneOf:
+        - type: string
+          format: date-time
+          pattern: Z$
+        - type: "null"
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      maNote:
+        oneOf:
+        - type: integer
+          minimum: 1
+          maximum: 5
+        - type: "null"
+      peutVoter:
+        type: boolean
+    required:
+    - passageId
+    - numero
+    - chanson
+    - interpretes
+    - etat
+    - delaiRestantMs
+    - calculeLe
+    - clotureLe
+    - numeroModification
+    - maNote
+    - peutVoter
+    allOf:
+    - if:
+        properties:
+          etat:
+            const: CLOS
+      then:
+        properties:
+          clotureLe:
+            type: string
+          delaiRestantMs:
+            const: 0
+      else:
+        properties:
+          clotureLe:
+            type: "null"
+    - if:
+        properties:
+          peutVoter:
+            const: true
+      then:
+        properties:
+          etat:
+            const: OUVERT
+          maNote:
+            type: "null"
   BlocKaraokeConsole:
     allOf:
     - $ref: '#/$defs/KaraokeCommun'
     - type: object
       properties:
+        votes:
+          type: array
+          items:
+            $ref: "#/$defs/VoteDuPassage"
         passagesEnAttente:
           type: array
           items:
@@ -2170,7 +2402,7 @@ $defs:
           description: Vrai exactement quand lecteurDesigneId de la salle est non nul.
         peutAppeler:
           type: boolean
-          description: Manche EN_COURS, sans courant actif, File d’attente non vide.
+          description: Vrai exactement en Pilotage Manuel, Manche EN_COURS, sans courant actif et avec au moins un Passage en attente.
         peutPasser:
           type: boolean
           description: Courant actif, pause comprise.
@@ -2195,6 +2427,7 @@ $defs:
             vaut FICHIER_LOCAL.
       required:
       - passagesEnAttente
+      - votes
       - peutGererFile
       - peutReglerLimite
       - peutRechercher
@@ -2231,6 +2464,10 @@ $defs:
     - $ref: '#/$defs/KaraokeCommun'
     - type: object
       properties:
+        votes:
+          type: array
+          items:
+            $ref: "#/$defs/VoteDuPassageManette"
         prochainsPassages:
           type: array
           items:
@@ -2263,6 +2500,7 @@ $defs:
       - prochainsPassages
       - nombreAutresPassages
       - mesPassagesEnAttente
+      - votes
       - nombrePersonnelEnAttente
       - peutRechercher
       - peutInscrire

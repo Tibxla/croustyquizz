@@ -12,7 +12,8 @@ import org.springframework.context.annotation.*;
 @EnableConfigurationProperties(ProprietesKaraoke.class)
 public class ConfigurationKaraoke {
     @Bean FabriqueKaraoke fabriqueKaraoke(ProprietesKaraoke proprietes) {
-        return new FabriqueKaraoke(Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()));
+        return new FabriqueKaraoke(Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()),
+                Duration.ofSeconds(proprietes.passage().dureeVoteSecondes()));
     }
     @Bean ServiceKaraoke serviceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance, SocleDeManche socle,
             PorteeDePassage portee, ParticipantsDePassage participants, PersistancePassageJpa passages,

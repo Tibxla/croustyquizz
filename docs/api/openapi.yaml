@@ -1611,7 +1611,10 @@ paths:
         source consultée hors verrou, revalidation sous verrou. Gardes dans l’ordre : sans voix, paroles
         non synchronisées (absentes et inconnues incluses), durée inconnue, doublon personnel en
         attente, quota EN_ATTENTE. Détail de la Chanson figé à l’inscription ; la même Chanson reste
-        permise à deux Joueurs ; source audio et fichier local sans incidence. Reçu et rejeu :
+        permise à deux Joueurs ; source audio et fichier local sans incidence. En Pilotage Automatique,
+        si la Manche est EN_COURS et sans courant actif, le Passage en position 1 est appelé dans la
+        même mutation. Le reçu 201 décrit toujours l’inscription (EN_ATTENTE) ; la vue publiée par
+        passage-appele décrit l’appel. Reçu et rejeu :
         README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus (groupes N, V, X, D, T,
         S) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404
         RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 409 ETAT_INCOMPATIBLE, 409 ENVOI_REUTILISE, 503
@@ -1724,6 +1727,74 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas.yaml#/$defs/AccusePassage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/vote:
+    post:
+      operationId: voterPassage
+      summary: Noter un Passage terminé
+      description: >-
+        Un Joueur présent peut noter une seule fois un Passage dont il n’est pas Interprète.
+        Le reçu est immuable et un rejeu identique ne republie aucune vue.
+        Refus dans l’ordre : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE,
+        403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE (Manche, portée ou présence),
+        409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE
+        (Manche terminée), 404 RESSOURCE_INTROUVABLE (Passage inconnu, avec reçu),
+        409 ETAT_INCOMPATIBLE (pause), 409 VOTE_INTERDIT, 409 COMMANDE_PERIMEE,
+        409 VOTE_CLOS, 409 VOTE_DEJA_ENREGISTRE. En cas de panne, 503 SERVICE_INDISPONIBLE
+        sans reçu.
+      tags:
+      - Karaoké
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: passageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/VotePassage
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseVote
         '400':
           $ref: '#/components/responses/Erreur400'
         '401':
@@ -2055,14 +2126,16 @@ paths:
       description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu. Appelle le Passage en position 1 :
         EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
         numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
-        recalculée sur la salle, la Console et toutes les Manettes. Le saut automatique relève de #25 :
-        d’ici là, le Pilotage Manuel s’applique quel que soit soiree.pilotage. Propres, dans l’ordre : 409
-        ETAT_INCOMPATIBLE (Manche en pause, puis courant actif) ; 409 COMMANDE_PERIMEE (compteur, Passage
+        recalculée sur la salle, la Console et toutes les Manettes. En Pilotage Automatique, le serveur
+        appelle le Passage suivant et cette commande est refusée. Le saut automatique relève du ticket #121.
+        Propres, dans l’ordre : 409 ETAT_INCOMPATIBLE (Manche en pause, puis Pilotage Automatique,
+        puis courant actif) ; 409 COMMANDE_PERIMEE (compteur, Passage
         sorti de l’attente ou plus en position 1). Refus communs : 400 REQUETE_INVALIDE, 401
         AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 403 CSRF_INVALIDE, 404 RESSOURCE_INTROUVABLE (Manche ou
         Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
-        ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
-        Manche (pause comprise), puis gardes d’objet ; un Passage clos, une étape, un compteur, un lectureId
+        ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, Manche
+        ou Passage inconnus, état de la Manche (pause comprise), Pilotage, puis gardes d’objet ;
+        un Passage clos, une étape, un compteur, un lectureId
         ou un demandeId qui ne sont plus les actuels donnent COMMANDE_PERIMEE, jamais 404. Reçu et rejeu :
         README.md, section Karaoké, « Passage : appel, lecture et calage ».'
       tags:

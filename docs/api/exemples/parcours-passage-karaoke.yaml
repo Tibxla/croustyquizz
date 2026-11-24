@@ -56,6 +56,7 @@ http:
             delaiConsultationNavigateurMs: 8000
             delaiConfirmationNavigateurMs: 10000
             delaiAppelMs: 30000
+            dureeVoteMs: 30000
           prochainsPassages: &a12
             - &a8
               passageId: 98000000-0000-4000-8000-000000000041
@@ -160,6 +161,7 @@ http:
           passagePrioritaireId: null
           courant: null
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a8
             - *a9
@@ -224,6 +226,7 @@ http:
           configurationInterface: *a7
           prochainsPassages: *a12
           nombreAutresPassages: 1
+          votes: []
           mesPassagesEnAttente:
             - *a8
             - *a10
@@ -463,6 +466,7 @@ http:
                 etat: ESTIMEE
                 dureeMs: 715000
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a23
           nombrePersonnelEnAttente: 1
@@ -501,6 +505,7 @@ http:
           configurationInterface: *a7
           prochainsPassages: *a27
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a28
             - *a29
@@ -1027,6 +1032,7 @@ http:
             calculeLe: 2026-11-17T21:01:40.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - &a114
               passageId: 98000000-0000-4000-8000-000000000042
@@ -1722,6 +1728,7 @@ evenements:
           passagePrioritaireId: null
           courant: null
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a37
             - *a38
@@ -1814,6 +1821,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a26
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a28
             - *a23
@@ -1980,6 +1988,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a44
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a45
             - *a46
@@ -2130,6 +2139,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a52
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a53
             - *a54
@@ -2280,6 +2290,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a59
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a60
             - *a61
@@ -2324,6 +2335,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a64
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a61
           nombrePersonnelEnAttente: 1
@@ -2360,6 +2372,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a64
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a60
             - *a62
@@ -2412,6 +2425,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a68
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a69
             - *a70
@@ -2456,6 +2470,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a73
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a70
           nombrePersonnelEnAttente: 1
@@ -2492,6 +2507,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a73
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a69
             - *a71
@@ -2648,6 +2664,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a76
           configurationInterface: *a7
+          votes: []
           passagesEnAttente: &a214
             - *a77
             - *a78
@@ -2692,6 +2709,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a81
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: &a212
             - *a78
           nombrePersonnelEnAttente: 1
@@ -2728,6 +2746,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a81
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a77
             - *a79
@@ -2873,6 +2892,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a85
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a86
             - *a87
@@ -3025,6 +3045,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a92
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a93
             - *a94
@@ -3175,6 +3196,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a99
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a100
             - *a101
@@ -3325,6 +3347,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a106
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a107
             - *a108
@@ -3409,6 +3432,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a119
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a115
           nombrePersonnelEnAttente: 1
@@ -3445,6 +3469,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a119
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a114
             - *a116
@@ -3588,6 +3613,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a122
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a123
             - *a124
@@ -3632,6 +3658,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a127
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a124
           nombrePersonnelEnAttente: 1
@@ -3668,6 +3695,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a127
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a123
             - *a125
@@ -3720,6 +3748,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a131
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a132
             - *a133
@@ -3764,6 +3793,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a135
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a133
           nombrePersonnelEnAttente: 1
@@ -3800,6 +3830,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a135
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a132
             - *a134
@@ -3921,6 +3952,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a138
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a139
             - *a140
@@ -3964,6 +3996,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a141
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a139
           nombrePersonnelEnAttente: 1
@@ -4000,6 +4033,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a141
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a140
           nombrePersonnelEnAttente: 1
@@ -4136,6 +4170,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a144
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a145
             - *a146
@@ -4179,6 +4214,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a148
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a145
           nombrePersonnelEnAttente: 1
@@ -4215,6 +4251,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a148
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a146
           nombrePersonnelEnAttente: 1
@@ -4344,6 +4381,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a152
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a153
             - *a154
@@ -4480,6 +4518,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a158
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a159
             - *a160
@@ -4523,6 +4562,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a162
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a159
           nombrePersonnelEnAttente: 1
@@ -4559,6 +4599,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a162
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a160
           nombrePersonnelEnAttente: 1
@@ -4679,6 +4720,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a165
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a166
             - *a167
@@ -4722,6 +4764,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a168
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a166
           nombrePersonnelEnAttente: 1
@@ -4758,6 +4801,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a168
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a167
           nombrePersonnelEnAttente: 1
@@ -4878,6 +4922,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a171
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a172
             - *a173
@@ -4921,6 +4966,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a174
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a172
           nombrePersonnelEnAttente: 1
@@ -4957,6 +5003,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a174
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a173
           nombrePersonnelEnAttente: 1
@@ -5064,6 +5111,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a177
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a178
           peutGererFile: true
@@ -5106,6 +5154,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a179
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -5141,6 +5190,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a179
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a178
           nombrePersonnelEnAttente: 1
@@ -5257,6 +5307,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a182
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a183
           peutGererFile: true
@@ -5370,6 +5421,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a187
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a188
           peutGererFile: true
@@ -5492,6 +5544,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a191
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a192
           peutGererFile: true
@@ -5623,6 +5676,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a196
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a197
           peutGererFile: true
@@ -5665,6 +5719,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a199
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -5700,6 +5755,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a199
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a197
           nombrePersonnelEnAttente: 1
@@ -5807,6 +5863,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a202
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a203
           peutGererFile: true
@@ -5849,6 +5906,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a204
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -5884,6 +5942,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a204
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a203
           nombrePersonnelEnAttente: 1
@@ -5978,6 +6037,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a207
           configurationInterface: *a7
+          votes: []
           passagesEnAttente: []
           peutGererFile: true
           peutReglerLimite: true
@@ -6019,6 +6079,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a208
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -6054,6 +6115,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a208
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -6428,6 +6490,7 @@ cases:
       delaiConsultationNavigateurMs: 8000
       delaiConfirmationNavigateurMs: 10000
       delaiAppelMs: 0
+      dureeVoteMs: 30000
     valide: false
     correction:
       chemin:
@@ -6493,6 +6556,7 @@ cases:
         configurationInterface: *a7
         prochainsPassages: *a81
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: *a212
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -6525,6 +6589,7 @@ cases:
         configurationInterface: *a7
         prochainsPassages: *a81
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: *a212
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -6557,6 +6622,7 @@ cases:
         configurationInterface: *a7
         prochainsPassages: *a81
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: *a212
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -6585,6 +6651,7 @@ cases:
         passagePrioritaireId: null
         courant: *a76
         configurationInterface: *a7
+        votes: []
         passagesEnAttente: *a214
         peutGererFile: true
         peutReglerLimite: true
@@ -6619,6 +6686,7 @@ cases:
         passagePrioritaireId: null
         courant: *a76
         configurationInterface: *a7
+        votes: []
         passagesEnAttente: *a214
         peutGererFile: true
         peutReglerLimite: true
