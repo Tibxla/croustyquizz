@@ -4,6 +4,8 @@ import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { decrireVue } from './vue-commune.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { monterPilotage } from './pilotage-console.mjs';
+import { memoire } from './api.js';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -36,16 +38,59 @@ function afficherCommun(vue) {
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	const talon = element('talon');
 	if (talon) {
-		talon.hidden = !description.codeAcces;
+		talon.hidden = !description.codeAcces || vue.soiree.etat === 'TERMINEE';
 		texte('code', description.codeAcces ?? '');
 	}
-	texte('attente', vue.modeEnCours === null ? 'La prochaine Manche s’affichera ici.' : '');
+	texte('attente', vue.modeEnCours === null && vue.soiree.etat !== 'TERMINEE' ? 'La prochaine Manche s’affichera ici.' : '');
 	zoneErreur.hidden = true;
 }
 
+function lireJeton(soireeId) {
+	if (ecran === 'ecran') {
+		const cle = new URLSearchParams(location.hash.slice(1)).get('cle');
+		if (cle && soireeId) {
+			memoire.ecrire('croustyquizz.cleEcran', cle);
+			memoire.ecrire('croustyquizz.soireeEcran', soireeId);
+			history.replaceState(null, '', location.pathname + location.search);
+			return cle;
+		}
+		if (memoire.lire('croustyquizz.soireeEcran') === soireeId) {
+			return memoire.lire('croustyquizz.cleEcran');
+		}
+	}
+	return memoire.lire('croustyquizz.jeton');
+}
+
+function chargerQr(soireeId, jeton, signal) {
+	const qr = element('qr');
+	let occupe = false;
+	return async vue => {
+		if (!qr || !jeton || jeton.startsWith('demo:') || occupe || !vue.soiree.codeAcces
+			|| vue.soiree.etat === 'TERMINEE') return;
+		occupe = true;
+		try {
+			const reponse = await fetch(`/api/soirees/${soireeId}/qrcode`, {
+				headers: { Authorization: `Bearer ${jeton}` }, cache: 'no-store', signal,
+			});
+			if (!reponse.ok) throw new Error('QR code indisponible');
+			const adresse = URL.createObjectURL(await reponse.blob());
+			const image = qr.querySelector('img');
+			image.addEventListener('load', () => URL.revokeObjectURL(adresse), { once: true });
+			image.src = adresse;
+			qr.hidden = false;
+		} catch {
+			occupe = false;
+		}
+	};
+}
+
 async function demarrer() {
-	const jeton = sessionStorage.getItem('croustyquizz.jeton');
-	const acces = lireAcces(ecran, location.search, jeton);
+	const soireeId = new URLSearchParams(location.search).get('soiree');
+	const jeton = lireJeton(soireeId);
+	const joueurId = memoire.lire('croustyquizz.soiree') === soireeId ? memoire.lire('croustyquizz.joueurId') : null;
+	const acces = lireAcces(ecran, location.search, jeton, joueurId);
+	const annulation = new AbortController();
+	const chargerQrSiNecessaire = chargerQr(soireeId, jeton, annulation.signal);
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
@@ -73,12 +118,15 @@ async function demarrer() {
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
+	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
+			void chargerQrSiNecessaire(vue);
 			programme?.afficher(vue);
+			pilotage?.afficher(vue);
 			void gestionnaire.afficher(vue, origine);
 		},
 		surEtat(etat) {
@@ -91,8 +139,10 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) return;
+		annulation.abort();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
-	}, { once: true });
+		pilotage?.demonter();
+	});
 }
 
 demarrer().catch(erreur => {

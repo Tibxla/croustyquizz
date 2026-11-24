@@ -28,6 +28,22 @@ test('le Joueur de démonstration prend son UUID dans la projection du serveur',
 	assert.equal(acces.page, 'manette');
 });
 
+test('les accès d’une Soirée enregistrée ouvrent les mêmes coquilles avec une clé ou un jeton opaque', () => {
+	const recherche = `?soiree=${soiree}`;
+	assert.equal(lireAcces('ecran', recherche, 'cle-opaque').destination, `/topic/soirees/${soiree}/salle`);
+	const manette = lireAcces('manette', recherche, 'jeton-opaque', joueur);
+	assert.equal(manette.destination, `/topic/joueurs/${joueur}`);
+	assert.equal(manette.acteur.identifiant, joueur);
+	assert.throws(() => lireAcces('manette', recherche, 'jeton-opaque'), /identité/);
+});
+
+test('la vérification de l’accès Animateur utilise son propre rôle', async () => {
+	await preparerIdentite('ANIMATEUR', soiree, joueur, async (url, options) => {
+		assert.equal(options.headers.Authorization, `Bearer demo:ANIMATEUR:${soiree}:${joueur}`);
+		return Response.json({ vue: { joueurs: [] } });
+	});
+});
+
 test('le rang 3 ouvre la Manette du troisième Joueur de la projection', async () => {
 	const troisieme = '10000000-0000-4000-8000-000000000003';
 	const joueurs = [{ id: joueur }, { id: '10000000-0000-4000-8000-000000000002' }, { id: troisieme }];

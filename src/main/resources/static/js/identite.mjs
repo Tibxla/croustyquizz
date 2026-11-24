@@ -3,7 +3,7 @@ import { lireCorps, reponseIllisible } from './transport.mjs';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const roles = { manette: 'JOUEUR', console: 'ANIMATEUR', ecran: 'ECRAN' };
 
-export function lireAcces(ecran, recherche, jeton) {
+export function lireAcces(ecran, recherche, jeton, joueurId) {
 	const soireeId = new URLSearchParams(recherche).get('soiree');
 	if (!uuid.test(soireeId ?? '')) throw new Error('Lien incomplet : une Soirée valide est requise (?soiree=UUID).');
 	let acteur = { type: roles[ecran], soireeId };
@@ -14,8 +14,10 @@ export function lireAcces(ecran, recherche, jeton) {
 		}
 		if (portee !== soireeId) throw new Error('Cette identité appartient à une autre Soirée.');
 		acteur = { type, identifiant, soireeId };
-	} else if (ecran !== 'console') {
-		throw new Error('Une identité est requise. Ouvre la page d’identité de démonstration en dev ou recette.');
+	} else if (ecran === 'manette' && jeton && uuid.test(joueurId ?? '')) {
+		acteur.identifiant = joueurId;
+	} else if (ecran !== 'console' && !(ecran === 'ecran' && jeton)) {
+		throw new Error('Une identité est requise. Rejoins la Soirée ou ouvre l’Écran depuis la préparation.');
 	}
 	return {
 		acteur, soireeId,
@@ -34,8 +36,9 @@ export async function preparerIdentite(type, soireeId, acteurId, requete, rangJo
 		throw new Error(joueurAbsent);
 	}
 	// Le fournisseur commun donne l’UUID du Joueur au rang choisi.
+	const roleDeLecture = type === 'ANIMATEUR' ? type : 'ECRAN';
 	const reponse = await requete(`/api/soirees/${soireeId}/etat/salle`, {
-		headers: { Authorization: `Bearer demo:ECRAN:${soireeId}:${acteurId}` },
+		headers: { Authorization: `Bearer demo:${roleDeLecture}:${soireeId}:${acteurId}` },
 		cache: 'no-store', credentials: 'same-origin',
 	});
 	const { lisible, corps } = await lireCorps(reponse);
