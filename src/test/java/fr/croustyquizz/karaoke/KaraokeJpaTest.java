@@ -134,6 +134,35 @@ class KaraokeJpaTest {
                 .containsExactlyInAnyOrderEntriesOf(Map.of(celia, 1L, boris, 1L));
     }
 
+    @Test void restaureLesInvitationsDansLeurOrdreEtLeurEtatJusquALeurExpiration() {
+        UUID soiree = UUID.randomUUID();
+        List<UUID> joueurs = joueursDe(soiree);
+        UUID ana = joueurs.getFirst();
+        UUID boris = joueurs.get(1);
+        UUID celia = joueurs.get(2);
+        var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
+        var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1), List.of(celia, boris));
+        var inscription = service.inscrirePassage(manche, envoi(new Acteur(Acteur.Type.JOUEUR, ana, soiree), "/passages", corps), corps);
+        UUID passage = ((AccusePassage) ((Accepte) inscription).accuse()).passageId();
+        socle.registre().retirer(manche);
+        assertThat(verifierRestauration(soiree, manche).file().invitations()).containsExactly(
+                new InvitationPassage(passage, celia, InvitationPassage.Etat.EN_ATTENTE),
+                new InvitationPassage(passage, boris, InvitationPassage.Etat.EN_ATTENTE));
+
+        var file = FileAttente.depuis(((InstantaneKaraoke) service.instantane(soiree, manche)).file());
+        file.repondreInvitation(celia, new CiblePassage(passage, 0), true);
+        file.repondreInvitation(boris, new CiblePassage(passage, 1), false);
+        assertThat(enregistrerFilePuisRestaurer(file.etat()).invitations()).containsExactly(
+                new InvitationPassage(passage, celia, InvitationPassage.Etat.ACCEPTEE),
+                new InvitationPassage(passage, boris, InvitationPassage.Etat.REFUSEE));
+
+        var appel = new CorpsKaraoke.AppelPassage(1L);
+        assertThat(service.appelerPassage(manche, passage, envoi(animateur, "/appel", appel), appel)).isInstanceOf(Accepte.class);
+        assertThat(verifierRestauration(soiree, manche).file().passages().getFirst().interpretes()).containsExactly(ana, celia);
+    }
+
     private EtatFileAttente enregistrerFilePuisRestaurer(EtatFileAttente file) {
         UUID manche = file.mancheId();
         new TransactionTemplate(socle.transactions()).executeWithoutResult(s -> passages.enregistrer(manche, file));

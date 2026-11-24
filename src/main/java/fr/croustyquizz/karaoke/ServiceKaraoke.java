@@ -90,8 +90,11 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
             return PreparationDeCommande.prete((d, recueLe) -> {
                 if (contenu.isEmpty()) { return introuvable(); }
                 long numero = passages.numeroPropose(envoi.acteur().soireeId());
+                boolean invitesPresents = corps.invites().stream()
+                        .allMatch(id -> participants.estPresent(envoi.acteur().soireeId(), id));
                 ResultatDeCommande resultat = d.recevoir(new InscrirePassage(envoi.acteur(), recueLe,
-                        envoi.envoiId(), new FaitsInscription(UUID.randomUUID(), numero), corps.chansonId(), contenu.get()));
+                        envoi.envoiId(), new FaitsInscription(UUID.randomUUID(), numero), corps.chansonId(), contenu.get(),
+                        corps.invites(), invitesPresents));
                 if (resultat instanceof Accepte) { passages.incrementerNumero(envoi.acteur().soireeId(), numero); }
                 return resultat;
             });
@@ -99,12 +102,19 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     }
     public ResultatDeCommande desinscrirePassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.DesinscriptionPassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
-        socle.verrous().executer(envoi.acteur().soireeId(), () -> { verifierInscripteur(mancheId, passageId, envoi.acteur()); return null; });
+        socle.verrous().executer(envoi.acteur().soireeId(), () -> { verifierPortee(mancheId, passageId, envoi.acteur()); return null; });
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
-            verifierInscripteur(mancheId, passageId, envoi.acteur());
+            verifierPortee(mancheId, passageId, envoi.acteur());
             return d.recevoir(new DesinscrirePassage(envoi.acteur(), recueLe, envoi.envoiId(),
                     new CiblePassage(passageId, corps.numeroModification())));
         }));
+    }
+    /** Acceptation ou refus de son Invitation par le Joueur invité (#138). */
+    public ResultatDeCommande repondreInvitation(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsKaraoke.ReponseInvitation corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.recevoir(new RepondreInvitation(
+                envoi.acteur(), recueLe, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification()), corps.accepte()))));
     }
     public ResultatDeCommande voterPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.VotePassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
@@ -329,9 +339,12 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche ou Joueur introuvable.").exception();
         }
     }
-    private void verifierInscripteur(UUID mancheId, UUID passageId, Acteur acteur) {
+    /** Le Passage d’autrui, dont le Joueur n’est ni Interprète ni invité, est introuvable avant tout reçu. */
+    private void verifierPortee(UUID mancheId, UUID passageId, Acteur acteur) {
         EtatFileAttente file = passages.charger(mancheId);
-        if (file != null && file.passages().stream().anyMatch(p -> p.id().equals(passageId) && !p.inscripteurId().equals(acteur.identifiant()))) {
+        UUID joueur = acteur.identifiant();
+        if (file != null && file.passages().stream().anyMatch(p -> p.id().equals(passageId) && !p.interpretes().contains(joueur))
+                && file.invitations().stream().noneMatch(i -> i.passageId().equals(passageId) && i.inviteId().equals(joueur))) {
             throw introuvable().exception();
         }
     }

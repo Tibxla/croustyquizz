@@ -142,6 +142,10 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (refus != null) { return refus; }
         if (action instanceof VoterPassage notation) { return voter(notation); }
         if (action instanceof ConfirmerPresencePassage confirmation) { return confirmer(confirmation); }
+        if (action instanceof RepondreInvitation reponse) {
+            return resultatPassage(file.repondreInvitation(reponse.joueurId(), reponse.cible(), reponse.accepte()),
+                    reponse.envoiId(), reponse.recueLe(), reponse.cible(), reponse.action());
+        }
         if (action instanceof DesinscrirePassage desinscription) {
             return resultatPassage(file.desinscrire(desinscription.joueurId(), desinscription.cible(), desinscription.recueLe()),
                     desinscription.envoiId(), desinscription.recueLe(), desinscription.cible(), "DESINSCRIRE");
@@ -161,9 +165,15 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
                     || raison == MotifIndisponibilite.PAROLES_NON_SYNCHRONISEES || raison == MotifIndisponibilite.DUREE_INCONNUE;
             return new Refuse(indisponible ? 422 : 409, indisponible ? "CHANSON_INDISPONIBLE" : raison.name(), raison.name());
         }
+        // Les invités viennent après les gardes de la Chanson et de l’inscrivant (#66).
+        if (inscription.invitesIds().contains(inscription.joueurId())) {
+            return new Refuse(422, "DONNEES_INVALIDES", "Tu ne peux pas t’inviter toi-même.");
+        }
+        if (!inscription.invitesPresents()) { return new Refuse(404, "RESSOURCE_INTROUVABLE", "Un Joueur invité est introuvable."); }
         ResultatFile resultat = file.inscrire(new NouveauPassage(inscription.faits().passageId(),
                 contexte.soireeId(), contexte.mancheId(), inscription.joueurId(), List.of(inscription.joueurId()),
-                inscription.chansonId(), Duration.ofMillis(chanson.dureeMs()), inscription.faits().numeroPropose(), inscription.recueLe()));
+                inscription.chansonId(), Duration.ofMillis(chanson.dureeMs()), inscription.faits().numeroPropose(), inscription.recueLe()),
+                inscription.invitesIds());
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
         contenus.put(inscription.faits().passageId(), inscription.contenu());
         return new Accepte(new AccusePassage(inscription.envoiId(), contexte.soireeId(), contexte.mancheId(),
