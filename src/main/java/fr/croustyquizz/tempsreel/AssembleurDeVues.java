@@ -39,15 +39,16 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 		return verrous.executer(soireeId, () -> {
 			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
+			var parties = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
-				vues.put(destination, composer(soireeId, destination, type, projections));
+				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections));
 			}
 			return vues;
 		});
 	}
-	private VueComposee composer(UUID soireeId, Destination destination, String type,
+	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partieCommune,
 			Map<ModeDeJeu, Function<Destination, Object>> projections) {
-		Map<String, Object> vue = new LinkedHashMap<>(commun.fournir(soireeId, destination));
+		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
 		Object mode = vue.get("modeEnCours");
 		ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());
 		for (var valeur : ModeDeJeu.values()) {

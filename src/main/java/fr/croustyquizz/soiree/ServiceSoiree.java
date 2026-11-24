@@ -79,6 +79,12 @@ public class ServiceSoiree {
 		return depotDeSoirees.findById(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
 	}
 
+	/** Distingue une Soirée enregistrée d'une Soirée fictive de démonstration. */
+	@Transactional(readOnly = true)
+	public boolean estEnregistree(UUID soireeId) {
+		return depotDeSoirees.existsById(soireeId);
+	}
+
 	/**
 	 * Ouvre la Soirée avec un code d'accès libre. Répéter l'ouverture d'une Soirée
 	 * déjà ouverte la renvoie telle quelle, avec le même code.

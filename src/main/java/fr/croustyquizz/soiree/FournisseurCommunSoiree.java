@@ -3,6 +3,7 @@ package fr.croustyquizz.soiree;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -21,7 +22,7 @@ import tools.jackson.databind.json.JsonMapper;
  * Partie commune des vues tirée de la Soirée enregistrée : la Soirée, ses
  * Joueurs non exclus, sa Manche active et, pour la Console, son programme.
  * Classement général, dernière Réponse et résultat personnel viennent de
- * {@link ResultatsDeSoiree} ; le dernier Buzz reste vide jusqu'à son issue.
+ * {@link ResultatsDeSoiree}.
  * <p>
  * Une Soirée absente de la base est confiée à l'autre fournisseur du profil,
  * s'il y en a un : la démonstration du prototype en dev et recette (#80).
@@ -52,9 +53,18 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 	@Override
 	@Transactional(readOnly = true)
 	public Map<String, Object> fournir(UUID soireeId, Destination destination) {
+		return fournir(soireeId, Set.of(destination)).get(destination);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Map<Destination, Map<String, Object>> fournir(UUID soireeId, Set<Destination> destinations) {
+		if (destinations.isEmpty()) {
+			return Map.of();
+		}
 		Soiree soiree = depotDeSoirees.findById(soireeId).orElse(null);
 		if (soiree == null) {
-			return autre().fournir(soireeId, destination);
+			return autre().fournir(soireeId, destinations);
 		}
 		List<ManchePersistante> programme = depotDeManches.deLaSoiree(soireeId);
 		ManchePersistante active = programme.stream()
@@ -69,14 +79,24 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 				.map(joueur -> new ProjectionAccesJoueur.JoueurPublic(joueur.getId(), joueur.getPseudo(), true))
 				.toList());
 		vue.put("classement", resultats.classement(soireeId));
-		vue.put("dernierBuzz", null);
+		vue.put("dernierBuzz", soiree.getDernierBuzz());
+		Map<Destination, Map<String, Object>> parties = new LinkedHashMap<>();
+		for (Destination destination : destinations) {
+			parties.put(destination, completer(soireeId, destination, vue, programme, active != null));
+		}
+		return parties;
+	}
+
+	private Map<String, Object> completer(UUID soireeId, Destination destination, Map<String, Object> commun,
+			List<ManchePersistante> programme, boolean mancheActive) {
+		Map<String, Object> vue = new LinkedHashMap<>(commun);
 		if (destination.type() == Destination.Type.CONSOLE) {
 			vue.put("programme", programme.stream().map(manche -> ProjectionManche.de(manche, json)).toList());
 		}
 		if (destination.type() == Destination.Type.JOUEUR) {
 			vue.put("joueurId", destination.joueurId());
 			// L'éligibilité d'un retardataire à la Manche en cours relève de #10.
-			vue.put("eligiblePourMancheActive", active != null);
+			vue.put("eligiblePourMancheActive", mancheActive);
 			vue.put("derniereReponse", resultats.derniereReponse(soireeId, destination.joueurId()).orElse(null));
 			vue.put("resultatPersonnel", resultats.resultatPersonnel(soireeId, destination.joueurId()).orElse(null));
 		}
