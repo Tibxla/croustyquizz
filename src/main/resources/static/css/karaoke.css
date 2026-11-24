@@ -30,7 +30,8 @@
   overflow-wrap: anywhere;
 }
 .karaoke__resultats > li { padding-block: var(--espace-3); border-bottom: 1px solid var(--fond-3); }
-.karaoke__resultats .titre { text-align: left; }
+/* Un titre long passe à la ligne au lieu d’élargir la Manette (.bouton est en nowrap). */
+.karaoke__resultats .titre { text-align: left; white-space: normal; max-width: 100%; justify-content: flex-start; }
 .karaoke__resultats td:last-child { width: auto; }
 .karaoke__suggestions { display: grid; gap: var(--espace-2); }
 .karaoke__suggestions .bouton, .karaoke__suggestion .bouton { justify-self: start; }
