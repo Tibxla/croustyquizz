@@ -177,8 +177,8 @@ for (const [nom, fichiers, motif] of [
 	});
 }
 
-async function fichierPrepare() {
-	const b = await preparer();
+async function fichierPrepare(fichiers) {
+	const b = await preparer(fichiers);
 	b.chargements[0].resolve({ dureeMs: 20000 });
 	await terminerMicrotaches();
 	b.commandes[1].resolve({ statut: 200, corps: { lectureId: 'l' } });
@@ -186,11 +186,48 @@ async function fichierPrepare() {
 	return b;
 }
 
-async function fichierEnLecture() {
-	const b = await fichierPrepare();
+async function fichierEnLecture(fichiers) {
+	const b = await fichierPrepare(fichiers);
 	b.cycle.surVue(demarre(), evenement('passage-demarre'));
 	await terminerMicrotaches();
 	return b;
+}
+
+for (const phase of ['lecture', 'pause', 'fin']) {
+	for (const enchaine of [true, false]) {
+		test(`depuis ${phase}, une clôture ${enchaine ? 'avec nouvel appel prépare le suivant' : 'sans nouvel appel laisse le lecteur prêt'}`, async t => {
+			const suivant = { name: 'Duo fictif - Le Phare.ogg', size: 315 };
+			const b = await fichierEnLecture([fichier, suivant]);
+			t.after(() => b.cycle.detruire());
+			if (phase === 'pause') b.cycle.surVue(demarre({ etat: 'EN_PAUSE' }), evenement('manche-en-pause'));
+			if (phase === 'fin') b.fin();
+			assert.equal(b.etat(), phase);
+			const nouveauCourant = enchaine
+				? appel('suivant', { chanson: { titre: 'Le Phare', artiste: 'Duo fictif' } })
+				: appel('p', { etat: 'TERMINE', numeroModification: 3 });
+			const vue = bloc(nouveauCourant);
+			const origine = evenement(enchaine ? 'passage-appele' : 'passage-termine');
+			b.cycle.surVue(vue, origine);
+
+			assert.equal(b.etat(), enchaine ? 'preparation' : 'pret');
+			assert.equal(b.gestes.filter(geste => geste === 'libérer').length, 1);
+			assert.equal(b.chargements.length, enchaine ? 2 : 1);
+			if (enchaine) {
+				assert.equal(b.chargements[1].f.name, suivant.name);
+				b.chargements[1].resolve({ dureeMs: 30000 });
+				await terminerMicrotaches();
+			}
+			b.cycle.surVue(vue, capture);
+			const declarations = b.commandes.filter(commande => commande.chemin === '/passages/suivant/lecture');
+			assert.equal(declarations.length, enchaine ? 1 : 0);
+			if (enchaine) {
+				assert.equal(declarations[0].corps.etapeId, 'e-suivant');
+				assert.equal(declarations[0].corps.numeroModification, 1);
+			}
+			assert.equal(b.chargements.length, enchaine ? 2 : 1);
+			assert.equal(b.gestes.filter(geste => geste === 'libérer').length, 1);
+		});
+	}
 }
 
 test('le départ trouve la lecture locale dans la vue même si le 2xx a précédé la publication de la préparation', async () => {
