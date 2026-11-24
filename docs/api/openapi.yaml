@@ -965,7 +965,15 @@ paths:
         ETAT_INCOMPATIBLE pour REPRENDRE pendant une lecture EN_ERREUR. PASSER_ETAPE saute le courant actif
         (SAUTE, Tour conservé, passage-saute), et une Manche en pause le reste. TERMINER annule le courant actif
         (ANNULE, Tour conservé, lecture arrêtée) et le bloc karaoke devient null. Conditions : README.md,
-        section Karaoké, « Passage : appel, lecture et calage ».'
+        section Karaoké, « Passage : appel, lecture et calage ». Blind test : etapeId est toujours celui du Morceau
+        affiché, même révélé (absent ou différent : 409 ETAPE_INACTIVE). PASSER_ETAPE sur un Morceau en
+        PREPARATION, EXTRAIT ou PROPOSITION le termine et le révèle (morceau-revele, sans points pour une saisie
+        en cours) ; pendant la REVELATION, il prépare le Morceau suivant (morceau-en-preparation) ou, après le
+        dernier, termine la Manche (manche-terminee). METTRE_EN_PAUSE gèle l’extrait et, pendant une saisie, le
+        temps restant du Joueur qui a la main (main.tempsRestantMs) ; REPRENDRE relance l’un et l’autre
+        d’où ils étaient (manche-en-pause, manche-reprise). Pendant la pause, PASSER_ETAPE reçoit 409
+        ETAT_INCOMPATIBLE ; le Joueur garde la main et peut encore déposer son brouillon, pas le valider.
+        Conditions : README.md, section Blind test.'
       tags:
       - Soirée
       security:
@@ -1104,11 +1112,15 @@ paths:
       operationId: deposerBrouillonProposition
       summary: Déposer le brouillon de sa Proposition de titre
       description: 'Seul le Joueur qui a la main sur ce Morceau dépose son brouillon (ADR 0009, point 6). Chaque
-        envoi remplace le précédent, sans reçu ni publication ; le brouillon n’est montré qu’à son auteur
-        (monBrouillon). À l’échéance comptée par le serveur, le dernier brouillon reçu est jugé comme une
-        validation, puis proposition-jugee, ou morceau-revele quand ce jugement termine le Morceau. Aucun Idempotency-Key, le dernier brouillon l’emporte. Morceau qui
-        n’est plus le courant : 409 COMMANDE_PERIMEE. Joueur sans la main : 409 ETAT_INCOMPATIBLE. Échéance
-        passée, brouillon déjà jugé : 409 HORS_DELAI.'
+        envoi porte un numero croissant et remplace le brouillon retenu, sans reçu ; la vue est republiée à la
+        seule Manette de l’auteur (brouillon-depose, monBrouillon), pour qu’un rechargement retrouve sa saisie.
+        Aucun Idempotency-Key : un numero qui ne dépasse pas celui du brouillon retenu est ignoré, sans
+        publication, toujours en 204, si bien qu’un envoi rejoué en retard n’écrase jamais un plus récent. Le
+        dépôt reste permis pendant une pause de la Manche. À l’échéance comptée par le serveur, le dernier
+        brouillon retenu est jugé comme une validation, puis proposition-jugee, ou morceau-revele quand ce
+        jugement termine le Morceau. Ordre des refus : Morceau qui n’est plus le Morceau affiché, 409
+        COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
+        HORS_DELAI ; Joueur sans la main, 409 ETAT_INCOMPATIBLE.'
       tags:
       - Blind test
       security:
@@ -1169,8 +1181,9 @@ paths:
         ce Morceau, l’extrait reprend et le Buzz se rouvre. Puis proposition-jugee, ou morceau-revele quand
         ce jugement termine le Morceau. Dédupliquer avant tout contrôle : même auteur, route et envoiId, même contenu =
         accusé original, même après la fin du Morceau ; même envoiId avec autre contenu = 409 ENVOI_REUTILISE.
-        Morceau qui n’est plus le courant : 409 COMMANDE_PERIMEE. Joueur sans la main : 409 ETAT_INCOMPATIBLE.
-        Échéance passée, brouillon déjà jugé : 409 HORS_DELAI.'
+        Ordre des refus : Morceau qui n’est plus le Morceau affiché (un Morceau révélé l’est encore), 409
+        COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
+        HORS_DELAI ; Joueur sans la main, ou Manche en pause, 409 ETAT_INCOMPATIBLE.'
       tags:
       - Blind test
       security:
@@ -1235,9 +1248,10 @@ paths:
         l’etapeId du Morceau visé (absents : 400 REQUETE_INVALIDE) et la route transmet le Buzz au déroulement de
         la Manche. Le premier Buzz accepté d’un Joueur non bloqué, en phase EXTRAIT, lui donne la main, met
         l’extrait en pause et ouvre 20 s de saisie, puis buzz-recu ; rang est son ordre parmi les Buzz acceptés
-        du Morceau. Cible qui n’est plus la Manche ou le Morceau courant : 409 COMMANDE_PERIMEE, distinct des
-        refus de jeu. Joueur bloqué, main déjà prise ou phase autre que EXTRAIT : 409 BUZZ_NON_AUTORISE. Le même
-        envoi rend son reçu initial, même après la fin du Morceau.'
+        du Morceau. Cible qui n’est plus la Manche ou le Morceau affiché : 409 COMMANDE_PERIMEE, distinct des
+        refus de jeu ; un Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise,
+        Manche en pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le
+        révèle : 409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.'
       tags:
       - Socle
       security:

@@ -735,7 +735,8 @@ $defs:
     description: etapeId désigne l’étape courante et doit alors lui correspondre, sinon 409 ETAPE_INACTIVE. Pour
       le Quiz, il est toujours présent ; la correction reste attachée au même etapeId jusqu’à l’étape suivante.
       Au Karaoké, un Passage actif (APPELE, EN_COURS ou EN_PAUSE) a une étape, créée à l’appel ; etapeId est
-      omis seulement sans Passage actif, et PASSER_ETAPE y donne ETAPE_INACTIVE.
+      omis seulement sans Passage actif, et PASSER_ETAPE y donne ETAPE_INACTIVE. Au Blind test, il est toujours
+      présent et nomme le Morceau affiché, même pendant sa Révélation.
   AccuseCommande:
     type: object
     additionalProperties: false
@@ -919,6 +920,25 @@ $defs:
             properties:
               mode:
                 const: KARAOKE
+              etat:
+                type: string
+                enum:
+                - EN_COURS
+                - EN_PAUSE
+    - if:
+        required:
+        - blindtest
+        properties:
+          blindtest:
+            not:
+              type: 'null'
+      then:
+        properties:
+          mancheActive:
+            type: object
+            properties:
+              mode:
+                const: BLIND_TEST
               etat:
                 type: string
                 enum:
@@ -1325,6 +1345,7 @@ $defs:
         - proposition-jugee
         - morceau-revele
         - morceau-saute
+        - brouillon-depose
         - reponse-enregistree
         - resultat-personnel
         - file-attente-modifiee
@@ -1464,6 +1485,13 @@ $defs:
     description: Saisie en cours du Joueur qui a la main, remplacée à chaque envoi. À l’échéance, le dernier brouillon
       reçu est jugé ; il n’est montré à personne d’autre avant le verdict. Seuls les champs encore demandés comptent.
     properties:
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+        description: Numéro d’envoi croissant pendant la main du Joueur, à partir de 1. Un brouillon dont le numéro
+          ne dépasse pas celui du dernier brouillon retenu est ignoré ; après un rechargement, la Manette repart du
+          numéro de monBrouillon.
       titre:
         type: string
         maxLength: 200
@@ -1471,6 +1499,7 @@ $defs:
         type: string
         maxLength: 200
     required:
+    - numero
     - titre
     - artiste
   PropositionSaisie:
@@ -1678,7 +1707,9 @@ $defs:
   BlindTestCommun:
     type: object
     description: Partie du bloc blindtest commune aux trois destinations. revelation n’est non nul qu’en phase
-      REVELATION ; avant, seules les parties déjà trouvées sont visibles.
+      REVELATION ; avant, seules les parties déjà trouvées sont visibles, aucune en PREPARATION et au plus une en
+      EXTRAIT ou PROPOSITION, la seconde déclenchant la Révélation. Pendant une pause de la Manche, main porte
+      tempsRestantMs, jamais d’échéance absolue ; hors pause, l’inverse.
     properties:
       mancheId:
         type: string
@@ -1746,6 +1777,8 @@ $defs:
             type: 'null'
           main:
             type: 'null'
+          partiesTrouvees:
+            maxItems: 0
           revelation:
             type: 'null'
     - if:
@@ -1758,6 +1791,8 @@ $defs:
             type: object
           main:
             type: 'null'
+          partiesTrouvees:
+            maxItems: 1
           revelation:
             type: 'null'
     - if:
@@ -1773,8 +1808,28 @@ $defs:
                 const: EN_PAUSE
           main:
             type: object
+          partiesTrouvees:
+            maxItems: 1
           revelation:
             type: 'null'
+    - if:
+        properties:
+          etat:
+            const: EN_PAUSE
+          main:
+            type: object
+      then:
+        properties:
+          main:
+            properties:
+              echeanceLe:
+                type: 'null'
+      else:
+        properties:
+          main:
+            properties:
+              tempsRestantMs:
+                type: 'null'
     - if:
         properties:
           phase:
