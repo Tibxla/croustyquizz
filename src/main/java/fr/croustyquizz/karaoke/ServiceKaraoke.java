@@ -161,7 +161,9 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     }
     private void verifierAcces(Acteur acteur, UUID soireeId, UUID mancheId) {
         portee.verifier(acteur, soireeId, mancheId);
-        if (acteur.type() == Acteur.Type.JOUEUR && !participants.estPresent(soireeId, acteur.identifiant())) { throw introuvable().exception(); }
+        if (acteur.type() == Acteur.Type.JOUEUR && !participants.estPresent(soireeId, acteur.identifiant())) {
+            throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche ou Joueur introuvable.").exception();
+        }
     }
     private void verifierInscripteur(UUID mancheId, UUID passageId, Acteur acteur) {
         EtatFileAttente file = passages.charger(mancheId);

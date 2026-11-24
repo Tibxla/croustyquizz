@@ -54,10 +54,6 @@ class ParticipantsDePassageSoiree implements ParticipantsDePassage {
 		return autre == null ? Map.of() : autre.pseudos(soireeId);
 	}
 
-	static boolean present(DepotDeJoueurs joueurs, UUID soireeId, UUID joueurId) {
-		return joueurs.findById(joueurId).filter(joueur -> soireeId.equals(joueur.getSoireeId()) && !joueur.isExclu()).isPresent();
-	}
-
 	/** Le filtre {@code instanceof} suppose des proxys CGLIB, le réglage par défaut de Spring Boot. */
 	private ParticipantsDePassage autre() {
 		return participants.orderedStream().filter(p -> !(p instanceof ParticipantsDePassageSoiree)).findFirst().orElse(null);

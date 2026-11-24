@@ -67,10 +67,10 @@ class PortsDePassageSoireeTest {
 	}
 
 	@Test
-	void unJoueurExcluNEntrePlusEtDevientJoueurParti() {
+	void seuleLaPresenceEcarteUnJoueurExclu() {
 		jdbc.update("update joueur set exclu = true where id = ?", lea);
 		entites.clear();
-		assertThatThrownBy(() -> portee.verifier(joueur(soiree, lea), soiree, karaoke)).isInstanceOf(RefusDeCommande.class);
+		portee.verifier(joueur(soiree, lea), soiree, karaoke);
 		assertThat(participants.estPresent(soiree, lea)).isFalse();
 		assertThat(participants.pseudos(soiree)).doesNotContainKey(lea);
 	}
@@ -79,7 +79,7 @@ class PortsDePassageSoireeTest {
 	void unJoueurDUneAutreSoireeNEstPasPresentIci() {
 		UUID autre = soirees.saveAndFlush(new Soiree("Autre", Format.SOLO, Pilotage.MANUEL, MAINTENANT)).getId();
 		UUID tom = joueurs.saveAndFlush(new Joueur(autre, "Tom", JetonDeReconnexion.generer(new java.security.SecureRandom()), MAINTENANT)).getId();
-		assertThatThrownBy(() -> portee.verifier(joueur(soiree, tom), soiree, karaoke)).isInstanceOf(RefusDeCommande.class);
+		portee.verifier(joueur(soiree, tom), soiree, karaoke);
 		assertThat(participants.estPresent(soiree, tom)).isFalse();
 		assertThat(participants.pseudos(soiree)).doesNotContainKey(tom);
 	}
