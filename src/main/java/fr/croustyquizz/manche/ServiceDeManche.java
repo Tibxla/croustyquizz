@@ -67,6 +67,20 @@ public class ServiceDeManche<R, E> {
 				intervention.appliquer(d, new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))),
 				intervention.etatCible(), false);
 	}
+	ResultatDeCommande refuserPilotage(UUID mancheId, EnvoiDeCommande envoi, Refuse refus) {
+		return sousTransaction(envoi.acteur().soireeId(), mancheId, () -> {
+			var precedent = socle.envois().retrouver(envoi);
+			if (precedent != null) { return precedent; }
+			conserver(envoi, refus);
+			return refus;
+		});
+	}
+
+	/** Clôture interne à la Soirée, quelle que soit l'étape de sa Manche active. */
+	public final ResultatDeCommande terminerPourSoiree(UUID mancheId, EnvoiDeCommande envoi) {
+		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+				d.terminer(new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))), EtatManche.TERMINEE, false);
+	}
 	/** La préparation externe est hors verrou ; sa fonction revalide ensuite le domaine sous verrou. */
 	public ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer) {
 		return executer(mancheId, envoi, preparer, null);
