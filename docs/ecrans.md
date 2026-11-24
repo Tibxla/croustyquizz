@@ -48,3 +48,27 @@ Recette exécutée en Chromium sans interface graphique sur le port 18113, avec 
 - Manette à 390 × 844 avec confirmation tactile émulée. Console à 1440, 1200, 1024 et 860 px sans débordement avec pilotage et calage visibles. Salle à 1920 × 1080 avec le courant détaché, trois tickets à titres longs et talon visible. Clavier, Échap, retour du focus, mouvement réduit et contraste mesuré sur le bouton « Je suis prêt » et la ligne de paroles active.
 
 Le test constate le décodage, la progression et la fin du WAV dans Chromium. L’audibilité sur le matériel du Lieu, la lecture à cinq mètres, le tactile physique et l’intégration des routes #99 et #100 restent à vérifier en situation.
+
+### Recette du Vote du public (#115)
+
+Reprendre la Soirée de démonstration du ticket #114 avec la Console, l’Écran de salle et deux
+Manettes distinctes. Sur la Manette du Joueur 1, inscrire une Chanson. L’appeler depuis la Console,
+confirmer « Je suis prêt » depuis sa Manette et laisser le Passage se terminer.
+
+1. Vérifier que « Vote du public » apparaît avant « En scène » et que la Manette de l’Interprète
+   indique que le public vote pour son Passage. La Manette du Joueur 2 propose les cinq notes.
+2. Sur la Manette du Joueur 2, choisir 4, puis envoyer. Vérifier la sélection au clavier,
+   le bouton désactivé avant le choix et la confirmation « Ta note est enregistrée : 4 sur 5. »
+   après le reçu HTTP. La Console compte un vote. Recharger la Manette et vérifier sa note.
+3. Rejouer le parcours en mettant la Manche en pause avant l’envoi. Vérifier « en pause » dans
+   la Console et l’indication de reprise sur la Manette. Après la reprise, vérifier que le temps
+   restant repart de sa valeur au moment de la pause.
+4. Terminer deux Passages à moins de trente secondes d’intervalle. Vérifier que la Console
+   suit les deux délais, puis que chaque vote se clôt à son échéance. Si le Joueur 2 est appelé
+   entre-temps, « Je suis prêt » prend l’action citron. Avec deux votes accessibles, le plus récent
+   porte cette action.
+5. Dans une autre Manche, choisir « Terminer la Manche » pendant un vote. Vérifier la disparition
+   des commandes de vote et l’absence de nouveaux Points dans le Classement général.
+
+Les tests automatisés couvrent le rendu des modules, les reçus et les destinations STOMP. Cette
+recette décrit les vérifications à réaliser dans le navigateur.

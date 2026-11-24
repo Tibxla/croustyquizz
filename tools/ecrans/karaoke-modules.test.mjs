@@ -632,3 +632,84 @@ test('un appel sur capture restaure les quatre teintes personnelles sans détach
 		assert.equal(ticket.classList.contains('mon-ticket--detachement'), false);
 	}
 });
+
+function voteDuPublic(id = 'p', numero = 14) {
+	return { ...passage(id, numero), etat: 'OUVERT', interpretes: [{ joueurId: 'autre', pseudo: 'Lou' }],
+		numeroModification: 3, maNote: null, peutVoter: true, calculeLe: '2026-11-18T21:00:00Z',
+		delaiRestantMs: 30_000, clotureLe: null };
+}
+
+test('Manette : cinq notes, une seule action citron et confirmation après le 200', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const vote = voteDuPublic();
+	const votes = [vote, voteDuPublic('q', 13)];
+	const appel = { ...passage('appel', 15), etat: 'APPELE', etapeId: 'e', delaiAppelRestantMs: 30_000,
+		calculeLe: vote.calculeLe };
+	b.module.afficher(vue({ votes, courant: appel, peutConfirmerPresence: true }), capture);
+	const section = b.principale.querySelector('.karaoke__votes');
+	const premier = section.querySelector('article[data-passage-id=p]');
+	assert.equal(b.principale.querySelector('h2').textContent, 'Vote du public');
+	assert.deepEqual(premier.querySelectorAll('[aria-pressed=false]').map(action => action.textContent), ['1', '2', '3', '4', '5']);
+	b.connecter('synchronisee');
+	assert.equal(b.principale.querySelectorAll('.bouton--action').filter(action => !action.hidden).length, 1);
+	assert.equal(bouton(b.principale, 'Je suis prêt').classList.contains('bouton--action'), true);
+	b.module.afficher(vue({ votes }), evenement);
+	assert.equal(section.querySelectorAll('.bouton--action').length, 1);
+	const envoyer = bouton(premier, 'Envoyer ma note');
+	assert.equal(envoyer.classList.contains('bouton--grand'), true);
+	assert.equal(envoyer.disabled, true);
+	bouton(premier, '4').click();
+	assert.equal(bouton(premier, '4').getAttribute('aria-pressed'), 'true');
+	b.connecter('coupure');
+	assert.equal(envoyer.disabled, true);
+	b.connecter('synchronisee');
+	envoyer.click();
+	assert.equal(envoyer.disabled, true);
+	const [methode, chemin, corps, options] = b.appels[0].args;
+	assert.equal(methode, 'POST');
+	assert.equal(chemin, '/api/soirees/s/manches/m/passages/p/vote');
+	assert.deepEqual(corps, { envoiId: options.entetes['Idempotency-Key'], numeroModification: 3, note: 4 });
+	assert.equal(options.annoncer, false);
+	assert.equal(premier.querySelector('.envoi--en-cours').textContent, 'Envoi de ta note…');
+	b.module.afficher(vue({ votes: [{ ...vote, maNote: 4, peutVoter: false }, votes[1]] }), evenement);
+	assert.equal(premier.querySelector('.envoi--accepte'), null);
+	b.appels[0].resolve({ statut: 200, corps: { ...corps } });
+	await terminerMicrotaches();
+	assert.equal(premier.querySelector('.envoi--accepte').textContent, 'Ta note est enregistrée : 4 sur 5.');
+});
+
+test('Manette : après un refus définitif le détail est visible et une nouvelle tentative a une autre clé', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const votes = [voteDuPublic()];
+	b.module.afficher(vue({ votes }), capture);
+	b.connecter('synchronisee');
+	const ticket = b.principale.querySelector('.karaoke__ticket-vote');
+	bouton(ticket, '4').click();
+	bouton(ticket, 'Envoyer ma note').click();
+	b.appels[0].resolve({ statut: 409, corps: { code: 'VOTE_CLOS', detail: 'Le vote de ce Passage est clos.' } });
+	await terminerMicrotaches();
+	b.module.afficher(vue({ votes }), capture);
+	assert.equal(ticket.querySelector('.envoi--refuse').textContent, 'Le vote de ce Passage est clos.');
+	bouton(ticket, 'Envoyer ma note').click();
+	assert.equal(b.appels.length, 2);
+	assert.notEqual(b.appels[1].args[2].envoiId, b.appels[0].args[2].envoiId);
+});
+
+test('Console : les votes et le délai figurent sous le Passage courant, le délai est remplacé en pause', t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	b.contexte.maintenantServeur = () => Date.parse('2026-11-18T21:00:12Z');
+	const vote = { ...voteDuPublic(), nombreVotes: 7 };
+	b.module.afficher(vue({ votes: [vote] }), capture);
+	const section = b.principale.querySelector('.karaoke__votes');
+	assert.match(section.textContent, /n° 14 · Titre de démonstration · 7 votes · 18 s/);
+	const titres = b.principale.querySelectorAll('h2').map(titre => titre.textContent);
+	assert.equal(titres[titres.indexOf('Passage courant') + 1], 'Vote du public');
+	b.module.afficher(vue({ votes: [vote], etat: 'EN_PAUSE' }), evenement);
+	assert.match(section.textContent, /7 votes · en pause/);
+	assert.doesNotMatch(section.textContent, /18 s/);
+	b.module.afficher(vue({ votes: [{ ...vote, etat: 'CLOS', nombreVotes: 1 }] }), evenement);
+	assert.match(section.textContent, /Vote clos · 1 vote/);
+});

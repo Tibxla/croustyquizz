@@ -29,7 +29,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 		envoi.definitif = etat.etat === 'accepte' || refusDefinitif;
 		surEtat(envoi.etat);
 		if (exigeCapture(etat) && precedent !== etat.etat) demanderCapture();
-		if (refusDefinitif && (envoi.type === 'CONFIRMER_PRESENCE' || etapePerimee(etat, envoi.corps))) oublier(envoi.cle);
+		if (refusDefinitif && (['CONFIRMER_PRESENCE', 'VOTER'].includes(envoi.type) || etapePerimee(etat, envoi.corps))) oublier(envoi.cle);
 	}
 	function partir(envoi) {
 		const tentative = { controleur: new AbortController(), active: true };
@@ -46,7 +46,8 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			// Un ancien échec ne doit pas rendre disponible un réessai déjà en cours.
 			actualiserEnCours();
 			const { statut, corps } = reponse;
-			if (statut >= 200 && statut < 300) transition(envoi, { etat: 'accepte', statut, corps });
+			const succes = envoi.type === 'VOTER' ? statut === 200 : statut >= 200 && statut < 300;
+			if (succes) transition(envoi, { etat: 'accepte', statut, corps });
 			else {
 				// 503, ou erreur 5xx sans code du contrat (page d'erreur d'un relais) : panne passagère, réessayable.
 				const transitoire = statut === 503 || (statut >= 500 && !corps?.code);
@@ -88,7 +89,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			const cle = creerUuid();
 			const e = { ...commande, cle, empreinte, corps: structuredClone(commande.corps), entetes: { ...commande.entetes }, tentatives: new Set() };
 			if (commande.acteurType === 'JOUEUR') e.corps.envoiId = cle;
-			else e.entetes['Idempotency-Key'] = cle;
+			if (commande.acteurType !== 'JOUEUR' || commande.type === 'VOTER') e.entetes['Idempotency-Key'] = cle;
 			envois.set(cle, e); return partir(e);
 		},
 		reessayer(cle) {
