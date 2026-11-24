@@ -336,7 +336,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 					mancheId: ui.bloc.mancheId, chansonId: id, corps: { favorite: !estFavorite(id) } });
 			});
 			statutFavori = e('p'); statutFavori.setAttribute('role', 'status');
-			reessaiFavori = bouton('Réessayer le même envoi', () => ui.reessayer(envoiFavori()?.cle));
+			reessaiFavori = bouton('Réessayer le favori', () => ui.reessayer(envoiFavori()?.cle));
 			contenu.append(boutonFavori, statutFavori, reessaiFavori);
 		}
 		rendre();

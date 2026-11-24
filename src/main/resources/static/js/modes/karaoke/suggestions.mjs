@@ -35,7 +35,7 @@ export function installerSuggestionManette(ui) {
 	envoyer.type = 'submit';
 	const statut = e('p'); statut.setAttribute('role', 'status');
 	const envoi = () => ui.dernierEnvoi(fiche => fiche.commande.type === 'SUGGERER_CHANSON');
-	const reessayer = bouton('Réessayer le même envoi', () => ui.reessayer(envoi()?.cle));
+	const reessayer = bouton('Réessayer l’envoi de la suggestion', () => ui.reessayer(envoi()?.cle));
 	formulaire.append(envoyer, statut, reessayer);
 	ui.principale.append(ouvrir, formulaire);
 	let dernierRecu;
@@ -105,7 +105,7 @@ export function installerSuggestionsConsole(ui) {
 	const vide = e('p', '', 'Aucune suggestion.');
 	const statut = e('p'); statut.setAttribute('role', 'status');
 	const envoi = () => ui.dernierEnvoi(fiche => fiche.commande.type === 'RETIRER_SUGGESTION_CHANSON');
-	const reessayer = bouton('Réessayer le même envoi', () => ui.reessayer(envoi()?.cle));
+	const reessayer = bouton('Réessayer le retrait de la suggestion', () => ui.reessayer(envoi()?.cle));
 	section.append(titre, liste, vide, statut, reessayer);
 	ui.laterale.append(section);
 	let signature;
