@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 class VoteDuPublicTest {
@@ -49,14 +50,65 @@ class VoteDuPublicTest {
         vote.ouvrir(PREMIER, debut, true);
         horloge.avancer(Duration.ofSeconds(45));
         assertThat(VoteDuPublic.projeter(vote.etat().votes().getFirst(), horloge.maintenant()))
-                .isEqualTo(new ProjectionVote(PREMIER, true, 30_000, debut.plusSeconds(45), null, 0));
+                .isEqualTo(new ProjectionVote(PREMIER, true, 30_000, debut.plusSeconds(45), null, 0, 0, null, false));
         vote.reprendre(horloge.maintenant());
         horloge.avancer(Duration.ofSeconds(29));
         assertThat(VoteDuPublic.projeter(vote.etat().votes().getFirst(), horloge.maintenant()).delaiRestantMs()).isEqualTo(1000);
         horloge.avancer(Duration.ofSeconds(1));
         assertThat(VoteDuPublic.projeter(vote.etat().votes().getFirst(), horloge.maintenant()))
-                .isEqualTo(new ProjectionVote(PREMIER, false, 0, debut.plusSeconds(75), debut.plusSeconds(75), 0));
+                .isEqualTo(new ProjectionVote(PREMIER, false, 0, debut.plusSeconds(75), debut.plusSeconds(75), 0, 0, null, false));
         assertThat(clotures).containsExactly(new ClotureVote(PREMIER, 0, 0, debut.plusSeconds(75)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"3, 13, 43", "2, 9, 45", "4, 17, 43", "1, 1, 10", "1, 5, 50", "0, 0, "})
+    void arronditLaMoyenneAuDixieme(long nombreVotes, long sommeNotes, Integer attendu) {
+        assertThat(VoteDuPublic.moyenneDixiemes(nombreVotes, sommeNotes)).isEqualTo(attendu);
+    }
+
+    @Test
+    void laProjectionDonneLaMoyenneDesTroisNotesSeulementApresCloture() {
+        var vote = creer();
+        vote.ouvrir(PREMIER, debut, false);
+        var cible = new CiblePassage(PREMIER, 0);
+        assertThat(vote.voter(VOTANT, cible, 4, debut, false)).isEmpty();
+        assertThat(vote.voter(AUTRE_VOTANT, cible, 4, debut, false)).isEmpty();
+        assertThat(vote.voter(new UUID(0, 8), cible, 5, debut, false)).isEmpty();
+        var projection = VoteDuPublic.projeter(vote.etat().votes().getFirst(), debut);
+        assertThat(projection.nombreVotes()).isEqualTo(3);
+        assertThat(projection.sommeNotes()).isEqualTo(13);
+        assertThat(projection.moyenneDixiemes()).isNull();
+        horloge.avancer(DUREE);
+        assertThat(VoteDuPublic.projeter(vote.etat().votes().getFirst(), horloge.maintenant()).moyenneDixiemes())
+                .isEqualTo(43);
+    }
+
+    @Test
+    void unDemarrageMarqueLesAutresVotesOuvertsOuClosEtLeDrapeauRestePose() {
+        var vote = creer();
+        var ancien = new EtatVotePassage(PREMIER, debut, debut.plus(DUREE), null, null, List.of());
+        assertThat(ancien.suivantDemarre()).isFalse();
+        vote.ouvrir(PREMIER, debut, false);
+        horloge.avancer(Duration.ofSeconds(5));
+        vote.ouvrir(SECOND, horloge.maintenant(), false);
+        horloge.avancer(Duration.ofSeconds(25));
+        UUID courant = new UUID(0, 9);
+        vote.ouvrir(courant, horloge.maintenant(), false);
+        assertThat(vote.etat().votes()).extracting(EtatVotePassage::ouvert).containsExactly(false, true, true);
+
+        vote.signalerDemarrage(courant);
+        assertThat(vote.etat().votes()).extracting(EtatVotePassage::suivantDemarre).containsExactly(true, true, false);
+        var apres = vote.etat();
+        vote.signalerDemarrage(courant);
+        assertThat(vote.etat()).isEqualTo(apres);
+        var maintenant = horloge.maintenant();
+        assertThat(vote.voter(VOTANT, new CiblePassage(SECOND, 0), 4, maintenant, false)).isEmpty();
+        vote.suspendre(maintenant);
+        vote.reprendre(maintenant);
+        horloge.avancer(Duration.ofSeconds(5));
+        assertThat(vote.etat().votes()).extracting(EtatVotePassage::ouvert).containsExactly(false, false, true);
+        assertThat(vote.etat().votes()).extracting(v -> VoteDuPublic.projeter(v, horloge.maintenant()).suivantDemarre())
+                .containsExactly(true, true, false);
     }
 
     @Test

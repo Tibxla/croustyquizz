@@ -400,6 +400,17 @@ class KaraokeHttpTest {
         assertThat(json.readTree(recu.getBody()).path("note").asInt()).isEqualTo(4);
         refuserVote(route, votant, Map.of("envoiId", cle, "numeroModification", 3, "note", 5), 409, "ENVOI_REUTILISE");
         refuserVote(route, votant, Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", 5), 409, "VOTE_DEJA_ENREGISTRE");
+        ((HorlogeFactice) socle.horloge()).avancer(java.time.Duration.ofSeconds(30));
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        for (var destination : Map.of("Salle", ecran, "Console", animateur, "Manette", votant).entrySet()) {
+            var capture = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/" + destination.getKey().toLowerCase(Locale.ROOT),
+                    destination.getValue(), null, null);
+            verifier("retrouverEtat" + destination.getKey(), capture, 200);
+            var vote = json.readTree(capture.getBody()).at("/vue/karaoke/votes/0");
+            assertThat(vote.path("etat").asString()).isEqualTo("CLOS");
+            assertThat(vote.path("moyenneDixiemes").asInt()).isEqualTo(40);
+            assertThat(vote.path("nombreVotes").asInt()).isEqualTo(1);
+        }
         piloter(racine(manche), "TERMINER");
         var rejeu = envoyer(HttpMethod.POST, route, votant, demande, null);
         verifier("voterPassage", rejeu, 200);

@@ -28,6 +28,7 @@ croustyquizz:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30
     dureeVoteSecondes: 30
+    dureeAffichageMoyenneSecondes: 10
   karaoke:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000

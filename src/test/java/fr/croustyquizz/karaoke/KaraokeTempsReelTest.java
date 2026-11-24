@@ -243,7 +243,7 @@ class KaraokeTempsReelTest {
         }
     }
 
-    @Test void laNoteVaAuVotantEtLaClotureAToutesLesManettes() throws Exception {
+    @Test void leNombreVaALaSalleEtALaConsoleEtLaMoyenneAtoutesLesDestinationsALaCloture() throws Exception {
         UUID manche = service.creer(soiree, Map.of());
         service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
         String racine = "/api/soirees/" + soiree + "/manches/" + manche;
@@ -271,13 +271,23 @@ class KaraokeTempsReelTest {
 
         var corps = Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", 4);
         KaraokeHttpTest.verifier("voterPassage", envoyer(HttpMethod.POST, route + "/vote", votant, corps, null), 200);
-        assertThat(lireEvenement(salle, "vote-enregistre").at("/karaoke/votes").isMissingNode()).isTrue();
-        assertThat(lireEvenement(console, "vote-enregistre").at("/karaoke/votes/0/nombreVotes").asInt()).isEqualTo(1);
-        assertThat(lireEvenement(manette, "vote-enregistre").at("/karaoke/votes/0/maNote").asInt()).isEqualTo(4);
+        for (var abonne : List.of(salle, console)) {
+            var vote = lireEvenement(abonne, "vote-enregistre").at("/karaoke/votes/0");
+            assertThat(vote.path("nombreVotes").asInt()).isEqualTo(1);
+            assertThat(vote.path("moyenneDixiemes").isNull()).isTrue();
+        }
+        var voteManette = lireEvenement(manette, "vote-enregistre").at("/karaoke/votes/0");
+        assertThat(voteManette.path("maNote").asInt()).isEqualTo(4);
+        assertThat(voteManette.path("nombreVotes").isNull()).isTrue();
+        assertThat(voteManette.path("moyenneDixiemes").isNull()).isTrue();
         socle.registre().retirer(manche);
         assertThat(service.instantane(soiree, manche)).isInstanceOf(InstantaneKaraoke.class);
         ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(30));
-        for (var abonne : flux) { lireEvenement(abonne, "vote-clos"); }
+        for (var abonne : flux) {
+            var vote = lireEvenement(abonne, "vote-clos").at("/karaoke/votes/0");
+            assertThat(vote.path("moyenneDixiemes").asInt()).isEqualTo(40);
+            assertThat(vote.path("nombreVotes").asInt()).isEqualTo(1);
+        }
         assertThat(capturer(autreManette).at("/vue/karaoke/votes/0/maNote").isNull()).isTrue();
     }
 

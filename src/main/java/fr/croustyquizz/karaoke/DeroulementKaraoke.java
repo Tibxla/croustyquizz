@@ -281,6 +281,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         ResultatFile resultat = cycle.demarrer(action.cible(), action.etapeId(),
                 Duration.ofMillis(demarree.dureeReferenceMs()), action.recueLe());
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
+        vote.signalerDemarrage(passage.id());
         lectures.put(passage.id(), demarree);
         return accepterCycle(action.envoiId(), action.recueLe(), "CONFIRMER_PRESENCE", "passage-demarre");
     }
