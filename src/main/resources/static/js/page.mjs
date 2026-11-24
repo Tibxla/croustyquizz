@@ -6,6 +6,7 @@ import { decrireVue } from './vue-commune.mjs';
 import { appeler, appelerAvecCsrf, memoire } from './api.js';
 import { consulterSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { monterInvitationConsole } from './invitation.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -97,6 +98,7 @@ async function demarrer() {
 			return;
 		}
 		if (!soiree.ok) throw new Error(soiree.detail ?? 'Impossible d’ouvrir la Soirée. Recharge la Console.');
+		monterInvitationConsole(element('inviter-animateur'), element('dialogue-invitation'));
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
 		if (reponse.statut !== 200 || !reponse.corps?.token) throw new Error(reponse.corps?.detail ?? 'Impossible d’obtenir le jeton de session. Recharge la Console.');
 		csrf = reponse.corps.token;

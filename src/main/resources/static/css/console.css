@@ -56,9 +56,21 @@
 .pilotage__commandes {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--espace-2);
 }
+
+.dialogue-invitation form,
+.dialogue-invitation [data-lien-invitation] {
+  display: grid;
+  justify-items: start;
+  gap: var(--espace-4);
+}
+.dialogue-invitation .champ { width: 100%; }
+.dialogue-invitation input[aria-invalid="true"] { border-color: var(--refus); }
+.dialogue-invitation [role="status"]:empty { margin: 0; }
 
 .indicateurs {
   display: flex;
