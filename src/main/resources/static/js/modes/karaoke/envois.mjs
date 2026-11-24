@@ -1,8 +1,10 @@
 // Le reçu ne remplace jamais la Vue synchronisée. Les métadonnées restent locales.
 const canonique = valeur => JSON.stringify(valeur, (_, v) => v && typeof v === 'object' && !Array.isArray(v) ?
 	Object.fromEntries(Object.keys(v).sort().map(cle => [cle, v[cle]])) : v);
-export const peutReessayer = etat => etat && (['inconnu', 'indisponible'].includes(etat.etat) ||
-	(etat.etat === 'refuse' && etat.code !== 'CSRF_INVALIDE' && (etat.code === 'ETAPE_INACTIVE' || [401, 403].includes(etat.statut))));
+const etapePerimee = (etat, corpsCommande) => etat.code === 'ETAPE_INACTIVE' && Object.hasOwn(corpsCommande ?? {}, 'etapeId');
+export const peutReessayer = (etat, corpsCommande = etat?.commande?.corps) => etat && (['inconnu', 'indisponible'].includes(etat.etat) ||
+	(etat.etat === 'refuse' && etat.code !== 'CSRF_INVALIDE' && !etapePerimee(etat, corpsCommande) &&
+		(etat.code === 'ETAPE_INACTIVE' || [401, 403].includes(etat.statut))));
 export const exigeCapture = etat => ['inconnu', 'indisponible'].includes(etat.etat) || (etat.etat === 'refuse' &&
 	etat.code !== 'CSRF_INVALIDE' && (['COMMANDE_PERIMEE', 'ETAPE_INACTIVE', 'ETAT_INCOMPATIBLE'].includes(etat.code) ||
 		[401, 403].includes(etat.statut)));
@@ -23,9 +25,11 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 		if (detruite || envois.get(envoi.cle) !== envoi || envoi.definitif) return;
 		const precedent = envoi.etat?.etat;
 		envoi.etat = { cle: envoi.cle, ...etat };
-		envoi.definitif = etat.etat === 'accepte' || (etat.etat === 'refuse' && !peutReessayer(etat));
+		const refusDefinitif = etat.etat === 'refuse' && !peutReessayer(etat, envoi.corps);
+		envoi.definitif = etat.etat === 'accepte' || refusDefinitif;
 		surEtat(envoi.etat);
 		if (exigeCapture(etat) && precedent !== etat.etat) demanderCapture();
+		if (refusDefinitif && (envoi.type === 'CONFIRMER_PRESENCE' || etapePerimee(etat, envoi.corps))) oublier(envoi.cle);
 	}
 	function partir(envoi) {
 		const tentative = { controleur: new AbortController(), active: true };
@@ -47,7 +51,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 				// 503, ou erreur 5xx sans code du contrat (page d'erreur d'un relais) : panne passagère, réessayable.
 				const transitoire = statut === 503 || (statut >= 500 && !corps?.code);
 				const etat = { etat: transitoire ? 'indisponible' : 'refuse', statut, corps, code: corps?.code, detail: corps?.detail };
-				if (!envoi.enCours || (!transitoire && !peutReessayer(etat))) transition(envoi, etat);
+				if (!envoi.enCours || (!transitoire && !peutReessayer(etat, envoi.corps))) transition(envoi, etat);
 			}
 		};
 		const echouer = () => {
@@ -69,7 +73,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 	function inscription(envoi) { return envoi.acteurType === 'JOUEUR' && envoi.chansonId !== undefined && !envoi.passageId; }
 	function retrouverInscription(mancheId, chansonId) {
 		for (const e of envois.values()) if (inscription(e) && e.mancheId === mancheId && e.chansonId === chansonId &&
-			(e.etat.etat !== 'refuse' || peutReessayer(e.etat))) return e.cle;
+			(e.etat.etat !== 'refuse' || peutReessayer(e.etat, e.corps))) return e.cle;
 		return null;
 	}
 	return {
@@ -91,7 +95,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			const e = envois.get(cle);
 			if (!e || detruite || e.definitif) return null;
 			if (e.enCours) return { cle };
-			return peutReessayer(e.etat) ? partir(e) : null;
+			return peutReessayer(e.etat, e.corps) ? partir(e) : null;
 		},
 		retrouverInscription,
 		reconcilier(clesVisibles) {
