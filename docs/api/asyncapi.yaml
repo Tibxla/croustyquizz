@@ -36,7 +36,9 @@ channels:
       (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
       et paroles du Passage démarré), sans fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
-      Aucun événement par seconde."
+      Aucun événement par seconde.
+      Photos : photos-modifiees au changement d’affiche ; le bloc photos est nul sans affiche,
+      sinon limité à l’UUID de la photo et à son échéance."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -58,7 +60,9 @@ channels:
       geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
       la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
       ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
-      effet et rollback sans publication. Aucun événement par seconde."
+      effet et rollback sans publication. Aucun événement par seconde.
+      Photos : photos-modifiees à l’arrivée, à la modération et au changement de réglage.
+      Le bloc photos indique le réglage et les photos en attente dans l’ordre d’arrivée."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -82,7 +86,9 @@ channels:
       du votant. Vue complète avec bloc karaoke (BlocKaraokeManette : courant, trois prochains Passages,
       ses Passages en attente, « Je suis prêt » et ses notes personnelles), sans lecture, paroles, fichier local ni secret ;
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
-      effet et rollback sans publication. Aucun événement par seconde."
+      effet et rollback sans publication. Aucun événement par seconde.
+      Photos : photos-modifiees au changement de réglage ; le bloc photos indique
+      seulement si les envois sont ouverts."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.

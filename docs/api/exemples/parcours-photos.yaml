@@ -1,0 +1,195 @@
+# Parcours sur une Soirée enregistrée. Les JPEG d’exemple sont encodés en base64 dans ce fichier.
+parametresCommuns:
+  soireeId: &soireeId 72000000-0000-4000-8000-000000000001
+  X-CSRF-TOKEN: jeton-csrf-d-exemple
+http:
+- nom: Le Joueur envoie la première photo
+  operationId: envoyerPhoto
+  parametres:
+    Idempotency-Key: &envoi1 72000000-0000-4000-8000-000000000011
+  requete: &jpeg /9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAgDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAABgf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCyAFKC/9k=
+  statut: 201
+  reponse: { envoiId: *envoi1, soireeId: *soireeId, photoId: &photo1 72000000-0000-4000-8000-000000000021 }
+- nom: L’Écran de salle ne lit pas la photo en attente
+  operationId: consulterPhoto
+  acteur: ecran
+  parametres: { photoId: *photo1 }
+  statut: 404
+  reponse:
+    type: about:blank
+    title: Ressource introuvable
+    status: 404
+    code: RESSOURCE_INTROUVABLE
+    detail: Photo introuvable.
+    instance: /api/soirees/72000000-0000-4000-8000-000000000001/photos/72000000-0000-4000-8000-000000000021
+- nom: L’Animateur voit la vignette
+  operationId: consulterPhoto
+  acteur: animateur
+  parametres: { photoId: *photo1 }
+  statut: 200
+  reponse: *jpeg
+- nom: L’Animateur refuse la première photo
+  operationId: modererPhoto
+  acteur: animateur
+  parametres: { photoId: *photo1, Idempotency-Key: &refus 72000000-0000-4000-8000-000000000031 }
+  requete: { acceptee: false }
+  statut: 200
+  reponse: { envoiId: *refus, soireeId: *soireeId, photoId: *photo1 }
+- nom: Le Joueur envoie une autre photo
+  operationId: envoyerPhoto
+  parametres:
+    Idempotency-Key: &envoi2 72000000-0000-4000-8000-000000000012
+  requete: *jpeg
+  statut: 201
+  reponse: { envoiId: *envoi2, soireeId: *soireeId, photoId: &photo2 72000000-0000-4000-8000-000000000022 }
+- nom: L’Animateur accepte la seconde photo
+  operationId: modererPhoto
+  acteur: animateur
+  parametres: { photoId: *photo2, Idempotency-Key: &acceptation 72000000-0000-4000-8000-000000000032 }
+  requete: { acceptee: true }
+  statut: 200
+  reponse: { envoiId: *acceptation, soireeId: *soireeId, photoId: *photo2 }
+- nom: L’Écran de salle charge la photo à l’affiche
+  operationId: consulterPhoto
+  acteur: ecran
+  parametres: { photoId: *photo2 }
+  statut: 200
+  reponse: *jpeg
+- nom: L’Animateur coupe les envois
+  operationId: reglerPhotos
+  acteur: animateur
+  parametres:
+    Idempotency-Key: &coupure 72000000-0000-4000-8000-000000000041
+  requete: { ouvertes: false }
+  statut: 200
+  reponse: { envoiId: *coupure, soireeId: *soireeId, recueLe: '2026-11-24T20:00:04Z' }
+- nom: Envois coupés
+  operationId: envoyerPhoto
+  parametres:
+    Idempotency-Key: 72000000-0000-4000-8000-000000000013
+  requete: *jpeg
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Conflit
+    status: 409
+    code: PHOTOS_COUPEES
+    detail: L’Animateur a coupé les envois de photos.
+    instance: /api/soirees/72000000-0000-4000-8000-000000000001/photos
+- nom: Après la fin, même l’Animateur ne peut plus lire la photo
+  operationId: consulterPhoto
+  acteur: animateur
+  parametres: { photoId: *photo2 }
+  statut: 404
+  reponse:
+    type: about:blank
+    title: Ressource introuvable
+    status: 404
+    code: RESSOURCE_INTROUVABLE
+    detail: Photo introuvable.
+    instance: /api/soirees/72000000-0000-4000-8000-000000000001/photos/72000000-0000-4000-8000-000000000022
+evenements:
+- nom: Première photo à modérer
+  canal: console
+  message:
+    type: photos-modifiees
+    soireeId: *soireeId
+    revision: 1
+    emisLe: '2026-11-24T20:00:01Z'
+    donnees:
+      <<: &commun
+        soiree: &soiree
+          id: *soireeId
+          titre: Les photos du mardi
+          format: SOLO
+          pilotage: MANUEL
+          etat: OUVERTE
+          codeAcces: K7PQ2M
+        mancheActive: null
+        modeEnCours: null
+        joueurs:
+        - { id: &joueur 72000000-0000-4000-8000-000000000002, pseudo: Léa, connecte: true }
+        classement: []
+        dernierBuzz: null
+      programme: []
+      photos: { ouvertes: true, enAttente: [{ photoId: *photo1, pseudo: Léa }] }
+- nom: Après validation, l’affiche démarre pour huit secondes
+  canal: salle
+  message: &publication
+    type: photos-modifiees
+    soireeId: *soireeId
+    revision: 1
+    emisLe: '2026-11-24T20:00:03Z'
+    donnees: &affiche
+      <<: *commun
+      photos: &photoAffichee { photoId: *photo2, echeance: '2026-11-24T20:00:11Z' }
+- nom: La Manette masque la commande d’envoi
+  canal: joueur
+  message:
+    type: photos-modifiees
+    soireeId: *soireeId
+    revision: 1
+    emisLe: '2026-11-24T20:00:04Z'
+    donnees:
+      <<: *commun
+      joueurId: *joueur
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+      photos: { ouvertes: false }
+- nom: La fin de Soirée retire l’affiche
+  canal: salle
+  message:
+    type: soiree-terminee
+    soireeId: *soireeId
+    revision: 2
+    emisLe: '2026-11-24T20:00:07Z'
+    donnees:
+      <<: *commun
+      soiree:
+        <<: *soiree
+        etat: TERMINEE
+        codeAcces: null
+      photos: null
+resynchronisation:
+  destination: /topic/soirees/72000000-0000-4000-8000-000000000001/salle
+  routeEtat: /api/soirees/72000000-0000-4000-8000-000000000001/etat/salle
+  typeEvenementFinal: photos-modifiees
+  etat:
+    abonnementId: 72000000-0000-4000-8000-000000000003
+    revision: 0
+    heureServeur: '2026-11-24T20:00:02Z'
+    vue:
+      <<: *commun
+      photos: null
+  tampon: [*publication, *publication]
+  revisionFinale: 1
+  vueFinale: *affiche
+cases:
+- nom: L’affiche ne révèle pas le pseudo de l’auteur
+  schema: VueSalle
+  valide: false
+  valeur:
+    <<: *commun
+    photos:
+      <<: *photoAffichee
+      pseudo: Léa
+  correction: { chemin: [photos], valeur: *photoAffichee }
+- nom: La file d’attente est réservée à la Console
+  schema: VueSalle
+  valide: false
+  valeur:
+    <<: *commun
+    photos:
+      <<: *photoAffichee
+      enAttente: [{ photoId: *photo1, pseudo: Léa }]
+  correction: { chemin: [photos], valeur: *photoAffichee }
+- nom: La salle ne reçoit pas le JPEG dans sa vue
+  schema: VueSalle
+  valide: false
+  valeur:
+    <<: *commun
+    photos:
+      <<: *photoAffichee
+      jpeg: *jpeg
+  correction: { chemin: [photos], valeur: *photoAffichee }

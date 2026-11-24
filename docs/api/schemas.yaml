@@ -886,9 +886,25 @@ $defs:
   VueSalle:
     allOf:
     - $ref: '#/$defs/BlocsDeMode'
+    - if:
+        anyOf:
+        - properties:
+            mancheActive:
+              type: object
+        - properties:
+            soiree:
+              properties:
+                etat:
+                  const: TERMINEE
+      then:
+        properties:
+          photos:
+            type: 'null'
     type: object
     additionalProperties: false
     properties:
+      photos:
+        $ref: '#/$defs/PhotoAfficheeOuVide'
       soiree:
         $ref: '#/$defs/Soiree'
       mancheActive:
@@ -936,6 +952,8 @@ $defs:
     type: object
     additionalProperties: false
     properties:
+      photos:
+        $ref: '#/$defs/BlocPhotosConsole'
       soiree:
         $ref: '#/$defs/Soiree'
       mancheActive:
@@ -986,6 +1004,8 @@ $defs:
     type: object
     additionalProperties: false
     properties:
+      photos:
+        $ref: '#/$defs/ReglagesPhotos'
       soiree:
         $ref: '#/$defs/Soiree'
       mancheActive:
@@ -1164,6 +1184,7 @@ $defs:
         - manche-terminee
         - classement-modifie
         - soiree-terminee
+        - photos-modifiees
         - buzz-recu
         - file-attente-modifiee
         - limite-passages-modifiee
@@ -1213,6 +1234,7 @@ $defs:
         - manche-terminee
         - classement-modifie
         - soiree-terminee
+        - photos-modifiees
         - buzz-recu
         - file-attente-modifiee
         - limite-passages-modifiee
@@ -1262,6 +1284,7 @@ $defs:
         - manche-terminee
         - classement-modifie
         - soiree-terminee
+        - photos-modifiees
         - buzz-recu
         - reponse-enregistree
         - resultat-personnel
@@ -1340,6 +1363,7 @@ $defs:
         - SERVICE_INDISPONIBLE
         - PASSAGE_DEJA_INSCRIT
         - LIMITE_ATTEINTE
+        - PHOTOS_COUPEES
         - ROTATION_PROTEGEE
         - CHANSON_INDISPONIBLE
         - SOURCE_PAROLES_INDISPONIBLE
@@ -3044,3 +3068,72 @@ $defs:
     - parolesId
     - dureeMs
     - lignes
+
+  ImageJpeg:
+    type: string
+    format: binary
+    description: Octets JPEG bruts. Les exemples YAML représentent ces octets en base64.
+  AccusePhoto:
+    type: object
+    additionalProperties: false
+    required: [envoiId, soireeId, photoId]
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      photoId:
+        type: string
+        format: uuid
+  ModerationPhoto:
+    type: object
+    additionalProperties: false
+    required: [acceptee]
+    properties:
+      acceptee:
+        type: boolean
+  ReglagesPhotos:
+    type: object
+    additionalProperties: false
+    required: [ouvertes]
+    properties:
+      ouvertes:
+        type: boolean
+  PhotoEnAttente:
+    type: object
+    additionalProperties: false
+    required: [photoId, pseudo]
+    properties:
+      photoId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+  BlocPhotosConsole:
+    type: object
+    additionalProperties: false
+    required: [ouvertes, enAttente]
+    properties:
+      ouvertes:
+        type: boolean
+      enAttente:
+        type: array
+        maxItems: 30
+        items:
+          $ref: '#/$defs/PhotoEnAttente'
+  PhotoAfficheeOuVide:
+    oneOf:
+    - type: 'null'
+    - type: object
+      additionalProperties: false
+      required: [photoId, echeance]
+      properties:
+        photoId:
+          type: string
+          format: uuid
+        echeance:
+          type: string
+          format: date-time
