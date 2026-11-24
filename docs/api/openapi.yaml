@@ -247,7 +247,7 @@ paths:
     post:
       operationId: creerSoiree
       summary: Créer une Soirée avec son Format et son Pilotage
-      description: Le serveur affecte id, Lieu et état PREPARATION ; codeAcces est null jusqu’à ouverture. Format
+      description: Le serveur affecte id, Lieu de la session et état PREPARATION ; codeAcces est null jusqu’à ouverture. Format
         SOLO ou EQUIPE, Pilotage MANUEL ou AUTOMATIQUE ; les deux sont enregistrés tels quels, le déroulement en Équipe
         (#26) et l’enchaînement automatique (#25) viennent ensuite. Un titre vide ou trop long donne 422 DONNEES_INVALIDES.
       tags:
@@ -302,7 +302,7 @@ paths:
     get:
       operationId: consulterSoiree
       summary: Consulter une Soirée de son Lieu
-      description: Consulter une Soirée de son Lieu
+      description: La session est requise (401). Une Soirée inconnue, sans Lieu ou rattachée à un autre Lieu donne 404.
       tags:
       - Soirée
       security:
@@ -442,7 +442,7 @@ paths:
     post:
       operationId: creerAccesEcran
       summary: Créer un accès de lecture pour l’Écran de salle
-      description: L’Animateur ouvre l’Écran de salle avec cette capacité limitée à sa Soirée. La clé expire à expireLe.
+      description: L’Animateur ouvre l’Écran de salle pour une Soirée de son Lieu (404 sinon). La clé expire à expireLe.
         Elle lit la salle et les résultats et envoie les seules commandes du lecteur de l’Écran de salle (désignation,
         déclaration, fin, erreur et relevé de position), sans aucune action de jeu ; elle ne donne accès ni à la
         Console ni aux vues privées. Préférer un transfert par fragment URL, retirer ce fragment après lecture et ne
@@ -497,9 +497,10 @@ paths:
       description: Image SVG générée par le serveur (sans bibliothèque JavaScript, ADR 0001), affichée par l’Écran de
         salle. Elle encode l’adresse de la Manette avec le code d’accès dans un fragment, /rejoindre.html#code=K7PQ2M ;
         le code d’accès n’est pas un secret. L’adresse reprend le schéma et l’hôte publics vus par le relais HTTPS. Une
-        Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409 SOIREE_NON_OUVERTE. Sans clé, 401
-        AUTHENTIFICATION_REQUISE ; la clé d’une autre Soirée donne 404 RESSOURCE_INTROUVABLE ; un jeton de Joueur, 403
-        ACCES_REFUSE. L’image se charge avec la clé dans Authorization, jamais dans l’URL.
+        Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409 SOIREE_NON_OUVERTE. Sans clé ni session,
+        401 AUTHENTIFICATION_REQUISE. Une clé hors de sa Soirée ou une session hors de son Lieu donne 404
+        RESSOURCE_INTROUVABLE ; un jeton de Joueur de la Soirée donne 403 ACCES_REFUSE. L’Écran envoie sa clé
+        dans Authorization, jamais dans l’URL.
       tags:
       - Soirée
       security:
@@ -810,7 +811,7 @@ paths:
     post:
       operationId: ouvrirSoiree
       summary: Ouvrir la Soirée aux Joueurs
-      description: PREPARATION vers OUVERTE ; le serveur génère un code de 6 caractères unique parmi les Soirées
+      description: Soirée du Lieu de la session (404 sinon). PREPARATION vers OUVERTE ; le serveur génère un code de 6 caractères unique parmi les Soirées
         accessibles (OUVERTE et EN_COURS). Le programme peut être complété pendant l’accueil. La clé d’envoi garantit
         qu’une répétition ne régénère pas le code ; rouvrir une Soirée déjà OUVERTE la rend aussi inchangée. Soirée
         EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE.
@@ -1199,7 +1200,7 @@ paths:
     get:
       operationId: retrouverEtatConsole
       summary: Récupérer la vue console
-      description: Animateur du Lieu uniquement. La révision porte sur la destination STOMP correspondante. Voir
+      description: Session Animateur requise (401), Soirée du même Lieu (404 sinon). La révision porte sur la destination STOMP correspondante. Voir
         README.md pour la barrière d’abonnement, le tampon et la resynchronisation. Les points visibles concernent
         uniquement les Questions corrigées.
       tags:
@@ -2738,7 +2739,9 @@ components:
       in: cookie
       name: JSESSIONID
       description: Session d’un Animateur ; opérations mutantes protégées par X-CSRF-TOKEN. Le Lieu est déterminé
-        par la session.
+        par la session. Sans session, 401 ; une Soirée absente, sans Lieu ou d’un autre Lieu donne 404.
+        Cette règle s’applique aussi si la session tente de consulter un type de vue réservé à un autre rôle.
+        Une requête Bearer utilise exclusivement ce jeton et ne fait pas l’objet du contrôle CSRF.
     jetonJoueur:
       type: http
       scheme: bearer
