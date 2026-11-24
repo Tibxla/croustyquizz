@@ -5,13 +5,14 @@ alter table joueur add column pseudo_normalise varchar(40);
 
 -- Les Joueurs déjà présents reçoivent la clé de Joueur.cleDePseudo, pour que
 -- leurs pseudos soient réservés comme ceux des nouveaux arrivants : marques
--- diacritiques retirées (NFD puis NFC), blancs Unicode (insécables compris)
+-- diacritiques et sélecteurs de variante retirés (NFD puis NFC), mêmes plages
+-- que Joueur.MARQUES, blancs Unicode (insécables compris)
 -- réduits à une espace, minuscules. Œ, Æ et Ø ne se décomposent pas : ils sont
 -- passés en minuscules à la main, lower() ne le faisant pas sous toutes les
 -- collations. Hors de l'alphabet latin, lower() suit la collation de la base.
 update joueur set pseudo_normalise = lower(btrim(regexp_replace(
 	normalize(regexp_replace(normalize(translate(pseudo, 'ŒÆØ', 'œæø'), NFD),
-		'[̀-ͯ᪰-᫿᷀-᷿⃐-⃿︠-︯]', '', 'g'), NFC),
+		'[̀-ͯ᪰-᫿᷀-᷿⃐-⃿︀-️︠-︯]', '', 'g'), NFC),
 	'[\s\u0085   -     　]+', ' ', 'g'), ' '));
 
 -- D'anciens doublons (« Léa » puis « LEA » dans la même Soirée) ne peuvent pas

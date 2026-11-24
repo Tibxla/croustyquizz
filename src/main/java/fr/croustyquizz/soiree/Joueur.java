@@ -19,7 +19,14 @@ public class Joueur {
 
 	static final int LONGUEUR_MAX_PSEUDO = 30;
 
-	private static final Pattern MARQUES = Pattern.compile("\\p{M}+");
+	/**
+	 * Marques retirées de la clé : diacritiques combinants et sélecteurs de variante
+	 * (« ☀️ » et « ☀ » se confondent). Liste explicite plutôt que {@code \p{M}}, que
+	 * PostgreSQL ne connaît pas : la migration V202611241645 applique exactement
+	 * les mêmes plages aux Joueurs déjà présents.
+	 */
+	private static final Pattern MARQUES = Pattern.compile(
+			"[\\u0300-\\u036F\\u1AB0-\\u1AFF\\u1DC0-\\u1DFF\\u20D0-\\u20FF\\uFE00-\\uFE0F\\uFE20-\\uFE2F]+");
 	/** Tous les blancs Unicode, espaces insécables compris, que {@code \s} seul et {@code strip()} ignorent. */
 	private static final Pattern BLANCS = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
 	private static final Pattern BLANCS_AUTOUR = Pattern.compile("^\\s+|\\s+$", Pattern.UNICODE_CHARACTER_CLASS);

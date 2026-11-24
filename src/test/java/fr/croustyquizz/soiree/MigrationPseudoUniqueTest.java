@@ -1,6 +1,7 @@
 package fr.croustyquizz.soiree;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.security.SecureRandom;
 import java.util.Map;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +75,24 @@ class MigrationPseudoUniqueTest {
 		assertThat(cles.get(leaEnDouble)).isEqualTo("#" + leaEnDouble);
 	}
 
+	@Test
+	void unPseudoAvecSelecteurDeVarianteGardeLaMemeCleEnSqlEtEnJava() {
+		migrer(AVANT);
+		UUID soiree = soiree();
+		// « Léa ☀️ » : le soleil suivi du sélecteur de variante emoji U+FE0F.
+		UUID ancienne = joueur(soiree, "Léa ☀️", "2026-11-12T19:41:00Z");
+
+		migrer(null);
+
+		assertThat(jdbc.queryForObject("select pseudo_normalise from " + SCHEMA + ".joueur where id = ?", String.class,
+				ancienne)).isEqualTo(Joueur.cleDePseudo("Léa ☀️"));
+		// La même saisie après la migration bute sur l'index unique.
+		assertThatThrownBy(() -> jdbc.update("insert into " + SCHEMA + ".joueur "
+				+ "(id, soiree_id, pseudo, pseudo_normalise, empreinte_jeton, arrive_le) values (?, ?, ?, ?, ?, now())",
+				UUID.randomUUID(), soiree, "Léa ☀️", Joueur.cleDePseudo("Léa ☀️"), empreinte()))
+				.isInstanceOf(DuplicateKeyException.class);
+	}
+
 	private void migrer(String cible) {
 		var configuration = Flyway.configure().dataSource(source).schemas(SCHEMA).locations("classpath:db/migration");
 		if (cible != null) {
@@ -90,11 +110,15 @@ class MigrationPseudoUniqueTest {
 
 	private UUID joueur(UUID soiree, String pseudo, String arriveLe) {
 		UUID id = UUID.randomUUID();
+		jdbc.update("insert into " + SCHEMA + ".joueur (id, soiree_id, pseudo, empreinte_jeton, arrive_le) "
+				+ "values (?, ?, ?, ?, ?::timestamptz)", id, soiree, pseudo, empreinte(), arriveLe);
+		return id;
+	}
+
+	private byte[] empreinte() {
 		byte[] empreinte = new byte[32];
 		hasard.nextBytes(empreinte);
-		jdbc.update("insert into " + SCHEMA + ".joueur (id, soiree_id, pseudo, empreinte_jeton, arrive_le) "
-				+ "values (?, ?, ?, ?, ?::timestamptz)", id, soiree, pseudo, empreinte, arriveLe);
-		return id;
+		return empreinte;
 	}
 
 }
