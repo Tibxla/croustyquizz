@@ -13,6 +13,7 @@ import fr.croustyquizz.manche.Destination;
 /** Capture avant commit sous le verrou, puis publication des seules destinations modifiées. */
 @Component
 public final class PublicationDeVues {
+	private static final String SOIREE_TERMINEE = "soiree-terminee";
 	private static final Logger JOURNAL = LoggerFactory.getLogger(PublicationDeVues.class);
 	private final AssembleurDeVues assembleur;
 	private final FournisseurPartieCommune commun;
@@ -39,9 +40,9 @@ public final class PublicationDeVues {
 					JOURNAL.error("Échec de diffusion après commit vers {} de la Soirée {}", destination, soireeId, erreur);
 				}
 			});
-			if ("soiree-terminee".equals(resultat.typeEvenement())) {
+			if (SOIREE_TERMINEE.equals(resultat.typeEvenement())) {
 				evenements.publishEvent(new CycleDeScene(soireeId, false, true));
-			} else if (salle != null && !"photos-modifiees".equals(resultat.typeEvenement())) {
+			} else if (salle != null && salle.champs().containsKey("mancheActive")) {
 				evenements.publishEvent(new CycleDeScene(soireeId, salle.champs().get("mancheActive") != null, false));
 			}
 		});

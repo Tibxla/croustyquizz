@@ -7,9 +7,11 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 import fr.croustyquizz.manche.Accepte;
 import fr.croustyquizz.manche.Acteur;
@@ -30,8 +32,7 @@ final class FileDePhotos {
 	private final Map<Cle, Reception> recus = new HashMap<>();
 	private final Set<Destination> aPublier = new LinkedHashSet<>();
 	private boolean envoisOuverts = true;
-	private Affiche affiche;
-	private Minuteur minuteur;
+	private Optional<Affiche> affiche = Optional.empty();
 
 	boolean ouvertes() {
 		return envoisOuverts;
@@ -62,7 +63,7 @@ final class FileDePhotos {
 	Photo moderer(UUID photoId, boolean acceptee) {
 		Photo photo = photosEnAttente.remove(photoId);
 		if (photo == null) {
-			if (acceptees.containsKey(photoId) || affiche != null && affiche.projection().photoId().equals(photoId)) {
+			if (acceptees.containsKey(photoId) || affiche.filter(courante -> courante.estLaPhoto(photoId)).isPresent()) {
 				throw new Refuse(409, "COMMANDE_PERIMEE", "Cette photo a déjà été acceptée.").exception();
 			}
 			throw PhotosEnMemoire.photoIntrouvable().exception();
@@ -73,46 +74,47 @@ final class FileDePhotos {
 		return photo;
 	}
 
-	PhotoAffichee ouvrirAffiche(Instant maintenant) {
-		if (affiche != null || acceptees.isEmpty()) {
-			return null;
+	boolean ouvrirAffiche(Instant maintenant, Function<UUID, Minuteur> programmer) {
+		if (affiche.isPresent() || acceptees.isEmpty()) {
+			return false;
 		}
 		var suivante = acceptees.pollFirstEntry();
-		affiche = new Affiche(suivante.getValue(), new PhotoAffichee(suivante.getKey(), maintenant.plus(DUREE_AFFICHE)));
-		return affiche.projection();
-	}
-
-	void minuter(Minuteur nouveau) {
-		minuteur = nouveau;
+		var projection = new PhotoAffichee(suivante.getKey(), maintenant.plus(DUREE_AFFICHE));
+		// Identifie ce créneau, y compris si la même photo reprend à la même heure.
+		UUID diffusion = UUID.randomUUID();
+		affiche = Optional.of(new Affiche(suivante.getValue(), projection, diffusion, programmer.apply(diffusion)));
+		return true;
 	}
 
 	void interrompre() {
-		if (affiche != null) {
-			acceptees.putFirst(affiche.projection().photoId(), affiche.photo());
-			fermerAffiche();
+		affiche.ifPresent(courante -> {
+			acceptees.putFirst(courante.projection().photoId(), courante.photo());
+			fermerAffiche(courante);
+		});
+	}
+
+	int expirer(UUID diffusion) {
+		var courante = affiche.filter(candidat -> candidat.diffusion().equals(diffusion)).orElse(null);
+		if (courante == null) {
+			return 0;
 		}
+		fermerAffiche(courante);
+		return courante.photo().taille();
 	}
 
-	int expirer() {
-		int taille = affiche.photo().taille();
-		fermerAffiche();
-		return taille;
-	}
-
-	private void fermerAffiche() {
-		affiche = null;
-		minuteur.annuler();
-		minuteur = null;
+	private void fermerAffiche(Affiche courante) {
+		affiche = Optional.empty();
+		courante.minuteur().annuler();
 	}
 
 	PhotoAffichee photoAffichee() {
-		return affiche == null ? null : affiche.projection();
+		return affiche.map(Affiche::projection).orElse(null);
 	}
 
 	byte[] lire(UUID id, boolean lecturePrivee, Instant maintenant) {
-		if (affiche != null && affiche.projection().photoId().equals(id)
-				&& (lecturePrivee || maintenant.isBefore(affiche.projection().echeance()))) {
-			return affiche.photo().jpeg();
+		var courante = affiche.filter(candidat -> candidat.estLaPhoto(id)).orElse(null);
+		if (courante != null && (lecturePrivee || maintenant.isBefore(courante.projection().echeance()))) {
+			return courante.photo().jpeg();
 		}
 		if (lecturePrivee) {
 			Photo photo = photosEnAttente.getOrDefault(id, acceptees.get(id));
@@ -130,7 +132,7 @@ final class FileDePhotos {
 	long octetsConserves() {
 		long attente = photosEnAttente.values().stream().mapToLong(Photo::taille).sum();
 		long file = acceptees.values().stream().mapToLong(Photo::taille).sum();
-		return attente + file + (affiche == null ? 0 : affiche.photo().taille());
+		return attente + file + affiche.map(courante -> courante.photo().taille()).orElse(0);
 	}
 
 	Set<Destination> publications(Set<Destination> destinations) {
@@ -162,7 +164,9 @@ final class FileDePhotos {
 	record Photo(UUID joueurId, String pseudo, byte[] jpeg) {
 		int taille() { return jpeg.length; }
 	}
-	record Affiche(Photo photo, PhotoAffichee projection) { }
+	private record Affiche(Photo photo, PhotoAffichee projection, UUID diffusion, Minuteur minuteur) {
+		boolean estLaPhoto(UUID id) { return projection.photoId().equals(id); }
+	}
 	record PhotoAffichee(UUID photoId, Instant echeance) { }
 	record PhotoEnAttente(UUID photoId, String pseudo) { }
 	private record Reception(Object empreinte, Accepte recu) { }

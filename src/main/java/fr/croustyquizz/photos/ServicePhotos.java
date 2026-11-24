@@ -167,19 +167,16 @@ class ServicePhotos {
 	}
 
 	private boolean afficherSuivante(UUID soireeId, FileDePhotos file) {
-		var affiche = file.ouvrirAffiche(horloge.maintenant());
-		if (affiche == null) {
-			return false;
-		}
-		file.minuter(horloge.programmer(FileDePhotos.DUREE_AFFICHE, () -> expirer(soireeId, affiche)));
-		return true;
+		return file.ouvrirAffiche(horloge.maintenant(), diffusion ->
+				horloge.programmer(FileDePhotos.DUREE_AFFICHE, () -> expirer(soireeId, diffusion)));
 	}
 
-	private void expirer(UUID soireeId, FileDePhotos.PhotoAffichee affiche) {
+	private void expirer(UUID soireeId, UUID diffusion) {
 		verrous.executer(soireeId, () -> {
 			var file = photos.trouver(soireeId);
-			if (file != null && file.photoAffichee() == affiche) {
-				photos.liberer(file.expirer());
+			int tailleLiberee = file == null ? 0 : file.expirer(diffusion);
+			if (tailleLiberee > 0) {
+				photos.liberer(tailleLiberee);
 				if (soireeOuverte(soireeId)) {
 					// Une Manche active aurait interrompu l’affiche après son commit, sous ce même verrou.
 					afficherSuivante(soireeId, file);
