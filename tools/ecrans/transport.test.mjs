@@ -75,3 +75,20 @@ test('une page d’erreur HTML d’un proxy donne un refus lisible, jamais une S
 	await assert.rejects(transport.envoyer('POST', '/commande', {}), { message: 'Le serveur ne répond pas correctement.' });
 	assert.deepEqual(await transport.envoyer('GET', '/etat'), { statut: 200, corps: { ok: true } });
 });
+
+test('la trame ERROR du serveur transmet son motif ; une erreur WebSocket n’en a pas', () => {
+	let options;
+	const appels = [];
+	const transport = creerTransport({}, {
+		adresse: 'https://exemple.test/ecran.html',
+		Client: class { constructor(o) { options = o; } activate() {} },
+	});
+	transport.ouvrir({
+		surRefus: motif => appels.push(['refus', motif]),
+		surErreur: (...args) => appels.push(['erreur', ...args]),
+	});
+	options.onStompError({ command: 'ERROR', headers: { message: 'Une authentification est requise.' }, body: '' });
+	options.onStompError({ command: 'ERROR', headers: {}, body: '' });
+	options.onWebSocketError(new Event('error'));
+	assert.deepEqual(appels, [['refus', 'Une authentification est requise.'], ['refus', undefined], ['erreur']]);
+});

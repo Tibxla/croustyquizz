@@ -58,7 +58,8 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 			}
 			return { blob: await reponse.blob(), adresseManette };
 		},
-		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur }) {
+		// surRefus reçoit le motif de la trame ERROR du serveur ; surErreur, une panne sans motif.
+		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur, surRefus }) {
 			const url = new URL('/ws', adresse);
 			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
 			const Client = adaptations.Client ?? globalThis.StompJs.Client;
@@ -66,7 +67,7 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 				brokerURL: url.href, connectHeaders: entetesIdentite(), reconnectDelay: 0,
 				connectionTimeout: 10000, heartbeatIncoming: 10000, heartbeatOutgoing: 10000,
 				onConnect: surConnexion, onWebSocketClose: surDeconnexion,
-				onStompError: surErreur, onWebSocketError: surErreur,
+				onStompError: trame => surRefus(trame.headers?.message), onWebSocketError: () => surErreur(),
 			});
 			client.activate();
 			return {

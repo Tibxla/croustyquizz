@@ -130,6 +130,11 @@ async function demarrer() {
 				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',
 			}[etat];
 		},
+		// Refus du serveur au CONNECT : pas de reconnexion automatique, le motif reste affiché.
+		surRefus(motif) {
+			etatConnexion.textContent = 'Connexion refusée.';
+			afficherErreur(motif);
+		},
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
