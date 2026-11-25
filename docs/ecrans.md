@@ -280,6 +280,10 @@ dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
    l’ordre du Palmarès sur la Console et sur l’Écran de salle, puis
    compare le Classement général avant et après.
 
+7. Termine la Soirée juste après une Manche de Freestyle notée. Vérifie
+   que la salle affiche le « Podium final » sans le Palmarès, et que la
+   Console affiche toujours le Palmarès du Freestyle (#224).
+
 Sur l'Écran de salle, le mot de chaque mesure reste affiché toute la mesure, pour qu'il
 se lise à 5 m. Il s'allume sur son temps, et le mot de la mesure suivante est annoncé
 dessous (« Ensuite : … »). Un mot masqué par la difficulté devient « À toi de trouver »,

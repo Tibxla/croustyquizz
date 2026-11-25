@@ -124,3 +124,19 @@ test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, 
 	assert.deepEqual(decrireVue(avecPalmares).palmares.map(ligne => ligne.texte),
 		['1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)']);
 });
+
+test('en fin de Soirée, le Podium final passe aussi avant le Palmarès du Freestyle sur la salle (#224)', () => {
+	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
+	const palmaresFreestyle = [{ passageId: 'p1', numero: 3, rang: 1, instrumentale: { titre: 'Boom bap' },
+		interprete: { pseudo: 'Lou' }, nombreVotes: 2, moyenneDixiemes: 45 }];
+	const terminee = { soiree: { etat: 'TERMINEE' }, modeEnCours: null, mancheActive: null, joueurs: [], classement,
+		palmaresFreestyle };
+	assert.deepEqual(decrireClassementDeSalle(terminee),
+		{ titre: 'Podium final', podium: true, lignes: ['1. Lou · 10 points'] });
+	assert.equal(decrirePalmaresDeSalle(terminee), null);
+	assert.deepEqual(decrireVue(terminee).palmares.map(ligne => ligne.texte),
+		['1. n° 3 · Boom bap · Lou · 4,5 sur 5 (2 votes)']);
+	const enCours = { ...terminee, soiree: { etat: 'EN_COURS' } };
+	assert.equal(decrireClassementDeSalle(enCours), null);
+	assert.deepEqual(decrirePalmaresDeSalle(enCours).map(ligne => ligne.texte), ['1. n° 3 · Boom bap · Lou · 4,5 sur 5 (2 votes)']);
+});
