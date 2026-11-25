@@ -1,0 +1,7 @@
+{"data":[
+ {"id":2114295,"readable":true,"title":"Respect","title_short":"Respect",
+  "preview":"https://cdnt-preview.dzcdn.net/api/1/1/1/2/3/0/123.mp3?hdnea=exp=1764101700~acl=*~hmac=33",
+  "artist":{"id":1186,"name":"Aretha Franklin"},"album":{"id":204457,"cover_medium":"https://e-cdns-images.dzcdn.net/images/cover/7a/250x250-000000-80-0-0.jpg"},"type":"track"},
+ {"id":916424,"readable":true,"title":"Morceau sans extrait","title_short":"Morceau sans extrait","preview":"",
+  "artist":{"id":2,"name":"Artiste"},"album":{"id":2},"type":"track"}
+],"total":5,"prev":"https://api.deezer.com/playlist/908622995/tracks?index=0&limit=3"}

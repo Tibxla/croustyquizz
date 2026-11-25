@@ -49,6 +49,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Acteur;
+import fr.croustyquizz.soiree.Format;
+import fr.croustyquizz.soiree.Pilotage;
+import fr.croustyquizz.soiree.ServiceDesAcces;
+import fr.croustyquizz.soiree.ServiceSoiree;
 
 /** De bout en bout : de vrais clients STOMP contre l'application démarrée. */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -76,6 +80,12 @@ class CanalTempsReelTest {
 	@Autowired
 	private RegistreAbonnements abonnements;
 
+	@Autowired
+	private ServiceSoiree soirees;
+
+	@Autowired
+	private ServiceDesAcces acces;
+
 	@MockitoBean
 	private CaptureVuePrototype repli;
 
@@ -102,7 +112,40 @@ class CanalTempsReelTest {
 	}
 
 	@Test
-	void unBuzzDeLaManetteArriveSurLEcranDeSalleEnMoinsDUneSeconde() throws Exception {
+	void uneSoireeEnregistreeRefuseLAbonnementAnonymeAuCanalDeSalle() throws Exception {
+		UUID soiree = soirees.creer("Soirée enregistrée", Format.SOLO, Pilotage.MANUEL).getId();
+		String destination = Canaux.salle(soiree);
+		UUID abonnement = UUID.randomUUID();
+		var session = connecter();
+		var recus = new ArrayBlockingQueue<Map<String, Object>>(2);
+		var entetes = new StompHeaders();
+		entetes.setId(abonnement.toString());
+		entetes.setDestination(destination);
+		session.subscribe(entetes, collecteur(recus));
+
+		// Le broker traite les abonnements d'une même connexion dans l'ordre.
+		UUID demonstration = UUID.randomUUID();
+		var temoin = abonner(session, Canaux.salle(demonstration));
+		assertThat(abonnements.estInstalle(abonnement, destination)).isFalse();
+		diffuseur.diffuserSalle(soiree, new EvenementDeTest("Vue de la Soirée enregistrée"));
+		diffuseur.diffuserSalle(demonstration, new EvenementDeTest("Vue de démonstration"));
+		assertThat(temoin.poll(2, TimeUnit.SECONDS)).isNotNull();
+		assertThat(recus).isEmpty();
+	}
+
+	@Test
+	void laCleDEcranPermetDeRecevoirLesEvenementsDeLaSoireeEnregistree() throws Exception {
+		UUID soiree = soirees.creer("Soirée avec Écran", Format.SOLO, Pilotage.MANUEL).getId();
+		String cle = acces.ouvrirEcran(soiree).cle();
+		var ecran = abonner(connecterAvecJeton(cle), Canaux.salle(soiree));
+
+		diffuseur.diffuserSalle(soiree, new EvenementDeTest("Vue de la Soirée enregistrée"));
+
+		assertThat(ecran.poll(2, TimeUnit.SECONDS)).isNotNull().containsEntry("soireeId", soiree.toString());
+	}
+
+	@Test
+	void unEcranAnonymeDeDemonstrationRecoitLeBuzzEnMoinsDUneSeconde() throws Exception {
 		BlockingQueue<Map<String, Object>> ecran = abonner(connecter(), Canaux.salle(SOIREE));
 
 		BlockingQueue<Map<String, Object>> autreEcran = abonner(connecter(), Canaux.salle(SOIREE));
@@ -210,18 +253,21 @@ class CanalTempsReelTest {
 	}
 
 	private StompSession connecter(Acteur acteur) throws Exception {
+		String jeton = acteur == null ? null : "demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant();
+		return connecterAvecJeton(jeton);
+	}
+
+	private StompSession connecterAvecJeton(String jeton) throws Exception {
 		WebSocketStompClient client = new WebSocketStompClient(clientWebSocket());
 		clients.add(client);
 		client.setMessageConverter(new JacksonJsonMessageConverter());
 		StompHeaders entetes = new StompHeaders();
-		if (acteur != null) {
-			entetes.set("Authorization", "Bearer demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant());
+		if (jeton != null) {
+			entetes.set("Authorization", "Bearer " + jeton);
 		}
 		StompSession session = client
 				.connectAsync("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION,
-						new WebSocketHttpHeaders(), entetes,
-						new StompSessionHandlerAdapter() {
-						})
+						new WebSocketHttpHeaders(), entetes, new StompSessionHandlerAdapter() { })
 				.get(5, TimeUnit.SECONDS);
 		sessions.add(session);
 		return session;

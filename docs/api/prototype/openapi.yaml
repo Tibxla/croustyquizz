@@ -95,6 +95,7 @@ paths:
         extrémités, puis limite à 30 points de code Unicode sans couper un caractère.
         Horodatage et diffusion sérialisés par Soirée dans cette instance du serveur.
         Pas de déduplication ni de classement métier.
+        La route est réservée aux Soirées fictives ; une Soirée enregistrée donne 404.
       requestBody:
         required: true
         content:
@@ -113,6 +114,8 @@ paths:
                 $ref: '#/components/schemas/BuzzRecu'
         '400':
           $ref: '#/components/responses/Erreur400'
+        '404':
+          $ref: '#/components/responses/Erreur404'
   /api/test/soirees/{soireeId}/manches:
     parameters:
       - $ref: '#/components/parameters/SoireeId'

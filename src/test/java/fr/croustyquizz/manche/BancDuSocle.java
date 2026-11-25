@@ -34,7 +34,7 @@ public final class BancDuSocle {
 	public BancDuSocle(Horloge horlogeDuSocle, PilotageDeSoiree pilotage) {
 		FournisseurDeBloc bloc = new BlocFacticeDuSocle(this::serviceCourant, stockage);
 		assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
-		var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
+		var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur, evenement -> { });
 		service = new ServiceDeManche<>(mode, mode, new SocleDeManche(verrous, stockage, stockage, registre,
 				new RegistreDesEnvois(stockage, json), vues, horlogeDuSocle == null ? horloge : horlogeDuSocle, json, pilotage));
 	}

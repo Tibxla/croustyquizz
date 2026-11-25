@@ -490,6 +490,7 @@ evenements:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive:
         id: 98000000-0000-4000-8000-000000000002
         ordre: 0
