@@ -27,6 +27,8 @@ import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageBuilder;
 
+import fr.croustyquizz.soiree.ServiceSoiree;
+
 class EntreesHttpTest {
 
 	@Test
@@ -45,7 +47,7 @@ class EntreesHttpTest {
 			}
 			return null;
 		}).when(diffuseur).diffuserSalle(eq(soiree), any());
-		BuzzControleur controleur = new BuzzControleur(diffuseur, horloge, new VerrousSoiree());
+		BuzzControleur controleur = new BuzzControleur(diffuseur, horloge, new VerrousSoiree(), mock(ServiceSoiree.class));
 		AtomicReference<Thread> secondThread = new AtomicReference<>();
 		try (var executeur = Executors.newFixedThreadPool(2)) {
 			try {

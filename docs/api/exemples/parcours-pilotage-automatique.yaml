@@ -25,6 +25,7 @@ http:
       modeEnCours: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: []
 - nom: La première inscription appelle Alizé
@@ -78,6 +79,7 @@ http:
         pseudo: Basile
         connecte: true
       classement: &classementKaraoke []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *mancheKaraoke
@@ -212,6 +214,7 @@ evenements:
       modeEnCours: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: []
 - nom: Premier appel — salle
@@ -227,6 +230,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *joueursKaraoke
       classement: *classementKaraoke
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 11900000-0000-4000-8000-000000000004
@@ -336,6 +340,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *joueursKaraoke
       classement: *classementKaraoke
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 11900000-0000-4000-8000-000000000004
@@ -401,6 +406,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *joueursKaraoke
       classement: *classementKaraoke
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *mancheKaraoke
@@ -533,6 +539,7 @@ evenements:
     emisLe: '2026-11-23T20:01:30.000Z'
     donnees:
       soiree: *soireeEnCours
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *mancheKaraoke
       modeEnCours: KARAOKE
       joueurs: *joueursKaraoke
@@ -590,6 +597,7 @@ evenements:
     emisLe: '2026-11-23T20:02:00.000Z'
     donnees:
       soiree: *soireeEnCours
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: null
       modeEnCours: null
       joueurs: *joueursKaraoke
@@ -613,6 +621,7 @@ evenements:
         pilotage: AUTOMATIQUE
         etat: EN_COURS
         codeAcces: F3M8AB
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive:
         id: &mancheDernierVoteId 12200000-0000-4000-8000-000000000004
         ordre: 0
@@ -687,6 +696,7 @@ evenements:
     emisLe: &finDernierVote '2026-11-23T21:01:50.000Z'
     donnees:
       soiree: *soireeDernierVote
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: null
       modeEnCours: null
       joueurs: *joueursDernierVote
@@ -710,6 +720,7 @@ evenements:
     emisLe: *finDernierVote
     donnees:
       soiree: *soireeDernierVote
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: null
       modeEnCours: null
       joueurs: *joueursDernierVote
