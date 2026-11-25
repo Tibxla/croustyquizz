@@ -10,7 +10,7 @@ function rendreLigne(passage) {
 	return creerLignePalmaresSalle(creerDocument(), palmares[0]);
 }
 
-test('la salle affiche les pseudos complets et fournit une seule phrase aux lecteurs d’écran', () => {
+test('la ligne de salle porte les pseudos complets et fournit une seule phrase aux lecteurs d’écran', () => {
 	const titre = 'La Chanson au titre très long que les Interprètes ont choisie pour cette Soirée de démonstration';
 	const pseudo = 'Joueuse de démonstration Alizé';
 	const ligne = rendreLigne({ numero: 10, rang: 1, chanson: { titre }, interpretes: [{ pseudo }, { pseudo: 'Basile' }],
@@ -65,7 +65,26 @@ test('aucune colonne fixe ne coupe le rang, le numéro ou la note, et les colonn
 	}
 	assert.doesNotMatch(css, /grid-template-columns:\s*[\d.]+vw minmax\(0, 1fr\) [\d.]+vw/);
 	const tronques = reglesPalmares(css).filter(regle => /text-overflow:\s*ellipsis/.test(regle.corps)).flatMap(regle => regle.selecteurs);
-	assert.deepEqual(tronques, ['.salle--coquille .palmares .palmares__chanson']);
+	assert.deepEqual(tronques.sort(), ['.salle--coquille .palmares .palmares__chanson', '.salle--coquille .palmares .palmares__interpretes']);
+});
+
+test('les Interprètes tiennent sur une seule ligne, sans retour à la ligne', async () => {
+	const regles = reglesPalmares(await cssSalle());
+	const corps = regles.filter(regle => regle.selecteurs.includes('.salle--coquille .palmares .palmares__interpretes'))
+		.map(regle => regle.corps).join('\n');
+	assert.match(corps, /white-space:\s*nowrap;/);
+	assert.match(corps, /overflow:\s*hidden;/);
+	assert.doesNotMatch(corps, /overflow-wrap/);
+});
+
+test('un trio de pseudos longs reste lu en entier par les lecteurs d’écran', () => {
+	const pseudos = ['Mademoiselle Gwendoline Arcadi', 'Monsieur Maximilien Beauregard', 'Capitaine Bartholomé Delacroix'];
+	const ligne = rendreLigne({ numero: 4, rang: 2, chanson: { titre: 'Le phare' }, interpretes: pseudos.map(pseudo => ({ pseudo })),
+		nombreVotes: 3, moyenneDixiemes: 40 });
+
+	const noms = `${pseudos[0]}, ${pseudos[1]} et ${pseudos[2]}`;
+	assert.equal(ligne.querySelector('[aria-hidden="true"]')?.querySelector('.palmares__interpretes')?.textContent, noms);
+	assert.equal(ligne.querySelector('.visuellement-cache')?.textContent, `2. n° 4 · Le phare · ${noms} · 4,0 sur 5 (3 votes)`);
 });
 
 test('la liste du Palmarès s’affiche en entier, sans hauteur bornée ni défilement', async () => {
