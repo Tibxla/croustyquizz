@@ -30,7 +30,6 @@ class FournisseurPalmaresKaraokeTest {
     @Autowired SocleDeManche socle;
     @Autowired AssembleurDeVues assembleur;
     @Autowired PersistanceKaraokeJpa persistance;
-    @Autowired ServiceKaraoke service;
     @Autowired JdbcTemplate jdbc;
 
     @Test void attendUneFinDeKaraokeEtMasqueLePalmaresPendantUneMancheOuApresUnQuiz() {
@@ -64,9 +63,8 @@ class FournisseurPalmaresKaraokeTest {
             enregistrer(seconde, 3, List.of(present), 3, 0);
         });
 
-        assertThat(service.palmaresKaraoke(soiree)).extracting(VuesKaraoke.LignePalmaresKaraoke::numero)
-                .containsExactly(2L, 1L, 3L, 4L);
         var console = palmares(Destination.CONSOLE);
+        assertThat(console.findValuesAsString("numero")).containsExactly("2", "1", "3", "4");
         assertThat(console.size()).isEqualTo(4);
         assertThat(console.get(1).at("/interpretes/0/pseudo").asString()).isEqualTo("Joueur parti");
         assertThat(console.get(1).at("/interpretes/1/joueurId").asString()).isEqualTo(present.toString());

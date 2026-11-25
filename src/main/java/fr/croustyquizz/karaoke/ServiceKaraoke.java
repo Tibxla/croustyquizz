@@ -347,10 +347,6 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private void verifierActivite(UUID soireeId, UUID mancheId) {
         if (!portee.estActive(soireeId, mancheId)) { throw inactive().exception(); }
     }
-    public List<VuesKaraoke.LignePalmaresKaraoke> palmaresKaraoke(UUID soireeId) {
-        return lecture(soireeId, () -> composerPalmares(soireeId, socle.depot().deLaSoiree(soireeId)));
-    }
-
     List<VuesKaraoke.LignePalmaresKaraoke> composerPalmares(UUID soireeId, List<ManchePersistante> manches) {
         var manchesKaraoke = manches.stream().filter(manche -> manche.getMode() == mode())
                 .map(ManchePersistante::getMancheId).toList();
