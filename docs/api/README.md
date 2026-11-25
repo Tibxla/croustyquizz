@@ -316,8 +316,9 @@ après sa fin ou son saut. Un Passage simplement appelé ne le change pas.
 
 Le son d’un Enregistrement reste sur le téléphone de l’Interprète (ADR 0005). Le contrat ne porte
 que deux informations : l’autorisation de la Soirée et l’accord de chaque Interprète. Aucune route
-ne reçoit de son : chaque corps de requête est en `application/json`, et le vérificateur refuse
-tout autre type de contenu.
+ne reçoit de son : chaque corps de requête est du JSON, déclaré `application/json` au contrat et
+accepté aussi en `*+json` comme sur les routes voisines (#239). Le vérificateur refuse que le
+contrat déclare un autre dépôt que JSON ou les photos JPEG de la salle (#72).
 
 L’Animateur règle l’autorisation par `PUT M/autorisation-enregistrement` avec
 `AutorisationEnregistrement` (`{ "autorise": false }` pour interdire). Le réglage vaut pour toute
