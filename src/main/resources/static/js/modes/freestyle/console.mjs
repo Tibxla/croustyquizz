@@ -25,14 +25,33 @@ export function monter(zones, contexte) {
 	});
 	commandes.append(appeler, pause, passer, terminer);
 	const statut = e('p'); statut.setAttribute('role', 'status');
+	const message = e('p');
 	const reessayer = bouton('Réessayer le même envoi', () => ui.reessayer(ui.dernierEchec(() => true)?.cle));
 	const file = e('ol', 'rouleau a-venir');
 	const vide = e('p', '', 'Aucun Passage en attente.');
 	const votes = e('ul', 'karaoke__liste-votes');
 	const zoneVotes = e('section', 'karaoke__votes');
 	zoneVotes.append(e('h2', '', 'Vote du public'), votes);
-	ui.principale.append(titre, identite, instructions, commandes, statut, reessayer,
+	ui.principale.append(titre, identite, instructions, commandes, statut, message, reessayer,
 		e('h2', '', 'File d’attente'), file, vide, zoneVotes);
+
+	ui.messageInvalidation = () => { message.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
+	// Même route et même garde de compteur qu’au Karaoké : le serveur refuse un Passage qui n’attend plus.
+	function confirmerRetrait(passageId, declencheur) {
+		const cible = ui.bloc.passagesEnAttente.find(passage => passage.passageId === passageId);
+		if (!cible) return;
+		const mancheId = ui.bloc.mancheId;
+		const valide = () => ui.bloc.mancheId === mancheId && ui.bloc.passagesEnAttente.some(passage =>
+			passage.passageId === passageId && passage.numeroModification === cible.numeroModification);
+		message.textContent = '';
+		const dialogue = ui.dialogue({ titre: 'Retirer le Passage', declencheur, valide,
+			confirmation: { libelle: 'Retirer', permise: () => ui.mutationsPermises && ui.bloc.peutGererFile,
+				executer: () => ui.commande(commande('POST', `/passages/${encodeURIComponent(passageId)}/retrait`,
+					{ numeroModification: cible.numeroModification })) } });
+		dialogue.annuler.textContent = 'Annuler';
+		dialogue.contenu.append(e('p', '',
+			`Retirer le Passage ${cible.numero} · ${cible.interprete.pseudo} · ${cible.instrumentale.titre} ?`), dialogue.confirmer);
+	}
 
 	let automatique = false;
 	ui.surRendu = () => {
@@ -54,7 +73,12 @@ export function monter(zones, contexte) {
 
 		ui.remplacerListe(file, bloc.passagesEnAttente.map(passage => {
 			const ligne = e('li');
-			ligne.append(creerTicket(ui, { ...passage, prioritaire: passage.passageId === bloc.passagePrioritaireId }, { details: true }));
+			const retirer = bouton('Retirer', () => confirmerRetrait(passage.passageId, retirer));
+			retirer.setAttribute('data-passage-id', passage.passageId);
+			retirer.setAttribute('aria-label', `Retirer le Passage ${passage.numero}`);
+			retirer.disabled = !ui.mutationsPermises || !bloc.peutGererFile;
+			ligne.append(creerTicket(ui, { ...passage, prioritaire: passage.passageId === bloc.passagePrioritaireId }, { details: true }),
+				retirer);
 			return ligne;
 		}), titre);
 		vide.hidden = bloc.nombreEnAttente > 0;

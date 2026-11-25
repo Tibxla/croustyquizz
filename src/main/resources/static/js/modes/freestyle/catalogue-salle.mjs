@@ -1,13 +1,15 @@
 import { creerUuid } from '../karaoke/commun.mjs';
 import { lireInstrumentales } from './instrumentales.mjs';
 
+/** Choisir un dossier déclare ses fiches et fait de cette fenêtre le lecteur désigné du Freestyle (ADR 0010). */
 export function monterCatalogueInstrumentales(audio, contexte, statut, redeclarer) {
 	const abonnes = new Set();
 	const route = `/api/soirees/${encodeURIComponent(contexte.soireeId)}/freestyle/instrumentales`;
 	let selection, catalogue, synchronisee, annulation, generation = 0, envoi, confirmation;
 
 	function rendre() {
-		redeclarer.hidden = !envoi || envoi.cle === confirmation;
+		// Un refus 4xx est définitif : seul un nouveau choix de dossier renvoie une déclaration.
+		redeclarer.hidden = !envoi?.reessayable || envoi.cle === confirmation;
 		redeclarer.disabled = !synchronisee || Boolean(annulation);
 	}
 
@@ -15,20 +17,28 @@ export function monterCatalogueInstrumentales(audio, contexte, statut, redeclare
 		if (!synchronisee || annulation || !envoi || envoi.cle === confirmation) return;
 		const courant = envoi;
 		courant.tente = true;
+		courant.reessayable = false;
 		const controle = annulation = new AbortController();
 		statut.textContent = 'Déclaration des Instrumentales…';
 		rendre();
 		try {
-			const { statut: code, corps } = await contexte.envoyer('PUT', route, { instrumentales: courant.fiches },
+			const { statut: code, corps } = await contexte.envoyer('PUT', route,
+				{ lecteurId: audio.lecteurId, instrumentales: courant.fiches },
 				{ entetes: { 'Idempotency-Key': courant.cle }, signal: controle.signal, annoncer: false });
 			if (controle.signal.aborted) return;
 			if (code === 200) {
 				confirmation = courant.cle;
 				const n = courant.fiches.length;
 				statut.textContent = n ? `${n} Instrumentale${n > 1 ? 's déclarées' : ' déclarée'}.` : 'Aucune Instrumentale déclarée.';
-			} else statut.textContent = corps?.detail ?? 'La déclaration des Instrumentales a échoué.';
+			} else {
+				courant.reessayable = code >= 500;
+				statut.textContent = corps?.detail ?? 'La déclaration des Instrumentales a échoué.';
+			}
 		} catch {
-			if (!controle.signal.aborted) statut.textContent = 'Confirmation de la déclaration indisponible.';
+			if (!controle.signal.aborted) {
+				courant.reessayable = true;
+				statut.textContent = 'Confirmation de la déclaration indisponible.';
+			}
 		} finally {
 			if (!controle.signal.aborted) { annulation = undefined; rendre(); }
 		}
@@ -45,7 +55,7 @@ export function monterCatalogueInstrumentales(audio, contexte, statut, redeclare
 		if (!selection) return;
 		statut.textContent = 'Lecture des fiches d’Instrumentales…';
 		try {
-			const fiches = await lireInstrumentales(selection);
+			const fiches = await lireInstrumentales(selection, { mesurer: audio.mesurerDuree });
 			if (lecture !== generation) return;
 			catalogue = new Map(fiches.map(({ fiche, fichier }) => [fiche.instrumentaleId, fichier]));
 			envoi = { cle: creerUuid(), fiches: fiches.map(({ fiche }) => fiche) };
@@ -60,13 +70,17 @@ export function monterCatalogueInstrumentales(audio, contexte, statut, redeclare
 		}
 	}
 
+	function reessayer() {
+		if (envoi?.reessayable) void declarer();
+	}
+
 	const quitterAudio = audio.surChangement(detecter);
 	const quitterConnexion = contexte.surEtatConnexion(etat => {
 		synchronisee = etat === 'synchronisee';
 		rendre();
 		if (synchronisee && envoi && !envoi.tente) void declarer();
 	});
-	redeclarer.addEventListener('click', declarer);
+	redeclarer.addEventListener('click', reessayer);
 	void detecter();
 	return {
 		fichier: id => catalogue?.get(id),
@@ -76,7 +90,7 @@ export function monterCatalogueInstrumentales(audio, contexte, statut, redeclare
 			annulation?.abort();
 			quitterAudio();
 			quitterConnexion();
-			redeclarer.removeEventListener('click', declarer);
+			redeclarer.removeEventListener('click', reessayer);
 			abonnes.clear();
 		},
 	};
