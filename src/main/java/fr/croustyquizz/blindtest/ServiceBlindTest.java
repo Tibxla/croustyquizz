@@ -129,7 +129,7 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 	/**
 	 * Une panne imprévue (base, réseau hors du contrat du catalogue) ne fige pas la Manche : l'Horloge reprogramme un
 	 * essai, puis le Morceau est sauté après {@value #ECHECS_AVANT_SAUT} échecs. Une capture ne relance rien, car elle
-	 * rend la dernière vue publiée (ADR 0004).
+	 * rend la dernière vue publiée (ADR 0004) ; une lecture de l'instantané non plus tant que l'essai est programmé.
 	 */
 	private void preparerMorceau(UUID soireeId, UUID mancheId, UUID etapeId, long idDeezer) {
 		try {
@@ -144,13 +144,16 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 		} catch (RuntimeException erreur) {
 			int nombre = echecs.merge(etapeId, 1, Integer::sum);
 			JOURNAL.error("Échec {} de la préparation du Morceau {} de la Manche {}", nombre, etapeId, mancheId, erreur);
-			// Libéré avant de programmer l'essai, que l'Horloge peut lancer aussitôt.
-			enPreparation.remove(etapeId);
 			if (nombre < ECHECS_MAX) {
-				socle.horloge().programmer(DELAI_NOUVEL_ESSAI,
-						() -> lancerPreparation(soireeId, mancheId, etapeId, idDeezer));
+				// Le Morceau reste en préparation jusqu'à l'essai programmé : une lecture de l'instantané, comme
+				// l'assemblage d'une vue, ne le relance pas avant l'Horloge (#216).
+				socle.horloge().programmer(DELAI_NOUVEL_ESSAI, () -> {
+					enPreparation.remove(etapeId);
+					lancerPreparation(soireeId, mancheId, etapeId, idDeezer);
+				});
 			} else {
 				echecs.remove(etapeId);
+				enPreparation.remove(etapeId);
 			}
 		}
 	}

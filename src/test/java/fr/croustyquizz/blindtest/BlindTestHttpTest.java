@@ -348,6 +348,28 @@ class BlindTestHttpTest {
 	}
 
 	@Test
+	void uneLectureNeDoublePasLEssaiProgrammeApresUnePanne() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		rejoindre(soiree, "Léa");
+		UUID manche = UUID.fromString(ajouterBlindTest(soiree));
+		catalogue.pannesImprevues.set(1);
+		int demandes = catalogue.liensDemandes.get();
+
+		lancer(soiree);
+
+		// #216 : une lecture de l'instantané, comme l'assemblage d'une vue, relançait aussitôt le Morceau dont la
+		// préparation venait d'échouer, sans attendre l'essai programmé par l'Horloge.
+		await().during(Duration.ofMillis(700)).atMost(Duration.ofSeconds(5)).until(() -> {
+			service.instantane(soiree.id(), manche);
+			return catalogue.liensDemandes.get() == demandes + 1 && catalogue.pannesImprevues.get() == 0;
+		});
+		assertThat(bloc(soiree).path("phase").asString()).isEqualTo("PREPARATION");
+
+		laisserPasserLesEssais(soiree, 1);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 2);
+	}
+
+	@Test
 	void unMorceauDontLaPreparationEchoueTroisFoisEstSauteSansFigerLaManche() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
 		rejoindre(soiree, "Léa");
