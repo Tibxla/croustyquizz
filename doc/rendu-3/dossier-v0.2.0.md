@@ -184,7 +184,6 @@ Render construit l’image depuis le même `Dockerfile` :
 
 Chacune a sa base PostgreSQL 18 chez Neon. Rien dans l’image ne dépend d’un hébergeur : `docs/deploiement.md`, « Changer d’hébergeur », liste ce qu’un autre service de conteneurs doit fournir. Une seule instance doit tourner, car les Révisions et la dernière Vue synchronisée sont en mémoire (ADR 0004).
 
-<!-- page -->
 
 # Projet et caractère innovant
 
@@ -215,7 +214,7 @@ Le dossier est maintenu dans **`doc/rendu-3/dossier-v0.2.0.md`** et compilé en 
 ## Ce qui a changé dans la façon de travailler
 
 - **Des piles plus hautes.** La pile du Karaoké compte quatre PR, et six autres s’empilent dessus. Pour éviter les conflits en cascade, l’ordre de fusion est écrit sur la PR de base (#168), et chaque fusion est suivie d’une vérification des PR restantes.
-- **Une relecture indépendante avant la PR**, par un second agent qui ne voit que le code. Sur #199, #200, #203 et #204, elle a trouvé de 7 à 11 défauts chacune ; ils confirmés ont été corrigés avec un test dans la PR.
+- **Une relecture indépendante des grosses PR**, par un second agent qui ne voit que le code. Sur #199, #200, #203 et #204, elle a trouvé de 7 à 11 défauts chacune ; ceux qui se sont confirmés ont été corrigés avec un test dans la PR.
 - **Une recette dans un vrai navigateur** après tout changement visible : Console, Manettes et Écran de salle ouverts en même temps, faux micro pour l’Enregistrement, fichiers audio pour le Freestyle.
 
 
@@ -304,7 +303,7 @@ Le protocole du Rendu 1 reste en vigueur : l’IA aide à la conception, au dév
 **Mise en œuvre depuis le Rendu 2 :**
 
 - **Un brief écrit par tranche.** Quand un agent implémente une tranche, il part d’un brief qui reprend l’issue, les décisions déjà prises, les fichiers concernés et les critères de réussite. Il committe dans une branche de travail sans rien publier. Les tests sont relancés hors de l’agent, puis la PR est ouverte depuis le compte de l’étudiant qui le pilote.
-- **Une relecture indépendante avant la PR.** Un second agent, en lecture seule, relit le code sans le raisonnement de celui qui l’a écrit. Ses constats sont vérifiés un par un ; ceux qui tiennent sont corrigés avec un test. Une PR ne se fusionne qu’après l’approbation d’un autre membre, imposée par la protection des branches.
+- **Une relecture indépendante, avant ou pendant la PR.** Un second agent, en lecture seule, relit le code sans le raisonnement de celui qui l’a écrit. Ses constats sont vérifiés un par un ; ceux qui tiennent sont corrigés avec un test. Une PR ne se fusionne qu’après l’approbation d’un autre membre, imposée par la protection des branches.
 - **Une recette dans un vrai navigateur.** Les tests ne suffisent pas pour une interface : chaque changement visible est essayé avec la Console, plusieurs Manettes et l’Écran de salle ouverts en même temps, et les captures sont regardées avant la PR.
 - **Des ressources bornées.** Les tests tournent avec des limites de mémoire et de durée, et un seul `./mvnw verify` à la fois sur une même machine.
 
