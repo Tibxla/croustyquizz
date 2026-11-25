@@ -11,13 +11,14 @@ const appel = (passageId = 'p', champs = {}) => ({
 	passageId, numeroModification: 1, etapeId: 'e-' + passageId, etat: 'APPELE', chanson: { titre: 'Halo', artiste: 'Beyoncé' },
 	calculeLe: maintenant, echeanceAppelLe: maintenant + 5000, delaiAppelRestantMs: 5000, ...champs,
 });
+const appelEchu = () => appel('p', { calculeLe: maintenant + 5001, delaiAppelRestantMs: 0 });
 const lecture = (champs = {}) => ({ lecteurId: 'ici', lectureId: 'l', source: 'FICHIER_LOCAL', etat: 'PREPAREE', ...champs });
 const bloc = (courant, lecture = null, champs = {}) => ({ courant, lecture, lecteurDesigneId: 'ici', etat: 'EN_COURS', ...champs });
 const demarre = (champs = {}) => bloc(appel('p', { etat: 'EN_COURS', numeroModification: 2 }), lecture({ etat: 'DEMARREE' }), champs);
 
 function banc() {
-	let temps = maintenant, numero = 0, fin, erreur, refus, lectureEnAttente;
-	const delais = new Map(), commandes = [], gestes = [], chargements = [], etats = [];
+	let fin, erreur, refus, lectureEnAttente;
+	const commandes = [], gestes = [], chargements = [], etats = [];
 	const lecteur = {
 		debloquer: () => refus ? Promise.reject(refus) : Promise.resolve(),
 		charger: f => new Promise((resolve, reject) => chargements.push({ f, resolve, reject })),
@@ -30,26 +31,22 @@ function banc() {
 		detruire() { gestes.push('libérer'); },
 	};
 	const cycle = creerCycleLecture({
-		lecteur, lecteurId: 'ici', horloge: { maintenantServeur: () => temps },
+		lecteur, lecteurId: 'ici',
 		envoyer: (methode, chemin, corps) => new Promise((resolve, reject) => commandes.push({ methode, chemin, corps, resolve, reject })),
 		surEtat: etat => etats.push(etat),
-		setTimeout(f, ms) { delais.set(++numero, { f, ms }); return numero; },
-		clearTimeout: id => delais.delete(id),
 	});
-	return { cycle, commandes, gestes, chargements, delais, etats, etat: () => cycle.etat().etat,
+	return { cycle, commandes, gestes, chargements, etats, etat: () => cycle.etat().etat,
 		fin: () => fin?.(), erreur: () => erreur?.(),
 		bloquer: () => { refus = new Error('Son bloqué'); }, debloquer: () => { refus = null; },
 		attendreLecture: promesse => { lectureEnAttente = promesse; },
-		avancer: ms => { temps += ms; },
-		expirer() { for (const [id, { f }] of delais) { delais.delete(id); f(); } },
 	};
 }
 
-async function preparer(fichiers = [fichier]) {
+async function preparer(fichiers = [fichier], courant = appel()) {
 	const b = banc();
 	await b.cycle.debloquer();
 	b.cycle.choisirDossier(fichiers);
-	b.cycle.surVue(bloc(appel()), capture);
+	b.cycle.surVue(bloc(courant), capture);
 	return b;
 }
 
@@ -86,23 +83,16 @@ test('désigne au choix, prépare le fichier exact, rattrape une réponse perdue
 	assert.equal(b.commandes.length, 3);
 });
 
-test('recalage du délai par la vue, suspension en pause puis expiration avant les métadonnées', async () => {
+test('une confirmation avant la déclaration démarre en paroles seules et abandonne le chargement', async () => {
 	const b = await preparer();
-	assert.equal([...b.delais.values()][0].ms, 5000);
-	b.avancer(2000);
-	b.cycle.surVue(bloc(appel()), capture);
-	assert.equal([...b.delais.values()][0].ms, 3000);
-	b.cycle.surVue(bloc(appel('p', { echeanceAppelLe: null }), null, { etat: 'EN_PAUSE' }), capture);
-	assert.equal(b.delais.size, 0);
-	b.cycle.surVue(bloc(appel('p', { calculeLe: maintenant + 2000, delaiAppelRestantMs: 3000 })), capture);
-	b.expirer();
-	assert.equal(b.commandes.at(-1).corps.motifParolesSeules, 'FICHIER_ILLISIBLE');
-	assert.equal(b.commandes.at(-1).corps.fichier, null);
+	const sansFichier = lecture({ lecteurId: null, lectureId: 'secours', source: 'PAROLES_SEULES', etat: 'DEMARREE',
+		motifParolesSeules: 'ECRAN_NON_PRET' });
+	b.cycle.surVue(bloc(demarre().courant, sansFichier), evenement('passage-demarre'));
 	b.chargements[0].resolve({ dureeMs: 10000 });
 	await terminerMicrotaches();
-	assert.equal(b.commandes.length, 2);
-	b.cycle.detruire();
-	assert.equal(b.delais.size, 0);
+	assert.equal(b.etat(), 'pret');
+	assert.deepEqual(b.gestes, ['libérer']);
+	assert.deepEqual(b.commandes.map(c => c.chemin), ['/lecteur']);
 });
 
 test('une capture de sa lecture jamais jouée rend une seule erreur, y compris pendant la préparation', async () => {
@@ -135,24 +125,29 @@ test('le retour de désignation prépare une seule fois et ignore les résultats
 	assert.equal(b.etat(), 'preparee');
 });
 
-test('une désignation après l’échéance renonce aux métadonnées immédiatement', async () => {
-	const b = banc();
-	await b.cycle.debloquer();
-	b.cycle.choisirDossier([fichier]);
-	b.avancer(5001);
-	b.cycle.surVue(bloc(appel()), capture);
-	assert.equal(b.chargements.length, 0);
-	assert.equal(b.commandes.at(-1).corps.motifParolesSeules, 'FICHIER_ILLISIBLE');
-});
-
-test('des métadonnées arrivées après l’échéance n’envoient aucun fichier même si la minuterie attend encore', async () => {
-	const b = await preparer();
-	b.avancer(5001);
+test('une désignation après l’échéance prépare le fichier et permet de le jouer à la confirmation', async () => {
+	const b = await preparer([fichier], appelEchu());
+	assert.equal(b.chargements.length, 1);
+	assert.deepEqual(b.commandes.map(c => c.chemin), ['/lecteur']);
 	b.chargements[0].resolve({ dureeMs: 20000 });
 	await terminerMicrotaches();
-	assert.equal(b.commandes[1].corps.motifParolesSeules, 'FICHIER_ILLISIBLE');
-	assert.equal(b.commandes[1].corps.fichier, null);
-	assert.equal(b.delais.size, 0);
+	assert.equal(b.commandes[1].chemin, '/passages/p/lecture');
+	assert.equal(b.commandes[1].corps.source, 'FICHIER_LOCAL');
+	assert.equal(b.commandes[1].corps.fichier.nom, fichier.name);
+	b.cycle.surVue(demarre(), evenement('passage-demarre'));
+	await terminerMicrotaches();
+	assert.deepEqual(b.gestes, ['lire']);
+});
+
+test('les métadonnées arrivées après l’échéance donnent la durée réelle du fichier', async () => {
+	const b = await preparer();
+	b.cycle.surVue(bloc(appelEchu()), capture);
+	assert.deepEqual(b.commandes.map(c => c.chemin), ['/lecteur']);
+	b.chargements[0].resolve({ dureeMs: 20000 });
+	await terminerMicrotaches();
+	assert.equal(b.commandes[1].corps.source, 'FICHIER_LOCAL');
+	assert.equal(b.commandes[1].corps.fichier.dureeMs, 20000);
+	assert.equal(b.commandes[1].corps.motifParolesSeules, null);
 });
 
 for (const [nom, fichiers, motif] of [
@@ -160,8 +155,8 @@ for (const [nom, fichiers, motif] of [
 	['ambigu', [fichier, { ...fichier, webkitRelativePath: 'autre/Halo.WAV' }], 'FICHIER_AMBIGU'],
 	['illisible', [fichier], 'FICHIER_ILLISIBLE'],
 ]) {
-	test(`un fichier ${nom} donne les paroles seules et aucun départ du lecteur`, async () => {
-		const b = await preparer(fichiers);
+	test(`un fichier ${nom} donne le motif réel après l’échéance et aucun départ du lecteur`, async () => {
+		const b = await preparer(fichiers, appelEchu());
 		if (nom === 'illisible') {
 			b.chargements[0].reject(new Error('Corrompu'));
 			await terminerMicrotaches();
@@ -177,8 +172,8 @@ for (const [nom, fichiers, motif] of [
 	});
 }
 
-async function fichierPrepare() {
-	const b = await preparer();
+async function fichierPrepare(fichiers) {
+	const b = await preparer(fichiers);
 	b.chargements[0].resolve({ dureeMs: 20000 });
 	await terminerMicrotaches();
 	b.commandes[1].resolve({ statut: 200, corps: { lectureId: 'l' } });
@@ -186,11 +181,48 @@ async function fichierPrepare() {
 	return b;
 }
 
-async function fichierEnLecture() {
-	const b = await fichierPrepare();
+async function fichierEnLecture(fichiers) {
+	const b = await fichierPrepare(fichiers);
 	b.cycle.surVue(demarre(), evenement('passage-demarre'));
 	await terminerMicrotaches();
 	return b;
+}
+
+for (const phase of ['lecture', 'pause', 'fin']) {
+	for (const enchaine of [true, false]) {
+		test(`depuis ${phase}, une clôture ${enchaine ? 'avec nouvel appel prépare le suivant' : 'sans nouvel appel laisse le lecteur prêt'}`, async t => {
+			const suivant = { name: 'Duo fictif - Le Phare.ogg', size: 315 };
+			const b = await fichierEnLecture([fichier, suivant]);
+			t.after(() => b.cycle.detruire());
+			if (phase === 'pause') b.cycle.surVue(demarre({ etat: 'EN_PAUSE' }), evenement('manche-en-pause'));
+			if (phase === 'fin') b.fin();
+			assert.equal(b.etat(), phase);
+			const nouveauCourant = enchaine
+				? appel('suivant', { chanson: { titre: 'Le Phare', artiste: 'Duo fictif' } })
+				: appel('p', { etat: 'TERMINE', numeroModification: 3 });
+			const vue = bloc(nouveauCourant);
+			const origine = evenement(enchaine ? 'passage-appele' : 'passage-termine');
+			b.cycle.surVue(vue, origine);
+
+			assert.equal(b.etat(), enchaine ? 'preparation' : 'pret');
+			assert.equal(b.gestes.filter(geste => geste === 'libérer').length, 1);
+			assert.equal(b.chargements.length, enchaine ? 2 : 1);
+			if (enchaine) {
+				assert.equal(b.chargements[1].f.name, suivant.name);
+				b.chargements[1].resolve({ dureeMs: 30000 });
+				await terminerMicrotaches();
+			}
+			b.cycle.surVue(vue, capture);
+			const declarations = b.commandes.filter(commande => commande.chemin === '/passages/suivant/lecture');
+			assert.equal(declarations.length, enchaine ? 1 : 0);
+			if (enchaine) {
+				assert.equal(declarations[0].corps.etapeId, 'e-suivant');
+				assert.equal(declarations[0].corps.numeroModification, 1);
+			}
+			assert.equal(b.chargements.length, enchaine ? 2 : 1);
+			assert.equal(b.gestes.filter(geste => geste === 'libérer').length, 1);
+		});
+	}
 }
 
 test('le départ trouve la lecture locale dans la vue même si le 2xx a précédé la publication de la préparation', async () => {

@@ -5,6 +5,11 @@ spring:
     # Sans profil explicite, on est en développement. La production
     # s'active avec SPRING_PROFILES_ACTIVE=prod.
     default: dev
+  flyway:
+    # Plusieurs branches créent des migrations en parallèle et ne fusionnent pas dans
+    # l'ordre de leurs horodatages : une migration plus ancienne que la dernière appliquée
+    # doit passer partout, recette et production comprises (CONTRIBUTING.md, « Base de données »).
+    out-of-order: true
   jpa:
     open-in-view: false
     hibernate:
@@ -33,6 +38,8 @@ croustyquizz:
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30
+    dureeVoteSecondes: 30
+    dureeAffichageMoyenneSecondes: 10
   karaoke:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
@@ -41,3 +48,7 @@ croustyquizz:
     delaiSourceMs: 5000
     tailleReponseSourceMaxOctets: 2097152
     longueurRechercheMax: 120
+  blindtest:
+    urlDeezer: https://api.deezer.com
+    delaiDeezerMs: 5000
+    tailleReponseMaxOctets: 2097152

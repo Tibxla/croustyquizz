@@ -97,6 +97,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 		capacite(commande) {
 			if (!bloc) return false;
 			switch (commande.type) {
+				case 'VOTER': return (bloc.votes ?? []).some(vote => vote.passageId === commande.passageId && vote.peutVoter);
 				case 'CONFIRMER_PRESENCE':
 					return bloc.peutConfirmerPresence && commande.passageId === bloc.courant?.passageId;
 				case 'APPELER': return bloc.peutAppeler && bloc.passagesEnAttente.some(p => p.position === 1 && p.passageId === commande.passageId);
@@ -179,8 +180,9 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 				for (const [cle, e] of envois) {
 					const { acteurType, passageId, type } = e.commande;
 					if (acteurType !== 'JOUEUR' || !passageId) continue;
-					const visible = type === 'CONFIRMER_PRESENCE' ? bloc.courant?.passageId === passageId
-						: personnels.some(p => p.passageId === passageId);
+					const visible = type === 'VOTER' ? voteAttendUnRecu(bloc, passageId, e.etat)
+						: type === 'CONFIRMER_PRESENCE' ? bloc.courant?.passageId === passageId
+							: personnels.some(p => p.passageId === passageId);
 					if (!visible) { machine.oublier(cle); envois.delete(cle); }
 				}
 			} finally { suspendre = false; }
@@ -198,6 +200,12 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 	};
 	quitter = contexte.surEtatConnexion(etat => { etatConnexion = etat; rendre(); });
 	return ui;
+}
+
+function voteAttendUnRecu(bloc, passageId, etatEnvoi) {
+	const vote = bloc.votes?.find(vote => vote.passageId === passageId);
+	// Le STOMP peut devancer le HTTP. Laisser arriver le reçu tant que son ticket est visible.
+	return vote && (etatEnvoi === 'en-cours' || (vote.etat === 'OUVERT' && vote.maNote == null));
 }
 
 export function creerTicket(ui, passage, { personnel = false, courant = false, selectionner, estimation = false, details = false } = {}) {

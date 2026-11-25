@@ -1,10 +1,13 @@
 package fr.croustyquizz.soiree;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -43,7 +46,16 @@ public class Soiree {
 
 	private Instant debuteeLe;
 
+	private UUID envoiLancement;
+
 	private Instant termineeLe;
+
+	@Embedded
+	private Buzz dernierBuzz;
+
+	/** Nombre de Buzz du socle acceptés : un Buzz de Manche retenu dans dernierBuzz ne le change pas. */
+	@Column(name = "buzz_rang_soiree")
+	private long rangBuzzSoiree;
 
 	protected Soiree() {
 		// Pour JPA.
@@ -92,13 +104,45 @@ public class Soiree {
 		throw new IllegalStateException("État inconnu : " + etat);
 	}
 
+	/** Retrouve un lancement interrompu entre la validation de la Soirée et celle de sa première Manche. */
+	boolean reprendLancement(UUID cle) {
+		return etat == EtatSoiree.EN_COURS && cle.equals(envoiLancement);
+	}
+
+	void lancer(Instant maintenant, UUID cle) {
+		debuteeLe = maintenant;
+		envoiLancement = cle;
+		etat = EtatSoiree.EN_COURS;
+	}
+
+	void terminer(Instant maintenant) {
+		termineeLe = maintenant;
+		etat = EtatSoiree.TERMINEE;
+	}
+
 	/**
 	 * Un Joueur peut arriver dans une Soirée ouverte ou déjà commencée (contrat
-	 * {@code rejoindreSoiree}). S'il arrive en cours de Manche, il attend la
-	 * suivante : c'est le travail de #10.
+	 * {@code rejoindreSoiree}). S'il arrive en cours de Manche, il y joue aussitôt
+	 * quand le Mode de jeu admet les arrivées en cours (Quiz, Karaoké, Freestyle) :
+	 * voir {@code eligiblePourMancheActive} dans {@code docs/api/schemas.yaml}.
 	 */
 	public boolean accepteLesArrivees() {
 		return EtatSoiree.AVEC_CODE_ACTIF.contains(etat);
+	}
+
+	Buzz enregistrerBuzz(Joueur joueur, UUID envoiId, Instant reception) {
+		rangBuzzSoiree++;
+		dernierBuzz = new Buzz(envoiId, joueur.getId(), joueur.getPseudo(), reception.truncatedTo(MICROS), rangBuzzSoiree);
+		return dernierBuzz;
+	}
+
+	/** Buzz décidé par la Manche active (Blind test, ADR 0009) : la Soirée le reprend comme dernierBuzz. */
+	void retenirBuzz(Buzz buzz) {
+		dernierBuzz = buzz;
+	}
+
+	Buzz getDernierBuzz() {
+		return dernierBuzz;
 	}
 
 	public UUID getId() {

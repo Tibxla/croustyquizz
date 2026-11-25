@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -32,7 +33,7 @@ import fr.croustyquizz.tempsreel.VerrousSoiree;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceDesAcces.class, TirageAuHasard.class,
+@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceDesAcces.class, TirageAuHasard.class, FiltreParListe.class,
 		ServiceDesAccesTest.Reglages.class, VerrousSoiree.class })
 class ServiceDesAccesTest {
 
@@ -109,6 +110,22 @@ class ServiceDesAccesTest {
 				new Acteur(Acteur.Type.ECRAN, ouverture.acces().getId(), soiree));
 		horloge.avancerA(ouverture.acces().getExpireLe());
 		assertThat(acces.reconnaitre(ouverture.cle())).isEmpty();
+	}
+
+	@Test
+	void ouvrirUnEcranPurgeLesClesExpireesDeToutesLesSoirees() {
+		UUID premiere = soireeOuverte().getId();
+		UUID seconde = soireeOuverte().getId();
+		OuvertureEcran ancienne = acces.ouvrirEcran(premiere);
+		horloge.avancerA(DEBUT.plus(Duration.ofHours(1)));
+		OuvertureEcran encoreValide = acces.ouvrirEcran(seconde);
+
+		horloge.avancerA(ancienne.acces().getExpireLe());
+		OuvertureEcran nouvelle = acces.ouvrirEcran(seconde);
+
+		assertThat(jdbc.queryForList("select id from acces_ecran", UUID.class))
+				.containsExactlyInAnyOrder(encoreValide.acces().getId(), nouvelle.acces().getId());
+		assertThat(acces.reconnaitre(encoreValide.cle())).isPresent();
 	}
 
 	@Test

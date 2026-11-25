@@ -1,8 +1,11 @@
 package fr.croustyquizz.soiree;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,15 +20,20 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
+import fr.croustyquizz.manche.RefusDeCommande;
+import fr.croustyquizz.tempsreel.ResolveurDActeur;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Les routes de Soirée sur un vrai serveur et un vrai PostgreSQL, chaque réponse validée par le contrat. */
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = "server.servlet.context-path=/quiz")
 @Import(TestcontainersConfiguration.class)
 class SoireeHttpTest {
 
@@ -39,6 +47,11 @@ class SoireeHttpTest {
 
 	@Autowired
 	private JdbcTemplate jdbc;
+
+	@Autowired
+	private ResolveurDActeur resolveur;
+	@MockitoSpyBean
+	private TirageDeCode tirage;
 
 	@AfterEach
 	void effacerLaBase() {
@@ -94,6 +107,9 @@ class SoireeHttpTest {
 		var sansTitre = envoyer(HttpMethod.POST, "/api/soirees",
 				Map.of("titre", "   ", "format", "SOLO", "pilotage", "MANUEL"));
 		verifierRefus("creerSoiree", sansTitre, 422, "DONNEES_INVALIDES");
+		// Un champ requis absent viole le schéma : 400, comme un Format absent.
+		verifierRefus("creerSoiree", envoyer(HttpMethod.POST, "/api/soirees",
+				Map.of("format", "SOLO", "pilotage", "MANUEL")), 400, "REQUETE_INVALIDE");
 
 		Map<String, Object> sansFormat = new HashMap<>(Map.of("titre", "Quiz", "pilotage", "MANUEL"));
 		verifierRefus("creerSoiree", envoyer(HttpMethod.POST, "/api/soirees", sansFormat), 400, "REQUETE_INVALIDE");
@@ -205,7 +221,7 @@ class SoireeHttpTest {
 		assertThat(qrCode.getHeaders().getContentType()).hasToString("image/svg+xml");
 		assertThat(qrCode.getHeaders().getCacheControl()).isEqualTo("no-store");
 		assertThat(QrCodeSvgTest.relire(qrCode.getBody()))
-				.isEqualTo("http://localhost:" + port + "/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
+				.isEqualTo(adresseServeur() + "/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
 	}
 
 	@Test
@@ -213,14 +229,17 @@ class SoireeHttpTest {
 		JsonNode ouverte = soireeOuverte();
 		String id = ouverte.path("id").asString();
 
-		var qrCode = RestClient.create("http://localhost:" + port).get().uri("/api/soirees/" + id + "/qrcode")
+		var qrCode = RestClient.create(adresseServeur()).get().uri("/api/soirees/" + id + "/qrcode")
 				.header("Authorization", "Bearer " + cleEcran(id))
 				.header("X-Forwarded-Proto", "https")
 				.header("X-Forwarded-Host", "croustyquizz.example")
 				.retrieve().toEntity(String.class);
 
+		ContratApi.verifier(CONTRAT, "consulterQrCodeSoiree", qrCode);
+		String adresse = "https://croustyquizz.example/quiz/rejoindre.html";
+		assertThat(qrCode.getHeaders().getFirst("Adresse-Manette")).isEqualTo(adresse);
 		assertThat(QrCodeSvgTest.relire(qrCode.getBody()))
-				.isEqualTo("https://croustyquizz.example/rejoindre.html#code=" + ouverte.path("codeAcces").asString());
+				.isEqualTo(adresse + "#code=" + ouverte.path("codeAcces").asString());
 	}
 
 	@Test
@@ -247,14 +266,31 @@ class SoireeHttpTest {
 	}
 
 	@Test
+	void unPseudoInjurieuxOuDejaPrisEstRefuseSelonLeContrat() throws Exception {
+		String code = soireeOuverte().path("codeAcces").asString();
+		envoyer(HttpMethod.POST, "/api/soirees/rejoindre", Map.of("codeAcces", code, "pseudo", "Léa"));
+
+		verifierRefus("rejoindreSoiree", envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
+				Map.of("codeAcces", code, "pseudo", "LÉA")), 409, "PSEUDO_DEJA_PRIS");
+		verifierRefus("rejoindreSoiree", envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
+				Map.of("codeAcces", code, "pseudo", "s@l0pe")), 422, "PSEUDO_REFUSE");
+	}
+
+	@Test
 	void lesTroisEcransDuParcoursSontServis() {
-		for (String page : new String[] { "/preparer-soiree.html", "/ecran-de-salle.html", "/rejoindre.html" }) {
+		for (String page : new String[] { "/preparer-soiree.html", "/ecran.html", "/rejoindre.html" }) {
 			var reponse = envoyer(HttpMethod.GET, page, null);
 			assertThat(reponse.getStatusCode().value()).as(page).isEqualTo(200);
 			assertThat(reponse.getHeaders().getContentType().isCompatibleWith(MediaType.TEXT_HTML)).as(page).isTrue();
-			assertThat(reponse.getBody()).as(page).contains("/js/api.js");
 		}
 		assertThat(envoyer(HttpMethod.GET, "/js/api.js", null).getBody()).contains("export async function appeler");
+	}
+
+	@Test
+	void lEcranDeSalleDuParcoursEstLaCoquilleCommune() {
+		// La préparation ouvre ecran.html avec la clé d'Écran ; l'ancienne page dédiée n'est plus servie (#106).
+		assertThat(envoyer(HttpMethod.GET, "/preparer-soiree.html", null).getBody()).contains("/ecran.html?");
+		assertThat(envoyer(HttpMethod.GET, "/ecran-de-salle.html", null).getStatusCode().value()).isEqualTo(404);
 	}
 
 	@Test
@@ -270,12 +306,75 @@ class SoireeHttpTest {
 				.isEqualTo("Soirée de démonstration");
 	}
 
+	@Test
+	void uneIdentiteDeDemonstrationDeJoueurOuDEcranNeVisePasUneSoireeEnregistree() throws Exception {
+		String soiree = soireeOuverte().path("id").asString();
+		String joueur = "demo:JOUEUR:" + soiree + ":" + UUID.randomUUID();
+		String ecran = "demo:ECRAN:" + soiree + ":" + UUID.randomUUID();
+
+		verifierRefus("retrouverEtatManette",
+				envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/manette", null, joueur), 401, "AUTHENTIFICATION_REQUISE");
+		var salle = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/salle", null, ecran);
+		verifierRefus("retrouverEtatSalle", salle, 401, "AUTHENTIFICATION_REQUISE");
+		assertThat(json.readTree(salle.getBody()).path("detail").asString()).contains("clé créée depuis la Console");
+		for (String jeton : List.of(joueur, ecran)) {
+			verifierRefusAuConnect(jeton);
+		}
+
+		// L'Animateur de démonstration reste accepté jusqu'à la connexion du Lieu (#5).
+		var console = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/console", null,
+				"demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID());
+		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", console);
+		assertThat(console.getStatusCode().value()).isEqualTo(200);
+	}
+
+	@Test
+	void uneSoireeFictiveNePretePasSonIdentiteDeDemonstrationAUnVraiJoueur() throws Exception {
+		String code = soireeOuverte().path("codeAcces").asString();
+		var arrivee = envoyer(HttpMethod.POST, "/api/soirees/rejoindre", Map.of("codeAcces", code, "pseudo", "Léa"));
+		ContratApi.verifier(CONTRAT, "rejoindreSoiree", arrivee);
+		assertThat(arrivee.getStatusCode().value()).isEqualTo(201);
+		// Un UUID vide ferait refuser le jeton pour une autre raison que le vrai Joueur.
+		String lea = UUID.fromString(json.readTree(arrivee.getBody()).at("/joueur/id").asString()).toString();
+		UUID fictive = UUID.randomUUID();
+		String jeton = "demo:JOUEUR:" + fictive + ":" + lea;
+
+		verifierRefus("retrouverEtatManette",
+				envoyer(HttpMethod.GET, "/api/soirees/" + fictive + "/etat/manette", null, jeton), 401,
+				"AUTHENTIFICATION_REQUISE");
+		verifierRefusAuConnect(jeton);
+	}
+
+	/** Le CONNECT STOMP passe par le même résolveur que HTTP ; son refus devient une trame ERROR. */
+	private void verifierRefusAuConnect(String jeton) {
+		var connexion = StompHeaderAccessor.create(StompCommand.CONNECT);
+		connexion.setNativeHeader("Authorization", "Bearer " + jeton);
+		assertThatThrownBy(() -> resolveur.resoudre(connexion)).as(jeton)
+				.isInstanceOfSatisfying(RefusDeCommande.class, refus -> {
+					assertThat(refus.refus().statutHttp()).isEqualTo(401);
+					assertThat(refus.refus().code()).isEqualTo("AUTHENTIFICATION_REQUISE");
+				});
+	}
+
+	@Test
+	void sansCodeLibreApresTousLesEssaisLOuvertureRepond503EtLaSoireeResteEnPreparation() throws Exception {
+		String pris = soireeOuverte().path("codeAcces").asString();
+		String id = json.readTree(envoyer(HttpMethod.POST, "/api/soirees",
+				Map.of("titre", "Quiz", "format", "SOLO", "pilotage", "MANUEL")).getBody()).path("id").asString();
+		doReturn(pris).when(tirage).tirer();
+
+		verifierRefus("ouvrirSoiree", envoyer(HttpMethod.POST, "/api/soirees/" + id + "/ouverture", null), 503,
+				"SERVICE_INDISPONIBLE");
+		assertThat(json.readTree(envoyer(HttpMethod.GET, "/api/soirees/" + id, null).getBody()).path("etat").asString())
+				.isEqualTo("PREPARATION");
+	}
+
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps) {
 		return envoyer(methode, route, corps, null);
 	}
 
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps, String secret) {
-		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
+		var requete = RestClient.create(adresseServeur()).method(methode).uri(route);
 		if (secret != null) {
 			requete.header("Authorization", "Bearer " + secret);
 		}
@@ -287,6 +386,10 @@ class SoireeHttpTest {
 		}
 		return requete.retrieve().onStatus(statut -> statut.isError(), (demande, reponse) -> { })
 				.toEntity(String.class);
+	}
+
+	private String adresseServeur() {
+		return "http://localhost:" + port + "/quiz";
 	}
 
 }

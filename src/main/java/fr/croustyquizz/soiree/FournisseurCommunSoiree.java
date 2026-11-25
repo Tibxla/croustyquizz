@@ -3,7 +3,9 @@ package fr.croustyquizz.soiree;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
@@ -14,13 +16,15 @@ import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
 import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.photos.PhotosEnMemoire;
 import fr.croustyquizz.tempsreel.FournisseurPartieCommune;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Partie commune des vues tirée de la Soirée enregistrée : la Soirée, ses
  * Joueurs non exclus, sa Manche active et, pour la Console, son programme.
- * Classement général et dernier Buzz restent vides jusqu'à leurs issues.
+ * Le Classement général vient des Points acquis des Manches. La dernière Réponse
+ * et le résultat personnel viennent de {@link ResultatsDeSoiree}.
  * <p>
  * Une Soirée absente de la base est confiée à l'autre fournisseur du profil,
  * s'il y en a un : la démonstration du prototype en dev et recette (#80).
@@ -34,25 +38,43 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 	private final DepotDeJoueurs depotDeJoueurs;
 	private final DepotDeManches depotDeManches;
 	private final JsonMapper json;
+	private final ClassementDeSoiree calculDuClassement;
+	private final ResultatsDeSoiree resultats;
+	private final PhotosEnMemoire photos;
 	private final ObjectProvider<FournisseurPartieCommune> fournisseurs;
 
 	FournisseurCommunSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs,
-			DepotDeManches depotDeManches, JsonMapper json, ObjectProvider<FournisseurPartieCommune> fournisseurs) {
+			DepotDeManches depotDeManches, JsonMapper json, ClassementDeSoiree calculDuClassement,
+			ResultatsDeSoiree resultats,
+			ObjectProvider<FournisseurPartieCommune> fournisseurs, PhotosEnMemoire photos) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.depotDeManches = depotDeManches;
 		this.json = json;
+		this.calculDuClassement = calculDuClassement;
+		this.resultats = resultats;
+		this.photos = photos;
 		this.fournisseurs = fournisseurs;
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public Map<String, Object> fournir(UUID soireeId, Destination destination) {
+		return fournir(soireeId, Set.of(destination)).get(destination);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Map<Destination, Map<String, Object>> fournir(UUID soireeId, Set<Destination> destinations) {
+		if (destinations.isEmpty()) {
+			return Map.of();
+		}
 		Soiree soiree = depotDeSoirees.findById(soireeId).orElse(null);
 		if (soiree == null) {
-			return autre().fournir(soireeId, destination);
+			return autre().fournir(soireeId, destinations);
 		}
 		List<ManchePersistante> programme = depotDeManches.deLaSoiree(soireeId);
+		List<Joueur> joueurs = presents(soireeId);
 		ManchePersistante active = programme.stream()
 				.filter(manche -> manche.getEtat() == EtatManche.EN_COURS || manche.getEtat() == EtatManche.EN_PAUSE)
 				.findFirst().orElse(null);
@@ -60,23 +82,52 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 		vue.put("soiree", ProjectionSoiree.de(soiree));
 		vue.put("mancheActive", active == null ? null : ProjectionManche.de(active, json));
 		vue.put("modeEnCours", active == null ? null : active.getMode());
-		vue.put("joueurs", presents(soireeId).stream()
+		vue.put("joueurs", joueurs.stream()
 				// Le suivi de présence arrive avec #7 et #47 : un Joueur présent est réputé connecté.
 				.map(joueur -> new ProjectionAccesJoueur.JoueurPublic(joueur.getId(), joueur.getPseudo(), true))
 				.toList());
-		vue.put("classement", List.of());
-		vue.put("dernierBuzz", null);
+		vue.put("classement", classement(soiree, programme, joueurs));
+		vue.put("dernierBuzz", soiree.getDernierBuzz());
+		Map<Destination, Map<String, Object>> parties = new LinkedHashMap<>();
+		for (Destination destination : destinations) {
+			parties.put(destination, completer(soireeId, destination, vue, programme, active != null, soiree.accepteLesArrivees()));
+		}
+		return parties;
+	}
+
+	private Map<String, Object> completer(UUID soireeId, Destination destination, Map<String, Object> commun,
+			List<ManchePersistante> programme, boolean mancheActive, boolean accepteLesArrivees) {
+		Map<String, Object> vue = new LinkedHashMap<>(commun);
+		vue.put("photos", photos.projection(soireeId, destination, accepteLesArrivees, mancheActive));
 		if (destination.type() == Destination.Type.CONSOLE) {
 			vue.put("programme", programme.stream().map(manche -> ProjectionManche.de(manche, json)).toList());
 		}
 		if (destination.type() == Destination.Type.JOUEUR) {
 			vue.put("joueurId", destination.joueurId());
 			// L'éligibilité d'un retardataire à la Manche en cours relève de #10.
-			vue.put("eligiblePourMancheActive", active != null);
-			vue.put("derniereReponse", null);
-			vue.put("resultatPersonnel", null);
+			vue.put("eligiblePourMancheActive", mancheActive);
+			vue.put("derniereReponse", resultats.derniereReponse(soireeId, destination.joueurId()).orElse(null));
+			vue.put("resultatPersonnel", resultats.resultatPersonnel(soireeId, destination.joueurId()).orElse(null));
 		}
 		return vue;
+	}
+
+	/** Lecture ponctuelle de la même projection, sous le verrou de la Soirée. */
+	@Transactional(readOnly = true)
+	public List<ClassementDeSoiree.LigneClassement> classement(UUID soireeId) {
+		Soiree soiree = depotDeSoirees.findById(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
+		return classement(soiree, depotDeManches.deLaSoiree(soireeId), presents(soireeId));
+	}
+
+	private List<ClassementDeSoiree.LigneClassement> classement(Soiree soiree, List<ManchePersistante> programme,
+			List<Joueur> joueurs) {
+		if (soiree.getFormat() != Format.SOLO) {
+			return List.of(); // Les Concurrents du Format Équipe seront fournis par #26.
+		}
+		var noms = joueurs.stream().collect(Collectors.toMap(Joueur::getId, Joueur::getPseudo));
+		var points = programme.stream().filter(manche -> manche.getMode().compteAuClassementGeneral())
+				.flatMap(manche -> manche.getPoints().stream()).toList();
+		return calculDuClassement.calculer(noms, points);
 	}
 
 	@Override

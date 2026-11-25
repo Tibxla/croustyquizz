@@ -19,15 +19,19 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 		...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
 		...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
 	});
-	async function envoyer(methode, chemin, corps, { entetes = {}, signal } = {}) {
+	function requerir(methode, chemin, corps, { entetes = {}, signal } = {}) {
 		const url = new URL(chemin, adresse);
 		if (url.origin !== new URL(adresse).origin) throw new Error('La requête doit rester sur CroustyQuizz.');
-		const reponse = await requete(url, {
+		const binaire = corps instanceof Blob;
+		return requete(url, {
 			method: methode, credentials: 'same-origin', cache: 'no-store', signal,
 			headers: { Accept: 'application/json', ...entetes,
-				...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetesIdentite() },
-			...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
+				...(corps === undefined ? {} : { 'Content-Type': binaire ? corps.type : 'application/json' }), ...entetesIdentite() },
+			...(corps === undefined ? {} : { body: binaire ? corps : JSON.stringify(corps) }),
 		});
+	}
+	async function envoyer(methode, chemin, corps, options) {
+		const reponse = await requerir(methode, chemin, corps, options);
 		const { lisible, corps: lu } = await lireCorps(reponse);
 		if (lisible) return { statut: reponse.status, corps: lu };
 		// Un succès illisible n'est pas une confirmation : l'appelant le traite comme une panne réseau.
@@ -36,6 +40,24 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 	}
 	return {
 		envoyer,
+		async chargerImage(chemin, { signal } = {}) {
+			const reponse = await requerir('GET', chemin, undefined, { entetes: { Accept: 'image/jpeg' }, signal });
+			if (!reponse.ok || reponse.headers?.get('Content-Type') !== 'image/jpeg') {
+				throw new Error('Cette photo est indisponible.');
+			}
+			return reponse.blob();
+		},
+		async chargerQrCode(soireeId, signal) {
+			if (!jeton || jeton.startsWith('demo:')) return null;
+			const reponse = await requerir('GET', `/api/soirees/${encodeURIComponent(soireeId)}/qrcode`, undefined, {
+				entetes: { Accept: 'image/svg+xml, application/problem+json' }, signal,
+			});
+			const adresseManette = reponse.headers.get('Adresse-Manette');
+			if (!reponse.ok || !adresseManette || !/^image\/svg\+xml\s*(?:;|$)/i.test(reponse.headers.get('Content-Type') ?? '')) {
+				return null;
+			}
+			return { blob: await reponse.blob(), adresseManette };
+		},
 		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur }) {
 			const url = new URL('/ws', adresse);
 			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';

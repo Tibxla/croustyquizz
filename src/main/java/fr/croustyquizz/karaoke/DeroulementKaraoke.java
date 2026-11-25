@@ -9,17 +9,20 @@ import java.util.function.Supplier;
 
 /** Domaine du Karaoké, sans source externe ni publication. */
 public final class DeroulementKaraoke implements DeroulementDeManche {
+    static final Duration DUREE_VOTE_PAR_DEFAUT = Duration.ofSeconds(30);
     private static final Set<Destination> ECRANS = Set.of(
             Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
     private static final Set<Destination> SALLE_ET_CONSOLE = Set.of(Destination.SALLE, Destination.CONSOLE);
     private static final String LECTURE_MODIFIEE = "lecture-chanson-modifiee";
     private static final String CALAGE_MODIFIE = "calage-chanson-modifie";
+    private static final String PASSAGE_APPELE = "passage-appele";
 
     private final ContexteDeManche contexte;
     private final Duration delaiAppel;
     private final Supplier<UUID> identifiants;
     private final FileAttente file;
     private final CycleDePassage cycle;
+    private final VoteDuPublic vote;
     private final Map<UUID, ContenuKaraoke> contenus = new HashMap<>();
     private final Map<UUID, LecturePassage> lectures = new HashMap<>();
     private UUID lecteurDesigneId;
@@ -27,24 +30,44 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     private EtatManche etat;
 
     public DeroulementKaraoke(ContexteDeManche contexte, ReglagesKaraoke reglages, Duration delaiAppel) {
-        this(contexte, reglages, delaiAppel, UUID::randomUUID);
+        this(contexte, reglages, delaiAppel, DUREE_VOTE_PAR_DEFAUT);
     }
 
     public DeroulementKaraoke(ContexteDeManche contexte, ReglagesKaraoke reglages, Duration delaiAppel,
             Supplier<UUID> identifiants) {
-        this(contexte, delaiAppel, identifiants, new EtatKaraokePersiste(new EtatFileAttente(contexte.soireeId(), contexte.mancheId(),
+        this(contexte, reglages, delaiAppel, DUREE_VOTE_PAR_DEFAUT, identifiants);
+    }
+
+    public DeroulementKaraoke(ContexteDeManche contexte, ReglagesKaraoke reglages, Duration delaiAppel,
+            Duration dureeVote) {
+        this(contexte, reglages, delaiAppel, dureeVote, UUID::randomUUID);
+    }
+
+    public DeroulementKaraoke(ContexteDeManche contexte, ReglagesKaraoke reglages, Duration delaiAppel,
+            Duration dureeVote, Supplier<UUID> identifiants) {
+        this(contexte, delaiAppel, dureeVote, identifiants, new EtatKaraokePersiste(new EtatFileAttente(contexte.soireeId(), contexte.mancheId(),
                 reglages.limitePassagesEnAttente(), 1, 1, 1, null, List.of(), Map.of()), Map.of()),
                 EtatManche.PRETE);
     }
 
     DeroulementKaraoke(ContexteDeManche contexte, Duration delaiAppel,
             EtatKaraokePersiste persiste, EtatManche etatManche) {
-        this(contexte, delaiAppel, persiste, etatManche, UUID::randomUUID);
+        this(contexte, delaiAppel, DUREE_VOTE_PAR_DEFAUT, persiste, etatManche);
     }
 
     DeroulementKaraoke(ContexteDeManche contexte, Duration delaiAppel,
             EtatKaraokePersiste persiste, EtatManche etatManche, Supplier<UUID> identifiants) {
-        this(contexte, delaiAppel, identifiants, persiste, verifierEtatRestaure(etatManche));
+        this(contexte, delaiAppel, DUREE_VOTE_PAR_DEFAUT, persiste, etatManche, identifiants);
+    }
+
+    DeroulementKaraoke(ContexteDeManche contexte, Duration delaiAppel, Duration dureeVote,
+            EtatKaraokePersiste persiste, EtatManche etatManche) {
+        this(contexte, delaiAppel, dureeVote, persiste, etatManche, UUID::randomUUID);
+    }
+
+    DeroulementKaraoke(ContexteDeManche contexte, Duration delaiAppel, Duration dureeVote,
+            EtatKaraokePersiste persiste, EtatManche etatManche, Supplier<UUID> identifiants) {
+        this(contexte, delaiAppel, dureeVote, identifiants, persiste, verifierEtatRestaure(etatManche));
     }
 
     private static EtatManche verifierEtatRestaure(EtatManche etatManche) {
@@ -54,7 +77,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         return etatManche;
     }
 
-    private DeroulementKaraoke(ContexteDeManche contexte, Duration delaiAppel, Supplier<UUID> identifiants,
+    private DeroulementKaraoke(ContexteDeManche contexte, Duration delaiAppel, Duration dureeVote, Supplier<UUID> identifiants,
             EtatKaraokePersiste persiste, EtatManche etatManche) {
         this.contexte = contexte;
         this.delaiAppel = delaiAppel;
@@ -64,8 +87,14 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         this.lectures.putAll(persiste.lectures());
         this.lecteurDesigneId = persiste.lecteurDesigneId();
         this.etat = Objects.requireNonNull(etatManche);
-        this.cycle = new CycleDePassage(file, contexte.horloge(), delaiAppel, persiste.cycle(), this::surCloture);
-        if (etatManche == EtatManche.EN_COURS) { cycle.reprogrammerFin(); }
+        Horloge horloge = horlogeAvecEnchainement(contexte.horloge());
+        this.cycle = new CycleDePassage(file, horloge, delaiAppel, persiste.cycle(), this::surCloture);
+        this.vote = new VoteDuPublic(file, horloge, dureeVote, persiste.voteDuPublic(),
+                cloture -> { derniereCauseMinuteur = "vote-clos"; });
+        if (etatManche == EtatManche.EN_COURS) {
+            cycle.reprogrammerFin();
+            vote.reprogrammer(contexte.horloge().maintenant());
+        }
     }
 
     @Override public void demarrer() {
@@ -105,8 +134,13 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     @Override public ResultatDeCommande recevoir(ActionJoueur action) {
+        return apres(appliquerAction(action), action == null ? null : action.recueLe());
+    }
+
+    private ResultatDeCommande appliquerAction(ActionJoueur action) {
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
+        if (action instanceof VoterPassage notation) { return voter(notation); }
         if (action instanceof ConfirmerPresencePassage confirmation) { return confirmer(confirmation); }
         if (action instanceof DesinscrirePassage desinscription) {
             return resultatPassage(file.desinscrire(desinscription.joueurId(), desinscription.cible(), desinscription.recueLe()),
@@ -137,13 +171,57 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
                 ECRANS, "file-attente-modifiee", 201);
     }
 
+    private ResultatDeCommande apres(ResultatDeCommande resultat, Instant maintenant) {
+        if (resultat instanceof Accepte accepte && enchainer(maintenant)) {
+            return new Accepte(accepte.accuse(), ECRANS, PASSAGE_APPELE, accepte.statutHttp());
+        }
+        return resultat;
+    }
+
+    boolean enchainer(Instant maintenant) {
+        if (!contexte.pilotageAutomatique() || etat != EtatManche.EN_COURS
+                || !cycle.appelerSuivantSiLibre(identifiants, maintenant)) { return false; }
+        lectures.clear();
+        return true;
+    }
+
+    private Horloge horlogeAvecEnchainement(Horloge horloge) {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+
+            @Override public Minuteur programmer(Duration delai, Runnable action) {
+                return horloge.programmer(delai, () -> {
+                    action.run();
+                    apresMinuteur();
+                });
+            }
+        };
+    }
+
+    private void apresMinuteur() {
+        if (enchainer(contexte.horloge().maintenant())) { derniereCauseMinuteur = PASSAGE_APPELE; }
+    }
+
+    private ResultatDeCommande voter(VoterPassage action) {
+        var refus = vote.voter(action.joueurId(), action.cible(), action.note(), action.recueLe(), etat == EtatManche.EN_PAUSE);
+        if (refus.isPresent()) { return refus.get(); }
+        var accuse = new AccuseVote(action.envoiId(), contexte.soireeId(), contexte.mancheId(),
+                action.cible().passageId(), action.note(), action.recueLe());
+        return new Accepte(accuse, Set.of(Destination.SALLE, Destination.CONSOLE, Destination.joueur(action.joueurId())),
+                "vote-enregistre", 200);
+    }
+
     @Override public ResultatDeCommande commander(CommandeDeManche commande) {
+        return apres(appliquerCommande(commande), commande == null ? null : commande.recueLe());
+    }
+
+    private ResultatDeCommande appliquerCommande(CommandeDeManche commande) {
         if (commande instanceof ReprendreEnParolesSeules reprise) { return reprendreEnParoles(reprise); }
         if (commande instanceof MarquerDebutParoles geste) { return marquerDebut(geste); }
         if (commande instanceof CorrigerCalage correction) { return corriger(correction); }
+        if (commande instanceof AppelerPassage appel) { return appeler(appel); }
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
-        if (commande instanceof AppelerPassage appel) { return appeler(appel); }
         if (commande instanceof RetirerPassage retrait) {
             return resultatPassage(file.retirer(retrait.acteur().identifiant(), retrait.cible(), retrait.recueLe()),
                     retrait.envoiId(), retrait.recueLe(), retrait.cible(), "RETIRER");
@@ -177,12 +255,19 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
 
     private ResultatDeCommande appeler(AppelerPassage commande) {
         CiblePassage cible = commande.cible();
+        if (contexte.pilotageAutomatique()) {
+            Refuse refus = gardeHorsPause(cible.passageId());
+            return refus != null ? refus : new Refuse(409, "ETAT_INCOMPATIBLE",
+                    "En Pilotage Automatique, le Passage suivant est appelé seul.");
+        }
+        Refuse refus = gardeCommune();
+        if (refus != null) { return refus; }
         if (file.trouver(cible.passageId()) == null) { return introuvable(); }
         if (etat == EtatManche.EN_PAUSE) { return incompatible(); }
         ResultatFile resultat = cycle.appeler(cible, commande.recueLe(), identifiants);
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
         lectures.clear();
-        return accepterCycle(commande.envoiId(), commande.recueLe(), "APPELER", "passage-appele");
+        return accepterCycle(commande.envoiId(), commande.recueLe(), "APPELER", PASSAGE_APPELE);
     }
 
     private ResultatDeCommande confirmer(ConfirmerPresencePassage action) {
@@ -196,6 +281,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         ResultatFile resultat = cycle.demarrer(action.cible(), action.etapeId(),
                 Duration.ofMillis(demarree.dureeReferenceMs()), action.recueLe());
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
+        vote.signalerDemarrage(passage.id());
         lectures.put(passage.id(), demarree);
         return accepterCycle(action.envoiId(), action.recueLe(), "CONFIRMER_PRESENCE", "passage-demarre");
     }
@@ -320,7 +406,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     private ResultatDeCommande marquerDebut(MarquerDebutParoles commande) {
-        Refuse refus = gardeCalage(commande.passageId());
+        Refuse refus = gardeHorsPause(commande.passageId());
         if (refus != null) { return refus; }
         LecturePassage lecture = lectureCourante(commande.passageId(), commande.etapeId(), commande.lectureId());
         if (lecture == null) { return perimee(); }
@@ -336,7 +422,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     private ResultatDeCommande corriger(CorrigerCalage commande) {
-        Refuse refus = gardeCalage(commande.passageId());
+        Refuse refus = gardeHorsPause(commande.passageId());
         if (refus != null) { return refus; }
         LecturePassage lecture = lectureCourante(commande.passageId(), commande.etapeId(), commande.lectureId());
         if (lecture == null || lecture.numeroModificationCalage() != commande.numeroModificationCalage()) { return perimee(); }
@@ -367,7 +453,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         return file.trouver(passageId) == null ? introuvable() : gardeCommune();
     }
 
-    private Refuse gardeCalage(UUID passageId) {
+    private Refuse gardeHorsPause(UUID passageId) {
         Refuse refus = gardeCommune(passageId);
         if (refus != null) { return refus; }
         return etat == EtatManche.EN_PAUSE ? incompatible() : null;
@@ -412,6 +498,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     private void suspendreManche(Instant recueLe) {
         etat = EtatManche.EN_PAUSE;
         cycle.suspendre(recueLe);
+        vote.suspendre(recueLe);
     }
 
     @Override public ResultatDeCommande reprendre(CommandePilotage commande) {
@@ -421,19 +508,20 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         LecturePassage lecture = courant == null ? null : lectures.get(courant.id());
         if (lecture != null && lecture.etat() == EtatLecture.EN_ERREUR) { return incompatible(); }
         reprendreManche(commande.recueLe());
-        return new Accepte(commande.accuse(), ECRANS, "manche-reprise");
+        return apres(new Accepte(commande.accuse(), ECRANS, "manche-reprise"), commande.recueLe());
     }
 
     private void reprendreManche(Instant recueLe) {
         etat = EtatManche.EN_COURS;
         cycle.reprendre(recueLe);
+        vote.reprendre(recueLe);
     }
 
     @Override public ResultatDeCommande passerEtape(CommandePilotage commande) {
         Refuse refus = gardeCommune(); if (refus != null) { return refus; }
         if (cycle.courantActif() == null) { return inactive(); }
         cycle.clore(EtatPassage.SAUTE, TraceTerminale.PASSE_PAR_ANIMATEUR, commande.acteur().identifiant(), commande.recueLe());
-        return new Accepte(commande.accuse(), ECRANS, "passage-saute");
+        return apres(new Accepte(commande.accuse(), ECRANS, "passage-saute"), commande.recueLe());
     }
 
     @Override public ResultatDeCommande terminer(CommandePilotage commande) {
@@ -442,12 +530,16 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
             cycle.clore(EtatPassage.ANNULE, TraceTerminale.MANCHE_TERMINEE, commande.acteur().identifiant(), commande.recueLe());
         }
         file.annulerAttentes(commande.recueLe(), commande.acteur().identifiant());
+        vote.cloreTout(commande.recueLe());
         etat = EtatManche.TERMINEE;
         return new Accepte(commande.accuse(), ECRANS, "manche-terminee");
     }
 
     private void surCloture(CloturePassage cloture) {
         lectures.computeIfPresent(cloture.passageId(), (id, lecture) -> lecture.sansDemande());
+        if (cloture.etat() == EtatPassage.TERMINE) {
+            vote.ouvrir(cloture.passageId(), cloture.instant(), etat == EtatManche.EN_PAUSE);
+        }
         if (TraceTerminale.FIN_PREVUE.equals(cloture.motif())) { derniereCauseMinuteur = "passage-termine"; }
     }
 
@@ -457,7 +549,8 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         return cycle.courantActif() == null ? etapeId == null : cycle.etat().etapeId().equals(etapeId);
     }
     @Override public InstantaneKaraoke instantane() {
-        return new InstantaneKaraoke(etat, file.etat(), contenus, cycle.etat(), lectures, lecteurDesigneId);
+        return new InstantaneKaraoke(etat, file.etat(), contenus, cycle.etat(), lectures, lecteurDesigneId,
+                vote.etat(), contexte.pilotageAutomatique());
     }
     @Override public boolean estTerminee() { return etat == EtatManche.TERMINEE; }
     @Override public List<AttributionDePoints> points() { return List.of(); }
