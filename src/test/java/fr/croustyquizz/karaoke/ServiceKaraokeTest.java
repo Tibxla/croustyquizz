@@ -21,7 +21,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Service réel, transactions annulables, source et ports factices. */
 class ServiceKaraokeTest {
-    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30, 30), new ProprietesKaraoke.Karaoke(8000, 10000));
+    static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30, 30, 10), new ProprietesKaraoke.Karaoke(8000, 10000));
     static final ProprietesSourceKaraoke SOURCE = new ProprietesSourceKaraoke(URI.create("https://source.invalid"), "Test", 5000, 2000000, 120);
     final BancKaraoke banc = new BancKaraoke();
     final UUID soiree = UUID.randomUUID();
@@ -684,7 +684,7 @@ class ServiceKaraokeTest {
             var beans = new StaticListableBeanFactory();
             bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE);
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
-            var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur);
+            var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur, evenement -> { });
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
                     pilotage);
             PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {

@@ -8,7 +8,8 @@ avec `suivreVue`. Il n'existe pas de troisième page Console dans cette branche.
 - [AsyncAPI](asyncapi.yaml) et [schémas](schemas.yaml) : vues complètes révisées.
 - Les routes `/api/test/...` restent en profils `dev`/`recette` seulement ; `/api/heure` reste publique.
 - La vue conserve les 64 derniers Buzz, du plus ancien au plus récent. Une commande
-  acceptée publie toute la vue, horodatée avec la Clock du serveur.
+  acceptée publie toute la vue, horodatée avec la Clock du serveur. Un Buzz du
+  prototype visant une Soirée enregistrée est refusé avec le statut 404.
 
 La salle suit les six étapes de [reconnexion](../README.md#reconnexion-sans-fenêtre-de-perte).
 La capture et la publication partagent le verrou de la Soirée. La première capture
@@ -21,7 +22,7 @@ et à sa destination, et le retire à UNSUBSCRIBE ou déconnexion. Un UUID ambig
 sur plusieurs connexions est inactif. Un UUID neuf est obligatoire à chaque reprise.
 Le prototype est anonyme : l'UUID permet le raccordement au flux, pas l'authentification
 de l'appelant HTTP. En `dev`/`recette`, la seule destination ouverte sans identité est
-`/topic/soirees/{soireeId}/salle`, avec un UUID de Soirée valide. Les destinations
+`/topic/soirees/{soireeId}/salle`, avec un UUID de Soirée valide et absent de la base. Les destinations
 Console et Joueur exigent une identité autorisée dans tous les profils. En production,
 aucun abonnement anonyme n'est accepté.
 Toutes les trames client STOMP SEND sont refusées.

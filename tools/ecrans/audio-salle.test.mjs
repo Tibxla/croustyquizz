@@ -21,6 +21,7 @@ test('le même lecteur joue la Musique d’attente pendant la préparation puis 
 		verrous: navigator.locks, canal: new BroadcastChannel('croustyquizz-test-lecteur'), ouverteA: 100, id: 'salle', surAttente,
 	}) });
 	t.after(() => audio.detruire());
+	audio.reglerMusiqueDAttente(true);
 	audio.choisirDossier([attente, chanson]);
 	assert.equal(audible, undefined);
 	await audio.activerSon();

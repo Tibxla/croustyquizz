@@ -6,9 +6,12 @@ const roles = { manette: 'JOUEUR', console: 'ANIMATEUR', ecran: 'ECRAN' };
 const opaque = /^[A-Za-z0-9_-]{43,128}$/;
 
 // identifiant : l'UUID du Joueur, rangé à côté de son jeton opaque par la page d'arrivée (rejoindre.html).
-export function lireAcces(ecran, recherche, jeton, identifiant) {
+export function lireAcces(ecran, recherche, jeton, identifiant, fragment = '') {
 	const soireeId = new URLSearchParams(recherche).get('soiree');
 	if (!uuid.test(soireeId ?? '')) throw new Error('Lien incomplet : une Soirée valide est requise (?soiree=UUID).');
+	const cleEcran = ecran === 'ecran' ? new URLSearchParams(fragment.replace(/^#/, '')).get('cle') : null;
+	if (cleEcran !== null && !opaque.test(cleEcran)) throw new Error('La clé d’Écran est invalide. Ouvre l’Écran depuis la préparation.');
+	jeton = cleEcran ?? jeton;
 	let acteur = { type: roles[ecran], soireeId };
 	if (jeton?.startsWith('demo:')) {
 		const [prefixe, type, portee, identifiant, surplus] = jeton.split(':');
@@ -22,11 +25,13 @@ export function lireAcces(ecran, recherche, jeton, identifiant) {
 			throw new Error('Ton accès est incomplet. Rejoins à nouveau la Soirée avec son code.');
 		}
 		acteur = ecran === 'manette' ? { type: roles[ecran], identifiant, soireeId } : acteur;
+	} else if (ecran === 'ecran') {
+		throw new Error('Une identité est requise. Ouvre l’Écran depuis la préparation ou la page d’identité de démonstration.');
 	} else if (ecran !== 'console') {
 		throw new Error('Une identité est requise. Rejoins la Soirée avec son code, ou ouvre la page d’identité de démonstration en dev ou recette.');
 	}
 	return {
-		acteur, soireeId,
+		acteur, soireeId, cleEcran,
 		destination: ecran === 'manette' ? `/topic/joueurs/${acteur.identifiant}` :
 			`/topic/soirees/${soireeId}/${ecran === 'ecran' ? 'salle' : 'console'}`,
 		routeEtat: `/api/soirees/${soireeId}/etat/${ecran === 'ecran' ? 'salle' : ecran}`,

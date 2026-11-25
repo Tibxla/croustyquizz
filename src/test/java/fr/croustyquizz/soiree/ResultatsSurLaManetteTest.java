@@ -1,6 +1,7 @@
 package fr.croustyquizz.soiree;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Map;
@@ -50,12 +51,33 @@ class ResultatsSurLaManetteTest {
 	@Autowired
 	private FauxResultats resultats;
 
+	@Autowired
+	private ServiceSoiree service;
+
 	@AfterEach
 	void effacer() {
 		resultats.vider();
 		jdbc.update("delete from acces_ecran");
 		jdbc.update("delete from joueur");
 		jdbc.update("delete from soiree");
+	}
+
+	@Test
+	void unEchecDAssemblageAnnuleLArriveeEtLibereLePseudo() {
+		JsonNode soiree = soireeOuverte();
+		UUID soireeId = UUID.fromString(soiree.path("id").asString());
+		String code = soiree.path("codeAcces").asString();
+		resultats.soireeIndisponible = soireeId;
+
+		assertThatThrownBy(() -> service.rejoindre(code, "Léa"))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessage("Résultats indisponibles");
+		assertThat(service.joueurs(soireeId)).isEmpty();
+
+		resultats.soireeIndisponible = null;
+		ArriveeDeJoueur arrivee = service.rejoindre(code, "Léa");
+		assertThat(arrivee.jeton()).isNotNull();
+		assertThat(service.joueurs(soireeId)).extracting(Joueur::getId).containsExactly(arrivee.joueur().getId());
 	}
 
 	@Test
@@ -70,6 +92,8 @@ class ResultatsSurLaManetteTest {
 				UUID.randomUUID(), Instant.parse("2026-11-24T20:15:03.250Z"));
 		var resultat = new ResultatsDeSoiree.ResultatPersonnel(accuse.etapeId(), true, 87);
 		resultats.donner(leaId, accuse, resultat);
+		// La capture rend la dernière vue publiée : l'arrivée suivante republie les Manettes avec ces résultats.
+		rejoindre(soiree.path("codeAcces").asString(), "Camille");
 
 		String route = "/api/soirees/" + soireeId + "/etat/manette";
 		var vueDeLea = envoyer(HttpMethod.GET, route, null, lea.path("jetonReconnexion").asString());
@@ -93,6 +117,7 @@ class ResultatsSurLaManetteTest {
 
 		private final Map<UUID, AccuseReponse> accuses = new ConcurrentHashMap<>();
 		private final Map<UUID, ResultatPersonnel> resultats = new ConcurrentHashMap<>();
+		private volatile UUID soireeIndisponible;
 
 		void donner(UUID joueurId, AccuseReponse accuse, ResultatPersonnel resultat) {
 			accuses.put(joueurId, accuse);
@@ -102,10 +127,14 @@ class ResultatsSurLaManetteTest {
 		void vider() {
 			accuses.clear();
 			resultats.clear();
+			soireeIndisponible = null;
 		}
 
 		@Override
 		public Optional<AccuseReponse> derniereReponse(UUID soireeId, UUID joueurId) {
+			if (soireeId.equals(soireeIndisponible)) {
+				throw new IllegalStateException("Résultats indisponibles");
+			}
 			return Optional.ofNullable(accuses.get(joueurId));
 		}
 

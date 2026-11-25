@@ -5,7 +5,12 @@ import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { afficherClassementDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
+import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
+import { monterBuzz } from './buzz-manette.mjs';
+import { monterPilotage } from './pilotage-console.mjs';
+import { monterTalonSalle } from './talon-salle.mjs';
+import { memoire } from './api.js';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -39,21 +44,24 @@ function afficherCommun(vue, origine) {
 	const choisirDossier = element('choisir-dossier');
 	if (choisirDossier) choisirDossier.hidden = vue.soiree.etat === 'TERMINEE';
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
-	const talon = element('talon');
-	if (talon) {
-		talon.hidden = !description.codeAcces;
-		texte('code', description.codeAcces ?? '');
-	}
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
 
 async function demarrer() {
-	// La Manette d'un vrai Joueur relit l'accès rangé pour sa Soirée par rejoindre.html ; sinon, l'identité de
-	// démonstration de l'onglet (sessionStorage).
-	const accesManette = ecran === 'manette' ? creerAccesManette().lire(new URLSearchParams(location.search).get('soiree')) : null;
-	const jeton = accesManette?.jeton ?? sessionStorage.getItem('croustyquizz.jeton');
-	const acces = lireAcces(ecran, location.search, jeton, accesManette?.joueurId);
+	const soireeId = new URLSearchParams(location.search).get('soiree');
+	const stockageManette = ecran === 'manette' ? creerAccesManette() : null;
+	const accesManette = stockageManette?.lire(soireeId);
+	const cleEnMemoire = ecran === 'ecran' && memoire.lire('croustyquizz.soireeEcran') === soireeId
+		? memoire.lire('croustyquizz.cleEcran') : null;
+	const jetonEnMemoire = accesManette?.jeton ?? cleEnMemoire ?? memoire.lire('croustyquizz.jeton');
+	const { cleEcran, ...acces } = lireAcces(ecran, location.search, jetonEnMemoire, accesManette?.joueurId, location.hash);
+	const jeton = cleEcran ?? jetonEnMemoire;
+	if (cleEcran !== null) {
+		memoire.ecrire('croustyquizz.cleEcran', cleEcran);
+		memoire.ecrire('croustyquizz.soireeEcran', soireeId);
+		history.replaceState(null, '', location.pathname + location.search);
+	}
 	let csrf;
 	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
@@ -63,10 +71,12 @@ async function demarrer() {
 	const transport = creerTransport({ jeton, csrf });
 	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
 	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
-		creerAccesManette().oublier(acces.soireeId);
+		stockageManette.oublier(acces.soireeId);
 		location.replace(adresseRetourArrivee(accesManette.codeAcces));
 		return;
 	}
+	const zoneTalon = element('talon');
+	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
 	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
 	let suivi;
@@ -84,20 +94,36 @@ async function demarrer() {
 		},
 	});
 	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	const boutonMusique = element('musique-attente');
+	const musiqueConsole = boutonMusique
+		? monterMusiqueDAttenteConsole(boutonMusique, element('musique-attente-statut'), contexte) : null;
+	const musiqueSalle = audioSalle ? monterMusiqueDAttenteSalle(audioSalle, contexte) : null;
 	// Alias de recette explicite : le serveur continue à publier son vrai mode et son bloc.
 	const factice = jeton?.startsWith('demo:') && new URLSearchParams(location.search).get('factice') === '1';
 	const gestionnaire = creerGestionnaireDeMode({ ecran, zones, contexte,
 		...(factice ? { charger: () => import(`./modes/factice/${ecran}.mjs`) } : {}),
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
+	const zonePhotos = element('photos');
+	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
+		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
+	const boutonBuzz = element('buzzer');
+	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
+	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue, origine);
+			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
-			void gestionnaire.afficher(vue, origine);
+			photos?.afficher(vue);
+			buzz?.afficher(vue);
+			pilotage?.afficher(vue);
+			const modeAffiche = gestionnaire.afficher(vue, origine);
+			musiqueConsole?.afficher(vue);
+			musiqueSalle?.afficher(vue, modeAffiche);
 		},
 		surEtat(etat) {
 			changerEtat(etat);
@@ -109,11 +135,17 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		suivi.arreter(); gestionnaire.demonter(); programme?.demonter();
+		talon?.demonter();
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
+		pilotage?.demonter();
+		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {
-		if (evenement.persisted) audioSalle?.suspendre(false);
+		if (evenement.persisted && audioSalle) {
+			suivi.resynchroniser();
+			audioSalle.suspendre(false);
+		}
 	});
 }
 

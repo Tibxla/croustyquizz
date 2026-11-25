@@ -356,7 +356,7 @@ class ServiceDeMancheTest {
 		var socle = new SocleDeManche(banc.verrous, banc.stockage, banc.stockage, banc.registre,
 				new RegistreDesEnvois(banc.stockage, banc.json),
 				new fr.croustyquizz.tempsreel.PublicationDeVues(banc.assembleur, banc.commun,
-						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur), banc.horloge, banc.json, soireeId -> false);
+						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur, evenement -> { }), banc.horloge, banc.json, soireeId -> false);
 		class ServiceAvecGarde extends ServiceDeManche<ModeFacticeDuSocle.Reglages, DeroulementFactice.Etat> {
 			ServiceAvecGarde() { super(banc.mode, banc.mode, socle); }
 			@Override protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {

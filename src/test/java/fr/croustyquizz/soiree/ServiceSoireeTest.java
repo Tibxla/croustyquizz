@@ -43,7 +43,8 @@ import fr.croustyquizz.tempsreel.VerrousSoiree;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceSoireeTest.Reglages.class, VerrousSoiree.class })
+@Import({ TestcontainersConfiguration.class, ServiceSoiree.class, ServiceSoireeTest.Reglages.class,
+		VerrousSoiree.class, FiltreParListe.class })
 class ServiceSoireeTest {
 
 	static final Instant MAINTENANT = Instant.parse("2026-11-12T19:30:00Z");
@@ -64,11 +65,6 @@ class ServiceSoireeTest {
 		@Bean
 		TirageDeTest tirageDeTest() {
 			return new TirageDeTest();
-		}
-
-		@Bean
-		FiltreDeTest filtreDeTest() {
-			return new FiltreDeTest();
 		}
 
 	}
@@ -118,36 +114,8 @@ class ServiceSoireeTest {
 
 	}
 
-	/** Le vrai filtre, que deux arrivées simultanées peuvent être forcées de passer ensemble. */
-	static final class FiltreDeTest implements FiltreDePseudos {
-
-		private final FiltreParListe vrai = new FiltreParListe();
-		private volatile CyclicBarrier rendezVous;
-
-		void retenir(CyclicBarrier barriere) {
-			this.rendezVous = barriere;
-		}
-
-		@Override
-		public boolean estAcceptable(String pseudo) {
-			CyclicBarrier barriere = rendezVous;
-			if (barriere != null) {
-				try {
-					barriere.await(10, TimeUnit.SECONDS);
-				} catch (Exception interruption) {
-					throw new IllegalStateException("Les arrivées simultanées ne se sont pas rejointes", interruption);
-				}
-			}
-			return vrai.estAcceptable(pseudo);
-		}
-
-	}
-
 	@Autowired
 	private ServiceSoiree service;
-
-	@Autowired
-	private FiltreDeTest filtre;
 
 	@Autowired
 	private DepotDeJoueurs joueurs;
@@ -161,7 +129,6 @@ class ServiceSoireeTest {
 	@AfterEach
 	void effacerLaBase() {
 		tirage.oublier();
-		filtre.retenir(null);
 		jdbc.update("delete from acces_ecran");
 		jdbc.update("delete from joueur");
 		jdbc.update("delete from soiree");
@@ -253,7 +220,7 @@ class ServiceSoireeTest {
 		}
 		UUID seconde = soireeCreee();
 
-		assertThatThrownBy(() -> service.ouvrir(seconde)).isInstanceOf(IllegalStateException.class);
+		assertThatThrownBy(() -> service.ouvrir(seconde)).isInstanceOf(AucunCodeLibre.class);
 		assertThat(service.consulter(seconde).getEtat()).isEqualTo(EtatSoiree.PREPARATION);
 		assertThat(tirage.tirages()).isEqualTo(1 + ServiceSoiree.ESSAIS_DE_CODE);
 	}
@@ -335,13 +302,18 @@ class ServiceSoireeTest {
 	@Test
 	void deuxArriveesSimultaneesAvecLeMemePseudoNeDonnentQuUnJoueur() throws Exception {
 		String code = soireeOuverte().getCodeAcces();
-		// Les deux arrivées passent le filtre ensemble, donc la vérification préalable avant toute écriture.
-		filtre.retenir(new CyclicBarrier(2));
+		CyclicBarrier depart = new CyclicBarrier(2);
 
 		ExecutorService deuxManettes = Executors.newFixedThreadPool(2);
 		try {
-			Future<?> premiere = deuxManettes.submit(() -> service.rejoindre(code, "Léa"));
-			Future<?> seconde = deuxManettes.submit(() -> service.rejoindre(code, "léa"));
+			Future<?> premiere = deuxManettes.submit(() -> {
+				depart.await(10, TimeUnit.SECONDS);
+				return service.rejoindre(code, "Léa");
+			});
+			Future<?> seconde = deuxManettes.submit(() -> {
+				depart.await(10, TimeUnit.SECONDS);
+				return service.rejoindre(code, "léa");
+			});
 			List<Throwable> refus = new java.util.ArrayList<>();
 			for (Future<?> arrivee : List.of(premiere, seconde)) {
 				try {

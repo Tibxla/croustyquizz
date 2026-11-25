@@ -271,6 +271,7 @@ evenements:
         pseudo: Basile
         connecte: true
       classement: &id006 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -311,6 +312,19 @@ evenements:
           delaiConfirmationNavigateurMs: 10000
           delaiAppelMs: 30000
           dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        votes: &votesOuverts
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:00Z'
+          clotureLe: null
+          nombreVotes: 0
+          suivantDemarre: false
+          moyenneDixiemes: null
         prochainsPassages:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -354,6 +368,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id007
@@ -373,16 +388,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id008
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: OUVERT
-          delaiRestantMs: 30000
-          calculeLe: '2026-11-18T21:00:00Z'
-          clotureLe: null
-          nombreVotes: 0
+        votes: *votesOuverts
         passagesEnAttente:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -465,6 +471,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -529,6 +537,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: true
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: *id014
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -553,6 +563,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -580,6 +591,18 @@ evenements:
           calculeLe: '2026-11-18T21:00:03Z'
           clotureLe: '2026-11-18T21:00:00Z'
         configurationInterface: *id009
+        votes: &votesAvecUneNote
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 27000
+          calculeLe: '2026-11-18T21:00:03Z'
+          clotureLe: null
+          nombreVotes: 1
+          suivantDemarre: false
+          moyenneDixiemes: null
         prochainsPassages:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -615,6 +638,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id015
@@ -628,16 +652,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id017
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: OUVERT
-          delaiRestantMs: 27000
-          calculeLe: '2026-11-18T21:00:03Z'
-          clotureLe: null
-          nombreVotes: 1
+        votes: *votesAvecUneNote
         passagesEnAttente:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -720,6 +735,8 @@ evenements:
           numeroModification: 3
           maNote: 4
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: *id018
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -744,6 +761,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -771,6 +789,18 @@ evenements:
           calculeLe: '2026-11-18T21:00:10Z'
           clotureLe: '2026-11-18T21:00:00Z'
         configurationInterface: *id009
+        votes: &votesEnPause
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:10Z'
+          clotureLe: null
+          nombreVotes: 1
+          suivantDemarre: false
+          moyenneDixiemes: null
         prochainsPassages:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -806,6 +836,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id019
@@ -819,16 +850,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id020
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: OUVERT
-          delaiRestantMs: 20000
-          calculeLe: '2026-11-18T21:00:10Z'
-          clotureLe: null
-          nombreVotes: 1
+        votes: *votesEnPause
         passagesEnAttente:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -911,6 +933,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -975,6 +999,8 @@ evenements:
           numeroModification: 3
           maNote: 4
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: *id021
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -999,6 +1025,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -1026,6 +1053,18 @@ evenements:
           calculeLe: '2026-11-18T21:00:15Z'
           clotureLe: '2026-11-18T21:00:00Z'
         configurationInterface: *id009
+        votes: &votesRepris
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:15Z'
+          clotureLe: null
+          nombreVotes: 1
+          suivantDemarre: false
+          moyenneDixiemes: null
         prochainsPassages:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -1061,6 +1100,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id022
@@ -1074,16 +1114,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id023
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: OUVERT
-          delaiRestantMs: 20000
-          calculeLe: '2026-11-18T21:00:15Z'
-          clotureLe: null
-          nombreVotes: 1
+        votes: *votesRepris
         passagesEnAttente:
         - passageId: 98000000-0000-4000-8000-000000000042
           numeroModification: 0
@@ -1166,6 +1197,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -1230,6 +1263,8 @@ evenements:
           numeroModification: 3
           maNote: 4
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: *id024
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -1254,6 +1289,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -1281,6 +1317,18 @@ evenements:
           calculeLe: '2026-11-18T21:00:16Z'
           clotureLe: null
         configurationInterface: *id009
+        votes: &votesPendantAppel
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 19000
+          calculeLe: '2026-11-18T21:00:16Z'
+          clotureLe: null
+          nombreVotes: 1
+          suivantDemarre: false
+          moyenneDixiemes: null
         prochainsPassages: []
         nombreAutresPassages: 0
         lecteurDesigneId: null
@@ -1304,6 +1352,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id025
@@ -1317,16 +1366,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id026
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: OUVERT
-          delaiRestantMs: 19000
-          calculeLe: '2026-11-18T21:00:16Z'
-          clotureLe: null
-          nombreVotes: 1
+        votes: *votesPendantAppel
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -1385,6 +1425,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -1437,6 +1479,8 @@ evenements:
           numeroModification: 3
           maNote: 4
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: *id027
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -1461,6 +1505,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -1488,6 +1533,18 @@ evenements:
           calculeLe: '2026-11-18T21:00:17Z'
           clotureLe: null
         configurationInterface: *id009
+        votes: &votesPendantChant
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 18000
+          calculeLe: '2026-11-18T21:00:17Z'
+          clotureLe: null
+          nombreVotes: 1
+          suivantDemarre: true
+          moyenneDixiemes: null
         prochainsPassages: []
         nombreAutresPassages: 0
         lecteurDesigneId: null
@@ -1525,6 +1582,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id028
@@ -1538,16 +1596,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id029
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: OUVERT
-          delaiRestantMs: 18000
-          calculeLe: '2026-11-18T21:00:17Z'
-          clotureLe: null
-          nombreVotes: 1
+        votes: *votesPendantChant
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -1615,6 +1664,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -1667,6 +1718,8 @@ evenements:
           numeroModification: 3
           maNote: 4
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: *id030
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -1691,6 +1744,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -1718,6 +1772,29 @@ evenements:
           calculeLe: '2026-11-18T21:00:25Z'
           clotureLe: '2026-11-18T21:00:25Z'
         configurationInterface: *id009
+        votes: &votesSimultanes
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          nombreVotes: 0
+          suivantDemarre: false
+          moyenneDixiemes: null
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: OUVERT
+          delaiRestantMs: 10000
+          calculeLe: '2026-11-18T21:00:25Z'
+          clotureLe: null
+          nombreVotes: 1
+          suivantDemarre: true
+          moyenneDixiemes: null
         prochainsPassages: []
         nombreAutresPassages: 0
         lecteurDesigneId: null
@@ -1741,6 +1818,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id031
@@ -1754,25 +1832,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id032
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000042
-          numero: 2
-          chanson: *id012
-          interpretes: *id013
-          etat: OUVERT
-          delaiRestantMs: 30000
-          calculeLe: '2026-11-18T21:00:25Z'
-          clotureLe: null
-          nombreVotes: 0
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: OUVERT
-          delaiRestantMs: 10000
-          calculeLe: '2026-11-18T21:00:25Z'
-          clotureLe: null
-          nombreVotes: 1
+        votes: *votesSimultanes
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -1831,6 +1891,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: true
+          moyenneDixiemes: null
+          nombreVotes: null
         - passageId: 98000000-0000-4000-8000-000000000041
           numero: 1
           chanson: *id010
@@ -1842,6 +1904,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -1894,6 +1958,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         - passageId: 98000000-0000-4000-8000-000000000041
           numero: 1
           chanson: *id010
@@ -1905,6 +1971,8 @@ evenements:
           numeroModification: 3
           maNote: 4
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         mesPassagesEnAttente: *id033
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -1929,6 +1997,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -1956,6 +2025,29 @@ evenements:
           calculeLe: '2026-11-18T21:00:35Z'
           clotureLe: '2026-11-18T21:00:25Z'
         configurationInterface: *id009
+        votes: &votesApresCloture
+        - passageId: 98000000-0000-4000-8000-000000000042
+          numero: 2
+          chanson: *id012
+          interpretes: *id013
+          etat: OUVERT
+          delaiRestantMs: 20000
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: null
+          nombreVotes: 0
+          suivantDemarre: false
+          moyenneDixiemes: null
+        - passageId: 98000000-0000-4000-8000-000000000041
+          numero: 1
+          chanson: *id010
+          interpretes: *id011
+          etat: CLOS
+          delaiRestantMs: 0
+          calculeLe: '2026-11-18T21:00:35Z'
+          clotureLe: '2026-11-18T21:00:35Z'
+          nombreVotes: 1
+          suivantDemarre: true
+          moyenneDixiemes: 40
         prochainsPassages: []
         nombreAutresPassages: 0
         lecteurDesigneId: null
@@ -1979,6 +2071,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *id005
       classement: *id006
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *id034
@@ -1992,25 +2085,7 @@ evenements:
         passagePrioritaireId: null
         courant: *id035
         configurationInterface: *id009
-        votes:
-        - passageId: 98000000-0000-4000-8000-000000000042
-          numero: 2
-          chanson: *id012
-          interpretes: *id013
-          etat: OUVERT
-          delaiRestantMs: 20000
-          calculeLe: '2026-11-18T21:00:35Z'
-          clotureLe: null
-          nombreVotes: 0
-        - passageId: 98000000-0000-4000-8000-000000000041
-          numero: 1
-          chanson: *id010
-          interpretes: *id011
-          etat: CLOS
-          delaiRestantMs: 0
-          calculeLe: '2026-11-18T21:00:35Z'
-          clotureLe: '2026-11-18T21:00:35Z'
-          nombreVotes: 1
+        votes: *votesApresCloture
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
@@ -2069,6 +2144,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: true
+          moyenneDixiemes: null
+          nombreVotes: null
         - passageId: 98000000-0000-4000-8000-000000000041
           numero: 1
           chanson: *id010
@@ -2080,6 +2157,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: 40
+          nombreVotes: 1
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -2132,6 +2211,8 @@ evenements:
           numeroModification: 3
           maNote: null
           peutVoter: false
+          moyenneDixiemes: null
+          nombreVotes: null
         - passageId: 98000000-0000-4000-8000-000000000041
           numero: 1
           chanson: *id010
@@ -2143,6 +2224,8 @@ evenements:
           numeroModification: 3
           maNote: 4
           peutVoter: false
+          moyenneDixiemes: 40
+          nombreVotes: 1
         mesPassagesEnAttente: *id036
         nombrePersonnelEnAttente: 0
         peutRechercher: true
@@ -2224,12 +2307,14 @@ cases:
     numeroModification: 3
     maNote: 4
     peutVoter: true
+    moyenneDixiemes: null
+    nombreVotes: null
   valide: false
   correction:
     chemin:
     - peutVoter
     valeur: false
-- nom: Le nombre de votes ne voyage pas vers la Manette
+- nom: Nombre de votes absent de la Manette
   schema: VoteDuPassageManette
   valeur:
     passageId: 98000000-0000-4000-8000-000000000041
@@ -2243,8 +2328,205 @@ cases:
     numeroModification: 3
     maNote: 4
     peutVoter: false
-    nombreVotes: 1
+    moyenneDixiemes: null
   valide: false
+- nom: Moyenne refusée pendant le vote
+  schema: VoteDuPassage
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: OUVERT
+    delaiRestantMs: 30000
+    calculeLe: '2026-11-18T21:00:35Z'
+    clotureLe: null
+    nombreVotes: 1
+    moyenneDixiemes: 40
+    suivantDemarre: false
+  valide: false
+  correction:
+    chemin: [moyenneDixiemes]
+    valeur: null
+- nom: Moyenne refusée sans vote
+  schema: VoteDuPassage
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: CLOS
+    delaiRestantMs: 0
+    calculeLe: '2026-11-18T21:00:35Z'
+    clotureLe: '2026-11-18T21:00:35Z'
+    nombreVotes: 0
+    moyenneDixiemes: 40
+    suivantDemarre: false
+  valide: false
+  correction:
+    chemin: [moyenneDixiemes]
+    valeur: null
+- nom: Moyenne en dessous de 10 refusée
+  schema: VoteDuPassage
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: CLOS
+    delaiRestantMs: 0
+    calculeLe: '2026-11-18T21:00:35Z'
+    clotureLe: '2026-11-18T21:00:35Z'
+    nombreVotes: 1
+    moyenneDixiemes: 9
+    suivantDemarre: false
+  valide: false
+  correction:
+    chemin: [moyenneDixiemes]
+    valeur: 10
+- nom: Moyenne au-dessus de 50 refusée sur la Manette
+  schema: VoteDuPassageManette
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: CLOS
+    delaiRestantMs: 0
+    calculeLe: '2026-11-18T21:00:35Z'
+    clotureLe: '2026-11-18T21:00:35Z'
+    nombreVotes: 1
+    moyenneDixiemes: 51
+    numeroModification: 3
+    maNote: null
+    peutVoter: false
+  valide: false
+  correction:
+    chemin: [moyenneDixiemes]
+    valeur: 50
+- nom: Nombre de votes refusé sur la Manette pendant le vote
+  schema: VoteDuPassageManette
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: OUVERT
+    delaiRestantMs: 30000
+    calculeLe: '2026-11-18T21:00:35Z'
+    clotureLe: null
+    nombreVotes: 1
+    moyenneDixiemes: null
+    numeroModification: 3
+    maNote: null
+    peutVoter: false
+  valide: false
+  correction:
+    chemin: [nombreVotes]
+    valeur: null
+- nom: Aucun vote reçu à la clôture sur la Manette
+  schema: VoteDuPassageManette
+  valeur:
+    passageId: 98000000-0000-4000-8000-000000000041
+    numero: 1
+    chanson: *id010
+    interpretes: *id011
+    etat: CLOS
+    delaiRestantMs: 0
+    calculeLe: '2026-11-18T21:00:35Z'
+    clotureLe: '2026-11-18T21:00:35Z'
+    nombreVotes: 0
+    moyenneDixiemes: null
+    numeroModification: 3
+    maNote: null
+    peutVoter: false
+  valide: true
+- nom: Recapture après la fin de B et le nouvel appel de C
+  schema: BlocKaraokeSalle
+  valeur:
+    mancheId: 98000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 2
+    nombreEnAttente: 0
+    tourOuvert: 2
+    passagePrioritaireId: null
+    courant: &appelPassageC
+      passageId: 98000000-0000-4000-8000-000000000043
+      numero: 3
+      chanson: *id010
+      interpretes: *id011
+      numeroModification: 1
+      etapeId: 11500000-0000-4000-8000-000000000083
+      etat: APPELE
+      prochainAppelPrevuLe: null
+      appeleLe: '2026-11-18T21:00:50Z'
+      echeanceAppelLe: '2026-11-18T21:01:20Z'
+      delaiAppelRestantMs: 30000
+      demarreLe: null
+      finPrevueLe: null
+      positionChronologiqueMs: null
+      tempsPauseMs: 0
+      calculeLe: '2026-11-18T21:00:50Z'
+      clotureLe: null
+    configurationInterface: *id009
+    prochainsPassages: []
+    nombreAutresPassages: 0
+    lecteurDesigneId: null
+    lecture: null
+    paroles: null
+    votes:
+    - passageId: 98000000-0000-4000-8000-000000000042
+      numero: 2
+      chanson: *id012
+      interpretes: *id013
+      etat: OUVERT
+      delaiRestantMs: 5000
+      calculeLe: '2026-11-18T21:00:50Z'
+      clotureLe: null
+      nombreVotes: 0
+      suivantDemarre: false
+      moyenneDixiemes: null
+    - passageId: 98000000-0000-4000-8000-000000000041
+      numero: 1
+      chanson: *id010
+      interpretes: *id011
+      etat: CLOS
+      delaiRestantMs: 0
+      calculeLe: '2026-11-18T21:00:50Z'
+      clotureLe: '2026-11-18T21:00:35Z'
+      nombreVotes: 1
+      suivantDemarre: true
+      moyenneDixiemes: 40
+  valide: true
+- nom: Appel de C après le saut de B depuis APPELE
+  schema: BlocKaraokeSalle
+  valeur:
+    mancheId: 98000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 2
+    nombreEnAttente: 0
+    tourOuvert: 2
+    passagePrioritaireId: null
+    courant: *appelPassageC
+    configurationInterface: *id009
+    prochainsPassages: []
+    nombreAutresPassages: 0
+    lecteurDesigneId: null
+    lecture: null
+    paroles: null
+    votes:
+    - passageId: 98000000-0000-4000-8000-000000000041
+      numero: 1
+      chanson: *id010
+      interpretes: *id011
+      etat: CLOS
+      delaiRestantMs: 0
+      calculeLe: '2026-11-18T21:00:50Z'
+      clotureLe: '2026-11-18T21:00:35Z'
+      nombreVotes: 1
+      suivantDemarre: false
+      moyenneDixiemes: 40
+  valide: true
 resynchronisation:
   destination: /topic/joueurs/98000000-0000-4000-8000-000000000004
   routeEtat: /api/soirees/98000000-0000-4000-8000-000000000001/etat/manette

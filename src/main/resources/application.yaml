@@ -33,6 +33,7 @@ croustyquizz:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30
     dureeVoteSecondes: 30
+    dureeAffichageMoyenneSecondes: 10
   karaoke:
     delaiConsultationNavigateurMs: 8000
     delaiConfirmationNavigateurMs: 10000
@@ -41,3 +42,7 @@ croustyquizz:
     delaiSourceMs: 5000
     tailleReponseSourceMaxOctets: 2097152
     longueurRechercheMax: 120
+  blindtest:
+    urlDeezer: https://api.deezer.com
+    delaiDeezerMs: 5000
+    tailleReponseMaxOctets: 2097152
