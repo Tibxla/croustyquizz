@@ -686,7 +686,7 @@ class ServiceKaraokeTest {
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur, evenement -> { });
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
-                    pilotage);
+                    pilotage, java.util.List.of());
             var persistance = new PersistanceKaraokeJpa(null, json, passages) {
                 @Override public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
                 @Override public void enregistrer(UUID id, Object valeur) {
