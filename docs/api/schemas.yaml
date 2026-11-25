@@ -1032,12 +1032,7 @@ $defs:
       palmaresKaraoke:
         type: [array, 'null']
         items:
-          allOf:
-          - $ref: '#/$defs/LignePalmaresKaraoke'
-          - properties:
-              rang:
-                type: integer
-        maxItems: 3
+          $ref: '#/$defs/LignePalmaresKaraoke'
       classement:
         type: array
         description: Classement général complet par rang croissant.
