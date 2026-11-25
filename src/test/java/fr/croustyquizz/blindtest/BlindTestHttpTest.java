@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,38 +95,13 @@ class BlindTestHttpTest {
 		final AtomicInteger liensRendus = new AtomicInteger();
 		/** Nombre de prochaines demandes de lien qui échouent hors du contrat du catalogue. */
 		final AtomicInteger pannesImprevues = new AtomicInteger();
-		/**
-		 * Playlists propres à un test : une préparation encore en cours pour la Soirée d'un test précédent ne peut ni
-		 * consommer leurs pannes ni fausser leur compte de demandes (#216).
-		 */
-		final Map<Long, MorceauxIsoles> playlistsIsolees = new ConcurrentHashMap<>();
-		private final AtomicLong prochainId = new AtomicLong(900_000_000L);
-
-		/** Deux Morceaux neufs, dont les {@code pannes} premières demandes de lien échouent hors du contrat. */
-		MorceauxIsoles isoler(int pannes) {
-			long base = prochainId.getAndAdd(10);
-			var isoles = new MorceauxIsoles(base, List.of(new Morceau(base + 1, "Halo", "Beyoncé", null),
-					new Morceau(base + 2, "Get Lucky", "Daft Punk", null)), new AtomicInteger(pannes), new AtomicInteger());
-			playlistsIsolees.put(base, isoles);
-			return isoles;
-		}
 
 		@Override public List<Morceau> morceauxDePlaylist(long playlistId) {
 			if (enPanne) { throw new SourceMusicaleIndisponible("Deezer ne répond pas."); }
-			MorceauxIsoles isoles = playlistsIsolees.get(playlistId);
-			return isoles != null ? isoles.morceaux() : List.of(HALO, GET_LUCKY);
+			return List.of(HALO, GET_LUCKY);
 		}
 		@Override public List<Morceau> morceauxDuGenre(long genreId) { return morceauxDePlaylist(genreId); }
 		@Override public Optional<URI> lienExtrait(long idDeezer) {
-			for (MorceauxIsoles isoles : playlistsIsolees.values()) {
-				if (isoles.contient(idDeezer)) {
-					isoles.demandes().incrementAndGet();
-					if (isoles.pannes().getAndUpdate(reste -> Math.max(0, reste - 1)) > 0) {
-						throw new IllegalStateException("Panne imprévue du catalogue de test.");
-					}
-					return Optional.of(URI.create("https://cdnt-preview.dzcdn.net/extrait.mp3?hdnea=exp=1~hmac=" + Long.toHexString(idDeezer * 31)));
-				}
-			}
 			liensDemandes.incrementAndGet();
 			if (pannesImprevues.getAndUpdate(reste -> Math.max(0, reste - 1)) > 0) {
 				throw new IllegalStateException("Panne imprévue du catalogue de test.");
@@ -142,12 +116,6 @@ class BlindTestHttpTest {
 			}
 			return sansExtrait.contains(idDeezer) ? Optional.empty()
 					: Optional.of(URI.create("https://cdnt-preview.dzcdn.net/extrait.mp3?hdnea=exp=1~hmac=" + Long.toHexString(idDeezer * 31)));
-		}
-	}
-
-	record MorceauxIsoles(long playlistId, List<Morceau> morceaux, AtomicInteger pannes, AtomicInteger demandes) {
-		boolean contient(long idDeezer) {
-			return morceaux.stream().anyMatch(morceau -> morceau.idDeezer() == idDeezer);
 		}
 	}
 
@@ -364,33 +332,60 @@ class BlindTestHttpTest {
 	void unePanneImpreviseeDeLaPreparationEstReessayeeParLHorloge() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
 		rejoindre(soiree, "Léa");
-		var isoles = catalogue.isoler(1);
-		ajouterBlindTest(soiree, isoles.playlistId());
+		ajouterBlindTest(soiree);
+		catalogue.pannesImprevues.set(1);
+		int demandes = catalogue.liensDemandes.get();
 
 		lancer(soiree);
 
 		// La demande échoue sans conclure ; tant que le temps ne passe pas, la Manche attend son essai suivant.
-		await().atMost(Duration.ofSeconds(3)).until(() -> isoles.demandes().get() > 0);
-		// Aucun nouvel essai sans l'Horloge : le compteur, lu sans requête, reste à un pendant une demi-seconde.
-		await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(3)).until(() -> isoles.demandes().get() == 1);
-		await().atMost(Duration.ofSeconds(5)).until(() -> "PREPARATION".equals(bloc(soiree).path("phase").asString()));
+		await().atMost(Duration.ofSeconds(3)).until(() -> catalogue.liensDemandes.get() > demandes);
+		await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(2))
+				.until(() -> "PREPARATION".equals(bloc(soiree).path("phase").asString()));
 		// Seule l'Horloge relance : aucune capture ne lit le déroulement (ADR 0004).
 		laisserPasserLesEssais(soiree, 1);
-		assertThat(isoles.demandes().get()).isEqualTo(2);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 2);
 	}
 
 	@Test
 	void unMorceauDontLaPreparationEchoueTroisFoisEstSauteSansFigerLaManche() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
 		rejoindre(soiree, "Léa");
-		var isoles = catalogue.isoler(ServiceBlindTest.ECHECS_AVANT_SAUT);
-		ajouterBlindTest(soiree, isoles.playlistId());
+		ajouterBlindTest(soiree);
+		catalogue.pannesImprevues.set(ServiceBlindTest.ECHECS_AVANT_SAUT);
+		int demandes = catalogue.liensDemandes.get();
 
 		lancer(soiree);
 
 		// Le Morceau 1 est sauté sans nouvelle demande de lien ; le Morceau 2 se prépare normalement.
 		laisserPasserLesEssais(soiree, 2);
-		assertThat(isoles.demandes().get()).isEqualTo(ServiceBlindTest.ECHECS_AVANT_SAUT + 1);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + ServiceBlindTest.ECHECS_AVANT_SAUT + 1);
+	}
+
+	@Test
+	void uneCommandePendantLAttenteDUnEssaiNeDevancePasLHorloge() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		rejoindre(soiree, "Léa");
+		String mancheId = ajouterBlindTest(soiree);
+		catalogue.pannesImprevues.set(1);
+		int demandes = catalogue.liensDemandes.get();
+		int minuteurs = horloge.minuteursEnAttente();
+
+		lancer(soiree);
+		// La demande a échoué et son essai suivant attend l'Horloge.
+		await().atMost(Duration.ofSeconds(3)).until(() -> horloge.minuteursEnAttente() > minuteurs);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 1);
+
+		// Chaque commande enregistrée relance la préparation des Morceaux attendus (#216) : pas celle-ci.
+		String etape = bloc(soiree).path("etapeId").asString();
+		verifier("piloterManche", piloter(soiree, mancheId, "METTRE_EN_PAUSE", etape), 200);
+		verifier("piloterManche", piloter(soiree, mancheId, "REPRENDRE", etape), 200);
+		await().during(Duration.ofMillis(300)).atMost(Duration.ofSeconds(2))
+				.until(() -> catalogue.liensDemandes.get() == demandes + 1);
+
+		horloge.avancer(ServiceBlindTest.DELAI_NOUVEL_ESSAI);
+		attendrePhase(soiree, "EXTRAIT", 1);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 2);
 	}
 
 	/** Fait passer le temps par pas d'un essai, comme une vraie horloge, jusqu'à l'extrait du Morceau attendu. */
@@ -499,12 +494,8 @@ class BlindTestHttpTest {
 	}
 
 	private String ajouterBlindTest(Soiree soiree) throws Exception {
-		return ajouterBlindTest(soiree, 1);
-	}
-
-	private String ajouterBlindTest(Soiree soiree, long playlistId) throws Exception {
 		return verifier("ajouterManche", envoyer(HttpMethod.POST, soiree.route() + "/manches", soiree.animateur(),
-				Map.of("mode", "BLIND_TEST", "reglages", Map.of("source", Map.of("type", "PLAYLIST", "idDeezer", playlistId),
+				Map.of("mode", "BLIND_TEST", "reglages", Map.of("source", Map.of("type", "PLAYLIST", "idDeezer", 1),
 						"nombreMorceaux", 2)), null), 201).path("id").asString();
 	}
 

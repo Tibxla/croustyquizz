@@ -53,6 +53,8 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 	private final Set<UUID> enPreparation = ConcurrentHashMap.newKeySet();
 	/** Échecs imprévus consécutifs par Morceau : retirés dès que la préparation aboutit ou est abandonnée. */
 	private final Map<UUID, Integer> echecs = new ConcurrentHashMap<>();
+	/** Morceaux dont un nouvel essai attend l'Horloge : une commande enregistrée entre-temps ne le devance pas. */
+	private final Set<UUID> essaiProgramme = ConcurrentHashMap.newKeySet();
 
 	public ServiceBlindTest(FabriqueBlindTest fabrique, PersistanceBlindTestJpa persistance, SocleDeManche socle,
 			CatalogueMusical catalogue, TirageDeMorceaux tirage, ParticipantsDePassage participants,
@@ -108,6 +110,9 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 				|| courant.phase() != PhaseBlindTest.PREPARATION) {
 			return;
 		}
+		if (essaiProgramme.contains(courant.etapeId())) {
+			return;
+		}
 		long idDeezer = etat.etat().selection().get(courant.numero() - 1).idDeezer();
 		lancerPreparation(soireeId, mancheId, courant.etapeId(), idDeezer);
 	}
@@ -144,13 +149,17 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 		} catch (RuntimeException erreur) {
 			int nombre = echecs.merge(etapeId, 1, Integer::sum);
 			JOURNAL.error("Échec {} de la préparation du Morceau {} de la Manche {}", nombre, etapeId, mancheId, erreur);
-			// Libéré avant de programmer l'essai, que l'Horloge peut lancer aussitôt.
-			enPreparation.remove(etapeId);
 			if (nombre < ECHECS_MAX) {
-				socle.horloge().programmer(DELAI_NOUVEL_ESSAI,
-						() -> lancerPreparation(soireeId, mancheId, etapeId, idDeezer));
+				// Marqué avant de libérer le Morceau : une commande enregistrée entre-temps ne relance pas avant l'Horloge.
+				essaiProgramme.add(etapeId);
+				enPreparation.remove(etapeId);
+				socle.horloge().programmer(DELAI_NOUVEL_ESSAI, () -> {
+					essaiProgramme.remove(etapeId);
+					lancerPreparation(soireeId, mancheId, etapeId, idDeezer);
+				});
 			} else {
 				echecs.remove(etapeId);
+				enPreparation.remove(etapeId);
 			}
 		}
 	}
