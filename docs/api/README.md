@@ -107,6 +107,21 @@ Le Buzz du socle est disponible dans une Soirée ouverte ou en cours hors Manche
 
 La pause gèle le temps restant ; la reprise crée une nouvelle échéance serveur. En Manuel, `PASSER_ETAPE` clôt d’abord une Question ouverte et montre sa correction ; un nouvel appel, avec un nouvel identifiant d’envoi, passe à la Question suivante. Après la dernière correction, la Manche est terminée. L’Animateur demande ensuite `MANCHE_SUIVANTE`, qui clôt la Soirée si le programme est épuisé. L’arrêt explicite d’une Manche abandonne l’étape non corrigée sans lui attribuer de points.
 
+## Limite de requêtes
+
+Avant toute exposition publique (#4), le serveur limite le Buzz, les Réponses et l’accès à une Soirée. Au-delà, il répond `429 TROP_DE_REQUETES` au format `Probleme` (réponse réutilisable `Erreur429`), avec `Cache-Control: no-store` et `Retry-After` en secondes. La requête n’est pas traitée : ni reçu ni mutation. Une Manette affiche le `detail` comme tout refus ; rien ne réessaie automatiquement. Chaque route a sa propre limite et chaque clé son propre compteur : une Manette qui martèle ne gêne pas sa voisine. Les seuils par défaut sont réglables (`docs/deploiement.md`, « Limite de requêtes ») :
+
+| Routes | Clé | Rafale, puis rythme |
+|---|---|---|
+| `envoyerBuzz` | jeton (`Authorization`) | 10, puis 5 par seconde |
+| `envoyerReponse`, `deposerBrouillonProposition`, `validerProposition`, `voterPassage` | jeton | 20, puis 10 par seconde |
+| `rejoindreSoiree`, codes inconnus (`404 CODE_ACCES_INVALIDE`) | adresse IP | 20, puis 1 toutes les 3 s |
+| `rejoindreSoiree`, toutes les arrivées | adresse IP | 120, puis 1 par seconde |
+| `creerAccesEcran` | adresse IP et Soirée | 10, puis 1 toutes les 6 s |
+| `consulterQrCodeSoiree` | jeton | 10, puis 1 par seconde |
+
+Une requête sans `Authorization` est comptée sur son adresse IP. Une arrivée acceptée ou refusée pour son pseudo ne consomme pas d’essai de code : seuls les codes inconnus en consomment, si bien qu’une salle de 60 Joueurs derrière le même Wi-Fi peut arriver d’un coup.
+
 ## Blind test
 
 Les règles sont celles de l’[ADR 0009](../adr/0009-deroulement-du-blind-test.md). Ce qui suit les décrit vues du réseau ; [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) les illustre.
