@@ -49,8 +49,10 @@ paths:
       summary: Créer un Lieu et son premier Animateur
       description: >-
         Inscription initiale atomique d’un Lieu et de son premier Animateur. L’e-mail est unique sans distinction
-        de casse (409 EMAIL_DEJA_UTILISE). Le mot de passe est haché côté serveur et absent des réponses.
-        L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une extension de #5.
+        de casse (409 EMAIL_DEJA_UTILISE). Ce 409 révèle qu’un compte existe pour cet e-mail : sans confirmation
+        par e-mail, l’inscription ne peut pas répondre de façon neutre. Le mot de passe est haché côté serveur et
+        absent des réponses. L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une
+        extension de #5.
       tags:
       - Accès
       security: []
@@ -102,7 +104,8 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe.'
+        sans distinguer e-mail et mot de passe. Limite connue : le nombre d’essais n’est pas encore limité ; il le
+        sera avec la limite de requêtes de #4, avant toute exposition publique.'
       tags:
       - Accès
       security: []
@@ -173,8 +176,7 @@ paths:
     delete:
       operationId: deconnecterAnimateur
       summary: Fermer la session Animateur
-      description: Invalide la session et ferme les connexions STOMP authentifiées par celle-ci ; récupérer un
-        nouveau CSRF avant une nouvelle connexion.
+      description: Invalide la session ; récupérer un nouveau CSRF avant une nouvelle connexion.
       tags:
       - Accès
       security:
