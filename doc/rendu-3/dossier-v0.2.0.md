@@ -16,7 +16,7 @@ Année 2026-2027 · Révision du 25 novembre 2026
 
 Ce dossier fait évoluer celui du Rendu 2. Il en garde l’ossature et dit, section par section, ce qui a changé depuis la `v0.1.0`. Une section s’ajoute : la **conteneurisation**, que le Rendu 2 ne décrivait qu’en passant.
 
-Sauf mention contraire, les chiffres sont mesurés le 25 novembre 2026 au gel de `develop`, sur le commit `8562bbd`, celui que contient le tag `v0.2.0`. Comme au Rendu 2, une PR qui n’est pas fusionnée au moment du tag reste « en relecture », et son code n’est pas dans la version.
+Sauf mention contraire, les chiffres sont mesurés le 25 novembre 2026 au gel de `develop`, sur le commit `2258c64`, celui que contient le tag `v0.2.0`. Comme au Rendu 2, une PR qui n’est pas fusionnée au moment du tag reste « en relecture », et son code n’est pas dans la version.
 
 ## Équipe, comptes développeurs et fonctionnalités majeures
 
@@ -47,7 +47,7 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 | Étudiant | Feature | Issues | PR fusionnées depuis la v0.1.0 | PR en relecture | Ce qui reste |
 |---|---|---|---|---|---|
-| Tibxla | Karaoké | #21 et #22 fermées ; #23 (Vote et Palmarès) en tickets #115 à #118 | 35, dont l’interface de la File (#94), le Passage (#104, #127, #128, #129), le Vote et sa note moyenne (#154, #165), l’appel automatique (#158) | Palmarès et suite de la pile (#168, #172, #184, #189), suggestions et favoris (#199), Enregistrement (#204), Passages à plusieurs (#206) | Palmarès en fin de Soirée (#118), enchaînement automatique des Manches (#123) |
+| Tibxla | Karaoké | #21 et #22 fermées ; #23 (Vote et Palmarès) en tickets #115 à #118 | 36, dont l’interface de la File (#94), le Passage (#104, #127, #128, #129), le Vote et sa note moyenne (#154, #165), l’appel automatique (#158) | Palmarès et suite de la pile (#168, #172, #184, #189), suggestions et favoris (#199), Enregistrement (#204), Passages à plusieurs (#206) | Palmarès en fin de Soirée (#118), enchaînement automatique des Manches (#123) |
 | nRayen | Blind test | #17, en tranches #174 à #178 | 9, dont la Soirée (#38, #113), les règles (#173), le contrat (#186), le domaine (#192), le catalogue Deezer (#201) et le service (#210) | trois écrans (#212, en brouillon) | fusionner #212 ; correction tolérante (#18), Blind test sur mesure (#19), Format Équipe (#26) |
 | Piyakabib | Quiz | #13 et #14 | aucune | ADR 0008 sur la source des Questions (#105), première Manche (#147, changements demandés le 24/11), variantes et thématiques (#156) | corriger et fusionner #147, puis #156 ; répartition des Réponses (#16) |
 
@@ -65,7 +65,7 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 **En relecture.** La pile du Karaoké attend la relecture de Piyakabib, dans l’ordre proposé sur #168 : le Palmarès de la Manche (#168), le saut d’un Passage sans « Je suis prêt » après 30 secondes (#172), la fin de la Manche sur une File vide (#184) et la hiérarchie des lignes du Palmarès (#189). Sur cette pile s’empilent les suggestions de Chansons et les favoris de l’Animateur (#199), l’Enregistrement d’un Passage sur la Manette (#204) et les Invitations des Passages à plusieurs (#206).
 
-**Hors Karaoké, fusionné depuis la v0.1.0** : le programme de la Soirée depuis la Console (#167), le déroulement manuel d’une Soirée (#183, qui ferme #12), le Classement général (#190, #182), le Buzz de bout en bout dans une Soirée avec un test de charge à 60 Manettes (#194), la Musique d’attente de l’Écran de salle (#152, #155), les photos de la salle validées par l’Animateur (#203), la clé d’Écran et le QR code dans l’Écran de salle (#185), et plusieurs correctifs du socle et du temps réel (#134, #148, #149, #179, #188).
+**Hors Karaoké, fusionné depuis la v0.1.0** : le programme de la Soirée depuis la Console (#167), le déroulement manuel d’une Soirée (#183, qui ferme #12), le Classement général (#190, #182), le Buzz de bout en bout dans une Soirée avec un test de charge à 60 Manettes (#194), la Musique d’attente de l’Écran de salle (#152, #155), les photos de la salle validées par l’Animateur (#203), la clé d’Écran et le QR code dans l’Écran de salle (#185), et plusieurs correctifs du socle et du temps réel (#134, #148, #149, #179, #188). Au gel, un test du Blind test qui échouait par intermittence en CI a révélé une relance trop précoce de la préparation d’un Morceau après une panne : Tibxla l’a reproduite sur un seul cœur puis corrigée dans `ServiceBlindTest` (#217), relue et approuvée par nRayen.
 
 **En relecture, hors Karaoké** : le Freestyle, quatrième Mode de jeu du palier 3 (#197, #200, #207), le compte du Lieu et la session de l’Animateur (#166, #180, #196), le dictionnaire de rimes (#195), le podium final (#193), deux correctifs (#187, #198).
 
@@ -84,7 +84,7 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 **En relecture.** **#212** (tranche 5), en brouillon, ajoute les trois écrans : sans elle, la Manche de Blind test se joue par l’API, pas encore depuis la Manette.
 
-**Relectures.** nRayen a approuvé 33 PR depuis la `v0.1.0`, et demandé des changements sur #147 et #179.
+**Relectures.** nRayen a approuvé 36 PR depuis la `v0.1.0`, et demandé des changements sur #147, #179 et #217.
 
 ## Piyakabib : Quiz
 
@@ -199,9 +199,9 @@ Le dossier est maintenu dans **`doc/rendu-3/dossier-v0.2.0.md`** et compilé en 
 
 ## Le suivi en chiffres, au 25/11
 
-- **110 issues**, dont 64 fermées, contre 66 et 26 au 18/11.
-- **103 PR**, dont 80 fusionnées et 23 ouvertes. 44 PR ont été fusionnées depuis la livraison `v0.1.0` : 35 de Tibxla et 9 de nRayen.
-- **Relectures** : nRayen a approuvé 42 PR (33 depuis la `v0.1.0`), Piyakabib 36 (10), Tibxla 11 (9). Des changements ont été demandés sur 6 PR : par nRayen sur #30, #88, #94, #147 et #179, par Tibxla sur #38. Tibxla publie aussi des relectures détaillées en commentaire, puis approuve une fois les points corrigés, comme sur #186, #192 et #210.
+- **111 issues**, dont 65 fermées, contre 66 et 26 au 18/11.
+- **105 PR**, dont 81 fusionnées et 23 ouvertes au gel. 45 PR ont été fusionnées depuis la livraison `v0.1.0` : 36 de Tibxla et 9 de nRayen.
+- **Relectures** : nRayen a approuvé 45 PR (36 depuis la `v0.1.0`, dont ce dossier), Piyakabib 36 (10), Tibxla 11 (9). Des changements ont été demandés sur 7 PR : par nRayen sur #30, #88, #94, #147, #179 et #217, par Tibxla sur #38. Tibxla publie aussi des relectures détaillées en commentaire, puis approuve une fois les points corrigés, comme sur #186, #192 et #210.
 
 ## Ce qui a changé dans la façon de travailler
 
@@ -312,7 +312,7 @@ Les jalons n’ont pas changé : **`v0.1.0` pour le socle**, **`v0.2.0` pour les
 | Production | Render et Neon, <https://croustyquizz-prod.onrender.com> | chaque livraison taguée, `v0.1.0` puis `v0.2.0` |
 | Démo de secours | un serveur avec Docker Compose, `tools/demo.sh`, à la demande | un tag |
 
-**Tests.** Au gel, sur `8562bbd`, `./mvnw verify` exécute **776 tests JUnit** dans 69 classes, sans échec, contre 308 à la `v0.1.0`. `npm test --prefix tools/api` exécute **244 tests** Node après la vérification des contrats, contre 36. Ils couvrent, en plus de ce que décrivait le Rendu 2 :
+**Tests.** Au gel, sur `2258c64`, `./mvnw verify` exécute **777 tests JUnit** dans 69 classes, sans échec, contre 308 à la `v0.1.0`. `npm test --prefix tools/api` exécute **244 tests** Node après la vérification des contrats, contre 36. Ils couvrent, en plus de ce que décrivait le Rendu 2 :
 
 - les déroulements du Karaoké et du Blind test en Java pur, par la classe commune `ContratDeroulementDeManche` ;
 - les routes HTTP et le canal STOMP de chaque parcours, sur PostgreSQL, validés contre le contrat ;
@@ -323,12 +323,12 @@ Restent à mesurer l’usage sur de vrais téléphones et une Soirée complète 
 
 ## README, licence et indicateurs
 
-| Indicateur | v0.1.0 | v0.2.0, sur `8562bbd` |
+| Indicateur | v0.1.0 | v0.2.0, sur `2258c64` |
 |---|---|---|
-| Couverture des lignes (JaCoCo) | 94,6 % | **96,6 %** (4 632 lignes sur 4 797) |
-| Couverture des branches (JaCoCo) | 85,9 % | **87,6 %** (2 463 sur 2 812) |
+| Couverture des lignes (JaCoCo) | 94,6 % | **96,5 %** (4 638 lignes sur 4 804) |
+| Couverture des branches (JaCoCo) | 85,9 % | **87,7 %** (2 467 sur 2 814) |
 | Alertes PMD (Error Prone et Best Practices) | 0 | **0** |
-| Tests JUnit et tests Node | 308 et 36 | **776** et **244**, sans échec |
+| Tests JUnit et tests Node | 308 et 36 | **777** et **244**, sans échec |
 | Migrations Flyway | 4 | **18** |
 | Version du `pom.xml` | `0.1.0` | `0.2.0` |
 | Licence | MIT | **MIT**, fichier `LICENSE` |
