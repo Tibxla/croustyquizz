@@ -1,6 +1,7 @@
 import { appeler, appelerAvecCsrf, memoire } from './api.js';
 import { ouvrirDialogue } from './dialogue.mjs';
 import { afficherErreurChamp, erreurDeCompte, validerChamps } from './formulaire-compte.mjs';
+import { SOIREES_DU_LIEU } from './compte.mjs';
 
 const INVITATIONS = '/api/animateurs/invitations';
 const FORME_CLE = /^[A-Za-z0-9_-]{43}$/;
@@ -126,7 +127,7 @@ export async function monterInvitationInvite(racine, navigation = location) {
 		if (reponse.statut === 201 && reponse.corps?.id) {
 			motDePasse.value = '';
 			if (memoire.lire('croustyquizz.jeton')?.startsWith('demo:ANIMATEUR:')) memoire.oublier('croustyquizz.jeton');
-			navigation.replace('/preparer-soiree.html');
+			navigation.replace(SOIREES_DU_LIEU);
 			return;
 		}
 		bouton.textContent = 'Rejoindre le Lieu';

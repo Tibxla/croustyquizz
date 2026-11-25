@@ -106,7 +106,7 @@ test('l’invité voit le Lieu puis crée son compte avec la clé dans les corps
 	assert.deepEqual(appels.map(appel => appel.route), [`${ROUTE}/consultation`, '/api/csrf', `${ROUTE}/acceptation`]);
 	assert.deepEqual(JSON.parse(appels[0].options.body), { cle: CLE });
 	assert.deepEqual(JSON.parse(appels[2].options.body), { cle: CLE, nom: 'Émilie', motDePasse: 'Un mot de passe de test' });
-	assert.deepEqual(destinations, ['/preparer-soiree.html']);
+	assert.deepEqual(destinations, ['/soirees.html']);
 });
 
 test('un lien expiré laisse le formulaire masqué', async t => {

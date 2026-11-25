@@ -11,7 +11,7 @@ import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { appeler, appelerAvecCsrf, memoire } from './api.js';
-import { consulterSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
+import { consulterSession, renvoyerVersConnexion, ROUTE_SESSION, SOIREES_DU_LIEU } from './compte.mjs';
 import { monterInvitationConsole } from './invitation.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -88,7 +88,7 @@ async function demarrer() {
 		identite = session.corps;
 		activerDeconnexion(() => arreterTout?.());
 		if (soireeId === null) {
-			location.replace('/preparer-soiree.html');
+			location.replace(SOIREES_DU_LIEU);
 			return;
 		}
 	}
