@@ -37,9 +37,9 @@ public final class RegistreServicesDeManche {
 
 	/**
 	 * Départ d'un Joueur (#205) : la Manche en cours ou en pause de la Soirée le retire de son état, puis republie
-	 * les vues après son commit. Sans Manche active, rien ne change. L'Exclusion l'appelle sous le même verrou, après
-	 * son propre commit, pour que les vues publiées ne comptent plus le Joueur parmi les présents, comme la clôture de
-	 * la Soirée enchaîne ses transactions. Une déconnexion de Manette ne l'appelle pas.
+	 * les vues après son commit. Sans Manche active, rien ne change. Prêt, mais encore appelé par aucune commande :
+	 * l'Exclusion (#11) l'appellera après son propre commit, pour que les vues publiées ne comptent plus le Joueur parmi
+	 * les présents, comme la clôture de la Soirée enchaîne ses transactions. Une déconnexion de Manette ne l'appelle pas.
 	 */
 	public void retirerJoueurParti(UUID soireeId, UUID joueurId) {
 		verrous.executer(soireeId, () -> {
