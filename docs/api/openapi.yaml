@@ -104,8 +104,8 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe. Limite connue : le nombre d’essais n’est pas encore limité ; il le
-        sera avec la limite de requêtes de #4, avant toute exposition publique.'
+        sans distinguer e-mail et mot de passe. Limite connue : le nombre d’essais n’est pas encore limité ; une
+        limite est à ajouter avant toute exposition publique.'
       tags:
       - Accès
       security: []
