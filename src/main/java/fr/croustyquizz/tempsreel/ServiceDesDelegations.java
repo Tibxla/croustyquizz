@@ -110,7 +110,8 @@ public class ServiceDesDelegations {
 		publication.publier(soireeId, Set.of(Destination.CONSOLE, Destination.joueur(joueurId)), EVENEMENT);
 	}
 
-	private void verifierAnimateur(Acteur acteur, UUID soireeId) {
+	/** Animateur de la Soirée seulement : le contrôleur l'appelle aussi avant de lire le corps. */
+	void verifierAnimateur(Acteur acteur, UUID soireeId) {
 		AccesAuxVues.verifier(acteur, soireeId, null);
 		if (acteur.type() != Acteur.Type.ANIMATEUR) {
 			throw new Refuse(403, "ACCES_REFUSE", "Seul l’Animateur attribue ou retire une Délégation.").exception();

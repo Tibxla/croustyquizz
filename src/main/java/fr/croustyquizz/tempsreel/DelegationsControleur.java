@@ -32,6 +32,8 @@ class DelegationsControleur {
 	@PutMapping
 	ResponseEntity<ServiceDesDelegations.Delegation> attribuer(@PathVariable UUID soireeId, @PathVariable UUID joueurId,
 			@RequestBody Attribution attribution, Acteur acteur) {
+		// Un Joueur reçoit 403 avant toute lecture du contenu des pouvoirs.
+		service.verifierAnimateur(acteur, soireeId);
 		var delegation = service.attribuer(acteur, soireeId, joueurId, attribution.lire());
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(delegation);
 	}

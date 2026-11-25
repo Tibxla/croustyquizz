@@ -184,6 +184,11 @@ class DelegationTempsReelTest {
 				Map.of("ouvertes", false), UUID.randomUUID()));
 		verifier("attribuerDelegation", 403, envoyer(HttpMethod.PUT, delegation(basile), jeton(alize),
 				Map.of("pouvoirs", List.of("FILE_ATTENTE")), null));
+		// L'accès passe avant le contenu : un ensemble vide, inconnu ou en double donne aussi 403 à un Joueur.
+		for (var invalide : List.of(List.of(), List.of("EXCLUSION"), List.of("PHOTOS", "PHOTOS"))) {
+			assertThat(verifier("attribuerDelegation", 403, envoyer(HttpMethod.PUT, delegation(basile), jeton(alize),
+					Map.of("pouvoirs", invalide), null)).path("code").asString()).isEqualTo("ACCES_REFUSE");
+		}
 		assertThat(capturer(console).path("vue")).isEqualTo(consoleApresSaut);
 
 		// Retrait : publié à Alizé et à la Console seulement, puis la commande suivante d'Alizé est refusée.
