@@ -173,18 +173,39 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 ## Photos de la salle (#72)
 
 La Manette propose « Envoyer une photo » tant que les envois sont ouverts.
-Le sélecteur du téléphone peut ouvrir l’appareil photo arrière. La Manette
-respecte l’orientation de l’image, la réduit à 1600 pixels de côté au plus
-et la réencode en JPEG avant l’envoi. Ce réencodage retire les métadonnées
-EXIF, dont la position GPS. Si le JPEG dépasse 1,5 Mo, la Manette réduit de
-nouveau ses dimensions. Une image illisible ou trop lourde affiche une erreur
-sous le champ. « Photo envoyée » confirme la réponse du serveur.
+Le champ n’impose pas l’appareil photo (`accept="image/*"`, sans `capture`) :
+le téléphone propose de prendre une photo ou d’en choisir une dans la
+photothèque. La Manette respecte l’orientation de l’image, la réduit à 1600
+pixels de côté au plus et la réencode en JPEG avant l’envoi. Ce réencodage
+retire les métadonnées EXIF, dont la position GPS. Si le JPEG dépasse 1,5 Mo,
+la Manette réduit de nouveau ses dimensions. Une image illisible ou trop lourde
+affiche une erreur sous le champ. « Photo envoyée » confirme la réponse du
+serveur. Pendant l’envoi, le champ reste focalisable mais `aria-disabled` et
+n’ouvre pas le sélecteur. Après une confirmation inconnue ou un refus, choisir
+de nouveau le même fichier (même nom, taille et date) renvoie le même JPEG avec
+la même `Idempotency-Key` : un envoi déjà enregistré rend son reçu au lieu d’un
+doublon. Seuls un autre fichier ou un succès tirent une nouvelle clé. Si
+l’Animateur coupe les envois pendant un envoi déjà parti, la Manette masque le
+champ sans annuler la requête et affiche sa réponse.
+
+Le serveur borne la mémoire avant de lire le corps : `Content-Length` au-delà de
+1,5 Mo refusé, quatre envois lus à la fois au plus, gardes de Soirée, de Joueur
+et de file vérifiées sous le verrou avant la lecture puis de nouveau à l’ajout.
+Chaque Soirée garde au plus 16 Mo de photos (en attente, acceptées et à
+l’affiche) et trente photos acceptées, et toutes les Soirées 64 Mo. Une Soirée
+sans commande photo ni changement d’affiche pendant douze heures perd ses
+photos et ses reçus ; un réglage coupé reste coupé.
 
 Le panneau « Photos de la salle » de la Console suit l’ordre d’arrivée. Chaque
-vignette et son pseudo permettent d’accepter ou de refuser la photo. Couper
-les envois masque la commande sur les Manettes et laisse les photos déjà
-reçues dans leurs files. L’Écran de salle affiche les photos dans l’ordre
-d’acceptation, huit secondes chacune hors Manche, dans le cadre principal.
+vignette et son pseudo permettent d’accepter ou de refuser la photo. Pendant
+la commande, le bouton garde le focus avec `aria-disabled`. Une fois la photo
+modérée, le focus passe au même bouton de la ligne suivante, sinon de la
+précédente, ou au titre du panneau quand la file est vide. L’interrupteur
+« Envois ouverts » garde ce libellé fixe, qui est aussi son nom accessible ;
+la case indique l’état. Couper les envois masque la commande sur les Manettes
+et laisse les photos déjà reçues dans leurs files. L’Écran de salle affiche les
+photos dans l’ordre d’acceptation, huit secondes chacune hors Manche, dans le
+cadre principal, et masque alors la note d’attente et le classement de salle.
 Un début de Manche retire immédiatement la photo à l’affiche. Elle repassera
 au prochain créneau. Une Manche en pause occupe la scène.
 

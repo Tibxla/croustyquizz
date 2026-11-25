@@ -20,6 +20,12 @@
   accent-color: var(--citron);
 }
 
+/* aria-disabled garde le focus : l'interrupteur doit quand même paraître indisponible. */
+.photos--console input[aria-disabled="true"] {
+  accent-color: var(--texte-3);
+  cursor: not-allowed;
+}
+
 .photos__liste {
   margin: 0;
   padding: 0;
@@ -79,7 +85,7 @@
   cursor: pointer;
 }
 
-.photos__champ input:disabled::file-selector-button {
+.photos__champ input[aria-disabled="true"]::file-selector-button {
   color: var(--texte-3);
   cursor: default;
 }
@@ -102,4 +108,6 @@
   object-fit: contain;
 }
 
-.photos--affiche:not([hidden]) + [data-attente] { display: none; }
+/* Pendant une photo, la scène lui revient : ni note d'attente ni classement de salle. */
+.photos--affiche:not([hidden]) ~ [data-attente],
+.photos--affiche:not([hidden]) ~ [data-classement-salle] { display: none; }

@@ -62,6 +62,94 @@ test('Manette : erreur de lecture, nouvel essai, puis confirmation du serveur', 
 	assert.equal(zone.childElementCount, 0);
 });
 
+const fichier = (name, lastModified = 1) => ({ name, size: 12, lastModified, type: 'image/jpeg' });
+
+function manette(options = {}) {
+	const banc_ = banc();
+	let cles = 0, preparations = 0;
+	const module = monterManette(banc_.zone, banc_.contexte, {
+		cle: () => `cle-${++cles}`,
+		preparer: async () => { preparations++; return new Blob([`jpeg-${preparations}`], { type: 'image/jpeg' }); },
+		...options,
+	});
+	module.afficher(ouverte);
+	const champ = banc_.zone.querySelector('input');
+	const choisir = async f => {
+		champ.files = [f];
+		champ.dispatchEvent({ type: 'change' });
+		await terminerMicrotaches();
+	};
+	return { ...banc_, module, champ, choisir, preparations: () => preparations };
+}
+
+test('Manette : le sélecteur propose aussi la photothèque', () => {
+	const { champ, module } = manette();
+	assert.equal(champ.getAttribute('accept'), 'image/*');
+	assert.equal(champ.getAttribute('capture'), null);
+	module.demonter();
+});
+
+test('Manette : même fichier après une confirmation inconnue ou un 5xx, même JPEG et même clé', async () => {
+	const { envois, choisir, preparations, module, zone } = manette();
+	await choisir(fichier('salle.jpg'));
+	envois[0].resolve(Promise.reject(new TypeError('réseau')));
+	await terminerMicrotaches();
+	assert.match(zone.textContent, /Impossible de confirmer/);
+	await choisir(fichier('salle.jpg'));
+	assert.equal(envois[1].args[3].entetes['Idempotency-Key'], 'cle-1');
+	assert.equal(envois[1].args[2], envois[0].args[2]);
+	assert.equal(preparations(), 1);
+	envois[1].resolve({ statut: 503, corps: { detail: 'La mémoire des photos est pleine. Réessaie plus tard.' } });
+	await terminerMicrotaches();
+	assert.match(zone.textContent, /mémoire des photos est pleine/);
+	await choisir(fichier('salle.jpg'));
+	assert.equal(envois[2].args[3].entetes['Idempotency-Key'], 'cle-1');
+	envois[2].resolve({ statut: 201, corps: { photoId: 'photo' } });
+	await terminerMicrotaches();
+	await choisir(fichier('salle.jpg'));
+	assert.equal(envois[3].args[3].entetes['Idempotency-Key'], 'cle-2', 'un succès libère la clé');
+	envois[3].resolve({ statut: 503, corps: { detail: 'Indisponible.' } });
+	await terminerMicrotaches();
+	await choisir(fichier('autre.jpg'));
+	assert.equal(envois[4].args[3].entetes['Idempotency-Key'], 'cle-3', 'un autre fichier tire une clé neuve');
+	assert.equal(preparations(), 3);
+	module.demonter();
+});
+
+test('Manette : pendant l’envoi, le champ garde le focus et refuse un nouveau choix', async () => {
+	const { envois, champ, choisir, module } = manette();
+	champ.focus();
+	await choisir(fichier('salle.jpg'));
+	assert.equal(champ.disabled, false);
+	assert.equal(champ.getAttribute('aria-disabled'), 'true');
+	assert.equal(champ.ownerDocument.activeElement, champ);
+	let empeche = false;
+	champ.dispatchEvent({ type: 'click', preventDefault: () => { empeche = true; } });
+	assert.ok(empeche, 'le sélecteur ne s’ouvre pas');
+	await choisir(fichier('autre.jpg'));
+	assert.equal(envois.length, 1);
+	envois[0].resolve({ statut: 201, corps: { photoId: 'photo' } });
+	await terminerMicrotaches();
+	assert.equal(champ.getAttribute('aria-disabled'), 'false');
+	module.demonter();
+});
+
+test('Manette : couper les envois masque le champ sans annuler l’envoi parti, dont la réponse s’affiche', async () => {
+	const { envois, champ, choisir, module, zone } = manette();
+	await choisir(fichier('salle.jpg'));
+	module.afficher({ ...ouverte, photos: { ouvertes: false } });
+	assert.equal(envois[0].args[3].signal.aborted, false);
+	assert.equal(champ.hidden, true);
+	assert.equal(zone.hidden, false);
+	envois[0].resolve({ statut: 201, corps: { photoId: 'photo' } });
+	await terminerMicrotaches();
+	assert.match(zone.textContent, /Photo envoyée/);
+	assert.equal(zone.hidden, false);
+	module.afficher({ ...ouverte, photos: { ouvertes: true } });
+	assert.equal(champ.hidden, false);
+	module.demonter();
+});
+
 test('Compression : orientation EXIF, rapport conservé, qualité fixe et nouvelle taille sous 1,5 Mo', async () => {
 	const dimensions = [];
 	let ferme = false;
@@ -107,6 +195,73 @@ test('Console : file dans l’ordre, changement de réglage idempotent et libér
 	module.afficher({ ...ouverte, photos: { ouvertes: false, enAttente: [] } });
 	assert.equal(interrupteur.checked, false);
 	assert.deepEqual(liberees, ['blob:vignette', 'blob:vignette']);
+	module.demonter();
+});
+
+function consoleAvecFile(ids) {
+	const banc_ = banc();
+	banc_.contexte.chargerImage = async () => jpeg;
+	const module = monterConsole(banc_.zone, banc_.contexte, { cle: () => 'cle', urlObjet: () => 'blob:v', libererUrl: () => {} });
+	const vue = liste => ({ ...ouverte, photos: { ouvertes: true, enAttente: liste.map(id => ({ photoId: id, pseudo: id.toUpperCase() })) } });
+	module.afficher(vue(ids));
+	const lignes = () => banc_.zone.querySelectorAll('li');
+	for (const ligne of lignes()) ligne.querySelector('img').dispatchEvent({ type: 'load' });
+	return { ...banc_, module, vue, lignes };
+}
+
+test('Console : l’interrupteur porte son libellé visible comme nom accessible', () => {
+	const { zone, module } = consoleAvecFile([]);
+	const interrupteur = zone.querySelector('input');
+	const etiquette = zone.querySelector('label');
+	assert.equal(interrupteur.getAttribute('aria-labelledby'), null);
+	assert.equal(etiquette.getAttribute('for'), interrupteur.id);
+	assert.equal(etiquette.textContent, 'Envois ouverts');
+	assert.equal(etiquette.querySelector('span').getAttribute('aria-hidden'), null);
+	module.demonter();
+});
+
+test('Console : pendant une modération, le bouton garde le focus, puis la ligne suivante le reçoit', async () => {
+	const { zone, envois, module, vue, lignes } = consoleAvecFile(['a', 'b', 'c']);
+	const refuser = lignes()[0].querySelectorAll('button')[1];
+	refuser.focus();
+	refuser.dispatchEvent({ type: 'click' });
+	assert.equal(envois.length, 1);
+	assert.equal(refuser.disabled, false);
+	assert.equal(refuser.getAttribute('aria-disabled'), 'true');
+	refuser.dispatchEvent({ type: 'click' });
+	assert.equal(envois.length, 1, 'la garde ignore un second clic');
+	assert.equal(zone.ownerDocument.activeElement, refuser);
+	envois[0].resolve({ statut: 200, corps: {} });
+	await terminerMicrotaches();
+	module.afficher(vue(['b', 'c']));
+	assert.equal(zone.ownerDocument.activeElement, lignes()[0].querySelectorAll('button')[1]);
+	assert.match(zone.ownerDocument.activeElement.getAttribute('aria-label'), /de B$/);
+
+	const accepterC = lignes()[1].querySelectorAll('button')[0];
+	accepterC.focus();
+	module.afficher(vue(['b']));
+	assert.equal(zone.ownerDocument.activeElement, lignes()[0].querySelectorAll('button')[0], 'sans suivante, la précédente');
+	module.afficher(vue([]));
+	assert.equal(zone.ownerDocument.activeElement, zone.querySelector('h2'));
+	assert.equal(zone.querySelector('h2').getAttribute('tabindex'), '-1');
+	module.demonter();
+});
+
+test('Console : l’interrupteur reste focalisable pendant l’envoi et ignore un nouveau changement', () => {
+	const { zone, envois, module } = consoleAvecFile([]);
+	const interrupteur = zone.querySelector('input');
+	interrupteur.focus();
+	interrupteur.checked = false;
+	interrupteur.dispatchEvent({ type: 'change' });
+	assert.equal(interrupteur.getAttribute('aria-disabled'), 'true');
+	assert.equal(interrupteur.disabled, false);
+	let empeche = false;
+	interrupteur.dispatchEvent({ type: 'click', preventDefault: () => { empeche = true; } });
+	assert.ok(empeche);
+	interrupteur.checked = false;
+	interrupteur.dispatchEvent({ type: 'change' });
+	assert.equal(envois.length, 1);
+	assert.equal(interrupteur.checked, true);
 	module.demonter();
 });
 

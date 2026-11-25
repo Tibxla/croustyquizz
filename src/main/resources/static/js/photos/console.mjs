@@ -3,11 +3,12 @@ import { creerImage, element, routePhotos } from './commun.mjs';
 export function monter(zone, contexte, adaptations = {}) {
 	const { cle = () => crypto.randomUUID() } = adaptations;
 	const document = zone.ownerDocument;
-	const titre = element(document, 'h2', { id: 'titre-photos' }, 'Photos de la salle');
-	const interrupteur = element(document, 'input', { type: 'checkbox', role: 'switch', id: 'regler-photos', 'aria-labelledby': 'titre-photos' });
+	// tabindex="-1" : le focus y revient quand la dernière photo est modérée.
+	const titre = element(document, 'h2', { id: 'titre-photos', tabindex: '-1' }, 'Photos de la salle');
+	const interrupteur = element(document, 'input', { type: 'checkbox', role: 'switch', id: 'regler-photos' });
+	// Libellé fixe, nom accessible de l’interrupteur (WCAG 2.5.3) ; l’état est celui de la case.
 	const etiquette = element(document, 'label', { for: 'regler-photos' });
-	const libelle = element(document, 'span', { 'aria-hidden': 'true' }, 'Envois ouverts');
-	etiquette.append(interrupteur, libelle);
+	etiquette.append(interrupteur, element(document, 'span', {}, 'Envois ouverts'));
 	const liste = element(document, 'ol', { class: 'photos__liste', role: 'list', 'aria-label': 'Photos en attente' });
 	const vide = element(document, 'p', { class: 'console__note' }, 'Aucune photo en attente.');
 	zone.setAttribute('aria-labelledby', 'titre-photos');
@@ -21,12 +22,14 @@ export function monter(zone, contexte, adaptations = {}) {
 	let synchronisee = false;
 	let ouvertes = false;
 
+	// aria-disabled plutôt que disabled : le focus reste sur la commande pendant l’envoi.
+	const desactiver = (commande, valeur) => commande.setAttribute('aria-disabled', String(valeur));
+	const indisponible = cible => !synchronisee || envois.has(cible);
 	function reglerCommandes() {
-		interrupteur.disabled = !synchronisee || envois.has(cibleReglage);
+		desactiver(interrupteur, indisponible(cibleReglage));
 		for (const [photoId, ligne] of lignes) {
-			const indisponible = !synchronisee || envois.has(photoId);
-			ligne.accepter.disabled = indisponible || !ligne.vignettePrete;
-			ligne.refuser.disabled = indisponible;
+			desactiver(ligne.accepter, indisponible(photoId) || !ligne.vignettePrete);
+			desactiver(ligne.refuser, indisponible(photoId));
 		}
 	}
 	const desabonner = contexte.surEtatConnexion(etat => {
@@ -51,8 +54,13 @@ export function monter(zone, contexte, adaptations = {}) {
 	function changerReglage() {
 		const demande = interrupteur.checked;
 		interrupteur.checked = ouvertes;
+		if (indisponible(cibleReglage)) return;
 		void envoyer(cibleReglage, 'PUT', `${route}/reglages`, { ouvertes: demande });
 	}
+	function bloquerReglage(evenement) {
+		if (indisponible(cibleReglage)) evenement.preventDefault();
+	}
+	interrupteur.addEventListener('click', bloquerReglage);
 	interrupteur.addEventListener('change', changerReglage);
 
 	function ajouter({ photoId, pseudo }) {
@@ -82,8 +90,8 @@ export function monter(zone, contexte, adaptations = {}) {
 		});
 		image.addEventListener('error', echecVignette);
 		const moderer = acceptee => envoyer(photoId, 'POST', `${route}/${photoId}/moderation`, { acceptee });
-		accepter.addEventListener('click', () => { if (ligne.vignettePrete) void moderer(true); });
-		refuser.addEventListener('click', () => void moderer(false));
+		accepter.addEventListener('click', () => { if (ligne.vignettePrete && !indisponible(photoId)) void moderer(true); });
+		refuser.addEventListener('click', () => { if (!indisponible(photoId)) void moderer(false); });
 		liste.append(noeud);
 		void chargeur.charger(photoId);
 	}
@@ -94,14 +102,19 @@ export function monter(zone, contexte, adaptations = {}) {
 			zone.hidden = !bloc || !['OUVERTE', 'EN_COURS'].includes(vue.soiree.etat);
 			ouvertes = bloc?.ouvertes === true;
 			interrupteur.checked = ouvertes;
-			libelle.textContent = ouvertes ? 'Envois ouverts' : 'Envois coupés';
 			const attente = zone.hidden ? [] : bloc.enAttente;
 			const ids = new Set(attente.map(photo => photo.photoId));
 			for (const photo of attente) if (!lignes.has(photo.photoId)) ajouter(photo);
-			let rendreFocus = false;
+			// Ligne retirée qui avait le focus : la suivante, sinon la précédente, reprend la même commande.
+			const actif = document.activeElement;
+			const ordre = [...lignes.keys()];
+			const position = ordre.findIndex(id => lignes.get(id).noeud.contains(actif));
+			const perdue = position >= 0 && !ids.has(ordre[position]);
+			const action = perdue && lignes.get(ordre[position]).refuser === actif ? 'refuser' : 'accepter';
+			const suivante = perdue ? ordre.slice(position + 1).find(id => ids.has(id))
+				?? ordre.slice(0, position).findLast(id => ids.has(id)) : undefined;
 			for (const [id, ligne] of lignes) {
 				if (ids.has(id)) continue;
-				rendreFocus ||= ligne.noeud.contains(document.activeElement);
 				ligne.chargeur.effacer();
 				ligne.noeud.remove();
 				lignes.delete(id);
@@ -109,12 +122,13 @@ export function monter(zone, contexte, adaptations = {}) {
 			liste.hidden = attente.length === 0;
 			vide.hidden = !liste.hidden;
 			reglerCommandes();
-			if (rendreFocus && !zone.hidden && synchronisee) interrupteur.focus();
+			if (perdue && !zone.hidden) (suivante ? lignes.get(suivante)[action] : titre).focus();
 		},
 		demonter() {
 			for (const envoi of envois.values()) envoi.abort();
 			for (const ligne of lignes.values()) ligne.chargeur.effacer();
 			lignes.clear();
+			interrupteur.removeEventListener('click', bloquerReglage);
 			interrupteur.removeEventListener('change', changerReglage);
 			desabonner();
 			zone.replaceChildren();
