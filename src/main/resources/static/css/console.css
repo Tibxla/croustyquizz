@@ -229,6 +229,16 @@
   font-size: 0.9375rem;
 }
 
+/* Transition entre Manches (#123) : les commandes de Soirée restent dans la barre de pilotage. */
+.console__transition {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.console__transition .chiffres {
+  color: var(--orange);
+}
+
 .programme, .programme__ajout {
   display: grid;
   gap: var(--espace-3);

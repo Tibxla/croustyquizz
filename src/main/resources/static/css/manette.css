@@ -36,6 +36,16 @@
   color: var(--texte-2);
 }
 
+/* Transition entre Manches (#123). */
+.manette__transition {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.manette__transition .chiffres {
+  color: var(--orange);
+}
+
 .manette__actions {
   display: flex;
   flex-direction: column;

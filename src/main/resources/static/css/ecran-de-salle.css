@@ -371,3 +371,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Transition entre Manches (#123) : l'annonce et le compte à rebours ouvrent la scène, lisibles à 5 m.
+   Le chiffre reprend l'orange de la barre du minuteur ; aucun aplat citron. */
+.salle__transition {
+  display: grid;
+  gap: 0.4vw;
+}
+.salle__transition-annonce {
+  font-size: 3.6vw;
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.salle__transition-delai {
+  color: var(--orange);
+  font: 800 7vw/0.9 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
