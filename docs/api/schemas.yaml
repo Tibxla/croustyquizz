@@ -3258,7 +3258,7 @@ $defs:
           items:
             type: string
             format: uuid
-          description: Identifiants des Passages en attente ou actifs pour lesquels ce Joueur a donné son accord. Vide si l’Enregistrement est interdit.
+          description: Identifiants des Passages en attente ou actifs pour lesquels ce Joueur a donné son accord. Pendant une interdiction, la liste garde ces accords suspendus, sans effet tant que enregistrementAutorise vaut false.
         votes:
           type: array
           items:

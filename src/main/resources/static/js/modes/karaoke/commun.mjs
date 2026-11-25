@@ -106,7 +106,9 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 			switch (commande.type) {
 				case 'ACCORD_ENREGISTREMENT': {
 					const passage = cibleAccord(bloc, contexte.acteur.identifiant, commande.passageId);
-					return bloc.enregistrementAutorise !== false && passage?.numeroModification === commande.corps.numeroModification;
+					// L'interdiction bloque un nouvel accord, jamais le retrait d'un accord suspendu.
+					return (bloc.enregistrementAutorise !== false || commande.corps.accord === false)
+						&& passage?.numeroModification === commande.corps.numeroModification;
 				}
 				case 'VOTER': return (bloc.votes ?? []).some(vote => vote.passageId === commande.passageId && vote.peutVoter);
 				case 'CONFIRMER_PRESENCE':

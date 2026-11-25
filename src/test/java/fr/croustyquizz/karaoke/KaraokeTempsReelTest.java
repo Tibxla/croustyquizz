@@ -158,6 +158,9 @@ class KaraokeTempsReelTest {
         verifierRefusAccord(accord, joueur,
                 Map.of("accord", true, "numeroModification", 0, "audio", "data:audio/webm;base64,AAAA"),
                 400, "REQUETE_INVALIDE");
+        // Un champ manquant ou un compteur négatif est refusé en 400, jamais en 500, même pour l'Interprète.
+        verifierRefusAccord(accord, joueur, Map.of("accord", true), 400, "REQUETE_INVALIDE");
+        verifierRefusAccord(accord, joueur, Map.of("accord", true, "numeroModification", -3), 400, "REQUETE_INVALIDE");
 
         KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
                 envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
@@ -165,7 +168,9 @@ class KaraokeTempsReelTest {
             var vue = lireEvenement(abonne, "autorisation-enregistrement-modifiee");
             assertThat(vue.at("/karaoke/enregistrementAutorise").asBoolean()).isFalse();
         }
-        assertThat(capturer(manette).at("/vue/karaoke/mesAccordsEnregistrement").size()).isZero();
+        // L'accord suspendu reste visible de son seul Interprète, pour qu'il puisse encore le retirer.
+        assertThat(capturer(manette).at("/vue/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
+        assertThat(capturer(autreManette).at("/vue/karaoke/mesAccordsEnregistrement").size()).isZero();
         assertThat(capturer(salle).path("revision")).isEqualTo(revisionSalle);
         verifierRefusAccord(accord, joueur, choix, 409, "ENREGISTREMENT_INTERDIT");
         var rejeu = envoyer(HttpMethod.PUT, accord, joueur, choix, cle);
@@ -187,13 +192,16 @@ class KaraokeTempsReelTest {
         KaraokeHttpTest.verifier("definirAccordEnregistrement", envoyer(HttpMethod.PUT, accord, joueur, choix, UUID.randomUUID()), 200);
         assertThat(lireEvenement(manette, "accord-enregistrement-modifie")
                 .at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
-        // Pendant l'interdiction, le retrait est accepté sans publication : l'accord suspendu ne revient plus.
+        // Pendant l'interdiction, le retrait est accepté et publié à sa seule Manette : l'accord suspendu ne revient plus.
         KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
                 envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
         for (var abonne : List.of(manette, autreManette, console)) { lireEvenement(abonne, "autorisation-enregistrement-modifiee"); }
         var retrait = envoyer(HttpMethod.PUT, accord, joueur, Map.of("accord", false, "numeroModification", 0), UUID.randomUUID());
         KaraokeHttpTest.verifier("definirAccordEnregistrement", retrait, 200);
         assertThat(json.readTree(retrait.getBody()).path("accord").asBoolean()).isFalse();
+        var sansAccord = lireEvenement(manette, "accord-enregistrement-modifie");
+        assertThat(sansAccord.at("/karaoke/enregistrementAutorise").asBoolean()).isFalse();
+        assertThat(sansAccord.at("/karaoke/mesAccordsEnregistrement").size()).isZero();
         KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
                 envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", true), UUID.randomUUID()), 200);
         assertThat(lireEvenement(manette, "autorisation-enregistrement-modifiee")
@@ -222,9 +230,10 @@ class KaraokeTempsReelTest {
 
         KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
                 envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
-        // Une interdiction en plein Passage retire l'accord de la vue : la Manette arrête sa prise.
-        assertThat(lireEvenement(manette, "autorisation-enregistrement-modifiee")
-                .at("/karaoke/mesAccordsEnregistrement").size()).isZero();
+        // Une interdiction en plein Passage suspend l'accord : la Manette arrête sa prise sur enregistrementAutorise.
+        var interdiction = lireEvenement(manette, "autorisation-enregistrement-modifiee");
+        assertThat(interdiction.at("/karaoke/enregistrementAutorise").asBoolean()).isFalse();
+        assertThat(interdiction.at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
         lireEvenement(autreManette, "autorisation-enregistrement-modifiee");
         lireEvenement(console, "autorisation-enregistrement-modifiee");
         ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));

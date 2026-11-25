@@ -629,11 +629,12 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
                 404, "RESSOURCE_INTROUVABLE", null);
         refuserSansMutation(() -> accorder(INTERPRETE, cible(PASSAGE), true, false, false),
                 409, "ENREGISTREMENT_INTERDIT", null);
-        // Pendant l'interdiction, le retrait reste accepté, sans rien republier : la vue ne montre aucun accord.
+        // Pendant l'interdiction, le retrait reste accepté et republié : la vue montre l'accord suspendu.
         var retrait = (Accepte) accorder(INTERPRETE, cible(PASSAGE), false, true, false);
         assertThat(retrait.accuse()).isEqualTo(new AccuseAccordEnregistrement(ENVOI, SOIREE, MANCHE, PASSAGE, false,
                 horloge.maintenant()));
-        assertThat(retrait.aRepublier()).isEmpty();
+        assertThat(retrait.typeEvenement()).isEqualTo("accord-enregistrement-modifie");
+        assertThat(retrait.aRepublier()).containsExactly(Destination.joueur(JOUEUR));
         assertThat(karaoke().instantane()).isEqualTo(avant);
         refuserSansMutation(() -> accorder(INTERPRETE, new CiblePassage(PASSAGE, 7), true, false, true),
                 409, "COMMANDE_PERIMEE", null);

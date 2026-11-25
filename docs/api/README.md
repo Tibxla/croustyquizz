@@ -335,13 +335,14 @@ nouvel accord pendant l’interdiction de la Soirée (`ENREGISTREMENT_INTERDIT`)
 périmé ou un Passage déjà parti (`COMMANDE_PERIMEE`). Un choix qui change publie
 `accord-enregistrement-modifie` vers la seule Manette de cet Interprète. Pendant l’interdiction, le
 retrait (`accord: false`) reste accepté : il efface l’accord suspendu, qui ne reviendra pas avec
-l’autorisation, et ne publie rien, puisque la vue ne montre alors aucun accord.
+l’autorisation, et publie lui aussi `accord-enregistrement-modifie` vers cette seule Manette.
 
 `BlocKaraokeConsole` et `BlocKaraokeManette` portent `enregistrementAutorise`. Seul
 `BlocKaraokeManette` porte `mesAccordsEnregistrement`, la liste des Passages en attente ou actifs
-que ce Joueur accepte d’enregistrer. Elle est vide tant que l’Enregistrement est interdit :
-l’interdiction suspend les accords, qui reviennent si l’Animateur l’autorise de nouveau. La salle
-ne voit ni l’autorisation ni les accords.
+que ce Joueur accepte d’enregistrer. L’interdiction suspend ces accords sans les effacer : la liste
+les garde, pour que l’Interprète puisse encore retirer le sien, et `enregistrementAutorise: false`
+dit qu’aucun ne vaut. Ils reprennent effet si l’Animateur autorise de nouveau l’Enregistrement. La
+salle ne voit ni l’autorisation ni les accords.
 
 ### Configuration par défaut
 

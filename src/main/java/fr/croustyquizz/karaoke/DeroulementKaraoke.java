@@ -222,8 +222,8 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         }
         var accuse = new AccuseAccordEnregistrement(choix.envoiId(), contexte.soireeId(), contexte.mancheId(),
                 passage.id(), choix.accord(), choix.recueLe());
-        // Pendant l'interdiction, la vue ne montre aucun accord : un retrait n'y change rien.
-        Set<Destination> destinations = !choix.autorise() || choix.accord() == choix.accordPrecedent()
+        // La vue de l'Interprète montre aussi ses accords suspendus : un retrait pendant l'interdiction la change.
+        Set<Destination> destinations = choix.accord() == choix.accordPrecedent()
                 ? Set.of() : Set.of(Destination.joueur(choix.joueurId()));
         return new Accepte(accuse, destinations, "accord-enregistrement-modifie");
     }

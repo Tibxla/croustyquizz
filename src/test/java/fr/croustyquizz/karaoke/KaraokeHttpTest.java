@@ -600,7 +600,7 @@ class KaraokeHttpTest {
     public static class LiaisonSansBaseTest {
         @org.junit.jupiter.params.ParameterizedTest
         @org.junit.jupiter.params.provider.ValueSource(strings = {"application/json", "application/problem+json", "application/vnd.croustyquizz+json"})
-        void lesSixCorpsInvalidesSontRefusesAvantDeResoudreLIdentite(String typeContenu) throws Exception {
+        void lesCorpsInvalidesSontRefusesAvantDeResoudreLIdentite(String typeContenu) throws Exception {
             var banc = new ServiceKaraokeTest.BancKaraoke();
             var resolution = new java.util.concurrent.atomic.AtomicInteger();
             var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new KaraokeControleur(banc.service))
@@ -618,13 +618,28 @@ class KaraokeHttpTest {
                     }).build();
             String racine = "/api/soirees/" + UUID.randomUUID() + "/manches/" + UUID.randomUUID();
             record Cas(HttpMethod methode, String route, String operation, String corps) { }
-            var cas = List.of(new Cas(HttpMethod.POST, "/passages", "inscrirePassage", "{}"),
+            var cas = new ArrayList<>(List.of(new Cas(HttpMethod.POST, "/passages", "inscrirePassage", "{}"),
                     new Cas(HttpMethod.POST, "/passages", "inscrirePassage", "{illisible"),
                     new Cas(HttpMethod.POST, "/passages/" + UUID.randomUUID() + "/desinscription", "desinscrirePassage", "{}"),
                     new Cas(HttpMethod.POST, "/passages/" + UUID.randomUUID() + "/retrait", "retirerPassage", "{\"numeroModification\":\"0\"}"),
                     new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/placement", "deplacerPassage", "{\"numeroModification\":0,\"tour\":1}"),
                     new Cas(HttpMethod.PUT, "/file-attente/priorite", "definirPrioritePassage", "{\"passage\":null,\"prioritaire\":false}"),
-                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}"));
+                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}")));
+            // L'Enregistrement n'accepte que application/json (README, « Enregistrement d'un Passage »).
+            if (MediaType.APPLICATION_JSON_VALUE.equals(typeContenu)) { cas.addAll(List.of(
+                    new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/accord-enregistrement", "definirAccordEnregistrement", "{}"),
+                    new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/accord-enregistrement", "definirAccordEnregistrement",
+                            "{\"accord\":true}"),
+                    new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/accord-enregistrement", "definirAccordEnregistrement",
+                            "{\"accord\":null,\"numeroModification\":0}"),
+                    new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/accord-enregistrement", "definirAccordEnregistrement",
+                            "{\"accord\":true,\"numeroModification\":-3}"),
+                    new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/accord-enregistrement", "definirAccordEnregistrement",
+                            "{\"accord\":true,\"numeroModification\":0,\"audio\":\"blob:x\"}"),
+                    new Cas(HttpMethod.PUT, "/autorisation-enregistrement", "reglerAutorisationEnregistrement", "{}"),
+                    new Cas(HttpMethod.PUT, "/autorisation-enregistrement", "reglerAutorisationEnregistrement", "{\"autorise\":null}"),
+                    new Cas(HttpMethod.PUT, "/autorisation-enregistrement", "reglerAutorisationEnregistrement",
+                            "{\"autorise\":true,\"lieuId\":\"x\"}"))); }
             for (var c : cas) {
                 var resultat = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request(c.methode(), racine + c.route())
                         .header("Idempotency-Key", UUID.randomUUID()).contentType(typeContenu).content(c.corps())).andReturn();
@@ -632,6 +647,23 @@ class KaraokeHttpTest {
                         .body(resultat.getResponse().getContentAsString()), 400);
             }
             assertThat(resolution).hasValue(0);
+        }
+        // Comme les corps voisins, ceux de l'Enregistrement se valident eux-mêmes, sans compter sur le convertisseur.
+        @Test void lesCorpsDeLEnregistrementRefusentUnChampManquantOuHorsBornes() {
+            List<org.assertj.core.api.ThrowableAssert.ThrowingCallable> invalides = List.of(
+                    () -> new CorpsKaraoke.AccordEnregistrement(null, 0L),
+                    () -> new CorpsKaraoke.AccordEnregistrement(true, null),
+                    () -> new CorpsKaraoke.AccordEnregistrement(true, -3L),
+                    () -> new CorpsKaraoke.AccordEnregistrement(true, 9007199254740992L),
+                    () -> new CorpsKaraoke.AutorisationEnregistrement(null),
+                    () -> new CorpsKaraoke.AccordEnregistrement(true, 0L).refuserChampInconnu("audio", "blob:x"),
+                    () -> new CorpsKaraoke.AutorisationEnregistrement(true).refuserChampInconnu("lieuId", "x"));
+            for (var invalide : invalides) {
+                assertThatThrownBy(invalide).isInstanceOfSatisfying(RefusDeCommande.class,
+                        refus -> assertThat(refus.refus().code()).isEqualTo("REQUETE_INVALIDE"));
+            }
+            assertThat(new CorpsKaraoke.AccordEnregistrement(false, 0L).accord()).isFalse();
+            assertThat(new CorpsKaraoke.AutorisationEnregistrement(false).autorise()).isFalse();
         }
         @Test void lesHuitRoutesLientLesCorpsEtRendentLesReponsesDuService() throws Exception {
             var parcours = new ServiceKaraokeTest();

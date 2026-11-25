@@ -50,8 +50,14 @@ public final class CorpsKaraoke {
         }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
-    public record AccordEnregistrement(Boolean accord, Long numeroModification) { }
-    public record AutorisationEnregistrement(Boolean autorise) { }
+    public record AccordEnregistrement(Boolean accord, Long numeroModification) {
+        public AccordEnregistrement { obligatoire(accord); entier(numeroModification, true); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
+    public record AutorisationEnregistrement(Boolean autorise) {
+        public AutorisationEnregistrement { obligatoire(autorise); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
 
     public record RetraitPassage(Long numeroModification) {
         public RetraitPassage { entier(numeroModification, true); }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { creerEnregistrement, diagnostiquer } from '../../src/main/resources/static/js/modes/karaoke/enregistrement.mjs';
+import { creerEnregistrement, diagnostiquer, RETARD_DEPART_MAX_MS } from '../../src/main/resources/static/js/modes/karaoke/enregistrement.mjs';
 import { nomFichier } from '../../src/main/resources/static/js/modes/karaoke/enregistrement-manette.mjs';
 import { monter as manette } from '../../src/main/resources/static/js/modes/karaoke/manette.mjs';
 import { monter as consoleKaraoke } from '../../src/main/resources/static/js/modes/karaoke/console.mjs';
@@ -115,18 +115,35 @@ test('le départ sans micro prêt donne un motif propre à chaque cas', async ()
 	assert.deepEqual(enDemande.appels, []);
 
 	const recharge = banc();
-	recharge.prise.suivre({ accord: true, phase: 'actif' }, capture);
+	recharge.prise.suivre({ accord: true, phase: 'actif', retardDepartMs: 0 }, capture);
 	assert.equal(recharge.prise.lire().motif, 'rechargement');
 });
 
-test('une capture restaurée pendant le Passage ne démarre jamais le micro préparé', async () => {
+test('une capture juste après le départ manqué lance la prise préparée, une fois', async () => {
 	const { prise, appels, pistesLiberees } = banc();
 	await preparer({ prise });
-	prise.suivre({ accord: true, phase: 'actif' }, capture);
-	prise.suivre({ accord: true, phase: 'actif' }, evenement('passage-demarre'));
-	assert.deepEqual(appels, []);
-	assert.equal(pistesLiberees(), 1);
-	assert.equal(prise.lire().motif, 'depart-manque');
+	prise.suivre({ accord: true, phase: 'actif', retardDepartMs: 3000 }, capture);
+	assert.equal(prise.lire().etat, 'enregistrement');
+	prise.suivre({ accord: true, phase: 'actif', retardDepartMs: 3200 }, evenement('passage-demarre'));
+	prise.suivre({ accord: true, phase: 'actif', retardDepartMs: 3400 }, capture);
+	assert.deepEqual(appels, ['start'], 'L’événement et la capture qui suivent ne relancent pas la prise.');
+	assert.equal(pistesLiberees(), 0);
+});
+
+test('une capture tardive ou sans heure de départ ne démarre pas le micro préparé', async () => {
+	for (const retardDepartMs of [RETARD_DEPART_MAX_MS + 1, null, undefined]) {
+		const { prise, appels, pistesLiberees } = banc();
+		await preparer({ prise });
+		prise.suivre({ accord: true, phase: 'actif', retardDepartMs }, capture);
+		prise.suivre({ accord: true, phase: 'actif', retardDepartMs: 0 }, evenement('passage-demarre'));
+		assert.deepEqual(appels, [], `retard ${retardDepartMs}`);
+		assert.equal(pistesLiberees(), 1);
+		assert.equal(prise.lire().motif, 'depart-manque');
+	}
+	const juste = banc();
+	await preparer(juste);
+	juste.prise.suivre({ accord: true, phase: 'actif', retardDepartMs: RETARD_DEPART_MAX_MS }, capture);
+	assert.deepEqual(juste.appels, ['start'], 'La borne est incluse.');
 });
 
 test('une permission reçue après interdiction libère aussitôt les pistes', async () => {
@@ -365,13 +382,43 @@ test('Manette : l’accord part en PUT idempotent, puis le micro n’est demand�
 	assert.equal(journal.demandes, 1);
 	assert.match(b.principale.textContent, /Micro prêt/);
 
-	b.module.afficher(vue({ ...attente, enregistrementAutorise: false }), evenement('autorisation-enregistrement-modifiee'));
+	// L'interdiction suspend l'accord : la vue le garde, mais le micro est libéré et ne se propose plus.
+	b.module.afficher(vue({ ...attente, mesAccordsEnregistrement: ['p'], enregistrementAutorise: false }),
+		evenement('autorisation-enregistrement-modifiee'));
 	await terminerMicrotaches();
 	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 0);
-	assert.equal(visibles(b.principale, 'Retirer mon accord').length, 0);
 	assert.equal(visibles(b.principale, 'Autoriser le micro').length, 0);
 	assert.equal(journal.pistes, 1);
 	assert.equal(journal.appareils.every(a => a.appels.length === 0), true);
+});
+
+test('Manette : pendant l’interdiction, l’Interprète peut retirer son accord suspendu', async t => {
+	const document = creerDocument(), { journal, vueFenetre } = fenetre();
+	document.defaultView = vueFenetre;
+	const b = monterManette(document);
+	t.after(() => b.module.demonter());
+	const interdite = { enregistrementAutorise: false, mesAccordsEnregistrement: ['p'], mesPassagesEnAttente: [passage('p')] };
+	b.module.afficher(vue(interdite), capture);
+	assert.equal(visibles(b.principale, 'Autoriser le micro').length, 0);
+	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 0);
+	assert.match(b.principale.textContent, /Ton accord est suspendu/);
+	const [retirer] = visibles(b.principale, 'Retirer mon accord');
+	assert.ok(retirer, 'Le retrait reste proposé pendant l’interdiction.');
+	retirer.click();
+	assert.equal(b.appels.length, 1);
+	assert.deepEqual(b.appels[0].args[2], { accord: false, numeroModification: 2 });
+	b.appels[0].resolve({ statut: 200, corps: { accord: false } });
+	await terminerMicrotaches();
+	b.module.afficher(vue({ ...interdite, mesAccordsEnregistrement: [] }), evenement('accord-enregistrement-modifie'));
+	assert.equal(visibles(b.principale, 'Retirer mon accord').length, 0);
+	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 0, 'Un nouvel accord reste interdit.');
+	// À la réautorisation, l'accord retiré ne revient pas et le micro n'est pas demandé.
+	b.module.afficher(vue({ ...interdite, enregistrementAutorise: true, mesAccordsEnregistrement: [] }),
+		evenement('autorisation-enregistrement-modifiee'));
+	await terminerMicrotaches();
+	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 1);
+	assert.equal(visibles(b.principale, 'Autoriser le micro').length, 0);
+	assert.equal(journal.demandes, 0);
 });
 
 test('Manette : une seule zone de statut annonce le micro, la prise et le fichier prêt', async t => {
@@ -440,6 +487,24 @@ test('Manette : la prise suit le Passage et le fichier survit au démontage jusq
 	await terminerMicrotaches();
 	assert.deepEqual(urls.revoquees, ['blob:enregistrement-1']);
 	assert.equal(lien(suivante.principale), undefined);
+});
+
+test('Manette : une capture qui remplace passage-demarre lance la prise si le départ est récent', async t => {
+	for (const [retardMs, attendu] of [[2000, ['start']], [RETARD_DEPART_MAX_MS + 5000, []]]) {
+		const document = creerDocument(), { journal, vueFenetre } = fenetre();
+		document.defaultView = vueFenetre;
+		const b = monterManette(document);
+		t.after(() => b.module.demonter());
+		b.module.afficher(vue({ ...commun, courant: appele() }), capture);
+		visibles(b.principale, 'Autoriser le micro')[0].click();
+		await terminerMicrotaches();
+		// La coupure a fait manquer passage-demarre : la capture de resynchronisation arrive après.
+		const depart = new Date(Date.now() - retardMs).toISOString();
+		b.module.afficher(vue({ ...commun, courant: { ...enCours(), demarreLe: depart } }), capture);
+		await terminerMicrotaches();
+		assert.deepEqual(journal.appareils[0].appels, attendu, `retard de ${retardMs} ms`);
+		assert.match(b.principale.textContent, attendu.length ? /Enregistrement en cours/ : /La prise n’a pas pu démarrer/);
+	}
 });
 
 test('Manette : la fin de la Manche pendant la prise laisse le fichier arriver, puis pagehide le libère', async t => {

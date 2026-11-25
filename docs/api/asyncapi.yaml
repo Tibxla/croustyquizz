@@ -96,8 +96,8 @@ channels:
       (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »
       et ses votes), sans lecture, paroles, fichier local ni secret.
       autorisation-enregistrement-modifiee actualise le réglage de Soirée sur toutes les Manettes.
-      accord-enregistrement-modifie actualise uniquement la Manette de l’Interprète qui a choisi ;
-      un retrait pendant l’interdiction n’en publie pas, la vue ne montrant alors aucun accord.
+      accord-enregistrement-modifie actualise uniquement la Manette de l’Interprète qui a choisi,
+      y compris pour un retrait pendant l’interdiction, la vue gardant les accords suspendus.
       Les vues, les reçus HTTP et les événements ne transportent aucun Enregistrement ;
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle, chaque Joueur recevant sa propre vue ; brouillon-depose uniquement à la Manette de l’auteur d’un brouillon retenu ; bloc blindtest (BlocBlindTestManette : main, blocage, champs encore demandés et brouillon de son seul auteur), sans lien d’extrait ni réponse avant la Révélation.

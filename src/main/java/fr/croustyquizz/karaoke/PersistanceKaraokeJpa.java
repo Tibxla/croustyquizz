@@ -75,8 +75,9 @@ public class PersistanceKaraokeJpa implements PersistanceDuMode<EtatKaraokePersi
         entites.createNativeQuery(requete).setParameter("passage", passageId).setParameter("joueur", joueurId).executeUpdate();
     }
 
+    // Les accords suspendus par une interdiction restent projetés : leur Interprète peut encore les retirer.
     AccordsEnregistrement accordsEnregistrement(UUID soireeId, UUID mancheId) {
-        if (!enregistrementAutorise(soireeId)) { return new AccordsEnregistrement(false, Map.of()); }
+        boolean autorise = enregistrementAutorise(soireeId);
         List<?> lignes = entites.createNativeQuery("""
                 SELECT a.joueur_id, a.passage_id
                 FROM accord_enregistrement_passage a JOIN passage p ON p.id = a.passage_id
@@ -88,7 +89,7 @@ public class PersistanceKaraokeJpa implements PersistanceDuMode<EtatKaraokePersi
             var colonnes = (Object[]) ligne;
             resultats.computeIfAbsent((UUID) colonnes[0], id -> new ArrayList<>()).add((UUID) colonnes[1]);
         }
-        return new AccordsEnregistrement(true, resultats);
+        return new AccordsEnregistrement(autorise, resultats);
     }
 
     public Map<UUID, ContenuKaraoke> contenus(Collection<UUID> passageIds) {
