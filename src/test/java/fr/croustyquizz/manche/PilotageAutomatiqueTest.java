@@ -65,6 +65,7 @@ class PilotageAutomatiqueTest {
 	void retablir() {
 		pannes.demarrage.set(false);
 		pannes.enregistrement.set(false);
+		pannes.arret.set(false);
 		horloge.avancer(Duration.ofNanos(1_000_000_000L - horloge.maintenant().getNano()));
 	}
 
@@ -213,6 +214,41 @@ class PilotageAutomatiqueTest {
 		assertThat(capturer(banc, "console").at("/vue/transitionManche/modeSuivant").asString()).isEqualTo("QUIZ");
 		horloge.avancer(Duration.ofSeconds(1));
 		assertThat(etatManche(banc.manche(1))).isEqualTo("EN_COURS");
+	}
+
+	@Test
+	void unArretPendantLEnchainementLaisseLaTransitionQueLeRedemarrageReprend() throws Exception {
+		var banc = soiree(Pilotage.AUTOMATIQUE, 10, 10);
+		piloterSoiree(banc, "LANCER", 200);
+		horloge.avancer(Duration.ofSeconds(10));
+		pannes.arret.set(true);
+		assertThatThrownBy(() -> horloge.avancer(TRANSITION)).isInstanceOf(SocleMancheJpaTest.ArretSimule.class);
+		pannes.arret.set(false);
+		assertThat(etatManche(banc.manche(1))).isEqualTo("PRETE");
+		assertThat(transitions(banc)).as("la transition survit à l'arrêt").isOne();
+
+		redemarrer(banc);
+		horloge.avancer(Duration.ZERO);
+		assertThat(etatManche(banc.manche(1))).isEqualTo("EN_COURS");
+		assertThat(transitions(banc)).isZero();
+	}
+
+	@Test
+	void uneMancheSuivanteManuelleEffaceLaTransitionQuiNeRevientPlusAvantSonEcheance() throws Exception {
+		var banc = soiree(Pilotage.AUTOMATIQUE, 10, 60);
+		piloterSoiree(banc, "LANCER", 200);
+		horloge.avancer(Duration.ofSeconds(10));
+		piloterSoiree(banc, "MANCHE_SUIVANTE", 200);
+		assertThat(transitions(banc)).isZero();
+
+		// La fin de Soirée clôt d'abord la Manche : sa vue, Soirée encore en cours, ne ressert pas l'ancienne transition.
+		var cloture = new EnvoiDeCommande(new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), banc.soiree()),
+				"/cloture", UUID.randomUUID(), Map.of());
+		service.terminerPourSoiree(banc.manche(1), cloture);
+		assertThat(etatSoiree(banc)).isEqualTo("EN_COURS");
+		for (var vue : vues(banc)) {
+			assertThat(vue.path("transitionManche").isNull()).isTrue();
+		}
 	}
 
 	@Test

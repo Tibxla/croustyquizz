@@ -604,11 +604,13 @@ classDiagram
     }
     class PilotageAutomatique {
         +surFinDeManche(UUID soireeId, UUID mancheId, Instant)
+        +surDebutDeManche(UUID soireeId, UUID mancheId)
         +fournir(UUID, Destination, Map) TransitionManche
     }
     class ObservateurDeFinDeManche {
         <<interface>>
         +surFinDeManche(UUID soireeId, UUID mancheId, Instant)
+        +surDebutDeManche(UUID soireeId, UUID mancheId)
     }
     class EnchainementDeSoiree {
         <<interface>>

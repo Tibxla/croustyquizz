@@ -129,6 +129,14 @@ class SocleMancheJpaTest {
 	static final class PannesDuServiceFactice {
 		final java.util.concurrent.atomic.AtomicBoolean demarrage = new java.util.concurrent.atomic.AtomicBoolean();
 		final java.util.concurrent.atomic.AtomicBoolean enregistrement = new java.util.concurrent.atomic.AtomicBoolean();
+		/** Arrêt du processus pendant l'enregistrement : ni {@code catch} ni nettoyage ne s'exécutent après lui. */
+		final java.util.concurrent.atomic.AtomicBoolean arret = new java.util.concurrent.atomic.AtomicBoolean();
+	}
+
+	/** Une {@link Error} échappe aux {@code catch (RuntimeException)} comme un arrêt brutal du processus. */
+	static final class ArretSimule extends Error {
+		private static final long serialVersionUID = 1L;
+		ArretSimule() { super("Arrêt simulé du processus"); }
 	}
 
 	@TestConfiguration(proxyBeanMethods = false)
@@ -151,6 +159,7 @@ class SocleMancheJpaTest {
 				}
 				public void enregistrer(UUID mancheId, Object instantane) {
 					if (pannes.enregistrement.get()) { throw new IllegalStateException("Panne d'enregistrement du mode factice"); }
+					if (pannes.arret.get()) { throw new ArretSimule(); }
 					entites.merge(new EtatFacticePersistant(mancheId, json.writeValueAsString(instantane)));
 				}
 			};

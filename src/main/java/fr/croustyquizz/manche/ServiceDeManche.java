@@ -235,7 +235,11 @@ public class ServiceDeManche<R, E> {
 		EtatManche etatParDefaut = cible == null ? manche.getEtat() : cible;
 		EtatManche etat = d.estTerminee() ? EtatManche.TERMINEE : etatApresAcceptation(etatParDefaut, instantane);
 		boolean fin = etat == EtatManche.TERMINEE && manche.getEtat() != EtatManche.TERMINEE;
+		boolean debut = manche.getEtat() == EtatManche.PRETE && etat != EtatManche.PRETE;
 		manche.changerEtat(etat, recueLe);
+		if (debut) {
+			socle.observateurs().forEach(o -> o.surDebutDeManche(manche.getSoireeId(), manche.getMancheId()));
+		}
 		if (fin && finObservee) {
 			// Avant la persistance et la publication : la vue publiée porte déjà ce que l'observateur enregistre.
 			Instant maintenant = socle.horloge().maintenant();

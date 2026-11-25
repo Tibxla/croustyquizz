@@ -26,7 +26,7 @@ import fr.croustyquizz.tempsreel.VerrousSoiree;
  * Transition du Pilotage Automatique entre deux Manches (#123). À la fin d'une Manche d'une Soirée en cours et en
  * Automatique, elle enregistre l'échéance et programme la suite ; à l'échéance, {@link EnchainementDeSoiree}
  * démarre la Manche suivante ou termine la Soirée. Les vues portent {@code transitionManche} tant qu'aucune Manche
- * n'est active. L'Animateur garde ses commandes de Soirée ; le rappel ne fait alors que supprimer la ligne.
+ * n'est active. L'Animateur garde ses commandes de Soirée : un démarrage efface la ligne, et le rappel ne fait plus rien.
  * Ne référence jamais {@code soiree} : l'état et la suite de la Soirée passent par des ports.
  */
 @Component
@@ -79,14 +79,19 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 		programmer(soireeId, dureeTransition, finPrevueLe);
 	}
 
-	/** R5 : seul le rappel qui porte l'échéance enregistrée consomme la ligne. */
+	/**
+	 * R5 : seul le rappel qui porte l'échéance enregistrée enchaîne. La ligne ne disparaît qu'avec la suite : le
+	 * démarrage d'une Manche l'efface dans sa propre transaction ({@link #surDebutDeManche}), et une fin de Soirée
+	 * la laisse à supprimer ici. Un arrêt entre les deux laisse la ligne, que {@link #reprendre} rejoue.
+	 */
 	void echoir(UUID soireeId, Instant finPrevueLe) {
 		verrous.executer(soireeId, () -> {
 			try {
-				UUID terminee = ecriture.execute(statut -> consommer(soireeId, finPrevueLe));
+				UUID terminee = lecture.execute(statut -> aEnchainer(soireeId, finPrevueLe));
 				if (terminee != null) {
 					enchainement.getObject().mancheSuivante(soireeId, terminee);
 				}
+				ecriture.execute(statut -> supprimer(soireeId, finPrevueLe));
 			} catch (RuntimeException erreur) {
 				JOURNAL.error("Échec de l'enchaînement automatique de la Soirée {}", soireeId, erreur);
 				effacer(soireeId, finPrevueLe);
@@ -94,6 +99,15 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 			}
 			return null;
 		});
+	}
+
+	/** Le démarrage d'une Manche, automatique ou demandé par l'Animateur, clôt la transition dans sa transaction. */
+	@Override
+	public void surDebutDeManche(UUID soireeId, UUID mancheId) {
+		var transition = entites.find(TransitionPersistante.class, soireeId);
+		if (transition != null) {
+			entites.remove(transition);
+		}
 	}
 
 	/** R8 : chaque transition enregistrée reprend pour le temps qui restait, ou disparaît hors Automatique. */
@@ -111,7 +125,7 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 						Duration reste = Duration.between(maintenant, finPrevueLe);
 						programmer(soireeId, reste.isNegative() ? Duration.ZERO : reste, finPrevueLe);
 					} else {
-						ecriture.execute(statut -> consommer(soireeId, finPrevueLe));
+						ecriture.execute(statut -> supprimer(soireeId, finPrevueLe));
 					}
 					return null;
 				});
@@ -152,21 +166,29 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 		horloge.programmer(delai, () -> echoir(soireeId, finPrevueLe));
 	}
 
-	/** Supprime la ligne de cette échéance et rend la Manche terminée quand la suite peut partir. */
-	private UUID consommer(UUID soireeId, Instant finPrevueLe) {
+	/** La Manche terminée quand la ligne porte cette échéance et que la suite peut partir ; sinon {@code null}. */
+	private UUID aEnchainer(UUID soireeId, Instant finPrevueLe) {
 		var transition = entites.find(TransitionPersistante.class, soireeId);
 		if (transition == null || !transition.getFinPrevueLe().equals(finPrevueLe)) {
 			return null;
 		}
-		entites.remove(transition);
 		boolean libre = depot.deLaSoiree(soireeId).stream().noneMatch(PilotageAutomatique::estActive);
 		return libre && etatDeSoiree.estEnCours(soireeId) ? transition.getMancheTermineeId() : null;
 	}
 
-	/** Après un échec avant la suppression, la ligne échue ne doit plus apparaître dans la vue republiée. */
+	/** Supprime la ligne de cette échéance seulement : une fin de Manche plus récente l'a peut-être remplacée. */
+	private Void supprimer(UUID soireeId, Instant finPrevueLe) {
+		var transition = entites.find(TransitionPersistante.class, soireeId);
+		if (transition != null && transition.getFinPrevueLe().equals(finPrevueLe)) {
+			entites.remove(transition);
+		}
+		return null;
+	}
+
+	/** Après un échec, la ligne échue ne doit plus apparaître dans la vue republiée. */
 	private void effacer(UUID soireeId, Instant finPrevueLe) {
 		try {
-			ecriture.execute(statut -> consommer(soireeId, finPrevueLe));
+			ecriture.execute(statut -> supprimer(soireeId, finPrevueLe));
 		} catch (RuntimeException erreur) {
 			JOURNAL.error("Échec de la suppression de la transition de la Soirée {}", soireeId, erreur);
 		}
