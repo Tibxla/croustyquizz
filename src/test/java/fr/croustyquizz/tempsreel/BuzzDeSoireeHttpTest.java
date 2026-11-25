@@ -1,27 +1,19 @@
 package fr.croustyquizz.tempsreel;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
-import java.lang.reflect.Type;
-import java.net.http.HttpClient;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,24 +24,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.messaging.converter.JacksonJsonMessageConverter;
-import org.springframework.messaging.simp.stomp.StompFrameHandler;
-import org.springframework.messaging.simp.stomp.StompHeaders;
-import org.springframework.messaging.simp.stomp.StompSession;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.socket.WebSocketHttpHeaders;
-import org.springframework.web.socket.client.standard.StandardWebSocketClient;
-import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.HorlogeFactice;
+import fr.croustyquizz.tempsreel.ClientDeSoiree.JoueurArrive;
+import fr.croustyquizz.tempsreel.ClientDeSoiree.SoireeOuverte;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -58,35 +41,27 @@ import tools.jackson.databind.json.JsonMapper;
 @Import({TestcontainersConfiguration.class, BuzzDeSoireeHttpTest.TempsDuTest.class})
 class BuzzDeSoireeHttpTest {
 
-	private static final String CONTRAT = "docs/api/openapi.yaml";
-	private static final String SOIREES = "/api/soirees";
 	private static final String ENVOYER_BUZZ = "envoyerBuzz";
 
 	@LocalServerPort private int port;
 	@Autowired private JsonMapper json;
 	@Autowired private HorlogeFactice horloge;
 	@Autowired private JdbcTemplate jdbc;
-	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
-	private final WebSocketStompClient stomp = new WebSocketStompClient(new StandardWebSocketClient(conteneur));
-	private final List<StompSession> sessions = new ArrayList<>();
-	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
-	private final RestClient http = clientHttp(clientHttp);
+	private ClientDeSoiree client;
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TempsDuTest {
 		@Bean @Primary HorlogeFactice horlogeDesBuzz() { return new HorlogeFactice(); }
 	}
 
+	@BeforeEach
+	void ouvrirLeClient() {
+		client = new ClientDeSoiree(port, json);
+	}
+
 	@AfterEach
 	void fermerLesConnexions() {
-		for (var session : sessions) {
-			if (session.isConnected()) {
-				session.disconnect();
-			}
-		}
-		stomp.stop();
-		conteneur.destroy();
-		clientHttp.close();
+		client.close();
 	}
 
 	@Test
@@ -198,26 +173,13 @@ class BuzzDeSoireeHttpTest {
 	}
 
 	private Map<Long, JsonNode> buzzerEnsemble(SoireeOuverte soiree, List<EnvoiDeBuzz> envois) throws Exception {
-		CountDownLatch prets = new CountDownLatch(envois.size());
-		CountDownLatch depart = new CountDownLatch(1);
+		var rafale = ClientDeSoiree.enRafale(envois, envoi -> buzzer(soiree, envoi.joueur().jeton(), null, envoi.id()));
 		Map<Long, JsonNode> recus = new TreeMap<>();
-		try (var executeur = Executors.newVirtualThreadPerTaskExecutor()) {
-			List<Future<ResponseEntity<String>>> reponses = new ArrayList<>();
-			for (var envoi : envois) {
-				reponses.add(executeur.submit(() -> {
-					prets.countDown();
-					if (!depart.await(3, TimeUnit.SECONDS)) { throw new IllegalStateException("Départ des Manettes manqué."); }
-					return buzzer(soiree, envoi.joueur().jeton(), null, envoi.id());
-				}));
-			}
-			assertThat(prets.await(3, TimeUnit.SECONDS)).isTrue();
-			depart.countDown();
-			for (int i = 0; i < envois.size(); i++) {
-				JsonNode recu = verifier(ENVOYER_BUZZ, reponses.get(i).get(15, TimeUnit.SECONDS), 200);
-				assertThat(recu.path("envoiId").asString()).isEqualTo(envois.get(i).id().toString());
-				assertThat(recu.path("joueurId").asString()).isEqualTo(envois.get(i).joueur().id().toString());
-				assertThat(recus.put(recu.path("rang").asLong(), recu)).isNull();
-			}
+		for (int i = 0; i < envois.size(); i++) {
+			JsonNode recu = verifier(ENVOYER_BUZZ, rafale.reponses().get(i), 200);
+			assertThat(recu.path("envoiId").asString()).isEqualTo(envois.get(i).id().toString());
+			assertThat(recu.path("joueurId").asString()).isEqualTo(envois.get(i).joueur().id().toString());
+			assertThat(recus.put(recu.path("rang").asLong(), recu)).isNull();
 		}
 		return recus;
 	}
@@ -243,82 +205,38 @@ class BuzzDeSoireeHttpTest {
 	}
 
 	private SoireeOuverte ouvrirSoiree() throws Exception {
-		JsonNode creation = verifier("creerSoiree", envoyer(HttpMethod.POST, SOIREES, null,
-				Map.of("titre", "Soirée du vendredi", "format", "SOLO", "pilotage", "MANUEL"), null), 201);
-		UUID id = UUID.fromString(creation.path("id").asString());
-		String animateur = "demo:ANIMATEUR:" + id + ":" + UUID.randomUUID();
-		String route = SOIREES + "/" + id;
-		JsonNode ouverte = verifier("ouvrirSoiree", envoyer(HttpMethod.POST, route + "/ouverture", animateur,
-				null, UUID.randomUUID()), 200);
-		JsonNode ecran = verifier("creerAccesEcran", envoyer(HttpMethod.POST, route + "/acces-ecran", animateur,
-				null, UUID.randomUUID()), 200);
-		return new SoireeOuverte(id, route, ouverte.path("codeAcces").asString(), animateur, ecran.path("cleEcran").asString());
+		return client.ouvrirSoiree();
 	}
 
 	private JoueurArrive rejoindre(SoireeOuverte soiree, String pseudo) throws Exception {
-		JsonNode arrivee = verifier("rejoindreSoiree", envoyer(HttpMethod.POST, SOIREES + "/rejoindre", null,
-				Map.of("codeAcces", soiree.code(), "pseudo", pseudo), null), 201);
-		return new JoueurArrive(UUID.fromString(arrivee.path("joueur").path("id").asString()),
-				arrivee.path("jetonReconnexion").asString());
+		return client.rejoindre(soiree, pseudo);
 	}
 
 	private BlockingQueue<JsonNode> abonner(SoireeOuverte soiree, String ecran, String secret, String destination) throws Exception {
-		return abonner(soiree, ecran, secret, destination, Function.identity());
+		return client.abonner(soiree, ecran, secret, destination);
 	}
 
 	private <T> BlockingQueue<T> abonner(SoireeOuverte soiree, String ecran, String secret, String destination,
 			Function<JsonNode, T> projection) throws Exception {
-		stomp.setMessageConverter(new JacksonJsonMessageConverter());
-		StompHeaders connexion = new StompHeaders();
-		connexion.set("Authorization", "Bearer " + secret);
-		StompSession session = stomp.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(),
-				connexion, new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
-		sessions.add(session);
-		StompHeaders abonnement = new StompHeaders();
-		abonnement.setDestination(destination);
-		abonnement.setId(UUID.randomUUID().toString());
-		BlockingQueue<T> recus = new ArrayBlockingQueue<>(64);
-		session.subscribe(abonnement, new StompFrameHandler() {
-			@Override public Type getPayloadType(StompHeaders entetes) { return JsonNode.class; }
-			@Override public void handleFrame(StompHeaders entetes, Object contenu) { recus.add(projection.apply((JsonNode) contenu)); }
-		});
-		String capture = soiree.route() + "/etat/" + ecran + "?abonnementId=" + abonnement.getId();
-		await().pollDelay(Duration.ZERO).pollInterval(Duration.ofMillis(10)).atMost(Duration.ofSeconds(3))
-				.until(() -> envoyer(HttpMethod.GET, capture, secret, null, null)
-				.getStatusCode().value() == 200);
-		return recus;
+		return client.abonner(soiree, ecran, secret, destination, projection);
 	}
 
 	private ResponseEntity<String> buzzer(SoireeOuverte soiree, String jeton, Object corps, UUID cle) {
 		return envoyer(HttpMethod.POST, soiree.route() + "/buzz", jeton, corps, cle);
 	}
 
-	private static RestClient clientHttp(HttpClient client) {
-		var fabrique = new JdkClientHttpRequestFactory(client);
-		fabrique.setReadTimeout(Duration.ofSeconds(15));
-		return RestClient.builder().requestFactory(fabrique).build();
-	}
-
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, String secret, Object corps, UUID cle) {
-		var requete = http.method(methode).uri("http://localhost:" + port + route);
-		if (secret != null) { requete.headers(entetes -> entetes.setBearerAuth(secret)); }
-		if (cle != null) { requete.header("Idempotency-Key", cle.toString()).header("X-CSRF-TOKEN", "demonstration"); }
-		if (corps != null) { requete.contentType(MediaType.APPLICATION_JSON).body(corps); }
-		return requete.retrieve().onStatus(statut -> statut.isError(), (q, r) -> { }).toEntity(String.class);
+		return client.envoyer(methode, route, secret, corps, cle);
 	}
 
 	private JsonNode verifier(String operation, ResponseEntity<String> reponse, int statut) throws Exception {
-		assertThat(reponse.getStatusCode().value()).as("%s : %s", operation, reponse.getBody()).isEqualTo(statut);
-		ContratApi.verifier(CONTRAT, operation, reponse);
-		return json.readTree(reponse.getBody());
+		return client.verifier(operation, reponse, statut);
 	}
 
 	private void verifierRefus(ResponseEntity<String> reponse, int statut, String code) throws Exception {
 		assertThat(verifier(ENVOYER_BUZZ, reponse, statut).path("code").asString()).isEqualTo(code);
 	}
 
-	private record SoireeOuverte(UUID id, String route, String code, String animateur, String cleEcran) { }
-	private record JoueurArrive(UUID id, String jeton) { }
 	private record EnvoiDeBuzz(JoueurArrive joueur, UUID id) { }
 	private record BuzzDiffuse(String type, long revision, JsonNode buzz) {
 		static BuzzDiffuse de(JsonNode evenement) {
