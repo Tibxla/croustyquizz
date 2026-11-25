@@ -413,6 +413,24 @@ test('le public désigne le meilleur Interprète au lieu de noter', () => {
 	} finally { banc.module.demonter(); }
 });
 
+test('le reçu d’une désignation laisse place au choix enregistré, comme celui d’une note', async () => {
+	const banc = creerBanc(monterManette);
+	const ouvert = { ...passage, interpretes: [ines, zoe], etat: 'OUVERT', delaiRestantMs: 30000,
+		peutVoter: true, scrutin: 'MEILLEUR_INTERPRETE', maNote: null, monChoix: null };
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue({ votes: [ouvert] }), capture);
+		bouton(banc, 'Zoé').click();
+		bouton(banc, 'Envoyer mon choix').click();
+		banc.appels[0].resolve({ statut: 200, corps: { passageId: 'p', interpreteId: 'z' } });
+		await terminerMicrotaches();
+		assert.match(banc.principale.textContent, /Ton choix est enregistré : Zoé\./);
+		banc.module.afficher(vue({ votes: [{ ...ouvert, peutVoter: false, monChoix: 'z' }] }), { source: 'evenement', type: 'vote-enregistre' });
+		assert.doesNotMatch(banc.principale.textContent, /est enregistré/);
+		assert.match(banc.principale.textContent, /Ton choix : Zoé\. Résultat au Palmarès\./);
+	} finally { banc.module.demonter(); }
+});
+
 test('la salle affiche l’ordre des Couplets, le Couplet courant et l’annonce du suivant', () => {
 	const banc = creerBanc((zones, contexte) => {
 		zones.principale.ownerDocument.defaultView = { requestAnimationFrame: () => 1, cancelAnimationFrame() {} };

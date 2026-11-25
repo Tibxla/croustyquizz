@@ -224,7 +224,8 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 function voteAttendUnRecu(bloc, passageId, etatEnvoi) {
 	const vote = bloc.votes?.find(vote => vote.passageId === passageId);
 	// Le STOMP peut devancer le HTTP. Laisser arriver le reçu tant que son ticket est visible.
-	return vote && (etatEnvoi === 'en-cours' || (vote.etat === 'OUVERT' && vote.maNote == null));
+	// Une désignation du Freestyle (#74) s'enregistre dans monChoix, une note dans maNote.
+	return vote && (etatEnvoi === 'en-cours' || (vote.etat === 'OUVERT' && vote.maNote == null && vote.monChoix == null));
 }
 
 // Jusqu'à quatre pseudos : chacun se tronque seul, aucun ne disparaît, et le ticket garde les noms complets
