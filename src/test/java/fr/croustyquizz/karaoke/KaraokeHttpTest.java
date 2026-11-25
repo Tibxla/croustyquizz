@@ -91,6 +91,13 @@ class KaraokeHttpTest {
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", "x".repeat(129)), null), 400);
         verifier("desinscrirePassage", envoyer(HttpMethod.POST, racine + "/passages/" + UUID.randomUUID() + "/desinscription", null,
                 Map.of("envoiId", UUID.randomUUID(), "numeroModification", "0"), null), 400);
+        // Une clé inconnue est refusée sur chacune des trois routes des suggestions et des favoris, avant l'identité.
+        refuser("suggererChanson", envoyer(HttpMethod.POST, racine + "/suggestions", null,
+                Map.of("titre", "Lune", "artiste", "Indochine", "pseudo", "Jo"), UUID.randomUUID()), 400, "REQUETE_INVALIDE");
+        refuser("retirerSuggestionChanson", envoyer(HttpMethod.POST, racine + "/suggestions/" + UUID.randomUUID() + "/retrait",
+                null, Map.of("nombreJoueurs", 1, "joueurId", UUID.randomUUID()), UUID.randomUUID()), 400, "REQUETE_INVALIDE");
+        refuser("definirFavoriChanson", envoyer(HttpMethod.PUT, racine + "/chansons/" + IdentifiantsChanson.encoder(1) + "/favori",
+                null, Map.of("favorite", true, "lieuId", UUID.randomUUID()), UUID.randomUUID()), 400, "REQUETE_INVALIDE");
     }
 
     @Test void lesBornesDeLaLimiteEtDeChansonIdSuiventLeContrat() throws Exception {
