@@ -271,6 +271,25 @@ class FileAttenteInvitationTest {
     }
 
     @Test
+    void lInterpreteAccepteQuiPartFermeSonInvitationCommeUnDepartVolontaire() {
+        UUID groupe = inscrire("Groupe", List.of(BORIS, CELIA, DINA), ANA);
+        accepter(BORIS, groupe);
+        accepter(CELIA, groupe);
+
+        assertThat(file.retirerJoueurParti(BORIS, RECU)).isInstanceOf(ResultatFile.Modifiee.class);
+
+        assertThat(file.trouver(groupe).interpretes()).containsExactly(ANA, CELIA);
+        assertThat(invitations()).extracting(InvitationPassage::inviteId, InvitationPassage::etat).containsExactly(
+                tuple(BORIS, Etat.REFUSEE), tuple(CELIA, Etat.ACCEPTEE), tuple(DINA, Etat.EN_ATTENTE));
+        file.retirerJoueurParti(ANA, RECU);
+        assertThat(file.trouver(groupe).inscripteurId()).isEqualTo(CELIA);
+        assertThat(file.retirerJoueurParti(CELIA, RECU)).isInstanceOf(ResultatFile.Modifiee.class);
+        assertThat(file.trouver(groupe).etat()).isEqualTo(EtatPassage.RETIRE);
+        assertThat(invitations()).extracting(InvitationPassage::inviteId, InvitationPassage::etat).containsExactly(
+                tuple(BORIS, Etat.REFUSEE), tuple(CELIA, Etat.REFUSEE), tuple(DINA, Etat.EXPIREE));
+    }
+
+    @Test
     void laCaptureRestaureLesInvitationsDansLeurOrdre() {
         UUID passage = inscrire("Groupe", List.of(DINA, BORIS, CELIA), ANA);
         accepter(CELIA, passage);

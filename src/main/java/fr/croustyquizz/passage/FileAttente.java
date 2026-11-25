@@ -181,6 +181,11 @@ public final class FileAttente {
         expirerInvitations(i -> i.inviteId().equals(joueurId));
         if (attentes.isEmpty()) { return invite ? new ResultatFile.Modifiee() : new ResultatFile.SansEffet(); }
         retirerInterpreteDesAttentes(joueurId, recueLe, attentes);
+        // Comme pour une désinscription, l’Interprète accepté qui part retire son accord (#135).
+        for (Passage passage : attentes) {
+            InvitationPassage invitation = invitationDe(passage.id(), joueurId);
+            if (invitation != null) { changerEtat(invitation, InvitationPassage.Etat.REFUSEE); }
+        }
         return new ResultatFile.Modifiee();
     }
 
