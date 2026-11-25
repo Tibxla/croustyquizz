@@ -143,7 +143,7 @@ public class ServiceDeManche<R, E> {
 		return sousTransaction(soireeId, mancheId, () -> {
 			ManchePersistante manche = charger(mancheId, soireeId);
 			if (manche.getEtat() != EtatManche.EN_COURS && manche.getEtat() != EtatManche.EN_PAUSE) {
-				return new Refuse(409, "ETAT_INCOMPATIBLE", "La Manche n'est pas en cours.");
+				return refusHorsDeroulement(manche);
 			}
 			var d = deroulement(manche);
 			ResultatDeCommande resultat = action.apply(d);
@@ -152,6 +152,10 @@ public class ServiceDeManche<R, E> {
 			}
 			return resultat;
 		});
+	}
+	/** Refus de {@link #appliquer} pour une Manche ni en cours ni en pause ; un mode peut le préciser. */
+	protected Refuse refusHorsDeroulement(ManchePersistante manche) {
+		return new Refuse(409, "ETAT_INCOMPATIBLE", "La Manche n'est pas en cours.");
 	}
 	/**
 	 * Appelé sous le verrou, avant le commit, après chaque mutation enregistrée, minuteurs compris : un mode y lance

@@ -227,6 +227,28 @@ class BlindTestHttpTest {
 		assertThat(types).doesNotContain("brouillon-depose");
 	}
 
+	@Test
+	void apresLaFinDeLaMancheBrouillonEtPropositionSontPerimes() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		Joueur lea = rejoindre(soiree, "Léa");
+		String mancheId = ajouterBlindTest(soiree);
+		lancer(soiree);
+		String etape = attendrePhase(soiree, "EXTRAIT", 1).path("etapeId").asString();
+		verifier("envoyerBuzz", buzzer(soiree, lea, mancheId, etape, UUID.randomUUID()), 200);
+
+		verifier("piloterManche", piloter(soiree, mancheId, "TERMINER", etape), 200);
+
+		// Comme le Buzz : un Morceau qui n'est plus affiché passe avant l'état de la Manche (contrat, ordre des refus).
+		String proposition = soiree.route() + "/manches/" + mancheId + "/morceaux/" + etape;
+		verifierRefus("deposerBrouillonProposition", envoyer(HttpMethod.PUT, proposition + "/brouillon", lea.jeton(),
+				Map.of("numero", 1, "titre", "Halo", "artiste", ""), null), 409, "COMMANDE_PERIMEE");
+		verifierRefus("validerProposition", envoyer(HttpMethod.POST, proposition + "/proposition", lea.jeton(),
+				Map.of("envoiId", UUID.randomUUID(), "titre", "Halo", "artiste", ""), null), 409, "COMMANDE_PERIMEE");
+		verifierRefus("envoyerBuzz", buzzer(soiree, lea, mancheId, etape, UUID.randomUUID()), 409, "COMMANDE_PERIMEE");
+		// L'Animateur, lui, pilote une Manche terminée : l'état reste le motif du refus.
+		verifierRefus("piloterManche", piloter(soiree, mancheId, "PASSER_ETAPE", etape), 409, "ETAT_INCOMPATIBLE");
+	}
+
 	// --- Deezer ---
 
 	@Test

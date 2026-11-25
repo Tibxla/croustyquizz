@@ -134,6 +134,40 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 		}
 	}
 
+	// --- Refus après la fin de la Manche ---
+
+	/** Le contrôle d'une Manche terminée passe à {@link #verifierAvantPreparation}, qui connaît l'auteur. */
+	@Override
+	protected Refuse verifierEtat(ManchePersistante manche, boolean demarrage) {
+		if (!demarrage && manche.getEtat() == EtatManche.TERMINEE) {
+			return null;
+		}
+		return super.verifierEtat(manche, demarrage);
+	}
+
+	/**
+	 * Pour un Joueur, le Morceau d'une Manche terminée n'est plus le Morceau affiché : {@code COMMANDE_PERIMEE} passe
+	 * avant l'état (contrat, ordre des refus), comme pour le Buzz. L'Animateur garde le refus d'état.
+	 */
+	@Override
+	protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {
+		if (demarrage || manche.getEtat() != EtatManche.TERMINEE) {
+			return null;
+		}
+		return envoi.acteur().type() == Acteur.Type.JOUEUR ? perimee()
+				: new Refuse(409, "ETAT_INCOMPATIBLE", "Commande incompatible avec la Manche.");
+	}
+
+	/** Brouillon déposé, ou lien préparé, après la fin de la Manche : ce Morceau n'est plus affiché. */
+	@Override
+	protected Refuse refusHorsDeroulement(ManchePersistante manche) {
+		return manche.getEtat() == EtatManche.TERMINEE ? perimee() : super.refusHorsDeroulement(manche);
+	}
+
+	private static Refuse perimee() {
+		return new Refuse(409, "COMMANDE_PERIMEE", "Ce Morceau n'est plus en cours.");
+	}
+
 	@Override
 	protected EtatManche etatApresAcceptation(EtatManche etatParDefaut, Object instantane) {
 		return ((InstantaneBlindTest) instantane).etatManche();
