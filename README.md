@@ -24,15 +24,17 @@ Les dossiers demandés par le cours sont dans `doc/` ; `docs/` conserve la docum
 
 - **Rendu 1, dossier de lancement** : `doc/rendu-1/`, [source Markdown](doc/rendu-1/dossier-lancement.md) et [PDF de quatre pages](doc/rendu-1/dossier-lancement.pdf).
 - **Rendu 2, version intermédiaire v0.1.0** : `doc/rendu-2/`, [source Markdown](doc/rendu-2/dossier-v0.1.0.md) et [PDF](doc/rendu-2/dossier-v0.1.0.pdf) ; [release v0.1.0](https://github.com/Tibxla/croustyquizz/releases/tag/v0.1.0).
+- **Rendu 3, version intermédiaire v0.2.0** : `doc/rendu-3/`, [source Markdown](doc/rendu-3/dossier-v0.2.0.md) et [PDF](doc/rendu-3/dossier-v0.2.0.pdf) ; [release v0.2.0](https://github.com/Tibxla/croustyquizz/releases/tag/v0.2.0).
 
 Pour régénérer le PDF, installer [Pandoc](https://pandoc.org/installing.html) et Chrome ou Chromium, puis lancer depuis la racine :
 
 ```bash
 python3 tools/generer-dossier.py          # Rendu 1, quatre pages
 python3 tools/generer-dossier.py rendu-2  # Rendu 2, sans limite de pages
+python3 tools/generer-dossier.py rendu-3  # Rendu 3, sans limite de pages
 ```
 
-Le script produit le PDF à partir du Markdown et de `tools/dossier-lancement.css` (plus `tools/dossier-continu.css` pour le Rendu 2). Le HTML intermédiaire est généré dans `target/dossier-lancement/`, ignoré par Git. Si nécessaire, définir `CHROME_BIN` avec le chemin du navigateur. Vérifier la mise en page après chaque modification (quatre pages pour le Rendu 1).
+Le script produit le PDF à partir du Markdown et de `tools/dossier-lancement.css` (plus `tools/dossier-continu.css` pour les Rendus 2 et 3). Le HTML intermédiaire est généré dans `target/`, ignoré par Git. Si nécessaire, définir `CHROME_BIN` avec le chemin du navigateur. Vérifier la mise en page après chaque modification (quatre pages pour le Rendu 1).
 
 ## Installer
 
