@@ -1,4 +1,4 @@
-import { creerListeEnregistrements, registreDe } from '../../enregistrements.mjs';
+import { creerListeEnregistrements, creerZoneAnnonce, registreDe } from '../../enregistrements.mjs';
 import { texteEnvoi } from './commun.mjs';
 import { creerEnregistrement, diagnostiquer } from './enregistrement.mjs';
 
@@ -90,13 +90,12 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 	const verrou = creerVerrouEcran(fenetre.navigator, page);
 	const prises = new Map();
 	// Une seule zone d'annonce, jamais déplacée : les textes près des boutons restent muets.
-	const annonce = e('p', 'karaoke__annonce-enregistrement visuellement-cache');
-	annonce.setAttribute('role', 'status');
+	const annonce = creerZoneAnnonce(page, 'karaoke__annonce-enregistrement visuellement-cache');
 	const annonces = [];
 	const fichiers = creerListeEnregistrements({ document: page, registre,
 		annoncer: texte => annonces.push(texte), repli: () => repli(null) });
 	fichiers.element.classList.add('karaoke__enregistrements');
-	ui.principale.append(annonce, fichiers.element);
+	ui.principale.append(annonce.element, fichiers.element);
 	let renduPrevu = false, focus = null;
 	function rafraichir() {
 		if (renduPrevu) return;
@@ -237,7 +236,7 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 			}
 			fichiers.rendre();
 			verrou.maintenir([...prises.values()].some(fiche => gardeEcranAllume(fiche.prise.lire().etat)));
-			if (annonces.length) annonce.textContent = annonces.splice(0).join(' ');
+			if (annonces.length) annonce.annoncer(annonces.splice(0).join(' '));
 		},
 		placer(passage, parent) {
 			const commandes = prises.get(passage.passageId)?.commandes;
@@ -263,6 +262,7 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 			verrou.detruire();
 			quitterRegistre();
 			quitterPresentation();
+			annonce.detruire();
 			fichiers.detruire();
 		},
 	};

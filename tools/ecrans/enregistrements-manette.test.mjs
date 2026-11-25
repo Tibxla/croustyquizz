@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { monterEnregistrements, registreDe } from '../../src/main/resources/static/js/enregistrements.mjs';
+import { DELAI_ANNONCE_REPETEE_MS, monterEnregistrements, registreDe } from '../../src/main/resources/static/js/enregistrements.mjs';
 import { creerGestionnaireDeMode } from '../../src/main/resources/static/js/modules-de-mode.mjs';
 import * as karaoke from '../../src/main/resources/static/js/modes/karaoke/manette.mjs';
 import { creerDocument, terminerMicrotaches, passage, vue } from './karaoke-dom-factice.mjs';
@@ -271,4 +271,21 @@ test('Coquille : un fichier republié sous le même identifiant remplace le lien
 	assert.equal(b.zone.querySelector('audio').src, 'blob:nouvelle');
 	assert.equal(b.zone.querySelectorAll('a').length, 1);
 	assert.equal(b.zone.querySelector('dialog'), null, 'La confirmation de l’ancien fichier se ferme.');
+});
+
+test('Coquille : une annonce identique à la précédente est vidée puis réécrite', async t => {
+	suivreUrls(t);
+	t.mock.timers.enable({ apis: ['setTimeout'] });
+	const b = monterManette(t);
+	await b.afficher(soireeTerminee, evenement('soiree-terminee'));
+	const registre = registreDe(b.document);
+	registre.ajouter({ id: 'a', titre: 'Lune', url: 'blob:a', nom: 'Lune.webm' });
+	await terminerMicrotaches();
+	assert.equal(annonce(b).textContent, 'Ton Enregistrement est prêt : Lune.');
+	registre.ajouter({ id: 'b', titre: 'Lune', url: 'blob:b', nom: 'Lune.webm' });
+	await terminerMicrotaches();
+	assert.equal(annonce(b).textContent, '', 'La zone est vidée avant la même annonce.');
+	t.mock.timers.tick(DELAI_ANNONCE_REPETEE_MS);
+	assert.equal(annonce(b).textContent, 'Ton Enregistrement est prêt : Lune.');
+	assert.equal(b.zone.querySelectorAll('a').length, 2);
 });

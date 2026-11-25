@@ -206,23 +206,45 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 	};
 }
 
+// La zone role="status" de celui qui affiche la liste. Elle est vidée avant chaque annonce, et une annonce
+// identique à la précédente (deux Passages de la même Chanson) n'est écrite qu'après un court délai :
+// un lecteur d'écran ne relit pas un texte qui n'a pas changé.
+export const DELAI_ANNONCE_REPETEE_MS = 100;
+export function creerZoneAnnonce(document, classe = 'visuellement-cache') {
+	const element = document.createElement('p');
+	element.className = classe;
+	element.setAttribute('role', 'status');
+	let minuteur = null, derniere = '';
+	return {
+		element,
+		annoncer(texte) {
+			clearTimeout(minuteur);
+			minuteur = null;
+			const repetee = texte === derniere;
+			derniere = texte;
+			element.textContent = '';
+			if (!repetee) { element.textContent = texte; return; }
+			minuteur = setTimeout(() => { minuteur = null; element.textContent = texte; }, DELAI_ANNONCE_REPETEE_MS);
+		},
+		detruire() { clearTimeout(minuteur); minuteur = null; },
+	};
+}
+
 // La liste de la coquille, sur la Manette : elle présente le registre quand aucun module ne le fait
 // (hors Manche, pendant une Manche d'un autre Mode de jeu, après la fin de la Soirée).
 export function monterEnregistrements(zone, { repli = () => null } = {}) {
 	const document = zone.ownerDocument;
 	const registre = registreDe(document);
-	const annonce = document.createElement('p');
-	annonce.className = 'visuellement-cache';
-	annonce.setAttribute('role', 'status');
+	const annonce = creerZoneAnnonce(document);
 	const annonces = [];
 	const liste = creerListeEnregistrements({ document, registre, annoncer: texte => annonces.push(texte), repli });
 	liste.element.classList.add('panneau');
-	zone.replaceChildren(annonce, liste.element);
+	zone.replaceChildren(annonce.element, liste.element);
 	let prevu = false, demontee = false;
 	function rendre() {
 		if (demontee) return;
 		liste.rendre(!registre.presente);
-		if (annonces.length) annonce.textContent = annonces.splice(0).join(' ');
+		if (annonces.length) annonce.annoncer(annonces.splice(0).join(' '));
 	}
 	const quitter = registre.abonner(() => {
 		if (prevu) return;
@@ -234,6 +256,7 @@ export function monterEnregistrements(zone, { repli = () => null } = {}) {
 		demonter() {
 			demontee = true;
 			quitter();
+			annonce.detruire();
 			liste.detruire();
 			zone.replaceChildren();
 		},
