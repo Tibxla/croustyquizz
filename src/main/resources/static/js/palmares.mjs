@@ -38,13 +38,13 @@ const texteAutresPassages = nombre => `et ${nombre} ${nombre > 1 ? 'autres Passa
 export function resumerPalmaresDeSalle(palmares) {
 	const lignes = palmares.filter(ligne => ligne.rang !== null).slice(0, LIGNES_DE_SALLE);
 	const autres = palmares.length - lignes.length;
-	return { lignes, suite: lignes.length > 0 && autres > 0 ? texteAutresPassages(autres) : '' };
+	return { lignes, texteAutres: lignes.length > 0 && autres > 0 ? texteAutresPassages(autres) : '' };
 }
 
 export function afficherPalmaresDeSalle(document, { liste, suite, vide }, palmares) {
-	const { lignes, suite: texteSuite } = resumerPalmaresDeSalle(palmares ?? []);
+	const { lignes, texteAutres } = resumerPalmaresDeSalle(palmares ?? []);
 	liste.replaceChildren(...lignes.map(ligne => creerLignePalmaresSalle(document, ligne)));
-	suite.textContent = texteSuite;
-	suite.hidden = texteSuite === '';
+	suite.textContent = texteAutres;
+	suite.hidden = texteAutres === '';
 	vide.hidden = palmares === null || lignes.length > 0;
 }

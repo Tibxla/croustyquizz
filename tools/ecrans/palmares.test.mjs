@@ -74,6 +74,8 @@ test('la liste du Palmarès s’affiche en entier, sans hauteur bornée ni défi
 	assert.ok(corps.length > 0);
 	assert.doesNotMatch(corps, /max-(?:block-size|height):/);
 	assert.doesNotMatch(corps, /overflow/);
+	// Sous le Palmarès, la note d'attente vide ne prend pas d'écart : environ 23 px gagnés en 1920 × 1080, 15 px en 1280 × 720.
+	assert.match(css, /\.salle--coquille \.palmares:not\(\[hidden\]\) ~ \.coquille__note:empty\s*\{\s*display:\s*none;\s*\}/);
 });
 
 const lignesPalmares = (classes, sansVote = 0) => decrireVue({ soiree: {}, joueurs: [], classement: [], palmaresKaraoke: [
@@ -83,8 +85,8 @@ const lignesPalmares = (classes, sansVote = 0) => decrireVue({ soiree: {}, joueu
 		interpretes: [{ pseudo: 'Alizé' }], nombreVotes: 0, moyenneDixiemes: null })),
 ] }).palmares;
 const resumer = (classes, sansVote) => {
-	const { lignes, suite } = resumerPalmaresDeSalle(lignesPalmares(classes, sansVote));
-	return { numeros: lignes.map(ligne => ligne.numero), suite };
+	const { lignes, texteAutres } = resumerPalmaresDeSalle(lignesPalmares(classes, sansVote));
+	return { numeros: lignes.map(ligne => ligne.numero), suite: texteAutres };
 };
 
 test('la salle montre les trois premiers Passages classés, puis le nombre des autres Passages', () => {
