@@ -1,11 +1,16 @@
 package fr.croustyquizz.karaoke;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
 
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.EtatDeSoiree;
+import fr.croustyquizz.passage.EtatPassage;
 import fr.croustyquizz.passage.ParticipantsDePassage;
 import fr.croustyquizz.tempsreel.FournisseurCommunDemonstration;
 import java.util.*;
@@ -16,9 +21,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.*;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -37,6 +44,8 @@ class KaraokeSurSoireeEnregistreeHttpTest {
     @Autowired JsonMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired EtatDeSoiree etatDeSoiree;
+    @Autowired ServiceKaraoke service;
+    @MockitoSpyBean PersistanceKaraokeJpa persistance;
     private SessionAnimateurHttp animateur;
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -81,6 +90,69 @@ class KaraokeSurSoireeEnregistreeHttpTest {
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
         KaraokeHttpTest.verifier("inscrirePassage", refus, 409);
         assertThat(json.readTree(refus.getBody()).path("code").asString()).isEqualTo("ETAPE_INACTIVE");
+    }
+
+    @Test void terminerLaSoireeAnnuleLePassageActifSansViserSonEtape() throws Exception {
+        String soiree = soireeOuverte();
+        String joueur = rejoindre(soiree, "Léa").path("jetonReconnexion").asString();
+        String racine = "/api/soirees/" + soiree;
+        var creation = envoyer(HttpMethod.POST, racine + "/manches", null, Map.of("mode", "KARAOKE", "reglages", Map.of()), null);
+        KaraokeHttpTest.verifier("ajouterManche", creation, 201);
+        String manche = json.readTree(creation.getBody()).path("id").asString();
+        String routeManche = racine + "/manches/" + manche;
+        UUID clePause = UUID.randomUUID();
+        var pauseAvantLancement = envoyer(HttpMethod.POST, routeManche + "/commandes", null,
+                Map.of("action", "METTRE_EN_PAUSE"), clePause);
+        KaraokeHttpTest.verifier("piloterManche", pauseAvantLancement, 409);
+        assertThat(json.readTree(pauseAvantLancement.getBody()).path("code").asString()).isEqualTo("ETAT_INCOMPATIBLE");
+        KaraokeHttpTest.verifier("piloterSoiree", envoyer(HttpMethod.POST, racine + "/commandes", null,
+                Map.of("action", "LANCER"), UUID.randomUUID()), 200);
+        var pauseRejouee = envoyer(HttpMethod.POST, routeManche + "/commandes", null,
+                Map.of("action", "METTRE_EN_PAUSE"), clePause);
+        KaraokeHttpTest.verifier("piloterManche", pauseRejouee, 409);
+        assertThat(json.readTree(pauseRejouee.getBody())).isEqualTo(json.readTree(pauseAvantLancement.getBody()));
+
+        var inscription = envoyer(HttpMethod.POST, routeManche + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String passageId = json.readTree(inscription.getBody()).path("passageId").asString();
+        KaraokeHttpTest.verifier("appelerPassage", envoyer(HttpMethod.POST, routeManche + "/passages/" + passageId + "/appel",
+                null, Map.of("numeroModification", 0), UUID.randomUUID()), 200);
+        var sansEtape = envoyer(HttpMethod.POST, routeManche + "/commandes", null,
+                Map.of("action", "TERMINER"), UUID.randomUUID());
+        KaraokeHttpTest.verifier("piloterManche", sansEtape, 409);
+        assertThat(json.readTree(sansEtape.getBody()).path("code").asString()).isEqualTo("ETAPE_INACTIVE");
+
+        KaraokeHttpTest.verifier("piloterSoiree", envoyer(HttpMethod.POST, racine + "/commandes", null,
+                Map.of("action", "TERMINER"), UUID.randomUUID()), 200);
+        var instantane = (InstantaneKaraoke) service.instantane(UUID.fromString(soiree), UUID.fromString(manche));
+        assertThat(instantane.file().passages()).singleElement().satisfies(passage ->
+                assertThat(passage.etat()).isEqualTo(EtatPassage.ANNULE));
+        assertThat(etatDeSoiree.estTerminee(UUID.fromString(soiree))).isTrue();
+    }
+
+    @Test void leMemeEnvoiReprendUnLancementDontLaPremiereMancheNApasPuDemarrer() throws Exception {
+        String soiree = soireeOuverte();
+        String racine = "/api/soirees/" + soiree;
+        var creation = envoyer(HttpMethod.POST, racine + "/manches", null, Map.of("mode", "KARAOKE", "reglages", Map.of()), null);
+        KaraokeHttpTest.verifier("ajouterManche", creation, 201);
+        UUID manche = UUID.fromString(json.readTree(creation.getBody()).path("id").asString());
+        UUID cle = UUID.randomUUID();
+        var lancer = Map.of("action", "LANCER");
+        doThrow(new DataAccessResourceFailureException("Panne factice")).when(persistance).enregistrer(eq(manche), any());
+        try {
+            KaraokeHttpTest.verifier("piloterSoiree", envoyer(HttpMethod.POST, racine + "/commandes", null, lancer, cle), 503);
+        } finally {
+            doCallRealMethod().when(persistance).enregistrer(eq(manche), any());
+        }
+        assertThat(etatDeSoiree.estEnCours(UUID.fromString(soiree))).isTrue();
+        KaraokeHttpTest.verifier("piloterSoiree", envoyer(HttpMethod.POST, racine + "/commandes", null, lancer, UUID.randomUUID()), 409);
+        var reprise = envoyer(HttpMethod.POST, racine + "/commandes", null, lancer, cle);
+        KaraokeHttpTest.verifier("piloterSoiree", reprise, 200);
+        assertThat(json.readTree(reprise.getBody()).path("envoiId").asString()).isEqualTo(cle.toString());
+        var capture = envoyer(HttpMethod.GET, racine + "/etat/console", null, null, null);
+        KaraokeHttpTest.verifier("retrouverEtatConsole", capture, 200);
+        assertThat(json.readTree(capture.getBody()).at("/vue/mancheActive/id").asString()).isEqualTo(manche.toString());
     }
 
     @Test void uneSoireeDeDemonstrationPasseParLeRepliCommeAvant() throws Exception {

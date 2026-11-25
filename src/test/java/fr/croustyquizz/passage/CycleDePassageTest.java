@@ -74,6 +74,38 @@ class CycleDePassageTest {
     }
 
     @Test
+    void appelleLePremierDeLOrdreEffectifSeulementSiLaFileEstLibre() {
+        var cycle = new CycleDePassage(file, horloge, APPEL, EtatCyclePassage.vide(), clotures::add);
+        var etapes = new ArrayDeque<>(List.of(ETAPE, new UUID(0, 6)));
+        var vide = file.etat();
+        assertThat(cycle.appelerSuivantSiLibre(etapes::remove, debut)).isFalse();
+        assertThat(file.etat()).isEqualTo(vide);
+        assertThat(cycle.etat()).isEqualTo(EtatCyclePassage.vide());
+
+        UUID prioritaire = new UUID(0, 7);
+        file.inscrire(new NouveauPassage(PASSAGE, SOIREE, MANCHE, JOUEUR, List.of(JOUEUR),
+                "première", APPEL, 1, debut));
+        file.inscrire(new NouveauPassage(prioritaire, SOIREE, MANCHE, JOUEUR, List.of(JOUEUR),
+                "prioritaire", APPEL, 2, debut));
+        file.definirPriorite(new CiblePassage(prioritaire, 0), true);
+
+        assertThat(cycle.appelerSuivantSiLibre(etapes::remove, debut)).isTrue();
+        assertThat(cycle.courantActif().id()).isEqualTo(prioritaire);
+        assertThat(cycle.etat().etapeId()).isEqualTo(ETAPE);
+        var fileAvecCourant = file.etat();
+        var courant = cycle.etat();
+        assertThat(cycle.appelerSuivantSiLibre(etapes::remove, debut)).isFalse();
+        assertThat(file.etat()).isEqualTo(fileAvecCourant);
+        assertThat(cycle.etat()).isEqualTo(courant);
+        assertThat(etapes).containsExactly(new UUID(0, 6));
+
+        cycle.clore(EtatPassage.SAUTE, TraceTerminale.PASSE_PAR_ANIMATEUR, JOUEUR, debut);
+        assertThat(cycle.appelerSuivantSiLibre(etapes::remove, debut)).isTrue();
+        assertThat(cycle.courantActif().id()).isEqualTo(PASSAGE);
+        assertThat(etapes).isEmpty();
+    }
+
+    @Test
     void uneFileHistoriqueSansChronologieNeRetrouvePasDeCourant() {
         var cycle = creer(horloge);
         file.extraireProchainPassage(false);

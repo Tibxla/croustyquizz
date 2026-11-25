@@ -40,6 +40,11 @@ test('rejouer la capture retardée, les Révisions déjà couvertes et le doublo
 	await rejouerReconnexion(passage.resynchronisation);
 });
 
+test('rejouer la reconnexion de la Manette pendant le Vote du public', async () => {
+	const vote = parse(await readFile(new URL('../../docs/api/exemples/parcours-vote-karaoke.yaml', import.meta.url), 'utf8'), { maxAliasCount: 1000 });
+	await rejouerReconnexion(vote.resynchronisation);
+});
+
 function demarrer(options = {}, adaptations = {}) {
 	const pilote = creerAdaptateurPilotable();
 	const vues = [];

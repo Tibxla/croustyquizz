@@ -6,6 +6,7 @@
   <title>Écran de salle · CroustyQuizz</title>
   <link rel="stylesheet" href="/css/croustyquizz.css">
   <link rel="stylesheet" href="/css/ecran-de-salle.css">
+  <link rel="stylesheet" href="/css/photos.css">
   <script defer src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
   <script type="module" src="/js/page.mjs"></script>
 </head>
@@ -18,18 +19,32 @@
     </div>
     <p class="coupure" role="status" data-connexion>Synchronisation…</p><p class="envoi envoi--refuse" role="alert" data-erreur hidden></p><p class="envoi" role="status" data-envoi hidden></p>
     <div class="coquille__mode" data-principale></div>
+    <div class="photos--affiche" data-photos hidden></div>
+    <section class="salle__classement" aria-labelledby="titre-classement" data-classement-salle hidden>
+      <h2 id="titre-classement">Classement général</h2>
+      <ol class="commun__liste" role="list"></ol>
+      <p hidden>Aucun point attribué.</p>
+    </section>
     <p class="coquille__note" data-attente>La prochaine Manche s’affichera ici.</p>
+    <div class="salle__audio" data-audio-salle hidden>
+      <button class="bouton" type="button" data-choisir-dossier>Choisir le dossier de musique</button>
+      <input type="file" webkitdirectory multiple hidden>
+      <p data-aide-son role="status"></p>
+      <p data-son-bloque hidden>Son bloqué</p>
+      <button class="bouton" type="button" data-activer-son hidden>Activer le son</button>
+    </div>
     <footer class="salle__pied"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span><span>Écran de salle</span></footer>
   </section>
   <aside class="salle__cote" aria-label="La salle">
     <div class="coquille__mode" data-laterale></div>
-    <section class="commun" aria-label="Joueurs et Classement général">
+    <section class="commun" aria-label="Joueurs et Buzz">
       <h2 data-nombre-joueurs>Joueurs</h2><ul class="commun__liste" data-joueurs></ul>
-      <h2>Classement général</h2><ol class="commun__liste" data-classement></ol>
       <p data-buzz>Aucun Buzz reçu</p>
     </section>
     <div class="talon" data-talon hidden>
+      <div class="talon__qr" data-qr hidden><img alt="QR code pour rejoindre la Soirée"></div>
       <div><span class="talon__aide">Code d’accès de la Soirée</span><span class="talon__code" data-code></span></div>
+      <span class="talon__adresse" data-adresse hidden></span>
     </div>
   </aside>
 </main>

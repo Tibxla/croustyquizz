@@ -5,7 +5,9 @@ import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Ouvre une vraie session de test avec son cookie et le CSRF renouvelé. */
@@ -15,7 +17,12 @@ public record SessionAnimateurHttp(String cookie, String csrf) {
 	private static final String CSRF = "X-CSRF-TOKEN";
 
 	public static SessionAnimateurHttp ouvrir(int port, JsonMapper json) throws Exception {
-		var client = RestClient.create("http://localhost:" + port);
+		return ouvrir("http://localhost:" + port, json);
+	}
+
+	/** Pour un serveur servi sous un chemin de contexte, {@code adresse} le contient. */
+	public static SessionAnimateurHttp ouvrir(String adresse, JsonMapper json) throws Exception {
+		var client = RestClient.create(adresse);
 		var initial = client.get().uri("/api/csrf").retrieve().toEntity(String.class);
 		ContratApi.verifier(CONTRAT, "obtenirCsrf", initial);
 		var anonyme = new SessionAnimateurHttp(cookie(initial), json.readTree(initial.getBody()).path("token").asString());
@@ -40,6 +47,20 @@ public record SessionAnimateurHttp(String cookie, String csrf) {
 	public HttpHeaders entetes() {
 		var entetes = new HttpHeaders();
 		entetes.set(HttpHeaders.COOKIE, cookie);
+		entetes.set(CSRF, csrf);
+		return entetes;
+	}
+
+	/** Poignée de main WebSocket de la Console : le cookie de session. */
+	public WebSocketHttpHeaders poigneeDeMain() {
+		var entetes = new WebSocketHttpHeaders();
+		entetes.set(HttpHeaders.COOKIE, cookie);
+		return entetes;
+	}
+
+	/** CONNECT STOMP de la Console : le jeton CSRF de la session, sans Authorization. */
+	public StompHeaders connexionStomp() {
+		var entetes = new StompHeaders();
 		entetes.set(CSRF, csrf);
 		return entetes;
 	}

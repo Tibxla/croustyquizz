@@ -17,7 +17,17 @@ import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.tempsreel.ResolveurDActeur;
 import fr.croustyquizz.tempsreel.ResolveurDActeurDuProfil;
 
-/** Résout la portée de l'Animateur et les accès portés par un Bearer. */
+/**
+ * Résout la portée de l'Animateur et les accès portés par un Bearer.
+ * <p>
+ * Sans Bearer, l'Animateur est reconnu à sa session, pour une Soirée de son Lieu.
+ * Un Bearer est d'abord un jeton de reconnexion de Joueur ou une clé d'Écran ;
+ * sinon il est confié au résolveur du profil (démonstration en dev et recette,
+ * refus en production). Une identité de démonstration ne vise qu'une Soirée
+ * fictive : sur une Soirée enregistrée, l'Animateur passe par sa session, le
+ * Joueur par son jeton de reconnexion et l'Écran par sa clé. Un Joueur de
+ * démonstration ne porte pas non plus l'UUID d'un vrai Joueur.
+ */
 @Component
 class ResolveurDActeurSoiree implements ResolveurDActeur {
 
@@ -25,11 +35,14 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 
 	private final ServiceDesAcces acces;
 	private final DepotDeSoirees soirees;
+	private final DepotDeJoueurs joueurs;
 	private final ResolveurDActeurDuProfil profil;
 
-	ResolveurDActeurSoiree(ServiceDesAcces acces, DepotDeSoirees soirees, ResolveurDActeurDuProfil profil) {
+	ResolveurDActeurSoiree(ServiceDesAcces acces, DepotDeSoirees soirees, DepotDeJoueurs joueurs,
+			ResolveurDActeurDuProfil profil) {
 		this.acces = acces;
 		this.soirees = soirees;
+		this.joueurs = joueurs;
 		this.profil = profil;
 	}
 
@@ -37,11 +50,7 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 	public Acteur resoudre(HttpServletRequest requete) {
 		if (ResolveurAnimateurConnecte.porteUnBearer(requete)) {
 			return reconnaitre(requete.getHeader(HttpHeaders.AUTHORIZATION))
-					.orElseGet(() -> {
-						Acteur acteur = profil.resoudre(requete);
-						return acteur.type() == Acteur.Type.ANIMATEUR
-								? verifierDemonstration(acteur, soireeDeLaRoute(requete)) : acteur;
-					});
+					.orElseGet(() -> limiter(profil.resoudre(requete), soireeDeLaRoute(requete)));
 		}
 		var animateur = ResolveurAnimateurConnecte.resoudre(requete);
 		UUID soireeId = soireeDeLaRoute(requete);
@@ -54,7 +63,7 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 	@Override
 	public Acteur resoudre(SimpMessageHeaderAccessor connexion) {
 		return reconnaitre(connexion.getFirstNativeHeader(HttpHeaders.AUTHORIZATION))
-				.orElseGet(() -> verifierDemonstration(profil.resoudre(connexion), null));
+				.orElseGet(() -> limiter(profil.resoudre(connexion), null));
 	}
 
 	@Override
@@ -77,9 +86,27 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 		return variables != null && variables.get("soireeId") instanceof String id ? UUID.fromString(id) : null;
 	}
 
+	/**
+	 * Réserve les identités de démonstration aux Soirées fictives. Le canal d'une
+	 * Manette et sa dernière vue ne dépendent que de l'UUID du Joueur : un vrai
+	 * Joueur est donc refusé même derrière une Soirée fictive.
+	 */
+	private Acteur limiter(Acteur acteur, UUID soireeDemandee) {
+		if (acteur.type() == Acteur.Type.ANIMATEUR) {
+			return verifierDemonstration(acteur, soireeDemandee);
+		}
+		if (soirees.existsById(acteur.soireeId())
+				|| acteur.type() == Acteur.Type.JOUEUR && joueurs.existsById(acteur.identifiant())) {
+			throw new Refuse(401, "AUTHENTIFICATION_REQUISE", acteur.type() == Acteur.Type.ECRAN
+					? "Cette Soirée n'accepte pas d'Écran de démonstration : ouvre l'Écran de salle avec la clé créée depuis la Console."
+					: "Cette Soirée n'accepte pas d'identité de démonstration : rejoins-la avec son code.").exception();
+		}
+		return acteur;
+	}
+
 	private Acteur verifierDemonstration(Acteur acteur, UUID soireeDemandee) {
-		if (acteur.type() == Acteur.Type.ANIMATEUR && (soirees.existsById(acteur.soireeId())
-				|| soireeDemandee != null && !soireeDemandee.equals(acteur.soireeId()) && soirees.existsById(soireeDemandee))) {
+		if (soirees.existsById(acteur.soireeId())
+				|| soireeDemandee != null && !soireeDemandee.equals(acteur.soireeId()) && soirees.existsById(soireeDemandee)) {
 			throw new Refuse(401, "AUTHENTIFICATION_REQUISE", "Une Soirée enregistrée exige une session Animateur.").exception();
 		}
 		return acteur;

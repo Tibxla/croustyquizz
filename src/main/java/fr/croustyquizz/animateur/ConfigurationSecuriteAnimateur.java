@@ -137,7 +137,10 @@ class ConfigurationSecuriteAnimateur {
 				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/appel"),
 				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/paroles-seules"),
 				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/calage/debut"),
-				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/calage/correction"));
+				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/calage/correction"),
+				CHEMINS.matcher(HttpMethod.POST, SOIREE + "/photos/{photoId}/moderation"),
+				CHEMINS.matcher(HttpMethod.PUT, SOIREE + "/photos/reglages"),
+				CHEMINS.matcher(HttpMethod.PUT, SOIREE + "/musique-attente"));
 		var test = new OrRequestMatcher(CHEMINS.matcher(HttpMethod.POST, TEST + "/manches"),
 				CHEMINS.matcher(HttpMethod.POST, TEST + "/manches/{mancheId}/demarrer"),
 				CHEMINS.matcher(HttpMethod.PUT, TEST + "/pilotage"));

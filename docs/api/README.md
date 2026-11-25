@@ -1,6 +1,6 @@
-# Contrats du Quiz et du Karaoké
+# Contrats du Quiz, du Blind test et du Karaoké
 
-Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34), [#82](https://github.com/Tibxla/croustyquizz/issues/82), tranche de contrat de [#21](https://github.com/Tibxla/croustyquizz/issues/21), et [#98](https://github.com/Tibxla/croustyquizz/issues/98), tranche de contrat de [#22](https://github.com/Tibxla/croustyquizz/issues/22). Ces fichiers décrivent une **cible à relire par les propriétaires**, pas des contrôleurs déjà déployés. L’application Spring Boot et les pages HTML/JavaScript restent dans le même projet.
+Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34), [#82](https://github.com/Tibxla/croustyquizz/issues/82), tranche de contrat de [#21](https://github.com/Tibxla/croustyquizz/issues/21), [#98](https://github.com/Tibxla/croustyquizz/issues/98), tranche de contrat de [#22](https://github.com/Tibxla/croustyquizz/issues/22), et [#174](https://github.com/Tibxla/croustyquizz/issues/174), tranche de contrat de [#17](https://github.com/Tibxla/croustyquizz/issues/17). Ces fichiers décrivent une **cible à relire par les propriétaires**, pas des contrôleurs déjà déployés. L’application Spring Boot et les pages HTML/JavaScript restent dans le même projet.
 
 | Fichier | Contenu |
 |---|---|
@@ -10,7 +10,10 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-quiz.yaml](exemples/parcours-quiz.yaml) | Échanges fictifs, événements, refus de données sensibles et exemple de reconnexion |
 | [exemples/parcours-karaoke.yaml](exemples/parcours-karaoke.yaml) | Recherche, inscription, File d’attente, refus, reçus et reconnexion du Karaoké |
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
+| [exemples/parcours-pilotage-manuel.yaml](exemples/parcours-pilotage-manuel.yaml) | Lancement, enchaînement des Manches et fin de la Soirée sur les trois écrans |
+| [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
 | [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console d’une Soirée en Pilotage Automatique |
+| [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) | Blind test : extrait, Buzz, brouillon et Proposition de titre, partie trouvée, blocage, Révélation, refus, confidentialité et reconnexion de la salle |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
 
@@ -20,7 +23,9 @@ Le premier parcours est : inscription du premier Animateur d’un Lieu, connexio
 
 Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions : `preparerQuestions` sur une telle Manche répond `409 ETAT_INCOMPATIBLE`, sans modification. Chaque Question a quatre propositions distinctes et une seule solution.
 
-La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut être créée en Format `EQUIPE` et en Pilotage `AUTOMATIQUE` (#6), qui sont enregistrés et restitués tels quels : le déroulement en Équipe relève de #26 et l’enchaînement automatique de #25. Le Blind test, le Freestyle, la modération et le serveur MCP étendront ce contrat. Le Buzz est inclus uniquement pour le scénario du socle #7/#8, avant le lancement d’une Manche ; il est refusé pendant le Quiz. Son arbitrage en Blind test relève de #17. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
+Le [parcours de pilotage manuel](exemples/parcours-pilotage-manuel.yaml) illustre le refus d’un programme vide, la répétition d’un envoi, l’enchaînement de deux Manches dans l’ordre du programme et la fin de la Soirée. La fin publie `soiree-terminee` aux trois types d’écran. La vue finale ne porte aucune Manche active.
+
+La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut être créée en Format `EQUIPE` et en Pilotage `AUTOMATIQUE` (#6), qui sont enregistrés et restitués tels quels : le déroulement en Équipe relève de #26 et l’enchaînement automatique de #25. Le Blind test étend aussi ce parcours ci-dessous. Le Freestyle, la modération et le serveur MCP étendront ce contrat. Le Buzz sert au scénario du socle #7/#8, avant le lancement d’une Manche, et au Blind test ; il est refusé pendant le Quiz. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
 
 ## Accès aux vues
 
@@ -32,7 +37,7 @@ La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut 
 
 Les jetons sont opaques. Le serveur en déduit l’identité et la portée ; une route ou un corps contenant un UUID ne confère aucun droit. Un Joueur ne peut agir pour un autre, un Animateur ne peut accéder à un autre Lieu et une clé d’Écran n’envoie que les commandes de son lecteur (désignation, déclaration, fin, erreur et relevé de position), sans aucune action de jeu. Les ressources hors de la portée autorisée répondent `404`, les identités absentes ou expirées `401`.
 
-Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée ; sa durée de conservation après la fin sera précisée avec l’implémentation des accès. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès créé depuis la Console. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. Le transfert initial d’une clé d’Écran peut utiliser un fragment URL, retiré par la page après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
+Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée. La page d’arrivée conserve le jeton et l’UUID du Joueur renvoyés par le serveur pour la Soirée concernée. La Manette utilise le jeton pour ses requêtes HTTP et le CONNECT STOMP, et l’UUID pour choisir son canal. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès depuis la préparation. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. La préparation ouvre `ecran.html?soiree=<UUID>#cle=<clé>` ; l’Écran de salle conserve sa clé dans le stockage de l’onglet et retire le fragment après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
 
 Les opérations sans Soirée, comme la création, reçoivent l’identité de session `AnimateurConnecte` (`animateurId`, `lieuId`) côté serveur. La création enregistre ce Lieu. Pour une opération sur une Soirée, le serveur résout un Acteur Animateur pour cette Soirée après avoir vérifié son Lieu. Les anciennes Soirées sans Lieu donnent aussi `404 RESSOURCE_INTROUVABLE` aux Animateurs connectés.
 
@@ -62,9 +67,9 @@ Selon l’[ADR 0006](../adr/0006-commandes-de-manche-et-vues-par-blocs.md), les 
 
 La Manche en cours remplit le seul bloc de son Mode de jeu (`quiz`, `blindtest`, `karaoke` ou `freestyle`). Ce bloc peut rester `null` sans fournisseur ou après la fin. Les autres blocs valent `null` ou sont absents. Hors Manche, `modeEnCours` vaut `null` et tous les blocs sont nuls ou absents ; les anciens exemples `quiz: {phase: ATTENTE}` hors Manche deviennent donc `quiz: null`. Une vue porte au plus un bloc non nul, correspondant à `modeEnCours` : cette règle est validée par le schéma partagé `BlocsDeMode` sur les trois destinations. Le serveur compose une vue dont `modeEnCours` correspond à la Manche active.
 
-`quiz` est facultatif, de type `EtatQuiz` ou `null`. `karaoke` est facultatif, de type `BlocKaraokeSalle`, `BlocKaraokeConsole` ou `BlocKaraokeManette` selon la destination, ou `null`. Un bloc Karaoké non nul exige une Manche active de Karaoké en `EN_COURS` ou `EN_PAUSE`. Les blocs facultatifs `blindtest` et `freestyle` n’acceptent encore que `null`. La création et la description des Manches acceptent `QUIZ` et `KARAOKE`, avec les réglages propres à chaque mode. La confidentialité du Quiz reste inchangée : si le bloc `quiz` est présent et non nul, aucun résultat personnel n’est révélé en `ATTENTE`, `QUESTION_OUVERTE` ou `EN_PAUSE`. En `KARAOKE`, `derniereReponse` et `resultatPersonnel` restent obligatoires et nuls, même sans bloc fourni.
+`quiz` est facultatif, de type `EtatQuiz` ou `null`. `blindtest` est facultatif, de type `BlocBlindTestSalle`, `BlocBlindTestConsole` ou `BlocBlindTestManette` selon la destination, ou `null`. `karaoke` est facultatif, de type `BlocKaraokeSalle`, `BlocKaraokeConsole` ou `BlocKaraokeManette` selon la destination, ou `null`. Un bloc Karaoké non nul exige une Manche active de Karaoké en `EN_COURS` ou `EN_PAUSE`, et un bloc Blind test une Manche active de Blind test dans les mêmes états. Le bloc facultatif `freestyle` n’accepte encore que `null`. La création et la description des Manches acceptent `QUIZ`, `BLIND_TEST` et `KARAOKE`, avec les réglages propres à chaque mode (section Blind test pour `ReglagesBlindTest`). La confidentialité du Quiz reste inchangée : si le bloc `quiz` est présent et non nul, aucun résultat personnel n’est révélé en `ATTENTE`, `QUESTION_OUVERTE` ou `EN_PAUSE`. En `KARAOKE`, `derniereReponse` et `resultatPersonnel` restent obligatoires et nuls, même sans bloc fourni.
 
-Dans la partie commune de la Manette, `eligiblePourMancheActive` dit si le Joueur prend part à la Manche active. Pour un Joueur arrivé pendant une Manche, le serveur le met à `true` quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Karaoké ; Freestyle), à `false` sinon. Le Blind test tranchera dans #17. Les pages n’en déduisent rien d’autre : le message « Tu participeras à la prochaine Manche » s’appuie sur ce seul champ, sans regarder `modeEnCours`. La règle de jeu reste au serveur, et un futur Mode de jeu n’a rien à ajouter côté navigateur.
+Dans la partie commune de la Manette, `eligiblePourMancheActive` dit si le Joueur prend part à la Manche active. Pour un Joueur arrivé pendant une Manche, le serveur le met à `true` quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Blind test, ADR 0009 ; Karaoké ; Freestyle), à `false` sinon. Au Blind test, le retardataire peut buzzer dès le Morceau en cours. Les pages n’en déduisent rien d’autre : le message « Tu participeras à la prochaine Manche » s’appuie sur ce seul champ, sans regarder `modeEnCours`. La règle de jeu reste au serveur, et un futur Mode de jeu n’a rien à ajouter côté navigateur.
 
 Les captures HTTP et les messages STOMP utilisent les mêmes schémas de vue. Les trois canaux restent inchangés et chaque message remplace toujours la vue complète, partie commune et blocs compris.
 
@@ -106,11 +111,33 @@ Une base ou une transaction indisponible produit `503 SERVICE_INDISPONIBLE` au f
 
 Un accusé HTTP retrouvé après répétition est un reçu de l’opération initiale : il ne doit pas remplacer une projection temps réel plus récente. Les écrans prennent leur état courant dans les captures cohérentes et événements révisés, même lorsqu’une ancienne réponse HTTP finit par arriver.
 
+Le Buzz du socle est disponible dans une Soirée ouverte ou en cours hors Manche active. Son UUID peut être envoyé comme `envoiId` JSON ou comme `Idempotency-Key` ; les deux formes désignent le même envoi. Un Buzz accepté reçoit un rang croissant à partir de 1 dans la Soirée. Le reçu est conservé, et `buzz-recu` transporte ce Buzz dans `dernierBuzz` des vues complètes de la salle, de la Console et des Manettes. Les captures et événements ultérieurs conservent le dernier Buzz accepté.
+
 La pause gèle le temps restant ; la reprise crée une nouvelle échéance serveur. En Manuel, `PASSER_ETAPE` clôt d’abord une Question ouverte et montre sa correction ; un nouvel appel, avec un nouvel identifiant d’envoi, passe à la Question suivante. Après la dernière correction, la Manche est terminée. L’Animateur demande ensuite `MANCHE_SUIVANTE`, qui clôt la Soirée si le programme est épuisé. L’arrêt explicite d’une Manche abandonne l’étape non corrigée sans lui attribuer de points.
+
+## Blind test
+
+Les règles sont celles de l’[ADR 0009](../adr/0009-deroulement-du-blind-test.md). Ce qui suit les décrit vues du réseau ; [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) les illustre.
+
+**Préparation.** `ajouterManche` accepte `BLIND_TEST` avec `ReglagesBlindTest` : une source (`PLAYLIST` ou `GENRE` Deezer, par son identifiant) et un nombre de Morceaux de 1 à 50. Le serveur tire les Morceaux qui ont un extrait, hors du verrou de la Soirée. Ces réglages sont publics : la partie commune les publie tels quels à toutes les destinations (`mancheActive.reglages`). La sélection tirée reste donc dans l’état privé du mode et n’y figure jamais. Deezer indisponible, ou une source sans assez de Morceaux jouables : `503 SOURCE_MUSICALE_INDISPONIBLE`, sans Manche ajoutée.
+
+**Phases d’un Morceau.** `PREPARATION` (le serveur demande le lien d’extrait hors du verrou), `EXTRAIT`, `PROPOSITION` (un Joueur a la main), `REVELATION`. `etapeId` identifie le Morceau courant ; il est attribué par le serveur et n’est jamais l’identifiant Deezer. `lecture` décrit les 30 s d’extrait menées par l’Horloge du serveur : en lecture depuis `positionMs` à l’instant `depuisLe`, ou en pause à `positionMs`. Les 30 s partent de la mise en lecture et s’arrêtent pendant la saisie et les pauses de la Manche. L’Écran de salle s’aligne sur `lecture` sans rien signaler ; un Écran rechargé reprend à la bonne position.
+
+**Confidentialité.** La vue salle est lisible par un Joueur : elle ne porte jamais l’identifiant Deezer, ni le titre, ni l’artiste avant leur Révélation, hors partie déjà trouvée. Elle porte `lienExtrait`, le lien signé rendu par Deezer, en phases `EXTRAIT` et `PROPOSITION` seulement. `revelation` (titre, artiste, pochette) n’est non nul qu’en phase `REVELATION`, sur les trois destinations. La Console porte en plus `reponse`, la réponse attendue à tout moment, et `joueursBloques`. La Manette porte en plus `peutBuzzer`, `bloque`, `aLaMain` (jamais en même temps que `bloque`), `champsDemandes`, et `monBrouillon`, visible de son seul auteur quand il a la main.
+
+**Buzz.** Pendant une Manche de Blind test, `envoyerBuzz` exige `mancheId` et l’`etapeId` du Morceau visé (`400 REQUETE_INVALIDE` sinon) et transmet le Buzz au déroulement de la Manche. Le premier Buzz accepté d’un Joueur non bloqué, en phase `EXTRAIT`, lui donne la main : l’extrait se met en pause, `main` porte son échéance de saisie (20 s), puis `buzz-recu`. `rang` est l’ordre du Buzz parmi les Buzz acceptés du Morceau, et `dernierBuzz` reprend le Buzz qui a pris la main. Une cible qui n’est plus la Manche ou le Morceau courant reçoit `409 COMMANDE_PERIMEE`, distinct des refus de jeu : Joueur bloqué, main déjà prise ou phase autre que `EXTRAIT` donnent `409 BUZZ_NON_AUTORISE`. Le même envoi rend son reçu initial, même après la fin du Morceau.
+
+**Proposition de titre.** Le Joueur qui a la main dépose son brouillon par `deposerBrouillonProposition` au fil de la saisie : chaque envoi porte un `numero` croissant, à partir de 1 pour chaque main, et remplace le brouillon retenu (`204`, sans reçu). La vue est alors republiée à sa seule Manette (`brouillon-depose`) : après un rechargement, la capture rend `monBrouillon`, et la Manette reprend la numérotation depuis son `numero`. Un brouillon dont le `numero` ne dépasse pas celui du brouillon retenu est ignoré sans publication, si bien qu’un envoi rejoué en retard n’écrase jamais un plus récent ; c’est l’idempotence du brouillon, sans `Idempotency-Key`. `validerProposition` est dédupliquée par l’`envoiId` du corps, comme le Buzz. `validerProposition` fait juger aussitôt ; à l’échéance comptée par le serveur, le dernier brouillon reçu est jugé de la même façon. Seuls les champs encore demandés sont jugés ; une partie déjà trouvée vaut `NON_DEMANDE`. Un champ est juste s’il égale le titre court Deezer ou le nom de l’artiste, sans tenir compte de la casse, des accents ni des blancs répétés ; la tolérance aux articles et aux fautes de frappe viendra avec #18. Le titre rapporte 70 points, l’artiste 30, au premier qui trouve chaque partie, sans point négatif. Une partie trouvée apparaît aussitôt dans `partiesTrouvees` ; un champ demandé faux ou vide bloque le Joueur jusqu’au Morceau suivant, l’extrait reprend et le Buzz se rouvre. L’accusé porte le verdict de chaque champ et les points gagnés. Chaque jugement publie une seule vue : `proposition-jugee`, ou `morceau-revele` quand il termine le Morceau. Les refus d’un dépôt ou d’une validation suivent cet ordre : un Morceau qui n’est plus le Morceau affiché reçoit `409 COMMANDE_PERIMEE` (un Morceau révélé reste affiché jusqu’au suivant) ; un Joueur déjà jugé sur ce Morceau, ou dont l’échéance est atteinte même si le serveur ne l’a pas encore jugé, `409 HORS_DELAI` ; un Joueur sans la main `409 ETAT_INCOMPATIBLE`. Un Buzz reçu quand l’extrait a atteint 30 s reçoit `409 BUZZ_NON_AUTORISE`, même avant la Révélation.
+
+**Fin et suite.** La Révélation arrive quand les deux parties sont trouvées, quand les 30 s sont écoulées ou quand plus aucun Joueur ne peut buzzer (`morceau-revele`). En Pilotage Automatique, le Morceau suivant est préparé 8 s après (`morceau-en-preparation`), puis lu (`morceau-ouvert`). En Manuel, un premier `PASSER_ETAPE` sur un Morceau en cours, en préparation compris, le termine et le révèle ; seul un `PASSER_ETAPE` pendant la Révélation passe au suivant, ou termine la Manche après le dernier Morceau. Il nomme toujours l’`etapeId` du Morceau affiché (`409 ETAPE_INACTIVE` sinon), si bien qu’un envoi destiné au Morceau 1 ne révèle jamais le Morceau 2.
+
+**Pause.** `METTRE_EN_PAUSE` gèle la lecture et, pendant une saisie, le temps restant du Joueur qui a la main : `main.echeanceLe` devient `null` et `main.tempsRestantMs` porte le reste. `REPRENDRE` relance l’extrait et la saisie d’où ils étaient. Pendant la pause, le Joueur garde la main et peut encore déposer son brouillon ; valider sa Proposition ou `PASSER_ETAPE` reçoit `409 ETAT_INCOMPATIBLE`, et un Buzz `409 BUZZ_NON_AUTORISE`. Un Morceau dont le lien d’extrait ne peut être obtenu est sauté sans points (`morceau-saute`) ; après le dernier Morceau, la Manche se termine. Si le dernier Morceau est sauté, seul `manche-terminee` est publié : la salle n’annonce pas ce saut, le bloc `blindtest` passant aussitôt à `null`.
+
+**Joueurs et points.** Un Joueur arrivé pendant la Manche peut buzzer aussitôt : `eligiblePourMancheActive` vaut `true`. Un Morceau donne au plus une `AttributionDePoints` par Joueur : `points` est la somme de ses parties trouvées, `bonneReponse` vaut `true`, et `tempsMs` est la position de l’extrait à son Buzz gagnant, donc le temps d’extrait écoulé hors pauses de la Manche et hors saisies des autres Joueurs. Un doublé titre et artiste donne une seule attribution de 100 points.
 
 ## Karaoké
 
-Le contrat fixe la recherche de Chansons, l’inscription personnelle, la gestion de la File d’attente (#82) puis le cycle du Passage : appel, « Je suis prêt », lecture, calage et fin (#98, voir « Passage : appel, lecture et calage »). Le mécanisme commun (File d’attente, appel, « Je suis prêt », fin du Passage) vit dans `passage` ; la Chanson, ses paroles, la lecture et le calage vivent dans `karaoke` (ADR 0006). Un seul Interprète par Passage ici ; les tableaux acceptent déjà un à quatre Interprètes pour #66. Aucun Point n’est attribué au Karaoké, même en Format Équipe. Vote du public (#23), Pilotage Automatique (#25), YouTube (palier 2 de l’ADR 0007), Délégation et ajout pour autrui sont hors périmètre. Le port `LecteurDeChanson` de l’Écran de salle couvre charger, lire, pause, reprise, position, fin, volume et erreur (ADR 0007).
+Le contrat fixe la recherche de Chansons, l’inscription personnelle, la gestion de la File d’attente (#82) puis le cycle du Passage : appel, « Je suis prêt », lecture, calage et fin (#98, voir « Passage : appel, lecture et calage »). Le mécanisme commun (File d’attente, appel, « Je suis prêt », fin du Passage, Vote du public) vit dans `passage` ; la Chanson, ses paroles, la lecture et le calage vivent dans `karaoke` (ADR 0006). Un seul Interprète par Passage ici ; les tableaux acceptent déjà un à quatre Interprètes pour #66. Aucun Point n’est attribué au Karaoké, même en Format Équipe. Les sections suivantes décrivent aussi l’appel en Pilotage Automatique (#120) et le résultat du Vote du public (#116). Le port `LecteurDeChanson` de l’Écran de salle couvre charger, lire, pause, reprise, position, fin, volume et erreur (ADR 0007).
 
 ### Rotation et cycle
 
@@ -118,7 +145,7 @@ Le nouvel inscrit rejoint la fin du Tour ouvert s’il n’y a pas chanté, sino
 
 La limite, de 1 à 20, porte sur les Passages `EN_ATTENTE` de chaque Interprète. La baisser ne retire rien. Une désinscription suivie d’une réinscription rejoint la fin du Tour admissible. Pas de doublon de Chanson personnel en attente ; deux Joueurs peuvent choisir la même Chanson. Un retardataire présent peut s’inscrire ; sa vue porte `eligiblePourMancheActive: true`, mais ce champ n’est jamais une garde de l’inscription.
 
-Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. L’appel fait `EN_ATTENTE` → `APPELE` et sépare le courant de la File d’attente ; la suite du cycle est décrite dans « Passage : appel, lecture et calage ». Un Passage sauté ou annulé garde son Tour. L’appel dure trente secondes ; son saut automatique relève du Pilotage Automatique (#25) : d’ici là, l’échéance ne publie rien et le Pilotage Manuel s’applique. Aucun nombre de Passages n’est fixé. L’Animateur termine la Manche ; en Automatique, la fin naturelle sera raccordée par #22 quand la File d’attente est vide à la fin d’un Passage, jamais au seul retrait. File vide au démarrage ou après le dernier retrait : elle reste ouverte. Le seul minuteur ajouté est la fin prévue du Passage.
+Les transitions sont absent → `EN_ATTENTE` → `RETIRE` (retrait ou désinscription), ou `ANNULE` à la fin de la Manche. L’appel fait `EN_ATTENTE` → `APPELE` et sépare le courant de la File d’attente ; la suite du cycle est décrite dans « Passage : appel, lecture et calage ». Un Passage sauté ou annulé garde son Tour. L’appel dure trente secondes ; son saut automatique relève du Pilotage Automatique (#25) : d’ici là, l’échéance ne publie rien et le Pilotage Manuel s’applique. Aucun nombre de Passages n’est fixé. L’Animateur termine la Manche ; en Automatique, la fin naturelle sera raccordée par #22 quand la File d’attente est vide à la fin d’un Passage, jamais au seul retrait. File vide au démarrage ou après le dernier retrait : elle reste ouverte. Deux minuteurs gouvernent la fin prévue du Passage et la clôture du Vote du public.
 
 Recherche et gestion exigent une Soirée `EN_COURS` et sa Manche Karaoké active `EN_COURS` ou `EN_PAUSE`. Après consultation du reçu, une mutation sur une Manche connue `TERMINEE` donne `ETAT_INCOMPATIBLE` avant toute garde du Passage ; les autres cas inactifs donnent `ETAPE_INACTIVE`. Sans courant actif, le pilotage omet `etapeId` ; `PASSER_ETAPE` donne alors `ETAPE_INACTIVE`, comme le Quiz sans `etapeId`, même si un Passage `TERMINE` ou `SAUTE` reste affiché. Avec un courant actif, `etapeId` est celui de son étape. La Manche passe de `EN_COURS` à `EN_PAUSE` et inversement, puis à `TERMINEE`. Après fin, `karaoke:null`, même si `mancheActive` reste terminée : cette asymétrie avec le Quiz final est assumée.
 
@@ -189,7 +216,7 @@ La Manette propose recherche, fiche, inscription/retrait personnels et tickets ;
 
 ### Passage : appel, lecture et calage
 
-Tranche de contrat de #22 (#98), selon l’[ADR 0007](../adr/0007-source-audio-du-karaoke.md) : la musique vient d’un fichier local choisi sur l’ordinateur de l’Écran de salle et trouvé par son nom ; sans fichier ou avec plusieurs, le Passage se joue en paroles seules. Le serveur ne reçoit aucun son, seulement le nom, la taille et la durée du fichier. La Manette confirme, la Console appelle, pilote et cale, l’Écran de salle lit. L’appel dure trente secondes ; d’ici le Pilotage Automatique (#25), le Pilotage Manuel s’applique quel que soit `soiree.pilotage`. Un Passage sauté ou annulé garde son Tour. L’Animateur n’a ni volume, ni démarrage forcé, ni déplacement dans le son ; une capture ne relance ni musique ni animation.
+Tranche de contrat de #22 (#98), selon l’[ADR 0007](../adr/0007-source-audio-du-karaoke.md) : la musique vient d’un fichier local choisi sur l’ordinateur de l’Écran de salle et trouvé par son nom ; sans fichier ou avec plusieurs, le Passage se joue en paroles seules. Le serveur ne reçoit aucun son, seulement le nom, la taille et la durée du fichier. La Manette confirme, la Console pilote et cale, l’Écran de salle lit. En Pilotage Manuel, la Console appelle le Passage suivant. En Pilotage Automatique, le serveur l’appelle. L’appel dure trente secondes. Un Passage sauté ou annulé garde son Tour. L’Animateur n’a ni volume, ni démarrage forcé, ni déplacement dans le son ; une capture ne relance ni musique ni animation.
 
 L’identité vient du résolveur d’acteur (`jetonJoueur`, `cleEcran`, `sessionAnimateur` avec `X-CSRF-TOKEN`), jamais d’un corps. Le Joueur met son `envoiId` dans le corps ; l’Animateur et l’Écran envoient l’en-tête `Idempotency-Key`. Les reçus de « Commandes, compteurs et reçus » s’appliquent : un refus métier, « Manche en pause » et `409 LECTEUR_NON_DESIGNE` compris, est conservé comme reçu.
 
@@ -197,7 +224,7 @@ L’identité vient du résolveur d’acteur (`jetonJoueur`, `cleEcran`, `sessio
 
 | Départ | Déclencheur | Arrivée et cause |
 |---|---|---|
-| `EN_ATTENTE`, position 1 | `appelerPassage` | `APPELE`, `passage-appele` |
+| `EN_ATTENTE`, position 1 | `appelerPassage` en Manuel ou appel automatique | `APPELE`, `passage-appele` |
 | `APPELE` | `confirmerPresencePassage` | `EN_COURS`, `passage-demarre` |
 | `APPELE`, `EN_COURS`, `EN_PAUSE` | `PASSER_ETAPE` | `SAUTE`, `passage-saute` |
 | `EN_COURS`, `EN_PAUSE` (fin locale seulement) | fin prévue ou fin locale | `TERMINE`, `passage-termine` |
@@ -210,6 +237,10 @@ Après une fin locale ou `PASSER_ETAPE` en pause, la Manche reste en pause. `TER
 
 **Appel.** L’appel vise le Passage en position 1 ; un seul événement `passage-appele` publie l’appel et la File d’attente recalculée. La pause fige le délai d’appel restant (`echeanceAppelLe` nulle, `delaiAppelRestantMs` figé), la reprise le restitue avec une nouvelle échéance. La confirmation reste acceptée après l’échéance, qui ne publie rien.
 
+**Pilotage Automatique.** En Manche `EN_COURS` et sans courant actif, le serveur prend le premier Passage de l’ordre effectif de la File d’attente, priorité comprise, et crée son étape uniquement s’il l’appelle. Il vérifie ces conditions après chaque commande acceptée et après chaque minuteur de Passage ou de Vote du public. La première inscription, une fin de lecture ou une fin prévue, `PASSER_ETAPE`, une clôture de vote ou la reprise peuvent ainsi déclencher l’appel. Une mutation qui appelle le suivant publie uniquement `passage-appele` à la salle, à la Console et à toutes les Manettes. Le courant devient `APPELE` dans cette même vue et remplace, le cas échéant, le Passage précédent clos. Le statut et l’accusé HTTP gardent le résultat de la commande initiale (par exemple `201`, `EN_ATTENTE` et compteur 0 pour l’inscription). Un refus conserve la File et le courant.
+
+Le démarrage laisse la File vide. En pause, une fin de lecture ou `PASSER_ETAPE` peut clore le courant, puis la reprise appelle le premier Passage en attente. Après une erreur de lecture, la reprise en paroles seules poursuit le courant. Si la File est vide à la clôture, une inscription pendant le vote appelle aussitôt son Passage. La restauration réarme les minuteurs de fin prévue et de vote sans appeler de Passage. Les estimations d’attente supposent déjà l’enchaînement des Passages.
+
 **Lecteur et lecture.** Le serveur désigne un seul lecteur par Manche : la dernière fenêtre qui a choisi son dossier, identifiée par un `lecteurId` engendré par la page. Elle garde son dossier et se redésigne à la Manche Karaoké suivante ; `PUT /lecteur` exige une Manche Karaoké active. Pendant l’appel, le lecteur déclare la lecture préparée ; une déclaration répétée par le même lecteur remplace la précédente, avec un nouveau `lectureId`. Une désignation pendant l’appel efface la lecture préparée par un autre lecteur, jamais celle d’un Passage démarré, dont les signaux restent réservés à son lecteur. « Je suis prêt » démarre aussitôt la chronologie (`demarreLe`) : une lecture préparée est figée, sinon le Passage démarre en paroles seules, motif `ECRAN_NON_PRET`, `lecteurId` nul. Une déclaration arrivée après la confirmation est périmée et ne lance jamais le fichier. `lecture` est non nulle de la première déclaration acceptée, ou de la confirmation, jusqu’à la clôture, sauf retrait par une désignation.
 
 **Paroles et fin.** `origineParoles` vaut `VERSION_ADAPTEE` pour la version de paroles dont la durée est la plus proche du fichier, `REPLI_INSCRIPTION` en fichier local quand ce choix échoue (durée du fichier inconnue, version disparue ou source indisponible), et `INSCRIPTION` seulement quand le Passage part directement en paroles seules, avec les paroles figées à l’inscription. La durée de référence est fixée au départ : en fichier local, `fichier.dureeMs` si elle est positive ; sinon, et en paroles seules, `ParolesDuPassage.dureeMs`. `chanson.dureeMs` reste la durée d’inscription. La fin prévue vaut `demarreLe + durée de référence + tempsPauseMs` ; la vraie fin du fichier peut la devancer. Quand fin locale et fin prévue se croisent, une seule clôture a lieu et le signal perdant reçoit `COMMANDE_PERIMEE`.
@@ -218,13 +249,13 @@ Après une fin locale ou `PASSER_ETAPE` en pause, la Manche reste en pause. `TER
 
 **Calage.** La ligne active est la dernière ligne `i` telle que `position >= lignes[i].positionMs + decalageMs`, où `position` est la position du lecteur local ou `positionChronologiqueMs`. Avec une première ligne non blanche à 12 000 ms et « ça commence » mesuré à 13 500 ms, `decalageMs` vaut +1 500 : les paroles sont retardées de 1,5 seconde. `RETARDER` ajoute 100 ms, `AVANCER` en retire 100. « ça commence » remplace le décalage précédent : en fichier local, le serveur publie une demande identifiée dans la vue salle, le lecteur relève sa position à réception et la renvoie, puis le serveur calcule et publie ; en paroles seules, le serveur prend `positionChronologiqueMs` à réception. Une nouvelle demande remplace celle en attente ; la clôture l’efface ; une demande sans réponse reste en attente jusqu’à un nouveau geste. Une correction ne supprime pas une demande en attente : le relevé qui arrive ensuite recalcule le décalage depuis la première ligne et remplace la correction. `numeroModificationCalage` vaut 0 à la création de la lecture et ne change que si `decalageMs` change. En fichier local, le geste et les corrections sont mémorisés pour toutes les Soirées sous une clé interne (`chansonId` d’inscription, version de paroles retenue, nom et taille du fichier), absente de toute vue ; le décalage mémorisé devient le `decalageMs` initial de la lecture suivante de même clé. En paroles seules, rien n’est mémorisé.
 
-**Capacités.** Dans la Console, `lecteurDesigne` est vrai exactement quand `lecteurDesigneId` de la salle est non nul ; `peutAppeler` si la Manche est `EN_COURS`, sans courant actif et la File d’attente non vide ; `peutPasser` avec un courant actif, pause comprise ; `peutReprendre` si la Manche est `EN_PAUSE` et la lecture n’est pas `EN_ERREUR` ; `peutCaler` si le Passage est `EN_COURS`, la Manche `EN_COURS` et la lecture `DEMARREE` ; `peutReprendreEnParolesSeules` si la lecture est `EN_ERREUR`. Dans la Manette, `peutConfirmerPresence` exige un courant `APPELE` dont le Joueur est Interprète, Manche `EN_COURS`. La salle porte `lecteurDesigneId`, `lecture` (non nulle dès qu’une lecture est déclarée, appel compris) et `paroles` (non nulles seulement pour un courant actif `EN_COURS` ou `EN_PAUSE`) ; la Console porte `lecture` et `fichierLocal`, seul endroit où figure le nom du fichier ; la Manette ne porte ni lecture ni paroles, pour la légèreté de sa vue et non pour le secret, puisque la vue salle est lisible par un Joueur.
+**Capacités.** Dans la Console, `lecteurDesigne` est vrai exactement quand `lecteurDesigneId` de la salle est non nul ; `peutAppeler` exactement en Pilotage Manuel, si la Manche est `EN_COURS`, sans courant actif et avec au moins un Passage en attente ; `peutPasser` avec un courant actif, pause comprise ; `peutReprendre` si la Manche est `EN_PAUSE` et la lecture n’est pas `EN_ERREUR` ; `peutCaler` si le Passage est `EN_COURS`, la Manche `EN_COURS` et la lecture `DEMARREE` ; `peutReprendreEnParolesSeules` si la lecture est `EN_ERREUR`. Dans la Manette, `peutConfirmerPresence` exige un courant `APPELE` dont le Joueur est Interprète, Manche `EN_COURS`. La salle porte `lecteurDesigneId`, `lecture` (non nulle dès qu’une lecture est déclarée, appel compris) et `paroles` (non nulles seulement pour un courant actif `EN_COURS` ou `EN_PAUSE`) ; la Console porte `lecture` et `fichierLocal`, seul endroit où figure le nom du fichier ; la Manette ne porte ni lecture ni paroles, pour la légèreté de sa vue et non pour le secret, puisque la vue salle est lisible par un Joueur.
 
-`P` désigne `M/passages/{passageId}`. Toutes ces routes exigent la Manche Karaoké active en Soirée `EN_COURS` et partagent : 400 `REQUETE_INVALIDE`, 401 `AUTHENTIFICATION_REQUISE`, 403 `ACCES_REFUSE`, 403 `CSRF_INVALIDE` (Animateur), 404 `RESSOURCE_INTROUVABLE` (Manche ou Passage inconnus, hors portée), 409 `ENVOI_REUTILISE`, 409 `ETAPE_INACTIVE` (sans reçu), 409 `ETAT_INCOMPATIBLE` (Manche terminée), 503 `SERVICE_INDISPONIBLE` (sans reçu). L’ordre est : accès, état de la Manche (pause comprise), puis gardes d’objet. Un Passage clos, une étape, un compteur, un `lectureId` ou un `demandeId` qui ne sont plus les actuels donnent `409 COMMANDE_PERIMEE`, jamais `404`. Un succès rend `200 application/json` et `Cache-Control: no-store`, sans `Location`.
+`P` désigne `M/passages/{passageId}`. Toutes ces routes exigent la Manche Karaoké active en Soirée `EN_COURS` et partagent : 400 `REQUETE_INVALIDE`, 401 `AUTHENTIFICATION_REQUISE`, 403 `ACCES_REFUSE`, 403 `CSRF_INVALIDE` (Animateur), 404 `RESSOURCE_INTROUVABLE` (Manche ou Passage inconnus, hors portée), 409 `ENVOI_REUTILISE`, 409 `ETAPE_INACTIVE` (sans reçu), 409 `ETAT_INCOMPATIBLE` (Manche terminée), 503 `SERVICE_INDISPONIBLE` (sans reçu). L’ordre est : accès, état de la Manche (pause comprise), puis gardes d’objet. Pour `appelerPassage`, les refus pour Manche ou Passage inconnus précèdent l’état de la Manche, et le refus du Pilotage Automatique vient après l’état de la Manche (pause comprise), avant les gardes d’objet. Un Passage clos, une étape, un compteur, un `lectureId` ou un `demandeId` qui ne sont plus les actuels donnent `409 COMMANDE_PERIMEE`, jamais `404`. Un succès rend `200 application/json` et `Cache-Control: no-store`, sans `Location`.
 
 | Méthode et route | operationId | Acteur et entrée | Succès | Codes propres, dans l’ordre |
 |---|---|---|---|---|
-| POST `P/appel` | `appelerPassage` | A, `AppelPassage` | `AccuseCyclePassage` | `ETAT_INCOMPATIBLE` : Manche en pause, puis courant actif ; `COMMANDE_PERIMEE` : compteur, Passage sorti de l’attente ou plus en position 1 |
+| POST `P/appel` | `appelerPassage` | A, `AppelPassage` | `AccuseCyclePassage` | `ETAT_INCOMPATIBLE` : Manche en pause, puis Pilotage Automatique (« En Pilotage Automatique, le Passage suivant est appelé seul. »), puis courant actif ; `COMMANDE_PERIMEE` : compteur, Passage sorti de l’attente ou plus en position 1 |
 | POST `P/presence` | `confirmerPresencePassage` | J Interprète, `ConfirmationPresencePassage` | `AccuseCyclePassage` | 404 : Joueur non Interprète, avant tout reçu ; `ETAT_INCOMPATIBLE` : Manche en pause ; `COMMANDE_PERIMEE` : compteur, étape ou état `APPELE` |
 | PUT `M/lecteur` | `designerLecteurChanson` | Écran, `DesignationLecteur` | `AccuseLectureChanson` | Aucun ; le lecteur déjà désigné réussit sans effet |
 | POST `P/lecture` | `declarerLectureChanson` | Écran lecteur, `DeclarationLectureChanson` | `AccuseLectureChanson`, nouveau `lectureId` | `COMMANDE_PERIMEE` : Passage non `APPELE`, compteur ou étape ; `LECTEUR_NON_DESIGNE` : autre `lecteurId` que le désigné ; jamais `SOURCE_PAROLES_INDISPONIBLE` |
@@ -238,12 +269,53 @@ Après une fin locale ou `PASSER_ETAPE` en pause, la Manche reste en pause. `TER
 
 | Cause | Mutation | Destinations |
 |---|---|---|
-| `passage-appele`, `passage-demarre`, `passage-termine`, `passage-saute` | cycle du Passage | salle, Console, toutes les Manettes |
+| `passage-appele` | appel manuel ou mutation déclenchant un appel automatique | salle, Console, toutes les Manettes |
+| `passage-demarre`, `passage-termine`, `passage-saute` | cycle du Passage hors enchaînement vers un nouvel appel | salle, Console, toutes les Manettes |
 | `lecture-chanson-modifiee` | désignation, déclaration | salle, Console |
 | `lecture-chanson-modifiee` | erreur, reprise en paroles seules | salle, Console, toutes les Manettes |
 | `calage-chanson-modifie` | demande, relevé, correction, geste | salle, Console |
 
 Destinations et captures existantes restent inchangées ; vues complètes après validation, sans delta ni événement par seconde ; refus, rejeu et succès sans effet ne publient rien.
+
+### Vote du public
+
+Un Passage chanté jusqu’au bout (état `TERMINE`) ouvre un vote indépendant de trente secondes.
+Un saut ou une annulation n’en ouvre aucun. Une pause fige chaque vote ouvert, y compris un vote
+ouvert par une fin de lecture reçue pendant la pause. La reprise restitue le délai restant.
+L’horloge clôt chaque vote à son échéance. Terminer la Manche clôt tous les votes avec les notes reçues
+et conserve la cause `manche-terminee`.
+
+Le Joueur présent envoie `VotePassage` sur `POST M/passages/{passageId}/vote`, avec son jeton,
+un `envoiId`, le compteur du Passage et une note entière de 1 à 5. Le serveur applique les gardes
+de rôle, de portée et de présence avant de traiter la commande. Après les gardes communes de Manche
+et de rejeu, il refuse dans l’ordre un Passage inconnu, la pause, son propre Passage, un compteur
+périmé, un vote absent ou clos (échéance incluse) et un second vote du même Joueur. Ces refus
+métier sont conservés comme le reçu `200 AccuseVote` (`Cache-Control: no-store`). Un rejeu identique
+rend le reçu initial sans publication. Un autre contenu avec le même identifiant donne
+`ENVOI_REUTILISE`. Aucun vote ne rapporte de Point.
+
+`passage-termine` ouvre le vote, et `vote-clos` signale l’échéance à la salle, la Console et toutes
+les Manettes. `vote-enregistre` est publié vers la salle, la Console et la Manette du votant.
+En Pilotage Automatique, si la clôture appelle un Passage, la vue complète arrive avec
+`passage-appele`. Les trois blocs Karaoké portent une liste `votes` avec les votes ouverts et le
+vote clos le plus récemment, triés par date d’ouverture décroissante.
+
+Pendant le vote, la salle et la Console reçoivent le nombre de votes. Sur la Manette,
+`nombreVotes` reste nul, avec la note personnelle et la capacité de voter disponibles.
+Sur les trois écrans, `moyenneDixiemes` reste nul jusqu’à la clôture. À la clôture,
+`nombreVotes` est renseigné sur les trois écrans et, si des votes ont été reçus, la moyenne
+est arrondie au dixième le plus proche, une moitié vers le haut. En division entière,
+`moyenneDixiemes = (20 × sommeNotes + nombreVotes) / (2 × nombreVotes)`. Sans vote, la moyenne
+reste nulle et les écrans affichent « Aucun vote ».
+
+La salle affiche jusqu’à deux bandeaux au-dessus du rouleau, dans l’ordre de la liste. Un vote
+ouvert reste visible. Pour un vote clos encore dans la liste, le bandeau reste visible jusqu’au
+plus tardif de deux instants, le démarrage d’un Passage suivant et la fin de
+`configurationInterface.dureeAffichageMoyenneMs` après `clotureLe`. Ce délai court aussi pendant
+la pause, d’après l’heure du serveur. Le champ persistant `suivantDemarre`, disponible dans
+`VoteDuPassage` (salle et Console), devient vrai au démarrage d’un Passage suivant et le reste
+après sa fin ou son saut. Un Passage simplement appelé ne le change pas.
+`configurationInterface.dureeVoteMs` expose le réglage `croustyquizz.passage.dureeVoteSecondes`.
 
 ### Configuration par défaut
 
@@ -251,6 +323,8 @@ Destinations et captures existantes restent inchangées ; vues complètes après
 |---|---|
 | `croustyquizz.passage.limitePassagesEnAttente` | 1 (de 1 à 20) |
 | `croustyquizz.passage.delaiAppelSecondes` | 30 |
+| `croustyquizz.passage.dureeVoteSecondes` | 30 |
+| `croustyquizz.passage.dureeAffichageMoyenneSecondes` | 10 |
 | `croustyquizz.karaoke.longueurRechercheMax` | 120 points de code, réduction seule |
 | `croustyquizz.karaoke.delaiConsultationNavigateurMs` | 8000 |
 | `croustyquizz.karaoke.delaiConfirmationNavigateurMs` | 10000 |
@@ -309,11 +383,24 @@ pour le rang 1, et de `croustyquizz:demo:joueur:<soireeId>:<rang>` pour les rang
 `joueurId(soireeId)` renvoie toujours le rang 1. Sur la page d’identité de démonstration,
 le Joueur choisit son rang. La page lit l’UUID correspondant dans la projection et
 l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
-Ces identités fictives ne sont pas
-une authentification ; en production le résolveur refuse systématiquement avec `401`.
-Un Bearer `demo:ANIMATEUR` donne `401 AUTHENTIFICATION_REQUISE` sur une Soirée
-enregistrée, même dans un navigateur connecté. Sur une Soirée absente de la base,
-les parcours de démonstration continuent d'utiliser ce Bearer sans CSRF.
+
+En production, le résolveur refuse les jetons de démonstration avec `401`. En `dev` et `recette`,
+`demo:JOUEUR` et `demo:ECRAN` sont réservés aux Soirées fictives. Sur une Soirée enregistrée, ces jetons
+reçoivent `401 AUTHENTIFICATION_REQUISE` en HTTP et une trame `ERROR` suivie de la fermeture de la
+connexion au CONNECT STOMP. Le canal de la Manette et sa dernière vue dépendent de l’UUID du Joueur.
+Un jeton `demo:JOUEUR` qui porte l’UUID d’un vrai Joueur reçoit le même refus, quelle que soit la Soirée
+déclarée. Pour une Soirée enregistrée, la Manette utilise son jeton de reconnexion et l’Écran de salle sa clé.
+L’Animateur de démonstration vérifie son jeton par la capture de la Console. Un Bearer `demo:ANIMATEUR`
+donne `401 AUTHENTIFICATION_REQUISE` sur une Soirée enregistrée, même dans un navigateur connecté :
+l’Animateur y utilise sa session. Sur une Soirée absente de la base, les parcours de démonstration
+continuent d’utiliser ce Bearer sans CSRF.
+Le [prototype #7](prototype/README.md) peut s’abonner anonymement au canal de salle uniquement en `dev`
+et `recette`, pour un UUID de Soirée absent de la base (#181). Le serveur vérifie cette absence à chaque
+`SUBSCRIBE` anonyme. Si la Soirée est enregistrée, le broker n’installe aucun abonnement pour ce `SUBSCRIBE`.
+La coquille STOMP `/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la
+clé dans le stockage de l’onglet, pour cette seule Soirée.
+
+Les jetons Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
 Les trois routes temporaires de création, de démarrage et de choix du Pilotage sont
 réservées aux profils `dev`/`recette`. Une Soirée enregistrée exige une session
@@ -326,3 +413,43 @@ reste celui choisi à sa création. Le Buzz de test et son format historique res
 Voir [le contrat du prototype](prototype/openapi.yaml).
 Le cycle interne `PRETE` apparaît sous le nom HTTP existant `EN_ATTENTE` dans le programme.
 Les schémas des Manches restent limités au Quiz jusqu'aux contrats des autres modes.
+
+## Photos de la salle (#72)
+
+Un Joueur envoie un JPEG brut par HTTP. Le serveur vérifie sa signature, sa taille
+(1 500 000 octets maximum) et ses dimensions (2048 pixels maximum de chaque côté).
+Un `Content-Length` supérieur à la borne est refusé (`422 DONNEES_INVALIDES`) sans
+lire le corps. Le serveur lit au plus quatre envois à la fois : au-delà, il répond
+`503 SERVICE_INDISPONIBLE` sans reçu. Avant de lire le corps, il vérifie sous le
+verrou de Soirée l'état de la Soirée, le réglage, l'exclusion du Joueur, les files
+et le budget, puis les revérifie au moment de l'ajout.
+Il conserve les JPEG en mémoire uniquement, dans la limite de 64 000 000 octets
+pour l'ensemble des Soirées (`503 SERVICE_INDISPONIBLE`) et de 16 000 000 octets par
+Soirée, photos en attente, acceptées et à l'affiche comprises (`409 LIMITE_ATTEINTE`).
+La file de modération est bornée à trois photos par Joueur et à trente par Soirée,
+et la file des photos acceptées à trente (`409 LIMITE_ATTEINTE` à la modération,
+la photo reste en attente). Un refus ou la fin de l'affichage rend sa place
+au JPEG suivant. La fin de Soirée efface toutes ses photos, le réglage et ses
+reçus. Une Soirée sans commande photo ni changement d'affiche pendant douze heures
+perd ses photos et ses reçus ; son réglage reste. Un redémarrage perd ces données
+et remet les envois ouverts par défaut.
+
+Les mutations exigent un `Idempotency-Key` UUID. Pour une Soirée ouverte ou en
+cours, une commande réussie, rejouée par le même Acteur avec la même clé et le
+même contenu, rend le même reçu. Si la publication a échoué, le rejeu peut
+achever la première publication. Réutiliser la clé pour une
+autre commande ou un autre contenu donne `409 ENVOI_REUTILISE`. Un refus
+ne crée pas de reçu. Sur une Soirée enregistrée, les opérations de l'Animateur
+utilisent sa session et son jeton CSRF, pour une Soirée de son Lieu (`404` sinon) ;
+l'identité de démonstration reste réservée aux Soirées absentes de la base, en dev et recette.
+
+Le bloc `photos` contient le réglage sur la Manette, et sur la Console le
+réglage et la file d'attente avec le pseudo des auteurs. La salle ne reçoit
+que l'UUID et l'échéance de la photo à l'affiche, ou `null`. Si une Manche
+démarre avant la fin des huit secondes, la photo retourne en tête de file
+et aura huit secondes consécutives au prochain créneau. Une Manche en pause
+occupe toujours la scène. Couper les envois laisse les deux files intactes.
+Un Écran de salle ne peut télécharger que le JPEG à l'affiche. Aucun Joueur
+n'a accès au téléchargement. Les octets ne figurent dans aucune vue.
+
+Voir [le parcours complet](exemples/parcours-photos.yaml).

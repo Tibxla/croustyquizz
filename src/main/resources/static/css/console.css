@@ -58,8 +58,26 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--espace-2);
+}
+.pilotage__confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+  justify-content: flex-end;
+}
+
+.pilotage__musique {
+  display: grid;
+  justify-items: start;
+  gap: var(--espace-1);
+}
+
+.pilotage__musique p {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: 0.875rem;
 }
 
 .dialogue-invitation form,
