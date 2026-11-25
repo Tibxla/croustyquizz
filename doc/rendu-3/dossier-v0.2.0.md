@@ -151,7 +151,7 @@ L’application est conteneurisée depuis la `v0.1.0`. Le Rendu 2 n’en parlait
 
 ## L’image
 
-Le `Dockerfile` construit l’image en deux étapes. La première compile l’application avec le JDK 21 et le wrapper Maven ; la seconde ne garde que le JRE 21 et le JAR. L’image d’exécution ne contient donc ni Maven, ni le code source, ni les outils de compilation. Construite le 25/11 depuis `3061e8f`, elle pèse 587 Mo, dont l’essentiel pour le JRE et son système de base. Elle tourne sous un utilisateur système dédié, jamais sous `root`. Le fichier `.dockerignore` écarte du contexte de construction l’historique Git, la documentation, les dossiers des agents, les dépendances Node et tout fichier `.env`.
+Le `Dockerfile` construit l’image en deux étapes. La première compile l’application avec le JDK 21 et le wrapper Maven ; la seconde ne garde que le JRE 21 et le JAR. L’image d’exécution ne contient donc ni Maven, ni le code source, ni les outils de compilation. Construite le 25/11 depuis `3061e8f`, sa couche applicative, le JAR, pèse 57 Mo ; le reste vient du JRE (166 Mo) et du système de base Ubuntu de l’image Temurin (192 Mo). Elle tourne sous un utilisateur système dédié, jamais sous `root`. Le fichier `.dockerignore` écarte du contexte de construction l’historique Git, la documentation, les dossiers des agents, les dépendances Node et tout fichier `.env`.
 
 Le `Dockerfile` ne lance pas les tests : ils ont besoin de Docker pour Testcontainers, et la CI les a déjà passés sur le même commit avant toute publication.
 
