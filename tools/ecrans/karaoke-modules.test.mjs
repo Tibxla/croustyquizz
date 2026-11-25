@@ -458,6 +458,33 @@ test('Manette : en Automatique, le décompte retire « Je suis prêt » à zéro
 	assert.ok(bouton(b.principale, 'Je suis prêt') === undefined);
 });
 
+test('Manette : en Automatique, l’échéance retire aussi le réessai d’une confirmation perdue', async t => {
+	t.mock.timers.enable({ apis: ['setInterval'] });
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	let maintenant = heureAppel + 28_000;
+	b.contexte.maintenantServeur = () => maintenant;
+	const v = { ...vue({ courant: courant(), peutConfirmerPresence: true }), soiree: { pilotage: 'AUTOMATIQUE' } };
+	b.connecter('synchronisee');
+	b.module.afficher(v, capture);
+	bouton(b.principale, 'Je suis prêt').click();
+	b.appels[0].reject(new Error('coupure'));
+	await terminerMicrotaches();
+	b.module.afficher(v, capture);
+	maintenant += 1000;
+	t.mock.timers.tick(1000);
+	const reessai = bouton(b.principale, 'Réessayer le même envoi');
+	assert.equal(reessai.hidden, false);
+	reessai.focus();
+
+	maintenant += 1000;
+	t.mock.timers.tick(1000);
+	assert.equal(reessai.hidden, true);
+	assert.equal(b.document.activeElement.textContent, 'En scène');
+	b.module.afficher(v, capture);
+	assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
+});
+
 test('Manette : le refus HORS_DELAI affiche le détail et libère la clé de confirmation', async t => {
 	const b = creerBanc(manette);
 	t.after(() => b.module.demonter());

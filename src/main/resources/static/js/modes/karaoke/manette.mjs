@@ -45,6 +45,8 @@ export function monter(zones, contexte) {
 			: expire ? 'Le temps est écoulé.'
 			: restant === 0 ? 'Le temps est écoulé, tu peux encore confirmer.' : "C'est ton tour";
 		confirmerPresence.hidden = expire || !ui.bloc.peutConfirmerPresence || !ui.synchronisee || enPause;
+		// Le serveur refuserait le réessai par HORS_DELAI, comme la confirmation.
+		reessai.hidden = expire || !ui.reessaiPossible(envoiPresence());
 	}
 	function rendreScene(origine) {
 		const p = ui.bloc.courant;
@@ -100,7 +102,6 @@ export function monter(zones, contexte) {
 		}
 		if (confirmerPresence) {
 			confirmerPresence.disabled = !ui.mutationsPermises || ['en-cours', 'accepte'].includes(envoi?.etat) || Boolean(peutReessayer(envoi));
-			reessai.hidden = !ui.reessaiPossible(envoi);
 		}
 		decompter();
 		if (avaitFocus && (!actif.isConnected || actif.hidden || actif.disabled || ui.document.activeElement !== actif)) {
@@ -113,7 +114,8 @@ export function monter(zones, contexte) {
 	}
 	const horloge = setInterval(() => {
 		decompter();
-		if (confirmerPresence?.hidden && ui.document.activeElement === confirmerPresence) titreScene.focus();
+		const actif = ui.document.activeElement;
+		if ((actif === confirmerPresence || actif === reessai) && actif.hidden) titreScene.focus();
 		votes.decompter();
 	}, 1000);
 	ui.surRendu = origine => {
