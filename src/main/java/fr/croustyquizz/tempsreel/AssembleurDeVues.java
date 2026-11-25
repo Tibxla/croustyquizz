@@ -3,6 +3,7 @@ package fr.croustyquizz.tempsreel;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,16 +74,18 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 			MusiqueDAttente musique = destinations.contains(Destination.SALLE) || destinations.contains(Destination.CONSOLE)
 					? lireMusiqueDAttente.apply(soireeId) : null;
 			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
+			Map<FournisseurDeChampCommun, FournisseurDeChampCommun.ChampPrepare> champs = new IdentityHashMap<>();
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
 			var parties = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
-				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, musique));
+				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, champs, musique));
 			}
 			return vues;
 		});
 	}
 	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partie,
-			Map<ModeDeJeu, Function<Destination, Object>> projections, MusiqueDAttente musique) {
+			Map<ModeDeJeu, Function<Destination, Object>> projections,
+			Map<FournisseurDeChampCommun, FournisseurDeChampCommun.ChampPrepare> champs, MusiqueDAttente musique) {
 		var partieCommune = Collections.unmodifiableMap(partie);
 		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
 		if (destination.equals(Destination.SALLE) || destination.equals(Destination.CONSOLE)) {
@@ -94,7 +97,9 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 			if (vue.containsKey(nom)) {
 				throw new IllegalStateException("Champ déjà présent dans la partie commune : " + nom);
 			}
-			vue.put(nom, fournisseur.fournir(soireeId, destination, partieCommune));
+			// Préparé une fois par assemblage, comme les projections des modes.
+			var champ = champs.computeIfAbsent(fournisseur, f -> f.preparer(soireeId));
+			vue.put(nom, champ.fournir(destination, partieCommune));
 		}
 		Object mode = vue.get("modeEnCours");
 		ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());
