@@ -29,9 +29,9 @@ Un Joueur arrive par `rejoindre.html`, puis `manette.html?soiree=<UUID>`. Son je
 
 ## Module factice
 
-La case « Afficher le module factice » ajoute `factice=1` au lien de l'écran. Cet alias explicite, utilisable avec un jeton de démonstration, charge `modes/factice/<ecran>.mjs` à la place du module réel. Il affiche le contenu du bloc correspondant au vrai `modeEnCours`, sans ajouter de valeur `FACTICE` au contrat HTTP. Sans ce paramètre, les chemins sont exactement `modes/quiz|blindtest|karaoke|freestyle/<ecran>.mjs` ; le Karaoké est livré, les autres modules réels restent hors périmètre.
+La case « Afficher le module factice » ajoute `factice=1` au lien de l'écran. Cet alias explicite, utilisable avec un jeton de démonstration, charge `modes/factice/<ecran>.mjs` à la place du module réel. Il affiche le contenu du bloc correspondant au vrai `modeEnCours`, sans ajouter de valeur `FACTICE` au contrat HTTP. Sans ce paramètre, les chemins sont exactement `modes/quiz|blindtest|karaoke|freestyle/<ecran>.mjs` ; le Karaoké et le Blind test sont livrés, les autres modules réels restent hors périmètre.
 
-Si le bloc du Mode de jeu est absent ou nul, le gestionnaire démonte le module en place et seule la partie commune reste visible. C’est le cas des blocs du Blind test et du Freestyle, qui sont encore réservés. Si le bloc est présent mais que le module ne peut pas être chargé, la coquille affiche un message d’erreur et garde la partie commune visible.
+Si le bloc du Mode de jeu est absent ou nul, le gestionnaire démonte le module en place et seule la partie commune reste visible. C’est le cas du bloc du Freestyle, qui est encore réservé. Si le bloc est présent mais que le module ne peut pas être chargé, la coquille affiche un message d’erreur et garde la partie commune visible.
 
 Le Karaoké livre désormais ses trois modules de File d'attente (#93), avec recherche, fiche, inscriptions et désinscriptions personnelles, placements, priorité et limite. Les autres modules réels restent hors périmètre ; le mode Java factice du socle n'est installé que dans les tests (`BancDuSocle`, bloc `quiz`). Les routes `/api/test/.../manches` nécessitent un service de mode. Pour une recette navigateur sans base, `node tools/ecrans/servir-recette.mjs` sert les ressources sur le port local 18080, puis `playwright-cli run-code --filename=tools/ecrans/karaoke-recette-navigateur.mjs` simule HTTP et STOMP à la frontière réseau (après `playwright-cli open`). Les vrais HTML, CSS et modules sont servis localement, avec le client STOMP du WebJar extrait de Maven ; aucun accès au catalogue externe. L'ancienne `recette-navigateur.mjs` conserve la recette des coquilles avec le mode factice. Ces recettes ne vérifient pas l'intégration PostgreSQL.
 
@@ -151,6 +151,30 @@ La Console coupe ou relance la Musique d’attente depuis la barre de pilotage, 
 4. Sur un autre Passage, confirmer avant que l’Écran ait déclaré une lecture. Vérifier que les paroles défilent et que la Console affiche « Paroles seules : Écran lecteur pas prêt ». Si le chargement finit ensuite, vérifier que le fichier reste silencieux.
 
 L’échéance de l’appel sert de repère. Tant que le Passage est appelé, l’Écran prépare le fichier et déclare le résultat de la recherche et du chargement, même si les métadonnées arrivent après l’échéance.
+
+## Blind test (#178)
+
+Les modules `modes/blindtest/` ne contiennent aucune règle de jeu : ils lisent le bloc `blindtest` (contrat de #174, ADR 0009). `logique.mjs` regroupe les calculs purs (position de l'extrait, comptes à rebours, verdict lu dans la vue, envoi espacé du brouillon) et `lecteur-extrait.mjs` le son de la salle. Le module charge `css/blindtest.css` par un unique `<link data-mode="blindtest">`. Les tests `node --test` sont dans `tools/ecrans/blindtest-*.test.mjs`.
+
+- **Écran de salle.** Le module réserve le son de Manche (`contexte.signalerSonDeManche(true)`) dès qu'une Manche de Blind test est affichée : la Musique d'attente se tait pendant toute la Manche, Révélations comprises, et reprend au démontage, après l'arrêt de l'extrait (`signalerSonDeManche(false)`). Rien ne joue tant que la promesse ne rend pas `true`. L'extrait est un `<audio>` propre au module, aligné sur `lecture` (position, instant `depuisLe`, pause) selon `contexte.maintenantServeur()`, sans rien signaler au serveur. Une seule fenêtre de salle le joue : parmi les fenêtres dont le son est activé, la première qui obtient le Web Lock `croustyquizz:son:extrait-blindtest` le garde jusqu'au démontage ; les autres restent muettes et prennent la relève si elle se ferme. Une capture restaure l'extrait à sa position, sans rejouer d'animation ; seuls `buzz-recu`, `proposition-jugee` et `morceau-revele` animent leur élément.
+- **Manette.** Le bouton Buzz nomme la Manche et le Morceau (`envoyerBuzz`) ; il suit `peutBuzzer` et la connexion, et ne se réessaie qu'à la main, avec le même `envoiId`. Le Joueur qui a la main voit les champs encore demandés, le compte à rebours calé sur l'échéance du serveur et « Valider ». Le brouillon part 500 ms après la dernière frappe, une requête à la fois, sans nouvel essai ; après un rechargement, la saisie et la numérotation repartent de `monBrouillon`. Le verdict vient de la vue publiée, jamais de l'accusé.
+- **Console.** Le module montre la réponse attendue, l'état de l'extrait, qui a la main avec son temps restant, les parties trouvées et les Joueurs bloqués. Pause, reprise et « Passer l'étape » restent dans le pilotage commun. Le formulaire du programme ajoute une Manche de Blind test avec sa source Deezer (playlist ou genre), son identifiant et son nombre de Morceaux.
+
+### Recette du Blind test
+
+À faire avec l'application lancée en `dev` (`./mvnw spring-boot:run`) et l'accès au catalogue Deezer, l'Écran de salle sur un PC relié à des haut-parleurs et deux Manettes sur des téléphones du même réseau.
+
+1. Créer une Soirée en Pilotage Manuel dans `/preparer-soiree.html`, puis ouvrir sa Console. Dans « Programme », choisir « Blind test », « Playlist », un identifiant de playlist Deezer publique et 3 Morceaux, puis ajouter la Manche. Vérifier « 3 Morceaux · playlist Deezer … » dans le programme. Refaire avec un identifiant inexistant : le refus ne doit rien ajouter.
+2. Ouvrir la Soirée, puis l'Écran de salle depuis la préparation. Choisir un dossier qui contient `Attente` et activer le son : la Musique d'attente joue. Rejoindre la Soirée avec deux téléphones par le QR code (pseudos « Léa » et « Sam »).
+3. Lancer la Soirée. La Musique d'attente se tait, l'Écran de salle passe de « Le Morceau arrive… » à « Écoutez et buzzez ! » et l'extrait démarre avec le temps restant. Les deux Manettes montrent « Buzzer ».
+4. Buzzer avec Léa. L'extrait se met en pause, la salle affiche « Léa a la main » avec le compte à rebours, la Manette de Léa ouvre la saisie avec le focus et celle de Sam affiche « Léa a la main ». Taper l'artiste seul, recharger la Manette de Léa en pleine saisie : la saisie, les champs demandés et le temps restant reviennent.
+5. Valider. La salle et les Manettes affichent « Artiste trouvé par Léa : … » ; la Manette de Léa dit « Artiste trouvé, +30 points. Le reste est faux : tu es bloqué sur ce Morceau. » et ne propose plus le Buzz. L'extrait reprend d'où il était.
+6. Recharger l'Écran de salle pendant l'extrait : il reprend à la bonne position après l'activation du son. Le recharger pendant la saisie de Sam : l'extrait reste en pause.
+7. Buzzer avec Sam et laisser passer les 20 s avec un titre juste dans la saisie : le brouillon est jugé, puis la Révélation montre titre, artiste et pochette. « Passer l'étape » dans la Console mène au Morceau suivant ; mettre la Manche en pause pendant un extrait, vérifier que la salle et la Manette affichent « Pause » et que « Valider » est désactivé pendant une saisie.
+8. Ouvrir une seconde fenêtre d'Écran de salle dans le même navigateur et y activer le son : une seule fenêtre joue l'extrait. Fermer celle qui joue : l'autre prend la relève au prochain affichage.
+9. Après le dernier Morceau, la Manche se termine : les modules se retirent, la Musique d'attente reprend et le Classement général montre les points de Léa et Sam.
+
+Vérifier aussi la Manette à 390 × 844, la Console à 1440 × 900 et 1024 × 768 et la salle à 1920 × 1080 : focus clavier, textes longs, contraste et mouvement réduit.
 
 ## Recette navigateur du Pilotage de démonstration (#119)
 
