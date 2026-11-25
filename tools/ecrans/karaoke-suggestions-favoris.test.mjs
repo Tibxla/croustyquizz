@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { chanson, creerBanc, terminerMicrotaches, vue } from './karaoke-dom-factice.mjs';
 import { monter as manette } from '../../src/main/resources/static/js/modes/karaoke/manette.mjs';
 import { monter as consoleKaraoke } from '../../src/main/resources/static/js/modes/karaoke/console.mjs';
+import { erreurChampSuggestion } from '../../src/main/resources/static/js/modes/karaoke/suggestions.mjs';
 
 const capture = { source: 'capture' };
 const bouton = (zone, texte) => zone.querySelectorAll('button').find(b => b.textContent === texte);
@@ -68,6 +69,71 @@ test('Manette : le refus conserve la saisie et le démontage annule la requête 
 	assert.equal(b.appels.length, 2);
 	b.module.demonter();
 	assert.equal(b.appels[1].args[3].signal.aborted, true);
+});
+
+// Verdicts relevés sur CorpsKaraoke.verifierChampSuggestion (Java 21) : true si le serveur accepte le champ.
+const VERDICTS_DU_SERVEUR = [
+	['\u200B', false], ['a\u200Bb', false], ['a\u0007', false], ['\u001Fabc\u001C', true], ['abc\u0085', true],
+	['« … » !?', false], ['  \t ', false], ['\u0958'.repeat(61), false], ['\u0958'.repeat(60), true],
+	['É'.repeat(120), true], ['É'.repeat(121), false], ['E\u0301'.repeat(60), true], ['E\u0301'.repeat(61), false],
+	['♥', true], ['\u0301', false], ['\u00A0x\u00A0', true], ['\u3000', false], ['\uFEFFabc', false],
+	['abc\uD800', false], ['’', false], ['Ⅻ', true], ['\u00AD', false], ['a\u2028b', true], ['...a', true],
+	['\u202Eabc', false], ['ﬁ', true], ['  Éclat   du soir  ', true], ['\u061C', false], ['x\u0000', false],
+];
+
+test('Manette : la validation d’un champ de suggestion rend le même verdict que le serveur', () => {
+	for (const [texte, accepte] of VERDICTS_DU_SERVEUR) {
+		assert.equal(erreurChampSuggestion(texte) === '', accepte, JSON.stringify(texte));
+	}
+});
+
+test('Manette : les règles du serveur sont vérifiées avant l’envoi, avec l’erreur sous le champ', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	b.module.afficher(vue(), capture);
+	b.connecter('synchronisee');
+	bouton(b.principale, 'Suggérer une Chanson').click();
+	const formulaire = b.principale.querySelector('form.karaoke__suggestion');
+	const [titre, artiste] = formulaire.querySelectorAll('input');
+	const erreurDe = saisie => formulaire.querySelector(`#${saisie.getAttribute('aria-describedby')}`);
+	const refuser = (valeurTitre, valeurArtiste, saisie, message) => {
+		titre.value = valeurTitre;
+		artiste.value = valeurArtiste;
+		formulaire.dispatchEvent({ type: 'submit' });
+		assert.equal(b.appels.length, 0, `${JSON.stringify(valeurTitre)} · ${JSON.stringify(valeurArtiste)}`);
+		const erreur = erreurDe(saisie);
+		assert.equal(erreur.classList.contains('champ--erreur'), true);
+		assert.equal(erreur.hidden, false);
+		assert.equal(erreur.textContent, message);
+		assert.equal(saisie.getAttribute('aria-invalid'), 'true');
+		assert.equal(b.document.activeElement, saisie);
+		const autre = saisie === titre ? artiste : titre;
+		assert.equal(autre.getAttribute('aria-invalid'), null);
+		assert.equal(erreurDe(autre).hidden, true);
+	};
+
+	refuser('\u200B', 'Les Accords', titre, 'Retire les caractères invisibles ou de contrôle.');
+	refuser('Éclat\u200Bdu soir', 'Les Accords', titre, 'Retire les caractères invisibles ou de contrôle.');
+	refuser('Éclat du soir', 'Les\u0007Accords', artiste, 'Retire les caractères invisibles ou de contrôle.');
+	refuser('Éclat du soir', '« … » !?', artiste, 'Ajoute au moins une lettre ou un chiffre.');
+	refuser('Éclat du soir', '  \t ', artiste, 'Renseigne ce champ.');
+	// U+0958 tient en un point de code, mais NFC le décompose en deux : 61 deviennent 122 une fois nettoyés.
+	refuser('\u0958'.repeat(61), 'Les Accords', titre, 'Utilise au plus 120 caractères.');
+	refuser('É'.repeat(121), 'Les Accords', titre, 'Utilise au plus 120 caractères.');
+
+	titre.dispatchEvent({ type: 'input' });
+	assert.equal(titre.getAttribute('aria-invalid'), null);
+	assert.equal(erreurDe(titre).hidden, true);
+
+	// Ce que le serveur accepte part tel quel : blancs en trop, symbole seul, séparateur ASCII que strip() retire en bord.
+	const titreAccepte = `  ${'É'.repeat(116)}\u001F `;
+	titre.value = titreAccepte;
+	artiste.value = '♥';
+	formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
+	assert.deepEqual(b.appels[0].args[2], { titre: titreAccepte, artiste: '♥' });
+	assert.equal(erreurDe(titre).hidden, true);
+	assert.equal(erreurDe(artiste).hidden, true);
 });
 
 test('Console : la suggestion associe le compteur au retrait et disparaît sur la vue publiée', async t => {

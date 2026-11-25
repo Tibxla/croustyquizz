@@ -2,6 +2,27 @@ import { estInactif, marquerInactif, texteEnvoi } from './commun.mjs';
 import { peutReessayer } from './envois.mjs';
 
 const LONGUEUR_MAX = 120;
+const longueur = texte => [...texte].length;
+// String.strip() de Java retire aussi U+001C à U+001F, qui ne sont pas des blancs Unicode.
+const sansExtremites = texte => texte.replace(/^[ \u001C-\u001F]+|[ \u001C-\u001F]+$/g, '');
+
+/**
+ * Anticipe CorpsKaraoke.verifierChampSuggestion, qui fait foi : même nettoyage (NFC, blancs Unicode regroupés,
+ * extrémités retirées), mêmes caractères interdits (contrôles, format Cf, demi-surrogates) et même clé vide.
+ * Rend le message à afficher sous le champ, ou une chaîne vide.
+ */
+export function erreurChampSuggestion(texte) {
+	const message = `Utilise au plus ${LONGUEUR_MAX} caractères.`;
+	if (longueur(texte) > LONGUEUR_MAX) return message;
+	const nettoye = sansExtremites(texte.normalize('NFC').replace(/\p{White_Space}+/gu, ' '));
+	if (!nettoye) return 'Renseigne ce champ.';
+	if (longueur(nettoye) > LONGUEUR_MAX) return message;
+	if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(nettoye)) return 'Retire les caractères invisibles ou de contrôle.';
+	// Clé de regroupement du serveur (normaliserSuggestion) : sans marques, ponctuation ni blancs, il ne reste rien.
+	const cle = nettoye.normalize('NFKC').normalize('NFD').replace(/[\p{M}\p{P}\p{White_Space}]+/gu, '');
+	if (!sansExtremites(cle)) return 'Ajoute au moins une lettre ou un chiffre.';
+	return '';
+}
 
 export function installerSuggestionManette(ui) {
 	const { e, bouton, ecouter } = ui;
@@ -67,14 +88,10 @@ export function installerSuggestionManette(ui) {
 		if (composition || formulaire.hidden || estInactif(envoyer)) return;
 		const corps = {}, invalides = [];
 		for (const { nom, saisie, erreur } of champs) {
-			const texte = saisie.value;
-			const nettoye = texte.replace(/\p{White_Space}+/gu, ' ').trim();
-			let message = '';
-			if ([...texte].length > LONGUEUR_MAX) message = `Utilise au plus ${LONGUEUR_MAX} caractères.`;
-			else if (!nettoye.normalize('NFD').replace(/\p{M}+/gu, '').trim()) message = 'Renseigne ce champ.';
+			const message = erreurChampSuggestion(saisie.value);
 			indiquerErreur(saisie, erreur, message);
 			if (message) invalides.push(saisie);
-			corps[nom] = texte;
+			corps[nom] = saisie.value;
 		}
 		if (invalides.length) { invalides[0].focus(); return; }
 		ui.commande({ type: 'SUGGERER_CHANSON', methode: 'POST', chemin: `${ui.racine()}/suggestions`,
