@@ -27,3 +27,22 @@ test('le code et le pseudo ont chacun leur message d’erreur, relié au champ e
 test('un 429 de la limite de requêtes a son propre message', () => {
 	assert.match(page, /TROP_DE_REQUETES: '[^']*réessaie\.'/);
 });
+
+// #4 : après une rafale de codes faux, l'attente peut dépasser quelques secondes ; la page reprend le detail du
+// serveur, qui la donne d'après Retry-After.
+test('un 429 affiche le detail du serveur, avec le délai annoncé', async () => {
+	const { appeler } = await import('../../src/main/resources/static/js/api.js');
+	const fetchReel = globalThis.fetch;
+	globalThis.fetch = async () => new Response(JSON.stringify({
+		status: 429, code: 'TROP_DE_REQUETES', detail: 'Trop de requêtes en peu de temps. Réessaie dans 42 secondes.',
+	}), { status: 429, headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '42' } });
+	try {
+		const refus = await appeler('POST', '/api/soirees/rejoindre', { corps: { codeAcces: 'ZZZZZZ', pseudo: 'Léa' } });
+		assert.deepEqual(refus, { ok: false, statut: 429, code: 'TROP_DE_REQUETES',
+			detail: 'Trop de requêtes en peu de temps. Réessaie dans 42 secondes.' });
+	} finally {
+		globalThis.fetch = fetchReel;
+	}
+	assert.match(page, /arrivee\.code === 'TROP_DE_REQUETES' && arrivee\.detail/);
+	assert.doesNotMatch(page, /quelques secondes/);
+});

@@ -76,8 +76,8 @@
 			ACCES_REFUSE: 'Ton accès à cette Soirée n’est plus valable. Rejoins-la à nouveau avec un pseudo.',
 			STOCKAGE_INDISPONIBLE: 'Ton navigateur bloque l’enregistrement des données de ce site : sans elles, ta Manette ne te retrouverait pas. Quitte la navigation privée ou autorise les données du site, puis réessaie.',
 			CODE_INCOMPLET: 'Le code de la Soirée fait 6 caractères.',
-			// 429 de la limite de requêtes (#4) : trop de codes inconnus ou d’arrivées depuis ce réseau.
-			TROP_DE_REQUETES: 'Trop d’essais depuis ce réseau en peu de temps. Attends quelques secondes, puis réessaie.',
+			// 429 de la limite de requêtes (#4) sans detail lisible ; sinon le detail du serveur donne l’attente réelle.
+			TROP_DE_REQUETES: 'Trop d’essais depuis ce réseau en peu de temps. Attends un peu, puis réessaie.',
 			ACCES_NON_GARDE: 'Ta place est créée, mais ce téléphone n’a pas pu la garder. Libère de l’espace ou quitte la navigation privée, puis rejoins avec un autre pseudo.',
 		};
 
@@ -193,6 +193,8 @@
 					signalerChamp(champPseudo, MESSAGES[arrivee.code]);
 				} else if (arrivee.code === 'CODE_ACCES_INVALIDE') {
 					signalerChamp(champCode, MESSAGES.CODE_ACCES_INVALIDE);
+				} else if (arrivee.code === 'TROP_DE_REQUETES' && arrivee.detail) {
+					afficherErreur(arrivee.detail);
 				} else {
 					afficherErreur(MESSAGES[arrivee.code] ?? 'Impossible de rejoindre la Soirée pour l’instant. Réessaie dans un instant.');
 				}
