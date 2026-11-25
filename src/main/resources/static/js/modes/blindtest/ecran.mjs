@@ -1,6 +1,6 @@
 import { creerSocle, ecrire, rendreParties, textePhase } from './commun.mjs';
 import { creerAudioExtrait, creerLecteurExtrait } from './lecteur-extrait.mjs';
-import { extraitRestantMs, formaterSecondes, tempsRestantMs, texteNumero } from './logique.mjs';
+import { extraitJouable, extraitRestantMs, formaterSecondes, tempsRestantMs, texteNumero } from './logique.mjs';
 
 /** Événements qui animent leur élément ; une capture restaure le même état sans rien rejouer. */
 const ANIMATIONS = { 'buzz-recu': 'main', 'proposition-jugee': 'parties', 'morceau-revele': 'revelation' };
@@ -29,9 +29,10 @@ export function creerEcranBlindTest(zones, contexte, { audio, verrous, intervall
 	const revelationTitre = e('p', 'blindtest__revele-titre'), revelationArtiste = e('p', 'blindtest__revele-artiste');
 	legende.append(revelationTitre, revelationArtiste);
 	revelation.append(pochette, legende);
-	const sonBloque = e('p', 'coupure', 'Le navigateur bloque le son : active-le avec le bouton de l’Écran de salle.');
-	sonBloque.hidden = true;
-	socle.principale.append(numero, phase, main, temps, revelation, sonBloque);
+	// Le son reste à la coquille : le module dit seulement pourquoi l'extrait est muet.
+	const son = e('p', 'coupure');
+	son.hidden = true;
+	socle.principale.append(numero, phase, main, temps, revelation, son);
 
 	const titreParties = e('h2', '', 'Trouvé');
 	const parties = e('ul', 'blindtest__parties');
@@ -42,10 +43,20 @@ export function creerEcranBlindTest(zones, contexte, { audio, verrous, intervall
 		signalerSonDeManche: actif => contexte.signalerSonDeManche(actif),
 		sonActive: () => audioSalle?.etat().sonDebloque ?? true,
 		maintenantServeur: () => contexte.maintenantServeur(),
-		surBlocage: () => { sonBloque.hidden = false; },
-		surLecture: () => { sonBloque.hidden = true; } });
-	const retirerAudio = audioSalle?.surChangement(() => { void lecteur.relancer(); });
-	let bloc, detruit = false;
+		surBlocage: () => { blocage = true; rendreSon(); },
+		surLecture: () => { blocage = false; rendreSon(); } });
+	const retirerAudio = audioSalle?.surChangement(() => { blocage = false; rendreSon(); void lecteur.relancer(); });
+	let bloc, detruit = false, blocage = false;
+
+	function rendreSon() {
+		if (!bloc || detruit) return;
+		const inactif = audioSalle ? !audioSalle.etat().sonDebloque : false;
+		const texte = !extraitJouable(bloc) ? ''
+			: inactif ? 'Son coupé : clique sur « Activer le son » pour entendre l’extrait.'
+				: blocage ? 'Le navigateur bloque le son : clique sur « Activer le son ».' : '';
+		ecrire(son, texte);
+		son.hidden = !texte;
+	}
 
 	function rafraichirTemps() {
 		if (!bloc) return;
@@ -80,6 +91,7 @@ export function creerEcranBlindTest(zones, contexte, { audio, verrous, intervall
 			pochette.setAttribute('alt', `Pochette de ${bloc.revelation.titre}`);
 		}
 		animer(revelation, 'revelation', origine);
+		rendreSon();
 		const decompte = bloc.etat === 'EN_COURS' && (bloc.phase === 'PROPOSITION'
 			|| (bloc.phase === 'EXTRAIT' && bloc.lecture?.etat === 'EN_LECTURE'));
 		socle.animer(decompte, rafraichirTemps);

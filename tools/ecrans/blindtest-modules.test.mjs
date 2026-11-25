@@ -266,6 +266,95 @@ test('Console : réponse attendue, qui a la main, parties trouvées et Joueurs b
 	assert.match(contenu, /Extrait en pause à 12 s/);
 	assert.match(contenu, /Artiste trouvé par Léa : Beyoncé/);
 	assert.equal(texte(b.laterale.querySelector('ul')), 'Léa');
-	assert.equal(b.principale.querySelectorAll('button').length, 0, 'Le pilotage reste dans la coquille.');
+	b.module.demonter();
+});
+
+function bancConsole() {
+	let cles = 0;
+	const b = creerBanc((zones, contexte) => consoleBlindTest(zones, contexte, { creerUuid: () => `cle-${++cles}` }), 'ANIMATEUR');
+	b.contexte.maintenantServeur = () => T0;
+	return b;
+}
+
+test('Console : le module pilote sa Manche en nommant le Morceau affiché', async () => {
+	const b = bancConsole();
+	b.module.afficher(vueConsole('EXTRAIT', { lecture: lectureEnCours(0) }), capture);
+	const passer = bouton(b.principale, 'Révéler le Morceau');
+	assert.equal(passer.disabled, true, 'Rien ne part avant la synchronisation.');
+	b.connecter('synchronisee');
+	assert.equal(passer.disabled, false);
+	assert.equal(passer.classList.contains('bouton--action'), true);
+
+	passer.click();
+	assert.equal(passer.disabled, true, 'Une commande à la fois.');
+	const [methode, chemin, corps, options] = b.appels[0].args;
+	assert.deepEqual([methode, chemin, corps, options.entetes], ['POST', '/api/soirees/s/manches/m/commandes',
+		{ action: 'PASSER_ETAPE', etapeId: 'e1' }, { 'Idempotency-Key': 'cle-1' }]);
+	b.appels[0].resolve({ statut: 200, corps: {} });
+	await terminerMicrotaches();
+
+	b.module.afficher(vueConsole('REVELATION', { revelation: { titre: 'Halo', artiste: 'Beyoncé', pochette: null } }),
+		evenement('morceau-revele'));
+	assert.ok(bouton(b.principale, 'Morceau suivant'));
+	b.module.afficher(vueConsole('REVELATION', { numero: 5, revelation: { titre: 'Halo', artiste: 'Beyoncé', pochette: null } }),
+		capture);
+	assert.ok(bouton(b.principale, 'Finir la Manche'), 'Après le dernier Morceau, passer termine la Manche.');
+	b.module.demonter();
+});
+
+test('Console : pause et reprise, « Passer » refusé pendant la pause, nouvel essai manuel avec la même clé', async () => {
+	const b = bancConsole();
+	b.connecter('synchronisee');
+	b.module.afficher(vueConsole('EXTRAIT', { lecture: lectureEnCours(0) }), capture);
+	bouton(b.principale, 'Pause').click();
+	assert.deepEqual(b.appels[0].args[2], { action: 'METTRE_EN_PAUSE', etapeId: 'e1' });
+	b.appels[0].reject(new TypeError('réseau'));
+	await terminerMicrotaches();
+	assert.equal(b.captures(), 1, 'Une confirmation inconnue demande une capture.');
+	assert.equal(b.appels.length, 1, 'Aucun nouvel essai automatique.');
+	bouton(b.principale, 'Pause').click();
+	assert.equal(b.appels[1].args[3].entetes['Idempotency-Key'], 'cle-1', 'Le même geste reprend la même clé.');
+	b.appels[1].resolve({ statut: 200, corps: {} });
+	await terminerMicrotaches();
+
+	b.module.afficher(vueConsole('EXTRAIT', { etat: 'EN_PAUSE', lecture: lectureEnPause(4000) }), evenement('manche-en-pause'));
+	assert.equal(bouton(b.principale, 'Révéler le Morceau').disabled, true);
+	bouton(b.principale, 'Reprendre').click();
+	assert.deepEqual(b.appels[2].args[2], { action: 'REPRENDRE', etapeId: 'e1' });
+	assert.equal(b.appels[2].args[3].entetes['Idempotency-Key'], 'cle-2');
+	b.module.demonter();
+	assert.equal(b.appels[2].args[3].signal.aborted, true, 'Le démontage annule la commande en cours.');
+});
+
+test('Console : « Terminer la Manche » demande confirmation', () => {
+	const b = bancConsole();
+	b.connecter('synchronisee');
+	b.module.afficher(vueConsole('EXTRAIT', { lecture: lectureEnCours(0) }), capture);
+	const terminer = bouton(b.principale, 'Terminer la Manche');
+	terminer.click();
+	const dialogue = b.principale.querySelector('dialog');
+	assert.equal(dialogue.open, true);
+	assert.equal(b.appels.length, 0);
+	bouton(dialogue, 'Annuler').click();
+	assert.equal(dialogue.open, false);
+	assert.equal(b.document.activeElement, terminer, 'Le focus revient au déclencheur.');
+	terminer.click();
+	bouton(dialogue, 'Terminer la Manche').click();
+	assert.deepEqual(b.appels[0].args[2], { action: 'TERMINER', etapeId: 'e1' });
+	b.module.demonter();
+});
+
+test('Écran : sans son activé, la salle dit pourquoi l’extrait est muet', async () => {
+	const b = bancEcran(undefined, { sonActive: false });
+	b.module.afficher(vueSalle('PREPARATION'), capture);
+	assert.equal(b.principale.querySelector('.coupure').hidden, true, 'Rien à dire tant qu’aucun extrait ne joue.');
+	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(0) }), evenement('morceau-ouvert'));
+	const message = b.principale.querySelector('.coupure');
+	assert.equal(message.hidden, false);
+	assert.match(message.textContent, /Activer le son/);
+	b.etatSon.sonDebloque = true;
+	for (const rappel of b.abonnes) rappel(b.etatSon);
+	await terminerMicrotaches();
+	assert.equal(message.hidden, true);
 	b.module.demonter();
 });

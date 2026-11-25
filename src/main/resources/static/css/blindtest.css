@@ -68,7 +68,10 @@
 .blindtest__verdict--accepte { background: var(--eau); color: var(--encre); }
 .blindtest__verdict--refuse { background: var(--refus-fond); color: var(--refus); }
 
-/* Console : la réponse attendue d'abord, pour l'arbitrage. */
+/* Console : le pilotage de la Manche en tête, action citron en dernier, puis la réponse attendue pour l'arbitrage. */
+.blindtest__pilotage { display: flex; flex-wrap: wrap; gap: var(--espace-2); align-items: center; }
+.blindtest--console .dialogue { display: grid; gap: var(--espace-3); }
+.blindtest--console .dialogue:not([open]) { display: none; }
 .blindtest--console .blindtest__entete { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--espace-3); }
 .blindtest--console .blindtest__phase { font-size: 1.375rem; }
 .blindtest--console .panneau { display: grid; gap: var(--espace-2); }
