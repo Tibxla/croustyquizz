@@ -402,7 +402,8 @@ paths:
         injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
         pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
         409 PSEUDO_DEJA_PRIS. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes.
-        Au-delà de la limite par adresse IP (codes inconnus, arrivées), 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
+        Au-delà de la limite par adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »). Toutes les arrivées
+        comptent, et un code inconnu reçoit 429 au lieu de 404 une fois les essais de code de l’adresse épuisés ; un code valide n’est jamais refusé pour ces essais.
       tags:
       - Soirée
       security: []
@@ -449,7 +450,7 @@ paths:
         déclaration, fin, erreur et relevé de position), sans aucune action de jeu ; elle ne donne accès ni à la
         Console ni aux vues privées. Préférer un transfert par fragment URL, retirer ce fragment après lecture et ne
         jamais inscrire la clé dans une chaîne de requête.
-        Au-delà de la limite par adresse IP et par Soirée, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
+        Au-delà de la limite par adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Soirée
       security:
@@ -3444,7 +3445,7 @@ components:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur429:
       description: 'TROP_DE_REQUETES : la limite de requêtes de la route est atteinte pour ce jeton, cette clé
-        d’Écran ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a pas été traitée : aucun
+        d’Écran ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé : aucun
         reçu, aucune mutation. Un nouvel essai, décidé par la personne et jamais automatique, passe après
         Retry-After.'
       headers:

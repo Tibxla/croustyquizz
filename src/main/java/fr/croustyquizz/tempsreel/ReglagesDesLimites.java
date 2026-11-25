@@ -11,16 +11,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * ne les atteint pas, un script qui martèle une route ou essaie des codes d'accès, si.
  *
  * @param actif          {@code false} coupe la limite sans redéployer, par exemple si elle gênait une Soirée
- * @param plafondCles    nombre de seaux gardés en mémoire ; au-delà, une nouvelle clé passe sans être comptée
+ * @param plafondCles    nombre de seaux gardés en mémoire pour chaque route ; au-delà, une nouvelle clé passe sans
+ *                       être comptée, sauf un code inconnu, refusé
  * @param buzz           par jeton : la Manette n'envoie qu'un Buzz à la fois, un doigt ne tient pas 5 par seconde
  * @param reponses       par jeton et par route : le brouillon part au plus deux fois par seconde pendant la saisie
- * @param codesInconnus  par adresse IP : seuls les codes inconnus comptent. À 20 essais par minute parmi les
- *                       32<sup>6</sup> codes (10<sup>9</sup>), une adresse mettrait une dizaine d'années à tomber
- *                       sur l'une de dix Soirées ouvertes, alors qu'une salle derrière un seul Wi-Fi peut se
- *                       tromper de code une vingtaine de fois d'affilée sans être bloquée
+ * @param codesInconnus  par adresse IP : seuls les codes inconnus comptent, une fois la réponse connue, et le bon
+ *                       code n'est jamais refusé ici. Une salle derrière un seul Wi-Fi peut se tromper de code
+ *                       une vingtaine de fois d'affilée sans voir de 429, et un voisin qui épuise ces essais ne
+ *                       l'empêche pas d'arriver
  * @param arrivees       par adresse IP : deux salles de 60 Joueurs derrière la même adresse arrivent d'un coup, un
- *                       script qui crée des Joueurs en boucle est freiné
- * @param accesEcran     par adresse IP et par Soirée : l'Animateur ouvre un ou deux Écrans de salle
+ *                       script qui crée des Joueurs en boucle est freiné. Comme le bon code passe toujours le seau
+ *                       des codes inconnus, c'est ce seuil qui borne un script qui cherche un code : à 1 essai par
+ *                       seconde parmi les 32<sup>6</sup> codes (10<sup>9</sup>), une adresse mettrait en moyenne
+ *                       trois ans à tomber sur l'une de dix Soirées ouvertes
+ * @param accesEcran     par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle
  * @param qrCode         par clé d'Écran : l'Écran de salle ne le charge qu'au changement de code
  */
 @ConfigurationProperties("croustyquizz.limites")

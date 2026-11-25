@@ -14,11 +14,9 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +25,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.PathContainer;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 import org.springframework.web.util.pattern.PathPattern;
 import org.springframework.web.util.pattern.PathPatternParser;
 
@@ -46,22 +45,25 @@ import tools.jackson.databind.json.JsonMapper;
  * {@code Retry-After} (docs/api/README.md, « Limite de requêtes »).
  *
  * <p>Clés. Le Buzz, les Réponses et le QR code comptent par jeton : une empreinte de l'en-tête Authorization,
- * jamais le secret lui-même, et sans consulter la base avant la limite. Sans jeton, et pour l'arrivée par code
- * qui n'a pas encore d'identité, la clé est l'adresse IP de {@link HttpServletRequest#getRemoteAddr()} : derrière
+ * jamais le secret lui-même, et sans consulter la base avant la limite. Sans jeton, pour l'arrivée par code qui
+ * n'a pas encore d'identité et pour l'accès de l'Écran, la clé est l'adresse IP de
+ * {@link HttpServletRequest#getRemoteAddr()} : derrière
  * Render ou Tailscale Funnel, Tomcat y place déjà l'adresse du client tirée de X-Forwarded-For, mais seulement
  * quand la connexion vient d'un relais de confiance ({@code server.forward-headers-strategy: native}, relais
  * d'adresse privée ou locale). Ce filtre ne lit donc jamais X-Forwarded-For lui-même : un client ne peut pas
  * choisir sa clé. Une adresse IPv6 compte par bloc de 64 bits, qu'un seul abonné reçoit en entier.
  *
- * <p>L'arrivée par code a deux seaux par adresse : toutes les arrivées, et les seuls codes inconnus. Le seau des
- * codes est seulement consulté avant la requête, puis débité après une réponse {@code 404}, quitte à s'endetter :
- * une arrivée réussie ne tient jamais d'essai, même en attendant le verrou de la Soirée, si bien qu'une salle
- * derrière un seul Wi-Fi arrive d'un coup ; des codes faux envoyés en même temps passent, mais la dette les fait
- * payer ensuite au rythme du seuil.
+ * <p>L'arrivée par code a deux seaux par adresse : toutes les arrivées, prises avant la requête, et les seuls
+ * codes inconnus, pris une fois la réponse connue. Un code inconnu au-delà de la limite voit son {@code 404}
+ * remplacé par un {@code 429} ; une arrivée qui aboutit ne touche jamais ce seau, si bien qu'une salle derrière un
+ * seul Wi-Fi arrive avec le bon code même quand un voisin a épuisé les essais du réseau. Le bon code n'étant
+ * jamais refusé, c'est le seau de toutes les arrivées qui borne le rythme des essais d'un script.
  *
  * <p>Mémoire bornée sans tâche de fond : à chaque requête limitée, au plus une fois par minute, les seaux
- * redevenus pleins sont oubliés, ce qui ne change rien puisqu'un seau plein vaut un seau neuf. Au plafond de clés,
- * une nouvelle clé passe sans être comptée plutôt que d'être refusée : remplir la table ne bloque pas la salle.
+ * redevenus pleins sont oubliés, ce qui ne change rien puisqu'un seau plein vaut un seau neuf. Chaque route a sa
+ * table et son plafond : des jetons inventés ne remplissent que la table de leur route, jamais celle des arrivées.
+ * Au plafond, une nouvelle clé passe sans être comptée plutôt que d'être refusée, pour ne pas bloquer la salle,
+ * sauf sur les codes inconnus : un code inconnu d'une adresse nouvelle y reçoit {@code 429}, le bon code passe.
  * Le temps vient de l'Horloge, remplacée par une horloge factice dans les tests.
  */
 public final class LimiteDeRequetes extends OncePerRequestFilter {
@@ -74,16 +76,13 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 	private static final long PURGE_AU_PLAFOND = SECONDE;
 	private static final int OCTETS_EMPREINTE = 16;
 	private static final int OCTETS_BLOC_IPV6 = 8;
-	private static final Pattern UUID_SOIREE = Pattern.compile("[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}");
 
 	private final boolean actif;
 	private final int plafondCles;
 	private final Horloge horloge;
 	private final JsonMapper json;
 	private final List<Regle> regles;
-	private final Map<CleDeSeau, SeauDeJetons> seaux = new ConcurrentHashMap<>();
 	private final AtomicLong dernierePurge;
-	private final AtomicLong dernierAvertissement = new AtomicLong(Long.MIN_VALUE);
 
 	public LimiteDeRequetes(ReglagesDesLimites reglages, Horloge horloge, JsonMapper json) {
 		this.actif = reglages.actif();
@@ -102,7 +101,7 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 				new Regle("vote", POST, manche + "/passages/{passageId}/vote", Cle.JETON, false, reglages.reponses()),
 				new Regle("codes-inconnus", POST, "/api/soirees/rejoindre", Cle.ADRESSE, true, reglages.codesInconnus()),
 				new Regle("arrivees", POST, "/api/soirees/rejoindre", Cle.ADRESSE, false, reglages.arrivees()),
-				new Regle("acces-ecran", POST, soiree + "/acces-ecran", Cle.ADRESSE_ET_SOIREE, false, reglages.accesEcran()),
+				new Regle("acces-ecran", POST, soiree + "/acces-ecran", Cle.ADRESSE, false, reglages.accesEcran()),
 				new Regle("qr-code", "GET", soiree + "/qrcode", Cle.JETON, false, reglages.qrCode()));
 	}
 
@@ -117,45 +116,67 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		PathContainer chemin = PathContainer.parsePath(requete.getRequestURI().substring(requete.getContextPath().length()));
 		long maintenant = nanos(horloge.maintenant());
 		List<CleDeSeau> prises = new ArrayList<>();
-		List<CleDeSeau> aDebiterSi404 = new ArrayList<>();
+		CleDeSeau codesInconnus = null;
 		for (Regle regle : regles) {
-			PathPattern.PathMatchInfo correspondance = regle.correspondance(requete.getMethod(), chemin);
-			if (correspondance == null) {
+			if (!regle.concerne(requete.getMethod(), chemin)) {
 				continue;
 			}
-			CleDeSeau cle = new CleDeSeau(regle, cle(regle.cle, requete, correspondance));
-			long attente = regle.seulementCodesInconnus ? consulter(cle, maintenant) : prendre(cle, maintenant);
+			CleDeSeau cle = new CleDeSeau(regle, cle(regle.cle, requete));
+			if (regle.seulementCodesInconnus) {
+				codesInconnus = cle;
+				continue;
+			}
+			long attente = prendre(cle, maintenant);
 			if (attente > 0) {
 				prises.forEach(this::rendre);
 				refuser(requete, reponse, attente);
 				return;
 			}
-			(regle.seulementCodesInconnus ? aDebiterSi404 : prises).add(cle);
+			prises.add(cle);
 		}
-		chaine.doFilter(requete, reponse);
-		if (reponse.getStatus() == HttpServletResponse.SC_NOT_FOUND && !aDebiterSi404.isEmpty()) {
-			long apres = nanos(horloge.maintenant());
-			aDebiterSi404.forEach(cle -> debiter(cle, apres));
+		if (codesInconnus == null) {
+			chaine.doFilter(requete, reponse);
+		} else {
+			filtrerLesCodesInconnus(requete, reponse, chaine, codesInconnus);
 		}
 	}
 
-	/** Nombre de seaux en mémoire, pour les tests de purge et de plafond. */
+	/**
+	 * Le seau des codes inconnus n'est pris qu'après un {@code 404} : la réponse est gardée en mémoire le temps de
+	 * savoir s'il faut la remplacer par un {@code 429}. Un code inconnu ne change rien côté serveur, si bien que
+	 * le remplacement ne cache aucune mutation.
+	 */
+	private void filtrerLesCodesInconnus(HttpServletRequest requete, HttpServletResponse reponse, FilterChain chaine,
+			CleDeSeau cle) throws ServletException, IOException {
+		var tampon = new ContentCachingResponseWrapper(reponse);
+		chaine.doFilter(requete, tampon);
+		if (tampon.getStatus() == HttpServletResponse.SC_NOT_FOUND && !reponse.isCommitted()) {
+			long attente = prendre(cle, nanos(horloge.maintenant()));
+			if (attente > 0) {
+				refuser(requete, reponse, attente);
+				return;
+			}
+		}
+		tampon.copyBodyToResponse();
+	}
+
+	/** Nombre de seaux en mémoire, toutes routes confondues, pour les tests de purge et de plafond. */
 	int nombreDeSeaux() {
-		return seaux.size();
+		return regles.stream().mapToInt(regle -> regle.seaux.size()).sum();
 	}
 
 	private long prendre(CleDeSeau cle, long maintenant) {
 		purgerSiBesoin(maintenant, false);
-		if (!seaux.containsKey(cle) && seaux.size() >= plafondCles) {
+		Map<String, SeauDeJetons> seaux = cle.regle().seaux;
+		if (!seaux.containsKey(cle.valeur()) && seaux.size() >= plafondCles) {
 			purgerSiBesoin(maintenant, true);
 			if (seaux.size() >= plafondCles) {
-				avertirDuPlafond(maintenant);
-				return 0;
+				return auPlafond(cle.regle(), maintenant);
 			}
 		}
 		long[] attente = new long[1];
 		boolean[] signaler = new boolean[1];
-		seaux.compute(cle, (inutile, seau) -> {
+		seaux.compute(cle.valeur(), (inutile, seau) -> {
 			SeauDeJetons courant = seau == null ? nouveauSeau(cle, maintenant) : seau;
 			attente[0] = courant.prendre(maintenant);
 			signaler[0] = attente[0] > 0 && courant.premierRefus();
@@ -167,39 +188,12 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		return attente[0];
 	}
 
-	/** Attente du seau sans rien prendre ; une clé sans seau a son seau plein. */
-	private long consulter(CleDeSeau cle, long maintenant) {
-		long[] attente = new long[1];
-		boolean[] signaler = new boolean[1];
-		seaux.computeIfPresent(cle, (inutile, seau) -> {
-			attente[0] = seau.attente(maintenant);
-			signaler[0] = attente[0] > 0 && seau.premierRefus();
-			return seau;
-		});
-		if (signaler[0] && JOURNAL.isInfoEnabled()) {
-			JOURNAL.info("Limite de requêtes atteinte : {} pour {}.", cle.regle().nom, cle.valeur());
-		}
-		return attente[0];
-	}
-
-	private void debiter(CleDeSeau cle, long maintenant) {
-		if (!seaux.containsKey(cle) && seaux.size() >= plafondCles) {
-			avertirDuPlafond(maintenant);
-			return;
-		}
-		seaux.compute(cle, (inutile, seau) -> {
-			SeauDeJetons courant = seau == null ? nouveauSeau(cle, maintenant) : seau;
-			courant.debiter(maintenant);
-			return courant;
-		});
-	}
-
 	private static SeauDeJetons nouveauSeau(CleDeSeau cle, long maintenant) {
 		return new SeauDeJetons(cle.regle().seuil.rafale(), cle.regle().seuil.intervalle(), maintenant);
 	}
 
 	private void rendre(CleDeSeau cle) {
-		seaux.computeIfPresent(cle, (inutile, seau) -> {
+		cle.regle().seaux.computeIfPresent(cle.valeur(), (inutile, seau) -> {
 			seau.rendre();
 			return seau;
 		});
@@ -211,18 +205,26 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		if (maintenant - precedente < ecart || !dernierePurge.compareAndSet(precedente, maintenant)) {
 			return;
 		}
-		for (CleDeSeau cle : seaux.keySet()) {
-			seaux.computeIfPresent(cle, (inutile, seau) -> seau.estPlein(maintenant) ? null : seau);
+		for (Regle regle : regles) {
+			for (String cle : regle.seaux.keySet()) {
+				regle.seaux.computeIfPresent(cle, (inutile, seau) -> seau.estPlein(maintenant) ? null : seau);
+			}
 		}
 	}
 
-	private void avertirDuPlafond(long maintenant) {
-		long precedent = dernierAvertissement.get();
+	/**
+	 * Table pleine : la nouvelle clé passe sans être comptée, sauf sur les codes inconnus, où elle est refusée pour
+	 * un intervalle. Le journal l'avertit au plus une fois par minute et par route.
+	 */
+	private long auPlafond(Regle regle, long maintenant) {
+		long precedent = regle.dernierAvertissement.get();
 		if ((precedent == Long.MIN_VALUE || maintenant - precedent >= PURGE_REGULIERE)
-				&& dernierAvertissement.compareAndSet(precedent, maintenant)) {
-			JOURNAL.warn("Limite de requêtes : plafond de {} clés atteint, les nouvelles clés passent sans être comptées.",
-					plafondCles);
+				&& regle.dernierAvertissement.compareAndSet(precedent, maintenant) && JOURNAL.isWarnEnabled()) {
+			JOURNAL.warn("Limite de requêtes : plafond de {} clés atteint pour {}, {}.", plafondCles, regle.nom,
+					regle.seulementCodesInconnus ? "les codes inconnus des nouvelles adresses sont refusés"
+							: "les nouvelles clés passent sans être comptées");
 		}
+		return regle.seulementCodesInconnus ? regle.seuil.intervalle().toNanos() : 0;
 	}
 
 	private void refuser(HttpServletRequest requete, HttpServletResponse reponse, long attente)
@@ -238,17 +240,12 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		json.writeValue(reponse.getOutputStream(), Probleme.de(new Refuse(429, CODE, detail), requete.getRequestURI()));
 	}
 
-	private static String cle(Cle type, HttpServletRequest requete, PathPattern.PathMatchInfo correspondance) {
+	private static String cle(Cle type, HttpServletRequest requete) {
 		String autorisation = requete.getHeader(HttpHeaders.AUTHORIZATION);
 		return switch (type) {
 			case JETON -> autorisation == null || autorisation.isBlank() ? adresse(requete) : "jeton:" + empreinte(autorisation);
+			// Aucun segment du chemin dans la clé : une seule adresse ne remplit pas la table de sa route.
 			case ADRESSE -> adresse(requete);
-			// Le segment vient du client : seul un UUID entre dans la clé, pour que la table reste bornée.
-			case ADRESSE_ET_SOIREE -> {
-				String soiree = correspondance.getUriVariables().get("soireeId");
-				yield UUID_SOIREE.matcher(soiree).matches() ? adresse(requete) + " soiree:" + soiree.toLowerCase(Locale.ROOT)
-						: adresse(requete);
-			}
 		};
 	}
 
@@ -283,9 +280,9 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		return instant.getEpochSecond() * SECONDE + instant.getNano();
 	}
 
-	private enum Cle { JETON, ADRESSE, ADRESSE_ET_SOIREE }
+	private enum Cle { JETON, ADRESSE }
 
-	/** Route limitée ; une instance par route, comparée par identité dans les clés de seau. */
+	/** Route limitée, avec sa propre table de seaux ; une instance par route, comparée par identité. */
 	private static final class Regle {
 
 		private final String nom;
@@ -294,6 +291,8 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		private final Cle cle;
 		private final boolean seulementCodesInconnus;
 		private final ReglagesDesLimites.Seuil seuil;
+		private final Map<String, SeauDeJetons> seaux = new ConcurrentHashMap<>();
+		private final AtomicLong dernierAvertissement = new AtomicLong(Long.MIN_VALUE);
 
 		Regle(String nom, String methode, String motif, Cle cle, boolean seulementCodesInconnus, ReglagesDesLimites.Seuil seuil) {
 			this.nom = nom;
@@ -304,8 +303,8 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 			this.seuil = seuil;
 		}
 
-		PathPattern.PathMatchInfo correspondance(String methodeRecue, PathContainer chemin) {
-			return methode.equals(methodeRecue) ? motif.matchAndExtract(chemin) : null;
+		boolean concerne(String methodeRecue, PathContainer chemin) {
+			return methode.equals(methodeRecue) && motif.matches(chemin);
 		}
 
 	}

@@ -84,20 +84,25 @@ class LimiteDeRequetesHttpTest {
 	}
 
 	@Test
-	void desCodesEssayesEnRafaleBloquentCetteAdresseSeulementPuisLaLimiteSeRouvre() throws Exception {
+	void desCodesEssayesEnRafaleSontRefusesSansJamaisRefuserLeBonCodePuisLaLimiteSeRouvre() throws Exception {
 		SoireeOuverte soiree = ouvrirSoiree("198.51.100.2");
 		for (int i = 0; i < 20; i++) {
 			JsonNode inconnu = verifier("rejoindreSoiree", arriver(codeInconnu(soiree), "Intrus", "203.0.113.10"), 404);
 			assertThat(inconnu.path("code").asString()).isEqualTo("CODE_ACCES_INVALIDE");
 		}
 
-		ResponseEntity<String> refus = arriver(soiree.code(), "Intrus", "203.0.113.10");
-		assertThat(verifier("rejoindreSoiree", refus, 429).path("code").asString()).isEqualTo("TROP_DE_REQUETES");
+		ResponseEntity<String> refus = arriver(codeInconnu(soiree), "Intrus", "203.0.113.10");
+		JsonNode probleme = verifier("rejoindreSoiree", refus, 429);
+		assertThat(probleme.path("code").asString()).isEqualTo("TROP_DE_REQUETES");
+		assertThat(probleme.path("detail").asString()).isEqualTo("Trop de requêtes en peu de temps. Réessaie dans 3 secondes.");
 		assertThat(refus.getHeaders().getFirst("Retry-After")).isEqualTo("3");
-		verifier("rejoindreSoiree", arriver(soiree.code(), "Voisine", "203.0.113.11"), 201);
+		assertThat(refus.getHeaders().getCacheControl()).isEqualTo("no-store");
+		// Même réseau, bon code : la salle arrive malgré les essais épuisés de son Wi-Fi.
+		verifier("rejoindreSoiree", arriver(soiree.code(), "Voisine", "203.0.113.10"), 201);
+		verifier("rejoindreSoiree", arriver(codeInconnu(soiree), "Intrus", "203.0.113.11"), 404);
 
 		horloge.avancer(Duration.ofSeconds(3));
-		verifier("rejoindreSoiree", arriver(soiree.code(), "Patiente", "203.0.113.10"), 201);
+		verifier("rejoindreSoiree", arriver(codeInconnu(soiree), "Patiente", "203.0.113.10"), 404);
 	}
 
 	@Test

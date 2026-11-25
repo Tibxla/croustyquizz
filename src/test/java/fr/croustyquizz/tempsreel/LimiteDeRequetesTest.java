@@ -10,9 +10,13 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import fr.croustyquizz.manche.HorlogeFactice;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -130,15 +134,30 @@ class LimiteDeRequetesTest {
 		assertThat(envoyer("POST", REJOINDRE, null, 404).getStatus()).isEqualTo(404);
 		assertThat(envoyer("POST", REJOINDRE, null, 404).getStatus()).isEqualTo(404);
 
-		MockHttpServletResponse refus = envoyer("POST", REJOINDRE, null, 201);
+		MockHttpServletResponse refus = envoyer("POST", REJOINDRE, null, 404);
 		assertThat(refus.getStatus()).isEqualTo(429);
 		assertThat(refus.getHeader("Retry-After")).isEqualTo("3");
-		assertThat(JSON.readTree(refus.getContentAsString()).path("detail").asString())
-				.isEqualTo("Trop de requêtes en peu de temps. Réessaie dans 3 secondes.");
+		assertThat(refus.getContentType()).startsWith("application/problem+json");
+		JsonNode probleme = JSON.readTree(refus.getContentAsString());
+		assertThat(probleme.path("code").asString()).isEqualTo("TROP_DE_REQUETES");
+		assertThat(probleme.path("detail").asString()).isEqualTo("Trop de requêtes en peu de temps. Réessaie dans 3 secondes.");
 		assertThat(envoyer("POST", REJOINDRE, null, 404, "203.0.113.50").getStatus()).isEqualTo(404);
 
 		horloge.avancer(Duration.ofSeconds(3));
-		assertThat(envoyer("POST", REJOINDRE, null, 201).getStatus()).isEqualTo(201);
+		assertThat(envoyer("POST", REJOINDRE, null, 404).getStatus()).isEqualTo(404);
+	}
+
+	@Test
+	void leBonCodeNEstJamaisRefusePourLesEssaisDeCodeDeSonReseau() throws Exception {
+		limite = new LimiteDeRequetes(reglages(true, 1_000, new ReglagesDesLimites.Seuil(100, Duration.ofSeconds(1))), horloge, JSON);
+		for (int i = 0; i < 2; i++) {
+			envoyer("POST", REJOINDRE, null, 404);
+		}
+		assertThat(envoyer("POST", REJOINDRE, null, 404).getStatus()).isEqualTo(429);
+
+		for (int i = 0; i < 30; i++) {
+			assertThat(envoyer("POST", REJOINDRE, null, 201).getStatus()).isEqualTo(201);
+		}
 	}
 
 	@Test
@@ -179,15 +198,14 @@ class LimiteDeRequetesTest {
 	}
 
 	@Test
-	void lAccesDEcranCompteParAdresseEtParSoiree() throws Exception {
-		String autreSoiree = "/api/soirees/" + UUID.randomUUID();
+	void lAccesDEcranCompteParAdresseToutesSoireesConfondues() throws Exception {
 		envoyer("POST", SOIREE + "/acces-ecran", "demo:ANIMATEUR", null);
-		envoyer("POST", SOIREE + "/acces-ecran", "demo:ANIMATEUR", null);
+		envoyer("POST", "/api/soirees/" + UUID.randomUUID() + "/acces-ecran", "autre-animateur", null);
 
-		MockHttpServletResponse refus = envoyer("POST", SOIREE + "/acces-ecran", "autre-animateur", null);
+		MockHttpServletResponse refus = envoyer("POST", "/api/soirees/" + UUID.randomUUID() + "/acces-ecran", null, null);
 		assertThat(refus.getStatus()).isEqualTo(429);
 		assertThat(refus.getHeader("Retry-After")).isEqualTo("6");
-		assertThat(envoyer("POST", autreSoiree + "/acces-ecran", null, null).getStatus()).isEqualTo(200);
+		assertThat(envoyer("POST", "/api/soirees/aaa/acces-ecran", null, 404).getStatus()).isEqualTo(429);
 		assertThat(envoyer("POST", SOIREE + "/acces-ecran", null, null, "203.0.113.77").getStatus()).isEqualTo(200);
 	}
 
@@ -245,27 +263,69 @@ class LimiteDeRequetesTest {
 	}
 
 	@Test
-	void desCodesInconnusSimultanesEndettentLAdresseAuMemeRythme() throws Exception {
+	void desCodesInconnusSimultanesNeDepassentPasLaRafale() throws Exception {
 		limite = new LimiteDeRequetes(reglages(true, 1_000, new ReglagesDesLimites.Seuil(100, Duration.ofSeconds(1))), horloge, JSON);
 		List<Integer> statuts = new ArrayList<>();
 		arriverEnMemeTemps(4, 404, statuts);
-		assertThat(statuts).containsOnly(404);
+		assertThat(statuts).containsExactly(404, 404, 429, 429);
 
+		// Aucune dette : le seau regagne un essai au bout d'un intervalle, comme après une suite d'essais.
 		MockHttpServletResponse refus = envoyer("POST", REJOINDRE, null, 404);
-		assertThat(refus.getStatus()).isEqualTo(429);
-		// Quatre essais au rythme d'un toutes les 3 s, rafale de 2 : 4 × 3 s − 3 s.
-		assertThat(refus.getHeader("Retry-After")).isEqualTo("9");
-		horloge.avancer(Duration.ofSeconds(9));
+		assertThat(refus.getHeader("Retry-After")).isEqualTo("3");
+		horloge.avancer(Duration.ofSeconds(3));
 		assertThat(envoyer("POST", REJOINDRE, null, 404).getStatus()).isEqualTo(404);
 	}
 
 	@Test
-	void unSegmentDeSoireeQuiNEstPasUnUuidCompteSurLAdresseSeule() throws Exception {
-		envoyer("POST", "/api/soirees/aaa/acces-ecran", null, 404);
-		envoyer("POST", "/api/soirees/" + "b".repeat(500) + "/acces-ecran", null, 404);
+	void remplirLaTableDAutresRoutesNeDesactivePasLaLimiteDesArrivees() throws Exception {
+		limite = new LimiteDeRequetes(reglages(true, 2), horloge, JSON);
+		for (int i = 0; i < 50; i++) {
+			envoyer("POST", "/api/soirees/" + UUID.randomUUID() + "/acces-ecran", null, null, "198.51.100.66");
+			envoyer("POST", BUZZ, "jeton-invente-" + i, null, "198.51.100.66");
+			envoyer("GET", SOIREE + "/qrcode", "cle-inventee-" + i, null, "198.51.100.66");
+		}
+		String nouvelle = "203.0.113.60";
 
-		assertThat(envoyer("POST", "/api/soirees/ccc/acces-ecran", null, 404).getStatus()).isEqualTo(429);
-		assertThat(envoyer("POST", SOIREE + "/acces-ecran", null, null).getStatus()).isEqualTo(200);
+		for (int i = 0; i < 2; i++) {
+			assertThat(envoyer("POST", REJOINDRE, null, 404, nouvelle).getStatus()).isEqualTo(404);
+		}
+		assertThat(envoyer("POST", REJOINDRE, null, 404, nouvelle).getStatus()).isEqualTo(429);
+		assertThat(envoyer("POST", REJOINDRE, null, 201, nouvelle).getStatus()).isEqualTo(429);
+	}
+
+	@Test
+	void auPlafondDesCodesInconnusUnCodeInconnuDUneAdresseNouvelleEstRefuseMaisPasLeBonCode() throws Exception {
+		limite = new LimiteDeRequetes(reglages(true, 2), horloge, JSON);
+		envoyer("POST", REJOINDRE, null, 404, "203.0.113.1");
+		envoyer("POST", REJOINDRE, null, 404, "203.0.113.2");
+
+		MockHttpServletResponse refus = envoyer("POST", REJOINDRE, null, 404, "203.0.113.3");
+		assertThat(refus.getStatus()).isEqualTo(429);
+		assertThat(refus.getHeader("Retry-After")).isEqualTo("3");
+		assertThat(envoyer("POST", REJOINDRE, null, 201, "203.0.113.4").getStatus()).isEqualTo(201);
+	}
+
+	@Test
+	void chaqueSerieDeRefusEstJournaliseeMemePourLesCodesInconnus() throws Exception {
+		limite = new LimiteDeRequetes(reglages(true, 1_000, new ReglagesDesLimites.Seuil(100, Duration.ofSeconds(1))), horloge, JSON);
+		Logger journal = (Logger) LoggerFactory.getLogger(LimiteDeRequetes.class);
+		var lignes = new ListAppender<ILoggingEvent>();
+		lignes.start();
+		journal.addAppender(lignes);
+		try {
+			for (int i = 0; i < 4; i++) {
+				envoyer("POST", REJOINDRE, null, 404);
+			}
+			horloge.avancer(Duration.ofSeconds(3));
+			envoyer("POST", REJOINDRE, null, 404);
+			envoyer("POST", REJOINDRE, null, 404);
+		} finally {
+			journal.detachAppender(lignes);
+		}
+
+		assertThat(lignes.list).extracting(ILoggingEvent::getFormattedMessage)
+				.containsExactly("Limite de requêtes atteinte : codes-inconnus pour ip:192.0.2.10.",
+						"Limite de requêtes atteinte : codes-inconnus pour ip:192.0.2.10.");
 	}
 
 	private void arriverEnMemeTemps(int nombre, int statut, List<Integer> statuts) throws IOException, ServletException {

@@ -34,7 +34,7 @@ croustyquizz:
   # Justification de chaque seuil dans ReglagesDesLimites ; réglage dans docs/deploiement.md.
   limites:
     actif: true
-    # Quelques centaines d'octets par clé : 20 000 clés tiennent dans quelques Mo.
+    # Par route : chacune a sa table. Environ 200 octets par clé : au pire, 9 routes × 20 000 clés font 40 Mo.
     plafond-cles: 20000
     # Par jeton. La Manette attend la réponse avant un nouveau Buzz : 5 par seconde reste hors de portée d'un doigt.
     buzz:
@@ -44,15 +44,16 @@ croustyquizz:
     reponses:
       rafale: 20
       intervalle: 100ms
-    # Par adresse IP, seuls les codes inconnus (404) : 20 par minute, alors qu'il y a 10^9 codes possibles.
+    # Par adresse IP, seuls les codes inconnus (404), comptés après la réponse : le bon code n'est jamais refusé ici.
     codes-inconnus:
       rafale: 20
       intervalle: 3s
-    # Par adresse IP, toutes les arrivées : deux salles de 60 Joueurs derrière un même Wi-Fi.
+    # Par adresse IP, toutes les arrivées : deux salles de 60 Joueurs derrière un même Wi-Fi. Borne aussi le
+    # rythme des essais de code d'un script, à 1 par seconde parmi 10^9 codes.
     arrivees:
       rafale: 120
       intervalle: 1s
-    # Par adresse IP et par Soirée : l'Animateur ouvre un ou deux Écrans de salle.
+    # Par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle.
     acces-ecran:
       rafale: 10
       intervalle: 6s

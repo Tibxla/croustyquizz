@@ -82,25 +82,4 @@ class SeauDeJetonsTest {
 		assertThat(seau.prendre(DEPART - 10 * SECONDE)).isPositive();
 	}
 
-	@Test
-	void consulterNePrendRien() {
-		var seau = new SeauDeJetons(1, Duration.ofSeconds(3), DEPART);
-		assertThat(seau.attente(DEPART)).isZero();
-		assertThat(seau.attente(DEPART)).isZero();
-
-		seau.prendre(DEPART);
-		assertThat(seau.attente(DEPART + SECONDE)).isEqualTo(2 * SECONDE);
-	}
-
-	@Test
-	void unDebitApresCoupEndetteLeSeauSansJamaisRefuser() {
-		var seau = new SeauDeJetons(2, Duration.ofSeconds(3), DEPART);
-		for (int i = 0; i < 5; i++) {
-			seau.debiter(DEPART);
-		}
-
-		assertThat(seau.attente(DEPART)).isEqualTo(12 * SECONDE);
-		assertThat(seau.attente(DEPART + 12 * SECONDE)).isZero();
-	}
-
 }

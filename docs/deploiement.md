@@ -179,9 +179,9 @@ exécuter la requête ; la Manette affiche le message, rien ne réessaie tout se
 |---|---|---|---|---|
 | Buzz | jeton du Joueur | 10 | 1 toutes les 200 ms | La Manette attend la réponse avant un nouveau Buzz ; un doigt ne tient pas 5 Buzz par seconde. |
 | Brouillon, Proposition, Vote, Réponse du Quiz | jeton, par route | 20 | 1 toutes les 100 ms | Le brouillon du Blind test part au plus toutes les 500 ms pendant la saisie. |
-| Arrivée par code, codes inconnus | adresse IP | 20 | 1 toutes les 3 s | Seuls les `404 CODE_ACCES_INVALIDE` comptent. À 20 essais par minute parmi 32⁶ codes (10⁹), une adresse mettrait une dizaine d'années à tomber sur l'une de dix Soirées ouvertes. |
-| Arrivée par code, toutes | adresse IP | 120 | 1 par seconde | Deux salles de 60 Joueurs derrière le même Wi-Fi arrivent d'un coup ; un script qui crée des Joueurs en boucle est freiné. |
-| Accès de l'Écran de salle | adresse IP et Soirée | 10 | 1 toutes les 6 s | L'Animateur ouvre un ou deux Écrans par Soirée. |
+| Arrivée par code, codes inconnus | adresse IP | 20 | 1 toutes les 3 s | Seuls les `404 CODE_ACCES_INVALIDE` comptent, une fois la réponse connue : au-delà, le `404` devient `429`. Le bon code n'est jamais refusé par ce seau. |
+| Arrivée par code, toutes | adresse IP | 120 | 1 par seconde | Deux salles de 60 Joueurs derrière le même Wi-Fi arrivent d'un coup ; un script qui crée des Joueurs en boucle est freiné. C'est aussi ce seuil qui borne un script qui cherche un code : à 1 essai par seconde parmi 32⁶ codes (10⁹), une adresse mettrait en moyenne trois ans à tomber sur l'une de dix Soirées ouvertes. |
+| Accès de l'Écran de salle | adresse IP | 10 | 1 toutes les 6 s | L'Animateur ouvre un ou deux Écrans par Soirée. |
 | QR code | clé d'Écran | 10 | 1 par seconde | L'Écran ne le charge qu'au changement de code. |
 
 Le seuil des codes est plus large que 10 par minute : dans un lieu, tous les téléphones
@@ -189,12 +189,18 @@ sur le Wi-Fi sortent par la même adresse IP, et une salle de 60 se trompe de co
 d'une fois. Pour la même raison, une arrivée réussie ou refusée pour son pseudo ne
 consomme aucun essai de code : `BuzzDeSoireeHttpTest` fait arriver puis buzzer 60
 Manettes depuis la même adresse, avec la limite active, et `LimiteDeRequetesHttpTest` en
-fait arriver 60 en même temps. Le seau des codes n'est que consulté avant la requête, puis
-débité après un `404` : des codes faux envoyés en même temps passent tous, mais endettent
-l'adresse, qui attend d'autant plus ensuite. Une requête sans jeton compte
+fait arriver 60 en même temps. Le seau des codes n'est pris qu'après un `404` : un code
+qui mène à une Soirée ouverte passe toujours, même quand un voisin du même Wi-Fi a épuisé
+les essais du réseau. Comme le bon code n'est jamais refusé, un `429` sur un code faux
+n'apprend rien de plus qu'un `404` à un script : c'est la limite de toutes les arrivées qui
+le freine. Une requête sans jeton compte
 sur son adresse IP. Une adresse IPv6 compte par bloc de 64 bits, qu'un abonné reçoit en
-entier. Les seaux redevenus pleins sont oubliés une fois par minute ; au-delà de 20 000
-clés, une nouvelle clé passe sans être comptée et le journal l'avertit.
+entier. Les seaux redevenus pleins sont oubliés une fois par minute. Chaque route a sa
+propre table, plafonnée à 20 000 clés : des jetons inventés ne remplissent que la table de
+leur route, et les arrivées ne comptent que des adresses. Au plafond, une nouvelle clé
+passe sans être comptée, sauf un code inconnu, qui reçoit `429` ; le journal l'avertit.
+Remplir la table des arrivées demande donc 20 000 adresses réelles : contre un tel
+attaquant, une limite par adresse ne peut rien de toute façon.
 
 **Adresse IP derrière un relais.** Le filtre lit `request.getRemoteAddr()`, jamais
 `X-Forwarded-For` lui-même. Avec `server.forward-headers-strategy: native`, Tomcat y
@@ -211,13 +217,27 @@ plages dans `server.tomcat.remoteip.trusted-proxies`.
 
 À vérifier sur la recette, publique elle aussi, dès la fusion dans `develop`, puis avant
 la première démo publique : si le relais
-n'envoyait pas `X-Forwarded-For`, tous les téléphones auraient la même clé, et 20 codes
-faux par minute suffiraient à bloquer toutes les arrivées. Depuis un téléphone en 4G,
-taper 21 fois un code faux : le 21ᵉ essai doit répondre « Trop de requêtes en peu de
-temps », et le journal (`docker compose -f compose.prod.yaml logs app`, ou les journaux
-Render) doit montrer `Limite de requêtes atteinte : codes-inconnus pour ip:<adresse du
-téléphone>`, et non une adresse privée. Un second téléphone, sur une autre connexion,
-doit encore pouvoir rejoindre.
+n'envoyait pas `X-Forwarded-For`, tous les téléphones auraient la même clé : toutes les
+arrivées du service partageraient 120 arrivées puis 1 par seconde, et 20 codes faux par
+minute suffiraient à faire refuser tous les codes faux suivants. Le seau des codes regagne un essai
+toutes les 3 s, à peu près le temps de taper un code à la main : les essais doivent
+partir en rafale. Depuis un téléphone en 4G en partage de connexion, ou depuis un
+ordinateur qui l'utilise, envoyer 25 codes faux d'un coup :
+
+```bash
+for i in $(seq 25); do
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST https://croustyquizz-recette.onrender.com/api/soirees/rejoindre \
+    -H 'Content-Type: application/json' -d '{"codeAcces":"ZZZZZZ","pseudo":"Essai"}'
+done | sort | uniq -c
+```
+
+Le résultat doit compter une vingtaine de `404`, et des `429` pour le reste. Sur la page
+d'arrivée, un code faux tapé aussitôt depuis ce réseau affiche « Trop de requêtes en peu de
+temps. Réessaie dans 3 secondes. » (ou moins) sous le formulaire. Le journal (`docker compose -f compose.prod.yaml logs app`, ou les
+journaux Render) doit montrer `Limite de requêtes atteinte : codes-inconnus pour
+ip:<adresse du téléphone>`, et non une adresse privée. Le bon code, tapé depuis ce même
+réseau, doit encore faire rejoindre, et un second téléphone, sur une autre connexion,
+aussi.
 
 **Régler.** Les seuils sont dans `application.yaml`, sous `croustyquizz.limites`, et se
 remplacent par des variables d'environnement : `CROUSTYQUIZZ_LIMITES_BUZZ_RAFALE=20`,
