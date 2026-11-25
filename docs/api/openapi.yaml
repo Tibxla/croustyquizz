@@ -371,7 +371,10 @@ paths:
     get:
       operationId: listerSoirees
       summary: Lister les Soirées de son Lieu
-      description: Comprend les Soirées préparées, en cours et terminées de ce Lieu exclusivement.
+      description: Comprend les Soirées en préparation, ouvertes, en cours et terminées du Lieu de la session,
+        exclusivement ; les Soirées d’un autre Lieu et les anciennes Soirées sans Lieu n’y figurent jamais. Liste
+        triée de la plus récemment créée à la plus ancienne, éventuellement vide. Sans session, ou avec un en-tête
+        Bearer, 401 AUTHENTIFICATION_REQUISE.
       tags:
       - Soirée
       security:
