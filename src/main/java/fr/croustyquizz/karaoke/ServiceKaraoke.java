@@ -369,18 +369,16 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private void verifierActivite(UUID soireeId, UUID mancheId) {
         if (!portee.estActive(soireeId, mancheId)) { throw inactive().exception(); }
     }
-    public List<VuesKaraoke.LignePalmaresKaraoke> palmaresKaraoke(UUID soireeId) {
-        return lecture(soireeId, () -> composerPalmares(soireeId, socle.depot().deLaSoiree(soireeId)));
-    }
-
     List<VuesKaraoke.LignePalmaresKaraoke> composerPalmares(UUID soireeId, List<ManchePersistante> manches) {
         var manchesKaraoke = manches.stream().filter(manche -> manche.getMode() == mode())
                 .map(ManchePersistante::getMancheId).toList();
         var resultats = passages.resultatsDeVote(manchesKaraoke);
         if (resultats.isEmpty()) { return List.of(); }
         var contenus = persistance.contenus(resultats.stream().map(ResultatVote::passageId).toList());
+        // Un Passage sans contenu figé n'a pas de Chanson à montrer : l'écarter avant de classer garde des rangs contigus.
+        var classables = resultats.stream().filter(resultat -> contenus.containsKey(resultat.passageId())).toList();
         var pseudos = participants.pseudos(soireeId);
-        return ClassementParVote.classer(resultats).stream()
+        return ClassementParVote.classer(classables).stream()
                 .map(ligne -> VuesKaraoke.lignePalmares(ligne, contenus.get(ligne.resultat().passageId()), pseudos))
                 .toList();
     }
