@@ -37,7 +37,7 @@ L’équipe n’a pas changé : **trois étudiants**, chacun responsable d’une
 | Harris Hamadache | [Piyakabib](https://github.com/Piyakabib) | **Quiz** | Première Manche de Quiz jouable (#14) |
 | Rayen Ndiaye | [nRayen](https://github.com/nRayen) | **Blind test** | Manche de Blind test : contrat, domaine, catalogue Deezer, service et écrans (#17) |
 
-La `v0.2.0` est le jalon des **Modes de jeu** annoncé au Rendu 1 : chacun y livre le Mode de jeu dont il est responsable, et plus seulement une feature du socle.
+La `v0.2.0` est le jalon des **Modes de jeu** annoncé au Rendu 1 : la feature de chacun est désormais son Mode de jeu, et plus une feature du socle. La section suivante dit ce qui en est réellement fusionné.
 
 Deux évolutions depuis le Rendu 2 :
 
@@ -90,7 +90,7 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 - le **domaine** du déroulement en Java pur (#192) : Buzz, saisie, Révélation, Morceaux sautés ;
 - le **catalogue Deezer** (#201) : recherche, tirage des Morceaux et lien d’extrait, sans appel réseau dans les tests.
 
-**En relecture.** **#210** (tranche 4) joue une Manche de Blind test de bout en bout côté serveur : tirage hors verrou, préparation du lien de chaque Morceau, Buzz aiguillé vers la Manche, refus `503` quand Deezer est en panne. Tibxla l’a relue le 25/11 ; les cinq points demandés sont corrigés avec un test chacun, et la PR est approuvée. **#212** (tranche 5), en brouillon, ajoute les trois écrans.
+**En relecture.** **#210** (tranche 4) joue une Manche de Blind test de bout en bout côté serveur : tirage hors verrou, préparation du lien de chaque Morceau, Buzz aiguillé vers la Manche, refus `503` quand Deezer est en panne. La relecture publiée par Tibxla le 25/11 demandait cinq points ; ils sont corrigés avec un test chacun, et la PR est approuvée. **#212** (tranche 5), en brouillon, ajoute les trois écrans.
 
 **Relectures.** nRayen a approuvé 33 PR depuis la `v0.1.0`, et demandé des changements sur #147 et #179.
 
@@ -175,7 +175,7 @@ PostgreSQL n’est joint que par un réseau interne sans accès sortant, et l’
 
 ## Publication et déploiement
 
-À chaque tag `vX.Y.Z` de `main`, `livraison.yml` vérifie le tag, relance `./mvnw -B verify`, puis publie l’image sur GHCR sous trois étiquettes : `X.Y.Z`, `latest` et `main`. Le paquet est public : `docker pull ghcr.io/tibxla/croustyquizz:0.2.0` fonctionne sans compte. La release GitHub joint le JAR vérifié.
+À chaque tag `vX.Y.Z` de `main`, `livraison.yml` vérifie le tag, relance `./mvnw -B verify`, puis publie l’image sur GHCR sous les étiquettes `X.Y.Z` et `latest` ; un push sur `main` publie l’étiquette `main`. Le paquet est public : `docker pull ghcr.io/tibxla/croustyquizz:0.2.0` fonctionne sans compte. La release GitHub joint le JAR vérifié.
 
 Render construit l’image depuis le même `Dockerfile` :
 
@@ -215,7 +215,7 @@ Le dossier est maintenu dans **`doc/rendu-3/dossier-v0.2.0.md`** et compilé en 
 ## Ce qui a changé dans la façon de travailler
 
 - **Des piles plus hautes.** La pile du Karaoké compte quatre PR, et six autres s’empilent dessus. Pour éviter les conflits en cascade, l’ordre de fusion est écrit sur la PR de base (#168), et chaque fusion est suivie d’une vérification des PR restantes.
-- **Une relecture indépendante avant la PR**, par un second agent qui ne voit que le code. Sur #199, #200, #203 et #204, elle a trouvé de 7 à 11 défauts chacune, tous corrigés avec un test avant la demande de relecture humaine.
+- **Une relecture indépendante avant la PR**, par un second agent qui ne voit que le code. Sur #199, #200, #203 et #204, elle a trouvé de 7 à 11 défauts chacune ; ils confirmés ont été corrigés avec un test dans la PR.
 - **Une recette dans un vrai navigateur** après tout changement visible : Console, Manettes et Écran de salle ouverts en même temps, faux micro pour l’Enregistrement, fichiers audio pour le Freestyle.
 
 
@@ -303,8 +303,8 @@ Le protocole du Rendu 1 reste en vigueur : l’IA aide à la conception, au dév
 
 **Mise en œuvre depuis le Rendu 2 :**
 
-- **Un brief écrit par tranche.** Quand un agent implémente une tranche, il part d’un brief qui reprend l’issue, les décisions déjà prises, les fichiers concernés et les critères de réussite. Il committe dans une branche de travail sans rien publier ; l’étudiant relit le diff, relance les tests et ouvre lui-même la PR.
-- **Une relecture indépendante avant la PR.** Un second agent, en lecture seule, relit le code sans le raisonnement de celui qui l’a écrit. Ses constats sont vérifiés un par un ; ceux qui tiennent sont corrigés avec un test. La relecture humaine du tourniquet reste obligatoire.
+- **Un brief écrit par tranche.** Quand un agent implémente une tranche, il part d’un brief qui reprend l’issue, les décisions déjà prises, les fichiers concernés et les critères de réussite. Il committe dans une branche de travail sans rien publier. Les tests sont relancés hors de l’agent, puis la PR est ouverte depuis le compte de l’étudiant qui le pilote.
+- **Une relecture indépendante avant la PR.** Un second agent, en lecture seule, relit le code sans le raisonnement de celui qui l’a écrit. Ses constats sont vérifiés un par un ; ceux qui tiennent sont corrigés avec un test. Une PR ne se fusionne qu’après l’approbation d’un autre membre, imposée par la protection des branches.
 - **Une recette dans un vrai navigateur.** Les tests ne suffisent pas pour une interface : chaque changement visible est essayé avec la Console, plusieurs Manettes et l’Écran de salle ouverts en même temps, et les captures sont regardées avant la PR.
 - **Des ressources bornées.** Les tests tournent avec des limites de mémoire et de durée, et un seul `./mvnw verify` à la fois sur une même machine.
 
