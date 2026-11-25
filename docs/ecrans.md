@@ -19,6 +19,8 @@ Avec l’application sur le port 8080, `playwright-cli run-code --filename=tools
 
 ## Recette du programme de la Soirée (#9)
 
+Les réglages propres à chaque Mode de jeu ont leur emplacement : côté serveur, l’objet `reglages` de `CreationManche`, typé par mode et validé par la fabrique du mode ; côté Console, la table `REGLAGES_DES_MODES` de `js/programme-console.mjs`, où chaque mode proposé déclare ses champs (`zone`), leur lecture et leur résumé. Le Quiz y remplit ses réglages communs et le Karaoké n’a aucun champ. Le Blind test a ses réglages au contrat, mais pas encore ses champs dans la Console.
+
 1. Connecté comme Animateur, créer une Soirée dans `/preparer-soiree.html`, puis ouvrir sa Console depuis la préparation.
 2. Dans « Programme », ajouter un Quiz avec 3 étapes de 20 secondes puis un Karaoké. Déplacer le Karaoké en tête au clavier et vérifier le retour du focus à une commande de la même Manche.
 3. Ouvrir la Soirée depuis la page de préparation. Dans la Console, vérifier le passage à « Ouverte », retirer le Quiz et recharger pour vérifier l’ordre enregistré.

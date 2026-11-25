@@ -1,15 +1,32 @@
 import { decrireManche } from './vue-commune.mjs';
 
-function decrireReglages({ reglages }) {
-	if (reglages.nombreEtapes !== undefined) {
-		const nombre = reglages.nombreEtapes;
-		return `${nombre} étape${nombre === 1 ? '' : 's'} · ${reglages.tempsParEtapeSecondes} s par étape`;
-	}
-	if (reglages.limitePassagesEnAttente !== undefined) {
-		const limite = reglages.limitePassagesEnAttente;
-		return `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`;
-	}
-	return '';
+/**
+ * Emplacement des réglages propres à chaque Mode de jeu (#9). Pour proposer un mode dans la Console, lui
+ * ajouter une entrée ici, puis son option dans « Mode de jeu » de console.html et, s'il a des champs, un
+ * fieldset `data-<zone>` dans le formulaire d'ajout. `lire` rend l'objet `reglages` de CreationManche
+ * (docs/api/schemas.yaml), que le serveur valide avec la fabrique du mode ; `decrire` résume les réglages
+ * d'une Manche du programme. Le Blind test (ReglagesBlindTest) n'a pas encore ses champs dans la Console.
+ */
+export const REGLAGES_DES_MODES = {
+	QUIZ: {
+		zone: 'reglages-communs',
+		lire: element => ({
+			nombreEtapes: Number(element('nombre-etapes').value),
+			tempsParEtapeSecondes: Number(element('temps-par-etape').value),
+		}),
+		decrire: ({ nombreEtapes, tempsParEtapeSecondes }) => nombreEtapes === undefined ? ''
+			: `${nombreEtapes} étape${nombreEtapes === 1 ? '' : 's'} · ${tempsParEtapeSecondes} s par étape`,
+	},
+	KARAOKE: {
+		// Sans champ : le serveur applique sa limite de Passages en attente.
+		lire: () => ({}),
+		decrire: ({ limitePassagesEnAttente: limite }) => limite === undefined ? ''
+			: `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`,
+	},
+};
+
+function decrireReglages({ mode, reglages }) {
+	return REGLAGES_DES_MODES[mode]?.decrire(reglages) ?? '';
 }
 
 /** Les mutations passent par HTTP et le programme affiché vient de la vue synchronisée. */
@@ -18,7 +35,8 @@ export function monterProgramme(panneau, contexte) {
 	const element = nom => panneau.querySelector(`[data-${nom}]`);
 	const formulaire = element('ajout-manche');
 	const mode = element('mode-manche');
-	const communs = element('reglages-communs');
+	const zonesDeReglages = Object.entries(REGLAGES_DES_MODES).filter(([, { zone }]) => zone)
+		.map(([modeDeJeu, { zone }]) => [modeDeJeu, element(zone)]);
 	const ajout = element('soumettre-manche');
 	const liste = element('programme');
 	const route = `/api/soirees/${contexte.soireeId}`;
@@ -53,18 +71,17 @@ export function monterProgramme(panneau, contexte) {
 	}
 
 	function actualiserReglages() {
-		communs.hidden = mode.value !== 'QUIZ';
-		communs.disabled = communs.hidden;
+		for (const [modeDeJeu, zone] of zonesDeReglages) {
+			zone.hidden = mode.value !== modeDeJeu;
+			zone.disabled = zone.hidden;
+		}
 	}
 
 	function ajouter(evenement) {
 		evenement.preventDefault();
-		// Les réglages propres au mode se complètent ici. Le Karaoké utilise la limite du serveur.
-		const reglages = mode.value === 'QUIZ' ? {
-			nombreEtapes: Number(element('nombre-etapes').value),
-			tempsParEtapeSecondes: Number(element('temps-par-etape').value),
-		} : {};
-		void modifier('POST', '/manches', { mode: mode.value, reglages });
+		const reglagesDuMode = REGLAGES_DES_MODES[mode.value];
+		if (!reglagesDuMode) return;
+		void modifier('POST', '/manches', { mode: mode.value, reglages: reglagesDuMode.lire(element) });
 	}
 
 	function ligne(manche, index, programme) {
