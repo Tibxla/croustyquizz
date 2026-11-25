@@ -41,6 +41,16 @@ test('le Joueur de démonstration prend son UUID dans la projection du serveur',
 	assert.equal(acces.page, 'manette');
 });
 
+test('l’Écran de salle ouvert depuis la préparation utilise la clé du fragment', () => {
+	const cle = 'c'.repeat(43);
+	const recherche = `?soiree=${soiree}`;
+	const acces = lireAcces('ecran', recherche, `demo:ECRAN:${soiree}:${joueur}`, undefined, `#cle=${cle}`);
+	assert.equal(acces.cleEcran, cle);
+	assert.equal(acces.destination, `/topic/soirees/${soiree}/salle`);
+	assert.deepEqual(acces.acteur, { type: 'ECRAN', soireeId: soiree });
+	assert.throws(() => lireAcces('ecran', recherche, null, undefined, '#cle=trop-court'), /clé/);
+});
+
 test('le rang 3 ouvre la Manette du troisième Joueur de la projection', async () => {
 	const troisieme = '10000000-0000-4000-8000-000000000003';
 	const joueurs = [{ id: joueur }, { id: '10000000-0000-4000-8000-000000000002' }, { id: troisieme }];

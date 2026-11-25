@@ -1,0 +1,8 @@
+{"data":[
+ {"id":3135556,"title":"Halo","title_short":"Halo","preview":"https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/abc.mp3?hdnea=exp=1764101700~acl=*~hmac=11",
+  "position":1,"artist":{"id":145,"name":"Beyoncé"},"album":{"id":302127,"cover_medium":"https://e-cdns-images.dzcdn.net/images/cover/2e0/250x250-000000-80-0-0.jpg"},"type":"track"},
+ {"id":"pas-un-nombre","title":"Candidat mal formé","preview":"https://cdnt-preview.dzcdn.net/x.mp3","artist":{"name":"Personne"},"type":"track"},
+ {"id":12,"title":"Sans artiste","preview":"https://cdnt-preview.dzcdn.net/y.mp3","type":"track"},
+ {"id":3127466,"title":"Dancing Queen","preview":"https://cdnt-preview.dzcdn.net/api/1/1/4/5/6/0/456.mp3?hdnea=exp=1764101700~acl=*~hmac=44",
+  "position":2,"artist":{"id":108,"name":"ABBA"},"album":{"id":307450,"cover_medium":"pas une url"},"type":"track"}
+],"total":4}
