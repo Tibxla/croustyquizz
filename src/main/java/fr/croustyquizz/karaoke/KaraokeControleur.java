@@ -54,7 +54,7 @@ public class KaraokeControleur {
                 new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service.voterPassage(mancheId, passageId, envoi, corps), route);
     }
-    @PutMapping(path = "/passages/{passageId}/accord-enregistrement", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping("/passages/{passageId}/accord-enregistrement")
     public ResponseEntity<?> definirAccordEnregistrement(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
             @PathVariable UUID passageId, @RequestBody CorpsKaraoke.AccordEnregistrement corps,
             @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId, Acteur acteur) {
@@ -65,7 +65,7 @@ public class KaraokeControleur {
         return ReponsesDeCommande.http(service.definirAccordEnregistrement(mancheId, passageId, envoi, corps), route);
     }
 
-    @PutMapping(path = "/autorisation-enregistrement", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping("/autorisation-enregistrement")
     public ResponseEntity<?> reglerAutorisationEnregistrement(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
             @RequestBody CorpsKaraoke.AutorisationEnregistrement corps,
             @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId, Acteur acteur) {
