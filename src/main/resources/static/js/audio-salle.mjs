@@ -13,10 +13,10 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 	function notifier() { for (const rappel of abonnes) rappel(etat()); }
 	// Seule une fenêtre qui a des morceaux dans Attente candidate : sans eux, elle ferait taire celle qui en a.
 	// Le son activé sert aussi au son de Manche, qui se passe de dossier.
-	function candidater() { coordination.activer(sonDebloque && !suspendu && morceauxDisponibles === true); }
+	function actualiserCandidature() { coordination.activer(sonDebloque && !suspendu && morceauxDisponibles === true); }
 	const musique = creerMusiqueDAttente({ lecteur, surSonBloque() {
 		sonDebloque = false;
-		candidater();
+		actualiserCandidature();
 		notifier();
 	} });
 	function actualiserMusique() { musique.autoriserLecture(musiqueAutorisee && attenteAutorisee); }
@@ -34,7 +34,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 			const morceaux = fichiersDeMusiqueDAttente(fichiers);
 			morceauxDisponibles = morceaux.length > 0;
 			musique.choisirFichiers(morceaux);
-			candidater();
+			actualiserCandidature();
 			notifier();
 		},
 		reglerMusiqueDAttente(autorisee) {
@@ -47,7 +47,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 			catch { if (!detruit) notifier(); return; }
 			if (detruit) return;
 			sonDebloque = true;
-			candidater();
+			actualiserCandidature();
 			notifier();
 		},
 		signalerSonDeManche(actif) {
@@ -56,7 +56,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		},
 		suspendre(valeur) {
 			suspendu = valeur;
-			candidater();
+			actualiserCandidature();
 		},
 		detruire() {
 			detruit = true;

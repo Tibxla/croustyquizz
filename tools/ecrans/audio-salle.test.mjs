@@ -39,14 +39,16 @@ test('le même lecteur joue la Musique d’attente pendant la préparation puis 
 	assert.equal(await debut.promise, attente);
 });
 
+// Préfixe des verrous de présence de `coordination-son.mjs` ; chaque test vérifie d'abord qu'il trouve la fenêtre qui joue.
 const PRESENCE = 'croustyquizz:son:fenetre:';
 const morceauAttente = nom => ({ name: `${nom}.ogg`, webkitRelativePath: `Musique/Attente/${nom}.ogg` });
 
-async function candidatures() {
+async function candidaturesDe(id) {
 	const { held, pending } = await navigator.locks.query();
-	return [...held, ...pending].map(verrou => verrou.name).filter(nom => nom.startsWith(PRESENCE));
+	return [...held, ...pending].map(verrou => verrou.name).filter(nom => nom.startsWith(PRESENCE) && nom.endsWith(`:${id}`));
 }
-// Laisse passer les échanges du BroadcastChannel et des Web Locks déjà lancés.
+// Délai court voulu : il précède une assertion d'absence (l'autre fenêtre ne se tait pas) et laisse passer
+// les échanges du BroadcastChannel et des Web Locks déjà lancés. La requête des verrous reste le témoin déterministe.
 const laisserPasser = () => new Promise(resolve => setTimeout(resolve, 20));
 
 function fenetreDeSalle(t, ouverteA, id) {
@@ -80,11 +82,12 @@ test('une fenêtre de salle sans dossier active le son sans prendre la Musique d
 	ancienne.audio.choisirDossier([morceau]);
 	await ancienne.audio.activerSon();
 	assert.equal(await premiere, morceau);
+	assert.equal((await candidaturesDe('ancienne')).length, 1);
 
 	const nouvelle = fenetreDeSalle(t, 200, 'nouvelle');
 	await nouvelle.audio.activerSon();
 	assert.equal(nouvelle.audio.etat().sonDebloque, true, 'le son est activé, pour le son de Manche');
-	assert.deepEqual((await candidatures()).filter(nom => nom.endsWith(':nouvelle')), [], 'sans dossier, pas de candidature');
+	assert.deepEqual(await candidaturesDe('nouvelle'), [], 'sans dossier, pas de candidature');
 	await laisserPasser();
 	assert.equal(ancienne.audible, morceau, 'l’ancienne continue de jouer');
 
@@ -97,7 +100,7 @@ test('une fenêtre de salle sans dossier active le son sans prendre la Musique d
 
 	// Un dossier sans morceau dans Attente n’a rien à jouer : la fenêtre ne candidate toujours pas.
 	nouvelle.audio.choisirDossier([{ name: 'Artiste - Chanson.mp3', webkitRelativePath: 'Musique/Artiste - Chanson.mp3' }]);
-	assert.deepEqual((await candidatures()).filter(nom => nom.endsWith(':nouvelle')), []);
+	assert.deepEqual(await candidaturesDe('nouvelle'), []);
 	await laisserPasser();
 	assert.equal(ancienne.audible, morceau);
 
@@ -106,9 +109,11 @@ test('une fenêtre de salle sans dossier active le son sans prendre la Musique d
 	nouvelle.audio.choisirDossier([autre]);
 	assert.equal(await relais, autre, 'avec un dossier, la plus récente prend la main');
 	assert.equal(ancienne.audible, undefined);
+	// La fenêtre qui avait la main la rend si son nouveau dossier n'a rien dans Attente.
 	const retour = ancienne.attendreLecture();
-	await nouvelle.audio.detruire();
+	nouvelle.audio.choisirDossier([]);
 	assert.equal(await retour, morceau);
+	assert.equal(nouvelle.audible, undefined);
 });
 
 // Une page `ecran.html` réduite à sa zone audio, avec de faux éléments média et les vrais Web Locks de Node.
@@ -181,6 +186,7 @@ test('l’Écran de salle qui annule « Choisir le dossier » laisse jouer celui
 	assert.equal(await premiere, 'blob:Ambiance.ogg');
 	assert.equal(ancien.aide.textContent, '1 fichier audio');
 	assert.equal(ancien.choix.value, '');
+	assert.equal((await candidaturesDe(ancien.salle.lecteurId)).length, 1);
 
 	const nouveau = ecranDeSalle(t, 200);
 	let selecteurOuvert = false;
@@ -192,7 +198,7 @@ test('l’Écran de salle qui annule « Choisir le dossier » laisse jouer celui
 	assert.equal(nouveau.activer.hidden, true);
 	assert.equal(nouveau.alerte.hidden, true);
 	assert.equal(nouveau.aide.textContent, '');
-	assert.deepEqual((await candidatures()).filter(nom => nom.endsWith(`:${nouveau.salle.lecteurId}`)), []);
+	assert.deepEqual(await candidaturesDe(nouveau.salle.lecteurId), []);
 	await laisserPasser();
 	assert.equal(ancien.joue(), true, 'l’ancien Écran continue de jouer');
 
