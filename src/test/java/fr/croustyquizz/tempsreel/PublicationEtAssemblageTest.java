@@ -8,7 +8,9 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -47,11 +49,40 @@ class PublicationEtAssemblageTest {
 	}
 
 	@Test
+	void unChampCommunEstPrepareUneSeuleFoisParAssemblage() {
+		var banc = new BancDuSocle();
+		UUID soiree = UUID.randomUUID();
+		banc.creer(soiree);
+		var preparations = new AtomicInteger();
+		var champ = new FournisseurDeChampCommun() {
+			@Override public String champ() { return "palmares"; }
+			@Override public boolean concerne(Destination destination) {
+				return Destination.SALLE.equals(destination) || Destination.CONSOLE.equals(destination);
+			}
+			@Override public Object fournir(UUID soireeId, Destination destination, Map<String, Object> partieCommune) {
+				throw new AssertionError("L'assembleur passe par preparer.");
+			}
+			@Override public ChampPrepare preparer(UUID soireeId) {
+				int numero = preparations.incrementAndGet();
+				return (destination, partieCommune) -> destination.equals(Destination.SALLE) ? "salle " + numero : "console " + numero;
+			}
+		};
+		var assembleur = avecChamps(banc, champ);
+
+		var vues = assembleur.assembler(soiree, Set.of(Destination.SALLE, Destination.CONSOLE), "manche-terminee");
+		assertThat(preparations).hasValue(1);
+		assertThat(vues.get(Destination.SALLE).champs()).containsEntry("palmares", "salle 1");
+		assertThat(vues.get(Destination.CONSOLE).champs()).containsEntry("palmares", "console 1");
+		assembleur.assembler(soiree, Set.of(Destination.joueur(UUID.randomUUID())), "manche-terminee");
+		assertThat(preparations).hasValue(1);
+	}
+
+	@Test
 	void unChampCommunSePrepareUneFoisParAssemblagePourToutesSesDestinations() {
 		var banc = new BancDuSocle();
 		UUID soiree = UUID.randomUUID();
 		banc.creer(soiree);
-		var preparations = new java.util.concurrent.atomic.AtomicInteger();
+		var preparations = new AtomicInteger();
 		var champ = new FournisseurDeChampCommun() {
 			@Override public String champ() { return "transitionManche"; }
 			@Override public boolean concerne(Destination destination) { return true; }
@@ -63,7 +94,7 @@ class PublicationEtAssemblageTest {
 				return (destination, partieCommune) -> "même valeur";
 			}
 		};
-		var destinations = java.util.Set.of(Destination.SALLE, Destination.CONSOLE,
+		var destinations = Set.of(Destination.SALLE, Destination.CONSOLE,
 				Destination.joueur(UUID.randomUUID()), Destination.joueur(UUID.randomUUID()));
 
 		var vues = avecChamps(banc, champ).assembler(soiree, destinations, "manche-terminee");

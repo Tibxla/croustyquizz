@@ -9,18 +9,23 @@ export function decrireManche(manche) {
 }
 
 export const formaterNote = note => `${note} sur 5`;
-export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
+export const formaterValeurMoyenne = moyenneDixiemes => (moyenneDixiemes / 10).toFixed(1).replace('.', ',');
+export const formaterMoyenne = moyenneDixiemes => formaterNote(formaterValeurMoyenne(moyenneDixiemes));
 export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
+
+const listeInterpretes = new Intl.ListFormat('fr', { type: 'conjunction' });
 
 function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes, moyenneDixiemes }) {
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
-	const pseudos = interpretes.map(interprete => interprete.pseudo).join(' et ');
+	const pseudos = listeInterpretes.format(interpretes.map(interprete => interprete.pseudo));
 	const votes = formaterNombreVotes(nombreVotes);
-	const note = moyenneDixiemes === null ? null : formaterMoyenne(moyenneDixiemes);
-	const resultat = note === null ? votes : `${note} (${votes})`;
-	return { numero, rang, titre: chanson.titre, interpretes: pseudos, note, votes,
+	const moyenne = moyenneDixiemes === null ? null : formaterValeurMoyenne(moyenneDixiemes);
+	const resultat = moyenne === null ? votes : `${formaterNote(moyenne)} (${votes})`;
+	return { numero, rang, titre: chanson.titre, interpretes: pseudos, moyenne, votes,
 		texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}` };
 }
+
+const decrirePalmares = vue => vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null;
 
 function decrireRangPersonnel(vue) {
 	if (vue.soiree.format !== 'SOLO') return '';
@@ -32,7 +37,7 @@ function decrireRangPersonnel(vue) {
 export function decrireVue(vue) {
 	const joueur = vue.joueurs.find(j => j.id === vue.joueurId);
 	const terminee = vue.soiree.etat === 'TERMINEE';
-	const palmares = vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null;
+	const palmares = decrirePalmares(vue);
 	return {
 		titre: vue.soiree.titre,
 		resume: [etats[vue.soiree.etat] ?? vue.soiree.etat, vue.soiree.format === 'EQUIPE' ? 'Équipe' : 'Solo',
@@ -53,13 +58,17 @@ export function decrireVue(vue) {
 	};
 }
 
-// Le Palmarès du Karaoké, quand il est présent, prend la place du Classement de salle (Q24, #123).
+// Sur la salle, le Podium final de la Soirée terminée passe avant le Palmarès (#224) ; la Console garde le Palmarès.
+const podiumFinal = vue => vue.soiree.etat === 'TERMINEE';
+export const decrirePalmaresDeSalle = vue => podiumFinal(vue) ? null : decrirePalmares(vue);
+
+// Le Palmarès du Karaoké, quand il est présent, prend la place du Classement de salle (Q24, #123), sauf devant le Podium final.
 // Pendant une transition, le Classement passe sous l'annonce : trois lignes, et rien s'il est vide.
 export function decrireClassementDeSalle(vue) {
-	if (vue.palmaresKaraoke != null) return null;
-	if (vue.soiree.etat === 'TERMINEE') {
+	if (podiumFinal(vue)) {
 		return { titre: 'Podium final', podium: true, lignes: vue.classement.filter(ligne => ligne.rang <= 3).map(decrireLigne) };
 	}
+	if (vue.palmaresKaraoke != null) return null;
 	if (vue.transitionManche) {
 		if (vue.classement.length === 0) return null;
 		return { titre: 'Classement général', podium: false, lignes: vue.classement.slice(0, 3).map(decrireLigne) };

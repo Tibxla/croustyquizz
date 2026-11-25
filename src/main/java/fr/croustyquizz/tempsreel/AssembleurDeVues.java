@@ -20,8 +20,7 @@ import fr.croustyquizz.manche.ModeDeJeu;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.core.type.TypeReference;
 
-/** Assemble les blocs sous le verrou ; un mode sans fournisseur laisse un bloc nul. Blocs et champs communs se
- * préparent une fois par assemblage, pour toutes ses destinations. */
+/** Assemble les blocs sous le verrou ; un mode sans fournisseur laisse un bloc nul. */
 @Component
 public final class AssembleurDeVues implements CaptureVueRepli {
 	private static final Logger JOURNAL = LoggerFactory.getLogger(AssembleurDeVues.class);
@@ -79,8 +78,7 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
 			var parties = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
-				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, champs,
-						musique));
+				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, champs, musique));
 			}
 			return vues;
 		});
@@ -99,8 +97,9 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 			if (vue.containsKey(nom)) {
 				throw new IllegalStateException("Champ déjà présent dans la partie commune : " + nom);
 			}
-			var prepare = champs.computeIfAbsent(fournisseur, f -> f.preparer(soireeId));
-			vue.put(nom, prepare.fournir(destination, partieCommune));
+			// Préparé une fois par assemblage, comme les projections des modes.
+			var champ = champs.computeIfAbsent(fournisseur, f -> f.preparer(soireeId));
+			vue.put(nom, champ.fournir(destination, partieCommune));
 		}
 		Object mode = vue.get("modeEnCours");
 		ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());
