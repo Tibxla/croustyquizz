@@ -9,16 +9,18 @@ export function decrireManche(manche) {
 }
 
 export const formaterNote = note => `${note} sur 5`;
-export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
+export const formaterValeurMoyenne = moyenneDixiemes => (moyenneDixiemes / 10).toFixed(1).replace('.', ',');
+export const formaterMoyenne = moyenneDixiemes => formaterNote(formaterValeurMoyenne(moyenneDixiemes));
 export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
 
+const listeInterpretes = new Intl.ListFormat('fr', { type: 'conjunction' });
 const pluriel = (nombre, mot) => `${nombre} ${mot}${nombre > 1 ? 's' : ''}`;
 
 // Palmarès du Freestyle (#74) : un Interprète des Passages à plusieurs, classé par victoires.
 function decrireLigneVictoires({ rang, interprete, nombreVictoires, nombrePassages }) {
 	const titre = nombreVictoires === 0 ? 'Aucune victoire' : pluriel(nombreVictoires, 'victoire');
 	const votes = `${pluriel(nombrePassages, 'Passage')} à plusieurs`;
-	return { numero: null, rang, titre, interpretes: interprete.pseudo, note: null, votes,
+	return { numero: null, rang, titre, interpretes: interprete.pseudo, moyenne: null, votes,
 		texte: `${rang === null ? '' : `${rang}. `}${interprete.pseudo} · ${titre} · ${votes}` };
 }
 
@@ -27,13 +29,15 @@ function decrireLignePalmares(ligne) {
 	const { numero, rang, chanson, instrumentale, interpretes, interprete, nombreVotes, moyenneDixiemes } = ligne;
 	const titre = (chanson ?? instrumentale).titre;
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
-	const pseudos = interpretes?.map(i => i.pseudo).join(' et ') ?? interprete.pseudo;
+	const pseudos = listeInterpretes.format((interpretes ?? [interprete]).map(i => i.pseudo));
 	const votes = formaterNombreVotes(nombreVotes);
-	const note = moyenneDixiemes === null ? null : formaterMoyenne(moyenneDixiemes);
-	const resultat = note === null ? votes : `${note} (${votes})`;
-	return { numero, rang, titre, interpretes: pseudos, note, votes,
+	const moyenne = moyenneDixiemes === null ? null : formaterValeurMoyenne(moyenneDixiemes);
+	const resultat = moyenne === null ? votes : `${formaterNote(moyenne)} (${votes})`;
+	return { numero, rang, titre, interpretes: pseudos, moyenne, votes,
 		texte: `${position} · ${titre} · ${pseudos} · ${resultat}` };
 }
+
+const decrirePalmares = vue => (vue.palmaresFreestyle ?? vue.palmaresKaraoke)?.map(decrireLignePalmares) ?? null;
 
 function decrireRangPersonnel(vue) {
 	if (vue.soiree.format !== 'SOLO') return '';
@@ -45,7 +49,7 @@ function decrireRangPersonnel(vue) {
 export function decrireVue(vue) {
 	const joueur = vue.joueurs.find(j => j.id === vue.joueurId);
 	const terminee = vue.soiree.etat === 'TERMINEE';
-	const palmares = (vue.palmaresFreestyle ?? vue.palmaresKaraoke)?.map(decrireLignePalmares) ?? null;
+	const palmares = decrirePalmares(vue);
 	return {
 		titre: vue.soiree.titre,
 		resume: [etats[vue.soiree.etat] ?? vue.soiree.etat, vue.soiree.format === 'EQUIPE' ? 'Équipe' : 'Solo',
@@ -65,12 +69,17 @@ export function decrireVue(vue) {
 	};
 }
 
-// Le Palmarès du Karaoké ou du Freestyle, quand il est présent, prend la place du Classement de salle (Q24, #123).
+// Sur la salle, le Podium final de la Soirée terminée passe avant le Palmarès (#224) ; la Console garde le Palmarès.
+const podiumFinal = vue => vue.soiree.etat === 'TERMINEE';
+export const decrirePalmaresDeSalle = vue => podiumFinal(vue) ? null : decrirePalmares(vue);
+
+// Le Palmarès du Karaoké ou du Freestyle, quand il est présent, prend la place du Classement de salle (Q24, #123),
+// sauf devant le Podium final.
 export function decrireClassementDeSalle(vue) {
-	if (vue.palmaresKaraoke != null || vue.palmaresFreestyle != null) return null;
-	if (vue.soiree.etat === 'TERMINEE') {
+	if (podiumFinal(vue)) {
 		return { titre: 'Podium final', podium: true, lignes: vue.classement.filter(ligne => ligne.rang <= 3).map(decrireLigne) };
 	}
+	if (vue.palmaresKaraoke != null || vue.palmaresFreestyle != null) return null;
 	if (vue.mancheActive || (vue.soiree.etat !== 'EN_COURS' && vue.classement.length === 0)) return null;
 	return { titre: 'Classement général · Top 10', podium: false, lignes: vue.classement.slice(0, 10).map(decrireLigne) };
 }

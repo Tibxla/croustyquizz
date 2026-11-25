@@ -143,8 +143,13 @@ deux Manettes de la même Soirée de démonstration.
    la salle et de la Console à la réception de la nouvelle vue.
    Tant que le Palmarès est présent, il prend sur la salle la place du Classement général
    et de la note d’attente (Q24, #123) ; une photo à l’affiche le masque comme eux.
+   Une fois la Soirée terminée, le Podium final passe avant lui sur la salle (#224) :
+   la salle masque le Palmarès, la Console le garde.
 5. Terminer une Manche de Karaoké sans Passage terminé dans une Soirée neuve. Vérifier
    « Aucun Passage noté. » sur la salle et la Console.
+6. Terminer la Soirée juste après une Manche de Karaoké notée. Vérifier que la salle
+   affiche le « Podium final » sans le Palmarès, et que la Console affiche toujours
+   le Palmarès du Karaoké.
 
 ### Recette des Passages à plusieurs (#66)
 
@@ -290,6 +295,10 @@ dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
    avec une note de 1 à 5. Termine la Manche depuis la Console. Vérifie
    l’ordre du Palmarès sur la Console et sur l’Écran de salle, puis
    compare le Classement général avant et après.
+
+7. Termine la Soirée juste après une Manche de Freestyle notée. Vérifie
+   que la salle affiche le « Podium final » sans le Palmarès, et que la
+   Console affiche toujours le Palmarès du Freestyle (#224).
 
 Sur l'Écran de salle, le mot de chaque mesure reste affiché toute la mesure, pour qu'il
 se lise à 5 m. Il s'allume sur son temps, et le mot de la mesure suivante est annoncé
