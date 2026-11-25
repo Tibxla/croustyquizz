@@ -14,23 +14,47 @@ public class CatalogueKaraokeSql {
 
     public CatalogueKaraokeSql(DataSource source) { sql = JdbcClient.create(source); }
 
-    boolean ajouterDemande(UUID soireeId, UUID joueurId, CorpsKaraoke.SuggestionChanson corps) {
+    /** Bornes des groupes ouverts, vérifiées sous le verrou de Soirée avant toute écriture. */
+    static final int GROUPES_PAR_JOUEUR_MAX = 5;
+    static final int GROUPES_PAR_SOIREE_MAX = 50;
+
+    enum Demande { AJOUTEE, DEJA_COMPTEE, LIMITE_JOUEUR, LIMITE_SOIREE }
+
+    Demande ajouterDemande(UUID soireeId, UUID joueurId, CorpsKaraoke.SuggestionChanson corps) {
         String titre = CorpsKaraoke.nettoyerSuggestion(corps.titre());
         String artiste = CorpsKaraoke.nettoyerSuggestion(corps.artiste());
         String titreNormalise = CorpsKaraoke.normaliserSuggestion(titre);
         String artisteNormalise = CorpsKaraoke.normaliserSuggestion(artiste);
-        sql.sql("""
-                INSERT INTO karaoke_suggestion_chanson
-                    (id, soiree_id, titre, artiste, titre_normalise, artiste_normalise)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT (soiree_id, titre_normalise, artiste_normalise) DO NOTHING
-                """).params(UUID.randomUUID(), soireeId, titre, artiste, titreNormalise, artisteNormalise).update();
-        return sql.sql("""
-                INSERT INTO karaoke_demande_chanson (suggestion_id, joueur_id)
-                SELECT id, ? FROM karaoke_suggestion_chanson
+        Optional<UUID> groupe = sql.sql("""
+                SELECT id FROM karaoke_suggestion_chanson
                 WHERE soiree_id = ? AND titre_normalise = ? AND artiste_normalise = ?
-                ON CONFLICT DO NOTHING
-                """).params(joueurId, soireeId, titreNormalise, artisteNormalise).update() > 0;
+                """).params(soireeId, titreNormalise, artisteNormalise).query(UUID.class).optional();
+        if (groupe.isPresent() && sql.sql("SELECT count(*) FROM karaoke_demande_chanson WHERE suggestion_id = ? AND joueur_id = ?")
+                .params(groupe.get(), joueurId).query(Long.class).single() > 0) {
+            return Demande.DEJA_COMPTEE;
+        }
+        long duJoueur = sql.sql("""
+                SELECT count(*) FROM karaoke_demande_chanson d
+                JOIN karaoke_suggestion_chanson s ON s.id = d.suggestion_id
+                WHERE s.soiree_id = ? AND d.joueur_id = ?
+                """).params(soireeId, joueurId).query(Long.class).single();
+        if (duJoueur >= GROUPES_PAR_JOUEUR_MAX) { return Demande.LIMITE_JOUEUR; }
+        UUID id;
+        if (groupe.isPresent()) {
+            id = groupe.get();
+        } else {
+            long groupes = sql.sql("SELECT count(*) FROM karaoke_suggestion_chanson WHERE soiree_id = ?")
+                    .param(soireeId).query(Long.class).single();
+            if (groupes >= GROUPES_PAR_SOIREE_MAX) { return Demande.LIMITE_SOIREE; }
+            id = UUID.randomUUID();
+            sql.sql("""
+                    INSERT INTO karaoke_suggestion_chanson
+                        (id, soiree_id, titre, artiste, titre_normalise, artiste_normalise)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """).params(id, soireeId, titre, artiste, titreNormalise, artisteNormalise).update();
+        }
+        sql.sql("INSERT INTO karaoke_demande_chanson (suggestion_id, joueur_id) VALUES (?, ?)").params(id, joueurId).update();
+        return Demande.AJOUTEE;
     }
 
     List<VuesKaraoke.SuggestionChansonConsole> suggestions(UUID soireeId) {

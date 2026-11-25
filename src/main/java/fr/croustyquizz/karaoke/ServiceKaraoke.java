@@ -89,8 +89,14 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
         Acteur acteur = envoi.acteur();
         return executerPourSoiree(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
-                accepterPourConsole(envoi, recueLe, "suggestions-chansons-modifiees",
-                        catalogue.ajouterDemande(acteur.soireeId(), acteur.identifiant(), corps))));
+                switch (catalogue.ajouterDemande(acteur.soireeId(), acteur.identifiant(), corps)) {
+                    case LIMITE_JOUEUR -> new Refuse(409, "LIMITE_ATTEINTE", "Tu participes déjà à "
+                            + CatalogueKaraokeSql.GROUPES_PAR_JOUEUR_MAX + " suggestions en attente.");
+                    case LIMITE_SOIREE -> new Refuse(409, "LIMITE_ATTEINTE", "La Soirée compte déjà "
+                            + CatalogueKaraokeSql.GROUPES_PAR_SOIREE_MAX + " suggestions en attente.");
+                    case AJOUTEE -> accepterPourConsole(envoi, recueLe, "suggestions-chansons-modifiees", true);
+                    case DEJA_COMPTEE -> accepterPourConsole(envoi, recueLe, "suggestions-chansons-modifiees", false);
+                }));
     }
 
     public ResultatDeCommande retirerSuggestionChanson(UUID mancheId, UUID suggestionId, EnvoiDeCommande envoi,

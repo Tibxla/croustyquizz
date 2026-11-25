@@ -75,7 +75,10 @@ public class ServiceDeManche<R, E> {
 			Supplier<PreparationDeCommande> preparer, EtatManche etatApresAcceptation) {
 		return traiter(mancheId, envoi, preparer, etatApresAcceptation, false, true);
 	}
-	/** Une commande de Soirée conserve les gardes et le reçu de la Manche active, sans modifier son cycle. */
+	/**
+	 * Une commande de Soirée conserve les gardes et le reçu de la Manche active, sans modifier son cycle.
+	 * Le déroulement passé à la préparation vaut {@code null} dans ce chemin : elle ne doit pas l'utiliser.
+	 */
 	protected ResultatDeCommande executerPourSoiree(UUID mancheId, EnvoiDeCommande envoi,
 			Supplier<PreparationDeCommande> preparer) {
 		return traiter(mancheId, envoi, preparer, null, false, false);

@@ -624,7 +624,17 @@ class KaraokeHttpTest {
                     new Cas(HttpMethod.POST, "/passages/" + UUID.randomUUID() + "/retrait", "retirerPassage", "{\"numeroModification\":\"0\"}"),
                     new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/placement", "deplacerPassage", "{\"numeroModification\":0,\"tour\":1}"),
                     new Cas(HttpMethod.PUT, "/file-attente/priorite", "definirPrioritePassage", "{\"passage\":null,\"prioritaire\":false}"),
-                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}"));
+                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}"),
+                    new Cas(HttpMethod.POST, "/suggestions", "suggererChanson",
+                            "{\"titre\":\"Lune\",\"artiste\":\"Indochine\",\"pseudo\":\"Jo\"}"),
+                    new Cas(HttpMethod.POST, "/suggestions", "suggererChanson",
+                            "{\"titre\":\"\\u200b\",\"artiste\":\"Indochine\"}"),
+                    new Cas(HttpMethod.POST, "/suggestions", "suggererChanson",
+                            "{\"titre\":\"" + "\\ufb2c".repeat(120) + "\",\"artiste\":\"Indochine\"}"),
+                    new Cas(HttpMethod.POST, "/suggestions/" + UUID.randomUUID() + "/retrait", "retirerSuggestionChanson",
+                            "{\"nombreJoueurs\":1,\"joueurId\":\"" + UUID.randomUUID() + "\"}"),
+                    new Cas(HttpMethod.PUT, "/chansons/" + IdentifiantsChanson.encoder(1) + "/favori", "definirFavoriChanson",
+                            "{\"favorite\":true,\"lieuId\":\"" + UUID.randomUUID() + "\"}"));
             for (var c : cas) {
                 var resultat = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request(c.methode(), racine + c.route())
                         .header("Idempotency-Key", UUID.randomUUID()).contentType(typeContenu).content(c.corps())).andReturn();

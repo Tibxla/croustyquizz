@@ -30,32 +30,51 @@ public final class CorpsKaraoke {
     static void identifiantChanson(String valeur) {
         if (valeur == null || valeur.isEmpty() || valeur.codePointCount(0, valeur.length()) > LONGUEUR_CHANSON_ID_MAX) { invalide(); }
     }
+    static final int LONGUEUR_SUGGESTION_MAX = 120;
     static String nettoyerSuggestion(String texte) {
         return Normalizer.normalize(texte, Normalizer.Form.NFC).replaceAll("\\p{IsWhite_Space}+", " ").strip();
     }
 
+    /**
+     * Clé de regroupement seule : NFKC, sans casse ni marques d'accent, apostrophes et guillemets typographiques
+     * ramenés à l'ASCII, ponctuation Unicode supprimée, puis blancs regroupés à nouveau.
+     */
     static String normaliserSuggestion(String texte) {
-        return Normalizer.normalize(texte.toLowerCase(Locale.ROOT), Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        String compatible = Normalizer.normalize(texte, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
+        String sansAccent = Normalizer.normalize(compatible, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        String ascii = sansAccent.replaceAll("[\u2018\u2019]", "'").replaceAll("[\u00AB\u00BB\u201C\u201D]", "\"");
+        return ascii.replaceAll("\\p{P}+", "").replaceAll("\\p{IsWhite_Space}+", " ").strip();
+    }
+
+    private static int longueur(String texte) { return texte.codePointCount(0, texte.length()); }
+
+    /** Contrôles et caractères de format (Cf, comme U+200B) ; le pilote PostgreSQL refuse aussi les demi-surrogates. */
+    private static boolean interdit(int c) {
+        int type = Character.getType(c);
+        return Character.isISOControl(c) || type == Character.CONTROL || type == Character.FORMAT || type == Character.SURROGATE;
     }
 
     private static void verifierChampSuggestion(String texte) {
-        if (texte == null || texte.codePointCount(0, texte.length()) > 120) { invalide(); }
-        // Le pilote PostgreSQL ne peut pas conserver les contrôles NUL ni les demi-surrogates isolés.
+        if (texte == null || longueur(texte) > LONGUEUR_SUGGESTION_MAX) { invalide(); }
+        // Les blancs, tabulations comprises, sont regroupés avant de chercher un caractère interdit.
         String nettoye = nettoyerSuggestion(texte);
-        if (normaliserSuggestion(nettoye).isBlank() || nettoye.codePoints().anyMatch(c ->
-                Character.isISOControl(c) || Character.getType(c) == Character.SURROGATE)) { invalide(); }
+        if (longueur(nettoye) > LONGUEUR_SUGGESTION_MAX || nettoye.codePoints().anyMatch(CorpsKaraoke::interdit)
+                || normaliserSuggestion(nettoye).isEmpty()) { invalide(); }
     }
 
     public record SuggestionChanson(String titre, String artiste) {
         public SuggestionChanson { verifierChampSuggestion(titre); verifierChampSuggestion(artiste); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
 
     public record RetraitSuggestionChanson(Long nombreJoueurs) {
         public RetraitSuggestionChanson { entier(nombreJoueurs, false); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
 
     public record ChoixFavoriChanson(Boolean favorite) {
         public ChoixFavoriChanson { obligatoire(favorite); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
 
     public record Cible(UUID passageId, Long numeroModification) {

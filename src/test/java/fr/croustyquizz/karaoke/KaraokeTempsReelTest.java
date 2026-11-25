@@ -46,6 +46,7 @@ class KaraokeTempsReelTest {
     @Autowired SocleDeManche socle;
     @Autowired PilotageDeSoireeDemonstration pilotage;
     @Autowired MemoireDeCalageJpa calages;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @MockitoSpyBean PersistanceKaraokeJpa persistance;
     @MockitoSpyBean RegistreDesEnvois recus;
     final WsWebSocketContainer conteneur = new WsWebSocketContainer();
@@ -530,6 +531,73 @@ class KaraokeTempsReelTest {
         UUID suivante = service.creer(soiree, Map.of());
         service.demarrer(suivante, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
         assertThat(rechercher(programme + suivante + "/chansons", joueur)).containsExactly(seconde, premiere);
+    }
+
+    @Test void unJoueurParticipeACinqGroupesOuvertsEtLaSoireeEnCompteCinquante() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String suggestions = "/api/soirees/" + soiree + "/manches/" + manche + "/suggestions";
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        for (int i = 1; i <= 5; i++) {
+            KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, joueur, "Envie " + i), 200);
+            lireEvenement(console, "suggestions-chansons-modifiees");
+        }
+        refuserLimite(console, suggerer(suggestions, joueur, "Envie 6"), 5, 5);
+
+        KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, autre, "Envie 6"), 200);
+        lireEvenement(console, "suggestions-chansons-modifiees");
+        refuserLimite(console, suggerer(suggestions, joueur, "ENVIE 6"), 6, 6);
+        KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, joueur, "envie 1"), 200);
+        assertThat(console.messages().poll(300, TimeUnit.MILLISECONDS)).isNull();
+
+        for (int i = 7; i <= 50; i++) {
+            UUID groupe = UUID.randomUUID();
+            jdbc.update("INSERT INTO karaoke_suggestion_chanson VALUES (?, ?, ?, 'Les Accords', ?, 'les accords')",
+                    groupe, soiree, "Semée " + i, "semee " + i);
+            jdbc.update("INSERT INTO karaoke_demande_chanson VALUES (?, ?)", groupe, UUID.randomUUID());
+        }
+        refuserLimite(console, suggerer(suggestions, autre, "Envie 51"), 50, 50);
+        KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, autre, "Envie 1"), 200);
+        JsonNode groupes = lireEvenement(console, "suggestions-chansons-modifiees").at("/karaoke/suggestions");
+        assertThat(groupes.size()).isEqualTo(50);
+        assertThat(groupes.get(0).path("titre").asString()).isEqualTo("Envie 1");
+        assertThat(groupes.get(0).path("nombreJoueurs").asLong()).isEqualTo(2);
+        assertThat(console.messages().poll(300, TimeUnit.MILLISECONDS)).isNull();
+    }
+
+    @Test void lApostropheDroiteEtLApostropheCourbeFormentUnSeulGroupe() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String suggestions = "/api/soirees/" + soiree + "/manches/" + manche + "/suggestions";
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        KaraokeHttpTest.verifier("suggererChanson", envoyer(HttpMethod.POST, suggestions, joueur,
+                Map.of("titre", "J'ai demandé à la lune", "artiste", "Indochine"), UUID.randomUUID()), 200);
+        lireEvenement(console, "suggestions-chansons-modifiees");
+        KaraokeHttpTest.verifier("suggererChanson", envoyer(HttpMethod.POST, suggestions, autre,
+                Map.of("titre", "J\u2019ai demandé à la lune", "artiste", "Indochine"), UUID.randomUUID()), 200);
+        JsonNode groupes = lireEvenement(console, "suggestions-chansons-modifiees").at("/karaoke/suggestions");
+        assertThat(groupes.size()).isEqualTo(1);
+        assertThat(groupes.get(0).path("titre").asString()).isEqualTo("J'ai demandé à la lune");
+        assertThat(groupes.get(0).path("nombreJoueurs").asLong()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM karaoke_suggestion_chanson WHERE soiree_id = ?",
+                Long.class, soiree)).isEqualTo(1);
+    }
+
+    private ResponseEntity<String> suggerer(String route, Acteur acteur, String titre) {
+        return envoyer(HttpMethod.POST, route, acteur, Map.of("titre", titre, "artiste", "Les Accords"), UUID.randomUUID());
+    }
+
+    private void refuserLimite(Abonnement console, ResponseEntity<String> reponse, long groupes, long demandes) throws Exception {
+        KaraokeHttpTest.verifier("suggererChanson", reponse, 409);
+        assertThat(json.readTree(reponse.getBody()).path("code").asString()).isEqualTo("LIMITE_ATTEINTE");
+        assertThat(console.messages().poll(300, TimeUnit.MILLISECONDS)).isNull();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM karaoke_suggestion_chanson WHERE soiree_id = ?",
+                Long.class, soiree)).isEqualTo(groupes);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM karaoke_demande_chanson d JOIN karaoke_suggestion_chanson s ON s.id = d.suggestion_id
+                WHERE s.soiree_id = ?""", Long.class, soiree)).isEqualTo(demandes);
     }
 
     private List<String> rechercher(String catalogue, Acteur acteur) throws Exception {
