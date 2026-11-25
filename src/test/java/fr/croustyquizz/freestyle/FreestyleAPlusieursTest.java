@@ -37,6 +37,18 @@ class FreestyleAPlusieursTest {
     private DeroulementDeManche deroulement = fabrique.creer(contexte(), REGLAGES);
 
     @Test
+    void uneInstrumentaleTropCourtePourLaGrilleEstRefuseeAvantToutEnvoiDInvitation() {
+        deroulement.demarrer();
+        // Huit mesures à 120 BPM après 250 ms de départ : la Grille finit à 16 250 ms.
+        var courte = new Instrumentale(INSTRUMENTALE.instrumentaleId(), INSTRUMENTALE.titre(), 120, 250, 16_249);
+        var refus = deroulement.recevoir(new InscrireFreestyle(joueur(INES), horloge.maintenant(), UUID.randomUUID(), PASSAGE, 1,
+                courte.instrumentaleId(), List.of(courte), DictionnaireDeRimesFactice.MOTS_DE_VILLE, List.of(MAEL, ZOE), true));
+        assertThat(refus).isInstanceOfSatisfying(Refuse.class, r -> assertThat(r.code()).isEqualTo("INSTRUMENTALE_TROP_COURTE"));
+        assertThat(file().etat().passages()).isEmpty();
+        assertThat(console().get("invitationsEnAttente")).asList().isEmpty();
+    }
+
+    @Test
     void lesInvitesAcceptesDeviennentInterpretesEtUneInvitationSansReponseExpireALAppel() {
         deroulement.demarrer();
         var refusSoi = deroulement.recevoir(inscrire(INES, List.of(MAEL, INES), true));

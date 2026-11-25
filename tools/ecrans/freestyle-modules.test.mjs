@@ -436,3 +436,35 @@ test('la salle affiche l’ordre des Couplets, le Couplet courant et l’annonce
 		assert.equal(texte('freestyle__couplet').hidden, true);
 	} finally { banc.module.demonter(); }
 });
+
+test('un Passage à plusieurs garde le lecteur désigné et continue de jouer pendant une coupure', async () => {
+	const enSceneSur = (salle, position) => ({ ...salle.courant(position), interpretes: trio, couplets: couplets(false) });
+	const salle = creerSalle();
+	const { banc, appels } = salle;
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue({ courant: enSceneSur(salle, 1250), grille, lecteurDesigneId: 'l' }), capture);
+		await terminerMicrotaches();
+		assert.ok(appels.includes('lire'));
+		assert.equal(salle.texte('freestyle__interprete'), 'Zoé');
+		const avantCoupure = appels.length;
+		banc.connecter('coupure');
+		banc.module.afficher(vue({ courant: enSceneSur(salle, 1250), grille, lecteurDesigneId: 'l' }));
+		await terminerMicrotaches();
+		assert.deepEqual(appels.slice(avantCoupure), []);
+		banc.module.afficher(vue({ courant: enSceneSur(salle, 3250), grille, lecteurDesigneId: 'l' }), capture);
+		banc.connecter('synchronisee');
+		await terminerMicrotaches();
+		assert.deepEqual(appels.slice(avantCoupure), ['positionner 3250']);
+	} finally { banc.module.demonter(); }
+
+	const autre = creerSalle({ lecteurId: 'autre' });
+	try {
+		autre.banc.connecter('synchronisee');
+		autre.banc.module.afficher(vue({ courant: enSceneSur(autre, 1250), grille, lecteurDesigneId: 'l' }), capture);
+		await terminerMicrotaches();
+		assert.deepEqual(autre.appels, [true]);
+		assert.match(autre.banc.principale.textContent, /Un autre Écran de salle joue l’Instrumentale/);
+		assert.equal(autre.texte('freestyle__interprete'), 'Zoé');
+	} finally { autre.banc.module.demonter(); }
+});

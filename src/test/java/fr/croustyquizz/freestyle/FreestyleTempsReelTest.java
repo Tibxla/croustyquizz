@@ -239,6 +239,8 @@ class FreestyleTempsReelTest {
             assertThat(annonce.at("/donnees/freestyle/courant/couplets/ordre")).isEqualTo(ordre);
             var salle = appeler(GET, racine + "/etat/salle", lecteur, null, "retrouverEtatSalle", 200);
             assertThat(salle.at("/vue/freestyle/courant/couplets")).isEqualTo(annonce.at("/donnees/freestyle/courant/couplets"));
+            // Pendant un Passage à plusieurs aussi, seul l’Écran désigné joue l’Instrumentale.
+            assertThat(salle.at("/vue/freestyle/lecteurDesigneId").asString()).isEqualTo(ecran.toString());
             assertThat(appeler(GET, racine + "/etat/manette", suivant.jeton(), null, "retrouverEtatManette", 200)
                     .at("/vue/freestyle/monCoupletAnnonce").asBoolean()).isTrue();
             assertThat(appeler(GET, racine + "/etat/manette", noe.jeton(), null, "retrouverEtatManette", 200)
