@@ -36,6 +36,7 @@ channels:
       de vote ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la
       place du Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
       ne déclenche ni un nouvel appel ni la fin de la Manche ;
+      une reprise après une pause posée à l’échéance ou après saute le Passage par manche-reprise, ou par passage-appele si un suivant est appelé ;
       vote-enregistre actualise le nombre de votes de la salle, vote-clos apporte la moyenne à la clôture ;
       lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
       calage-chanson-modifie après geste, demande, relevé ou correction. Vue complète avec bloc karaoke
@@ -65,6 +66,7 @@ channels:
       ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la place du
       Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
       ne déclenche ni un nouvel appel ni la fin de la Manche ;
+      une reprise après une pause posée à l’échéance ou après saute le Passage par manche-reprise, ou par passage-appele si un suivant est appelé ;
       vote-enregistre actualise le nombre de votes sur la Console et la salle, vote-clos apporte la moyenne
       à la clôture ; lecture-chanson-modifiee après
       désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
@@ -92,7 +94,8 @@ channels:
       une inscription, une fin de lecture, une fin prévue, un saut à l’échéance de l’appel, PASSER_ETAPE,
       une clôture de vote ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE
       à la place du Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
-      ne déclenche ni un nouvel appel ni la fin de la Manche. lecture-chanson-modifiee après erreur ou reprise en paroles seules,
+      ne déclenche ni un nouvel appel ni la fin de la Manche ; une reprise après une pause posée à l’échéance ou après saute le Passage par manche-reprise, ou par passage-appele si un suivant est appelé.
+      lecture-chanson-modifiee après erreur ou reprise en paroles seules,
       jamais après désignation ou déclaration ; aucun calage-chanson-modifie. Pour ces causes, chaque
       Joueur de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
       Passages. vote-clos apporte la moyenne à la salle, à la Console et à toutes les Manettes ;
