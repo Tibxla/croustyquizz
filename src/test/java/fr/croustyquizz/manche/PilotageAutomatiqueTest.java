@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -53,10 +54,18 @@ class PilotageAutomatiqueTest {
 	@Autowired private JdbcTemplate jdbc;
 	@Autowired private JsonMapper json;
 
+	/** L'horloge système a des nanosecondes, PostgreSQL des microsecondes : l'échéance doit survivre à la relecture. */
+	@BeforeEach
+	void decalerSousLaSeconde() {
+		horloge.avancer(Duration.ofNanos(123_456_789));
+	}
+
+	/** Le banc est partagé : les autres classes de test attendent une horloge à la seconde ronde. */
 	@AfterEach
 	void retablir() {
 		pannes.demarrage.set(false);
 		pannes.enregistrement.set(false);
+		horloge.avancer(Duration.ofNanos(1_000_000_000L - horloge.maintenant().getNano()));
 	}
 
 	@Test
@@ -65,7 +74,7 @@ class PilotageAutomatiqueTest {
 		piloterSoiree(banc, "LANCER", 200);
 		horloge.avancer(Duration.ofSeconds(10));
 		assertThat(etatManche(banc.manche(0))).isEqualTo("TERMINEE");
-		Instant fin = horloge.maintenant().plus(TRANSITION);
+		Instant fin = echeance();
 		for (var vue : vues(banc)) {
 			assertThat(vue.path("mancheActive").isNull()).isTrue();
 			assertThat(Instant.parse(vue.at("/transitionManche/finPrevueLe").asString())).isEqualTo(fin);
@@ -82,7 +91,7 @@ class PilotageAutomatiqueTest {
 		}
 
 		horloge.avancer(Duration.ofSeconds(10));
-		Instant finDeSoiree = horloge.maintenant().plus(TRANSITION);
+		Instant finDeSoiree = echeance();
 		for (var vue : vues(banc)) {
 			assertThat(Instant.parse(vue.at("/transitionManche/finPrevueLe").asString())).isEqualTo(finDeSoiree);
 			assertThat(vue.at("/transitionManche/modeSuivant").isNull()).isTrue();
@@ -104,7 +113,7 @@ class PilotageAutomatiqueTest {
 		piloterManche(banc, banc.manche(0), "TERMINER", 200);
 		var console = capturer(banc, "console").path("vue");
 		assertThat(Instant.parse(console.at("/transitionManche/finPrevueLe").asString()))
-				.isEqualTo(horloge.maintenant().plus(TRANSITION));
+				.isEqualTo(echeance());
 		horloge.avancer(TRANSITION);
 		assertThat(etatManche(banc.manche(1))).isEqualTo("EN_COURS");
 	}
@@ -135,9 +144,29 @@ class PilotageAutomatiqueTest {
 		for (var vue : vues(banc)) {
 			assertThat(vue.path("transitionManche").isNull()).isTrue();
 		}
+		long revision = capturer(banc, "console").path("revision").asLong();
 		horloge.avancer(Duration.ofSeconds(10));
+		assertThat(capturer(banc, "console").path("revision").asLong()).as("le rappel ne republie rien").isEqualTo(revision);
 		assertThat(etatManche(banc.manche(1))).isEqualTo("EN_COURS");
 		assertThat(etatSoiree(banc)).isEqualTo("EN_COURS");
+		assertThat(transitions(banc)).isZero();
+	}
+
+	@Test
+	void terminerLaSoireePendantLaTransitionLaRetireEtLeRappelNeFaitRien() throws Exception {
+		var banc = soiree(Pilotage.AUTOMATIQUE, 10, 10);
+		piloterSoiree(banc, "LANCER", 200);
+		horloge.avancer(Duration.ofSeconds(10));
+		horloge.avancer(Duration.ofSeconds(5));
+		piloterSoiree(banc, "TERMINER", 200);
+		assertThat(etatSoiree(banc)).isEqualTo("TERMINEE");
+		for (var vue : vues(banc)) {
+			assertThat(vue.path("transitionManche").isNull()).isTrue();
+		}
+		long revision = capturer(banc, "console").path("revision").asLong();
+		horloge.avancer(TRANSITION);
+		assertThat(capturer(banc, "console").path("revision").asLong()).isEqualTo(revision);
+		assertThat(etatManche(banc.manche(1))).isEqualTo("PRETE");
 		assertThat(transitions(banc)).isZero();
 	}
 
@@ -270,6 +299,26 @@ class PilotageAutomatiqueTest {
 		horloge.avancer(TRANSITION);
 		assertThat(etatManche(seconde)).isEqualTo("EN_COURS");
 		assertThat(transitions(soiree)).isZero();
+	}
+
+	@Test
+	void apresLaDerniereMancheDUneSoireeDeDemonstrationLaTransitionDisparait() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		pilotageDemonstration.choisir(soiree, true);
+		UUID seule = service.creer(soiree, new ModeFacticeDuSocle.Reglages(1, 10));
+		service.demarrer(seule, new EnvoiDeCommande(EnchainementDeSoiree.acteur(soiree), "/demarrer", UUID.randomUUID(),
+				Map.of()));
+		horloge.avancer(Duration.ofSeconds(10));
+		String jeton = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
+		assertThat(lire(soiree, "/etat/console", jeton, "retrouverEtatConsole").at("/vue/transitionManche/modeSuivant")
+				.isNull()).isTrue();
+		horloge.avancer(TRANSITION);
+		assertThat(lire(soiree, "/etat/console", jeton, "retrouverEtatConsole").at("/vue/transitionManche").isNull()).isTrue();
+		assertThat(transitions(soiree)).isZero();
+	}
+
+	private Instant echeance() {
+		return horloge.maintenant().plus(TRANSITION).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
 	}
 
 	/** Simule un arrêt : minuteurs et déroulements perdus, puis l'événement de démarrage de l'application. */

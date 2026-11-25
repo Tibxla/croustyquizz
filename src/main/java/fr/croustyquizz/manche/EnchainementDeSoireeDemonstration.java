@@ -11,7 +11,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Enchaînement d'une Soirée de démonstration, absente de la base : elle n'a pas de commande de Soirée, et ne se
- * termine jamais. À l'échéance, la première Manche prête démarre ; sans Manche prête, rien ne se passe.
+ * termine jamais. À l'échéance, la première Manche prête démarre. Sans Manche prête, le refus fait republier les
+ * vues sans transition : aucun écran ne reste sur « Fin de la Soirée dans 0 s ».
  */
 @Component
 @Profile({"dev", "recette"})
@@ -34,7 +35,7 @@ final class EnchainementDeSoireeDemonstration implements EnchainementDeSoiree {
 		ManchePersistante suivante = lecture.execute(statut -> depot.deLaSoiree(soireeId).stream()
 				.filter(manche -> manche.getEtat() == EtatManche.PRETE).findFirst().orElse(null));
 		if (suivante == null) {
-			return;
+			throw new Refuse(409, "ETAT_INCOMPATIBLE", "Une Soirée de démonstration ne se termine pas.").exception();
 		}
 		UUID envoiId = UUID.nameUUIDFromBytes(("manche-suivante:" + mancheTermineeId).getBytes(StandardCharsets.UTF_8));
 		var envoi = new EnvoiDeCommande(EnchainementDeSoiree.acteur(soireeId),

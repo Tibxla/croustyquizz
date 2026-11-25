@@ -8,6 +8,7 @@ import java.util.UUID;
  * {@code piloterSoiree} {@code MANCHE_SUIVANTE} : démarrer la première Manche prête du programme, ou terminer la
  * Soirée quand il est épuisé. Implémenté par {@code soiree} ; {@code manche} ne dépend jamais de {@code soiree}.
  */
+@FunctionalInterface
 public interface EnchainementDeSoiree {
 
 	/**

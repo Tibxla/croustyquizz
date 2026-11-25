@@ -89,6 +89,7 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 				}
 			} catch (RuntimeException erreur) {
 				JOURNAL.error("Échec de l'enchaînement automatique de la Soirée {}", soireeId, erreur);
+				effacer(soireeId, finPrevueLe);
 				republier(soireeId);
 			}
 			return null;
@@ -160,6 +161,15 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 		entites.remove(transition);
 		boolean libre = depot.deLaSoiree(soireeId).stream().noneMatch(PilotageAutomatique::estActive);
 		return libre && etatDeSoiree.estEnCours(soireeId) ? transition.getMancheTermineeId() : null;
+	}
+
+	/** Après un échec avant la suppression, la ligne échue ne doit plus apparaître dans la vue republiée. */
+	private void effacer(UUID soireeId, Instant finPrevueLe) {
+		try {
+			ecriture.execute(statut -> consommer(soireeId, finPrevueLe));
+		} catch (RuntimeException erreur) {
+			JOURNAL.error("Échec de la suppression de la transition de la Soirée {}", soireeId, erreur);
+		}
 	}
 
 	/** Aucun écran ne reste sur « dans 0 s » : la vue sans transition repart, l'Animateur garde MANCHE_SUIVANTE. */
