@@ -87,9 +87,9 @@ test('le brouillon part espacé, une requête à la fois, la saisie la plus réc
 	assert.deepEqual(envois[1].corps, { numero: 2, titre: 'Halo', artiste: '' });
 });
 
-test('un brouillon en échec n’est jamais renvoyé, et la numérotation reprend après un rechargement', async () => {
-	const temps = minuteries(), envois = [];
-	const envoi = creerEnvoiBrouillon({ ...temps,
+test('un brouillon en échec est signalé sans être renvoyé tout seul, et la numérotation reprend après un rechargement', async () => {
+	const temps = minuteries(), envois = [], echecs = [];
+	const envoi = creerEnvoiBrouillon({ ...temps, surEchec: valeur => echecs.push(valeur),
 		envoyer: corps => new Promise((resolve, reject) => envois.push({ corps, resolve, reject })) });
 	envoi.reprendre(7);
 	envoi.saisir({ titre: '', artiste: 'Bey' });
@@ -100,12 +100,27 @@ test('un brouillon en échec n’est jamais renvoyé, et la numérotation repren
 	assert.equal(envois.length, 1);
 	assert.equal(temps.nombre, 0);
 	assert.equal(envois[0].corps.numero, 8);
+	assert.deepEqual(echecs, [true]);
+	assert.equal(envoi.echec, true);
+
+	envoi.renvoyer({ titre: '', artiste: 'Bey' });
+	await terminerMicrotaches();
+	assert.deepEqual(envois[1].corps, { numero: 9, titre: '', artiste: 'Bey' }, 'Le renvoi à la main part aussitôt, numéro supérieur.');
+	envois[1].resolve({ statut: 503, corps: { detail: 'Indisponible' } });
+	await terminerMicrotaches();
+	assert.deepEqual(echecs, [true], 'Une réponse hors 2xx est aussi un échec.');
+	envoi.renvoyer({ titre: '', artiste: 'Bey' });
+	await terminerMicrotaches();
+	envois[2].resolve({ statut: 204, corps: null });
+	await terminerMicrotaches();
+	assert.deepEqual(echecs, [true, false]);
+	assert.equal(envoi.echec, false);
 
 	envoi.saisir({ titre: '', artiste: 'Beyoncé' });
 	envoi.detruire();
 	temps.declencher();
 	await terminerMicrotaches();
-	assert.equal(envois.length, 1, 'Un envoi détruit ne part plus.');
+	assert.equal(envois.length, 3, 'Un envoi détruit ne part plus.');
 });
 
 const bloc = (phase, lecture, lienExtrait = 'https://cdnt-preview.dzcdn.net/a.mp3') => ({
@@ -118,28 +133,51 @@ test('extraitJouable : seulement en phases EXTRAIT et PROPOSITION avec un lien',
 	assert.equal(extraitJouable(bloc('REVELATION', null)), false);
 });
 
-/** Web Locks factices : un verrou exclusif ifAvailable, partagé entre les fenêtres d'un même navigateur. */
+/**
+ * Web Locks factices : un verrou exclusif partagé entre les fenêtres d'un même navigateur, avec sa file d'attente.
+ * Une demande en attente s'abandonne par son signal, comme dans le navigateur.
+ */
 function verrousPartages() {
-	const tenus = new Map();
+	const tenus = new Map(), files = new Map();
+	function accorder(nom) {
+		const suivante = files.get(nom)?.shift();
+		if (!suivante) return;
+		tenus.set(nom, suivante);
+		Promise.resolve().then(() => suivante.rappel({ name: nom })).then(suivante.resolve, suivante.reject)
+			.finally(() => { tenus.delete(nom); accorder(nom); });
+	}
 	return {
 		tenus,
+		enAttente: nom => files.get(nom)?.length ?? 0,
 		request(nom, options, rappel) {
-			assert.equal(options.ifAvailable, true);
-			if (tenus.has(nom)) return Promise.resolve(rappel(null));
-			const jeton = {};
-			tenus.set(nom, jeton);
-			return Promise.resolve().then(() => rappel({ name: nom })).finally(() => tenus.delete(nom));
+			assert.equal(options.ifAvailable, undefined, 'La demande attend son tour : la relève est immédiate.');
+			return new Promise((resolve, reject) => {
+				const demande = { rappel, resolve, reject };
+				const file = files.get(nom) ?? [];
+				files.set(nom, file);
+				file.push(demande);
+				options.signal?.addEventListener('abort', () => {
+					const i = file.indexOf(demande);
+					if (i < 0) return;
+					file.splice(i, 1);
+					reject(new DOMException('Demande abandonnée.', 'AbortError'));
+				});
+				if (!tenus.has(nom)) accorder(nom);
+			});
 		},
 	};
 }
 
 function fenetre(verrous, { sonActive = true, maintenant = T0 } = {}) {
-	const journal = [], signaux = [];
-	let position = 0, autorise = true, termine = false;
+	const journal = [], signaux = [], incidents = [];
+	let position = 0, autorise = true, termine = false, refus = null;
 	const audio = {
 		termine: () => termine,
 		charger: lien => journal.push(`charger ${lien}`),
-		lire: async () => { journal.push('lire'); },
+		lire: async () => {
+			journal.push('lire');
+			if (refus) throw new DOMException('refus', refus);
+		},
 		pause: () => journal.push('pause'),
 		position: () => position,
 		aller: ms => { position = ms; journal.push(`aller ${ms}`); },
@@ -148,9 +186,11 @@ function fenetre(verrous, { sonActive = true, maintenant = T0 } = {}) {
 	const etat = { sonActive, maintenant };
 	const lecteur = creerLecteurExtrait({ audio, verrous,
 		signalerSonDeManche: async actif => { signaux.push(actif); return actif && autorise; },
-		sonActive: () => etat.sonActive, maintenantServeur: () => etat.maintenant });
-	return { lecteur, journal, signaux, etat, regler: p => { position = p; }, refuser() { autorise = false; },
-		finir() { termine = true; } };
+		sonActive: () => etat.sonActive, maintenantServeur: () => etat.maintenant,
+		surBlocage: () => incidents.push('bloqué'), surIllisible: () => incidents.push('illisible'),
+		surLecture: () => incidents.push('lecture') });
+	return { lecteur, journal, signaux, etat, incidents, regler: p => { position = p; }, refuser() { autorise = false; },
+		finir() { termine = true; }, echouer(nom) { refus = nom; } };
 }
 
 test('restauration : la fenêtre élue reprend l’extrait à la position publiée, ou le laisse en pause', async () => {
@@ -179,15 +219,59 @@ test('avec deux fenêtres de salle, une seule joue ; l’autre prend la relève 
 	assert.equal(b.journal.includes('lire'), false);
 	assert.deepEqual(b.signaux.at(-1), true, 'La fenêtre muette fait quand même taire sa Musique d’attente.');
 
+	assert.equal(verrous.enAttente(VERROU_EXTRAIT), 1, 'La fenêtre muette attend son tour.');
+
 	a.lecteur.detruire();
 	await terminerMicrotaches();
 	assert.deepEqual(a.journal.at(-1), 'arrêter');
 	assert.equal(a.signaux.at(-1), false, 'Le démontage rend le son de Manche après l’arrêt.');
+	assert.equal(b.lecteur.elue, true, 'La relève est immédiate, sans attendre la vue suivante.');
+	assert.equal(b.journal.at(-1), 'lire');
+
+	b.lecteur.detruire();
+	await terminerMicrotaches();
 	assert.equal(verrous.tenus.has(VERROU_EXTRAIT), false);
+});
+
+test('une fenêtre démontée en attente abandonne sa demande de verrou', async () => {
+	const verrous = verrousPartages(), a = fenetre(verrous), b = fenetre(verrous);
+	const extrait = bloc('EXTRAIT', enLecture(0));
+	await a.lecteur.suivre(extrait);
 	await b.lecteur.suivre(extrait);
 	await terminerMicrotaches();
-	assert.equal(b.lecteur.elue, true);
-	assert.equal(b.journal.at(-1), 'lire');
+	b.lecteur.detruire();
+	await terminerMicrotaches();
+	assert.equal(verrous.enAttente(VERROU_EXTRAIT), 0);
+	a.lecteur.detruire();
+	await terminerMicrotaches();
+	assert.equal(verrous.tenus.has(VERROU_EXTRAIT), false, 'Personne ne reprend le verrou après le démontage.');
+	assert.equal(b.journal.includes('lire'), false);
+});
+
+test('seul un refus du navigateur demande un geste ; un lien illisible le dit, une lecture interrompue ne dit rien', async () => {
+	const extrait = bloc('EXTRAIT', enLecture(0));
+	const bloquee = fenetre(verrousPartages());
+	bloquee.echouer('NotAllowedError');
+	await bloquee.lecteur.suivre(extrait);
+	await terminerMicrotaches();
+	assert.deepEqual(bloquee.incidents, ['bloqué']);
+	bloquee.echouer(null);
+	await bloquee.lecteur.lancerParGeste();
+	await terminerMicrotaches();
+	assert.equal(bloquee.journal.filter(ligne => ligne === 'lire').length, 3, 'Le geste joue, puis le suivi réaligne.');
+	assert.equal(bloquee.incidents.at(-1), 'lecture');
+
+	const expiree = fenetre(verrousPartages());
+	expiree.echouer('NotSupportedError');
+	await expiree.lecteur.suivre(extrait);
+	await terminerMicrotaches();
+	assert.deepEqual(expiree.incidents, ['illisible']);
+
+	const interrompue = fenetre(verrousPartages());
+	interrompue.echouer('AbortError');
+	await interrompue.lecteur.suivre(extrait);
+	await terminerMicrotaches();
+	assert.deepEqual(interrompue.incidents, []);
 });
 
 test('sans son activé, la fenêtre ne se porte pas candidate ; elle le fait quand la coquille active le son', async () => {

@@ -48,10 +48,11 @@ function bancManette(document = creerDocument()) {
 
 function bancEcran(document = creerDocument(), { sonActive = true } = {}) {
 	const journal = [], signaux = [], abonnes = new Set();
-	let position = 0;
+	let position = 0, refus = null;
 	const audio = {
 		termine: () => false,
-		charger: lien => journal.push(`charger ${lien}`), lire: async () => { journal.push('lire'); },
+		charger: lien => journal.push(`charger ${lien}`),
+		lire: async () => { journal.push('lire'); if (refus) throw new DOMException('refus', refus); },
 		pause: () => journal.push('pause'), position: () => position,
 		aller: ms => { position = ms; journal.push(`aller ${ms}`); }, arreter: () => journal.push('arrêter'),
 	};
@@ -65,7 +66,7 @@ function bancEcran(document = creerDocument(), { sonActive = true } = {}) {
 		});
 		return creerEcranBlindTest(zones, contexte, { audio, verrous: undefined, intervalle: h.intervalle });
 	}, 'ECRAN', document);
-	return { ...banc, ...h, journal, signaux, abonnes, etatSon };
+	return { ...banc, ...h, journal, signaux, abonnes, etatSon, echouer: nom => { refus = nom; } };
 }
 
 test('les trois écrans partagent un lien CSS du mode et libèrent zones, abonnements et minuteries', async () => {
@@ -350,14 +351,195 @@ test('Console : « Terminer la Manche » demande confirmation', () => {
 test('Écran : sans son activé, la salle dit pourquoi l’extrait est muet', async () => {
 	const b = bancEcran(undefined, { sonActive: false });
 	b.module.afficher(vueSalle('PREPARATION'), capture);
-	assert.equal(b.principale.querySelector('.coupure').hidden, true, 'Rien à dire tant qu’aucun extrait ne joue.');
+	const message = b.principale.querySelector('.blindtest__son');
+	assert.equal(message.hidden, true, 'Rien à dire tant qu’aucun extrait ne joue.');
 	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(0) }), evenement('morceau-ouvert'));
-	const message = b.principale.querySelector('.coupure');
 	assert.equal(message.hidden, false);
 	assert.match(message.textContent, /Activer le son/);
+	assert.equal(bouton(message, 'Lancer l’extrait').hidden, true, 'Le geste attendu est celui de la coquille.');
 	b.etatSon.sonDebloque = true;
 	for (const rappel of b.abonnes) rappel(b.etatSon);
 	await terminerMicrotaches();
 	assert.equal(message.hidden, true);
+	b.module.demonter();
+});
+
+test('Écran : un son bloqué par le navigateur propose « Lancer l’extrait », qui rejoue pendant le geste', async () => {
+	const b = bancEcran();
+	b.echouer('NotAllowedError');
+	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(0) }), capture);
+	await terminerMicrotaches();
+	const son = b.principale.querySelector('.blindtest__son');
+	assert.equal(son.hidden, false);
+	assert.match(son.textContent, /Le navigateur bloque le son de l’extrait/);
+	assert.doesNotMatch(son.textContent, /Activer le son/, 'Le bouton de la coquille est caché : la salle n’y renvoie pas.');
+	const lancer = bouton(son, 'Lancer l’extrait');
+	assert.equal(lancer.hidden, false);
+
+	b.echouer(null);
+	lancer.focus();
+	const lectures = b.journal.filter(ligne => ligne === 'lire').length;
+	lancer.click();
+	assert.equal(b.journal.filter(ligne => ligne === 'lire').length, lectures + 1, 'play() part pendant le clic.');
+	await terminerMicrotaches();
+	assert.equal(son.hidden, true);
+	assert.equal(b.document.activeElement, b.principale.querySelector('.blindtest__phase'), 'Le focus ne tombe pas sur la page.');
+	b.module.demonter();
+});
+
+test('Écran : un extrait illisible le dit sans demander de geste, jusqu’au Morceau suivant', async () => {
+	const b = bancEcran();
+	b.echouer('NotSupportedError');
+	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(0) }), capture);
+	await terminerMicrotaches();
+	const son = b.principale.querySelector('.blindtest__son');
+	assert.match(son.textContent, /L’extrait ne peut pas être lu/);
+	assert.equal(bouton(son, 'Lancer l’extrait').hidden, true);
+
+	b.echouer(null);
+	b.module.afficher(vueSalle('EXTRAIT', { etapeId: 'e2', numero: 3, lecture: lectureEnCours(0) }), evenement('morceau-ouvert'));
+	assert.equal(son.hidden, true, 'Le Morceau suivant repart sans incident.');
+	b.module.demonter();
+});
+
+test('Écran : un Morceau sauté est annoncé pendant la préparation du suivant, jamais sur une capture', async () => {
+	const b = bancEcran();
+	b.module.afficher(vueSalle('PREPARATION', { etapeId: 'e2', numero: 3 }), evenement('morceau-saute'));
+	const annonce = b.principale.querySelector('.blindtest__annonce');
+	assert.equal(annonce.hidden, false);
+	assert.match(annonce.textContent, /Extrait indisponible : ce Morceau est sauté/);
+	assert.equal(annonce.classList.contains('blindtest--arrivee'), true);
+	b.module.afficher(vueSalle('PREPARATION', { etapeId: 'e2', numero: 3 }), capture);
+	assert.equal(annonce.hidden, false, 'Une capture du même Morceau garde l’annonce, sans l’animer.');
+	assert.equal(annonce.classList.contains('blindtest--arrivee'), false);
+	b.module.afficher(vueSalle('EXTRAIT', { etapeId: 'e2', numero: 3, lecture: lectureEnCours(0) }), evenement('morceau-ouvert'));
+	assert.equal(annonce.hidden, true, 'L’extrait du Morceau suivant remplace l’annonce.');
+
+	const recharge = bancEcran();
+	recharge.module.afficher(vueSalle('PREPARATION', { etapeId: 'e2', numero: 3 }), capture);
+	assert.equal(recharge.principale.querySelector('.blindtest__annonce').hidden, true);
+	await terminerMicrotaches();
+	b.module.demonter();
+	recharge.module.demonter();
+});
+
+test('Écran : une capture qui suit un événement ne rejoue ni ne prolonge aucune animation', async () => {
+	const b = bancEcran();
+	const trouvee = [{ partie: 'ARTISTE', valeur: 'Beyoncé', joueurId: 'lea', pseudo: 'Léa', points: 30 }];
+	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(5000), partiesTrouvees: trouvee }), evenement('proposition-jugee'));
+	assert.equal(b.laterale.querySelector('.blindtest__parties').classList.contains('blindtest--arrivee'), true);
+	b.module.afficher(vueSalle('REVELATION', { partiesTrouvees: [...trouvee,
+		{ partie: 'TITRE', valeur: 'Halo', joueurId: 'sam', pseudo: 'Sam', points: 70 }],
+	revelation: { titre: 'Halo', artiste: 'Beyoncé', pochette: null } }), capture);
+	await terminerMicrotaches();
+	assert.equal(b.principale.querySelectorAll('.blindtest--arrivee').length
+		+ b.laterale.querySelectorAll('.blindtest--arrivee').length, 0);
+	b.module.demonter();
+});
+
+test('Manette : un brouillon en échec se dit près des champs et se renvoie à la main avec un numéro supérieur', async () => {
+	const b = bancManette();
+	b.connecter('synchronisee');
+	b.module.afficher(vueManette('PROPOSITION', { lecture: lectureEnPause(5000), main: mainDe('lea', 'Léa'), aLaMain: true,
+		monBrouillon: { numero: 2, titre: 'Hal', artiste: '' } }), capture);
+	const [titre] = b.principale.querySelectorAll('input');
+	const zone = b.principale.querySelector('.blindtest__brouillon');
+	assert.equal(zone.hidden, true);
+	titre.value = 'Halo';
+	titre.dispatchEvent({ type: 'input' });
+	b.declencherDelais();
+	await terminerMicrotaches();
+	b.appels[0].resolve({ statut: 503, corps: { detail: 'Service indisponible.' } });
+	await terminerMicrotaches();
+	assert.equal(zone.hidden, false);
+	assert.match(zone.textContent, /Ta saisie n’est pas enregistrée/);
+	assert.equal(b.appels.length, 1, 'Aucun nouvel essai automatique.');
+
+	bouton(zone, 'Enregistrer ma saisie').click();
+	await terminerMicrotaches();
+	assert.deepEqual(b.appels[1].args[2], { numero: 4, titre: 'Halo', artiste: '' });
+	b.appels[1].resolve({ statut: 204, corps: null });
+	await terminerMicrotaches();
+	assert.equal(zone.hidden, true);
+	b.module.demonter();
+});
+
+test('Manette : pendant une coupure, le brouillon attend la synchronisation pour partir', async () => {
+	const b = bancManette();
+	b.connecter('synchronisee');
+	b.module.afficher(vueManette('PROPOSITION', { lecture: lectureEnPause(5000), main: mainDe('lea', 'Léa'), aLaMain: true }), capture);
+	b.connecter('coupure');
+	const [titre] = b.principale.querySelectorAll('input');
+	titre.value = 'Halo';
+	titre.dispatchEvent({ type: 'input' });
+	b.declencherDelais();
+	await terminerMicrotaches();
+	assert.equal(b.appels.length, 0);
+	b.connecter('synchronisee');
+	b.declencherDelais();
+	await terminerMicrotaches();
+	assert.deepEqual(b.appels[0].args[2], { numero: 1, titre: 'Halo', artiste: '' });
+	b.module.demonter();
+});
+
+test('Manette : une Proposition à confirmation inconnue fige la saisie ; un refus la rend', async () => {
+	const b = bancManette();
+	b.connecter('synchronisee');
+	b.module.afficher(vueManette('PROPOSITION', { lecture: lectureEnPause(5000), main: mainDe('lea', 'Léa'), aLaMain: true }), capture);
+	const [titre, artiste] = b.principale.querySelectorAll('input');
+	titre.value = 'Halo';
+	const formulaire = b.principale.querySelector('form');
+	formulaire.dispatchEvent({ type: 'submit' });
+	b.appels[0].reject(new TypeError('réseau'));
+	await terminerMicrotaches();
+	assert.equal(b.captures(), 1);
+	assert.match(texte(b.principale), /Confirmation à vérifier\. Ta réponse reste celle envoyée\./);
+	assert.equal(titre.readOnly, true, 'Le même envoiId ne peut pas repartir avec un autre contenu.');
+	assert.equal(artiste.readOnly, true);
+	titre.dispatchEvent({ type: 'input' });
+	assert.equal(b.appels.length, 1, 'Aucun brouillon pendant le doute.');
+
+	formulaire.dispatchEvent({ type: 'submit' });
+	assert.deepEqual(b.appels[1].args[2], { envoiId: 'envoi-1', titre: 'Halo', artiste: '' });
+	b.appels[1].resolve({ statut: 409, corps: { code: 'ETAT_INCOMPATIBLE', detail: 'Tu n’as pas la main.' } });
+	await terminerMicrotaches();
+	assert.match(texte(b.principale), /Tu n’as pas la main\./);
+	assert.equal(titre.readOnly, false, 'Un refus rend la saisie.');
+	formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels[2].args[2].envoiId, 'envoi-2', 'Après un refus, une nouvelle Proposition a un nouvel envoi.');
+	b.module.demonter();
+});
+
+test('Manette : le Buzz annonce son envoi puis son reçu, et rend le focus quand il disparaît', async () => {
+	const b = bancManette();
+	b.connecter('synchronisee');
+	b.module.afficher(vueManette('EXTRAIT', { lecture: lectureEnCours(0), peutBuzzer: true }), capture);
+	const buzz = bouton(b.principale, 'Buzzer');
+	const statut = b.principale.querySelector('[role=status]');
+	buzz.focus();
+	buzz.click();
+	assert.equal(statut.textContent, 'Envoi du Buzz…');
+	b.appels[0].resolve({ statut: 200, corps: { rang: 1 } });
+	await terminerMicrotaches();
+	assert.equal(statut.textContent, 'Buzz reçu.');
+
+	b.module.afficher(vueManette('PROPOSITION', { lecture: lectureEnPause(3000), main: mainDe('sam', 'Sam') }),
+		evenement('buzz-recu'));
+	assert.equal(statut.textContent, '', 'La vue suivante dit qui a la main.');
+	assert.equal(buzz.hidden, true);
+	assert.equal(b.document.activeElement, b.principale.querySelector('.blindtest__titre'));
+	b.module.demonter();
+});
+
+test('Manette : un reçu arrivé après la vue suivante ne s’affiche pas', async () => {
+	const b = bancManette();
+	b.connecter('synchronisee');
+	b.module.afficher(vueManette('EXTRAIT', { lecture: lectureEnCours(0), peutBuzzer: true }), capture);
+	bouton(b.principale, 'Buzzer').click();
+	b.module.afficher(vueManette('PROPOSITION', { lecture: lectureEnPause(3000), main: mainDe('lea', 'Léa'), aLaMain: true }),
+		evenement('buzz-recu'));
+	b.appels[0].resolve({ statut: 200, corps: { rang: 1 } });
+	await terminerMicrotaches();
+	assert.equal(b.principale.querySelector('[role=status]').textContent, '');
 	b.module.demonter();
 });
