@@ -53,6 +53,10 @@ public class Soiree {
 	@Embedded
 	private Buzz dernierBuzz;
 
+	/** Nombre de Buzz du socle acceptés : un Buzz de Manche retenu dans dernierBuzz ne le change pas. */
+	@Column(name = "buzz_rang_soiree")
+	private long rangBuzzSoiree;
+
 	protected Soiree() {
 		// Pour JPA.
 	}
@@ -127,8 +131,8 @@ public class Soiree {
 	}
 
 	Buzz enregistrerBuzz(Joueur joueur, UUID envoiId, Instant reception) {
-		long rang = dernierBuzz == null ? 1 : dernierBuzz.rang() + 1;
-		dernierBuzz = new Buzz(envoiId, joueur.getId(), joueur.getPseudo(), reception.truncatedTo(MICROS), rang);
+		rangBuzzSoiree++;
+		dernierBuzz = new Buzz(envoiId, joueur.getId(), joueur.getPseudo(), reception.truncatedTo(MICROS), rangBuzzSoiree);
 		return dernierBuzz;
 	}
 
