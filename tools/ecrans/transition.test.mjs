@@ -6,7 +6,7 @@ import { creerDocument } from './karaoke-dom-factice.mjs';
 const finPrevueLe = '2026-11-25T20:30:15.000Z';
 const vueTransition = (modeSuivant = 'QUIZ') => ({ transitionManche: { finPrevueLe, modeSuivant } });
 
-function installer(ecran) {
+function installer(ecran, avance = 12_000) {
 	const document = creerDocument();
 	const zone = document.createElement('section');
 	const annonce = document.createElement('p');
@@ -15,17 +15,29 @@ function installer(ecran) {
 	delai.setAttribute('data-transition-delai', '');
 	zone.append(annonce, delai);
 	zone.hidden = true;
-	let maintenant = Date.parse(finPrevueLe) - 12_000;
+	let maintenant = Date.parse(finPrevueLe) - avance;
 	const minuteries = new Map();
 	let suivante = 0;
 	const minuterie = {
-		setInterval(rappel, delaiMs) { minuteries.set(++suivante, { rappel, delaiMs }); return suivante; },
-		clearInterval(numero) { minuteries.delete(numero); },
+		setTimeout(rappel, delaiMs) { minuteries.set(++suivante, { rappel, echeance: maintenant + delaiMs }); return suivante; },
+		clearTimeout(numero) { minuteries.delete(numero); },
 	};
 	const transition = monterTransition(zone, { ecran, maintenantServeur: () => maintenant, minuterie });
+	const prochaine = () => [...minuteries].sort(([, a], [, b]) => a.echeance - b.echeance)[0];
+	// Déclenche la prochaine minuterie avec un retard, comme un navigateur occupé.
+	function declencher(retard = 0) {
+		const [numero, { rappel, echeance }] = prochaine();
+		minuteries.delete(numero);
+		maintenant = echeance + retard;
+		rappel();
+	}
 	return {
-		zone, annonce, delai, transition, minuteries,
-		avancer(ms) { maintenant += ms; for (const { rappel } of [...minuteries.values()]) rappel(); },
+		zone, annonce, delai, transition, minuteries, declencher,
+		avancer(ms) {
+			const cible = maintenant + ms;
+			while (minuteries.size > 0 && prochaine()[1].echeance <= cible) declencher();
+			maintenant = cible;
+		},
 	};
 }
 
@@ -35,11 +47,26 @@ test('l’Écran de salle affiche l’annonce et le compte à rebours calé sur 
 	assert.equal(banc.zone.hidden, false);
 	assert.equal(banc.annonce.textContent, 'Prochaine Manche : Quiz');
 	assert.equal(banc.delai.textContent, 'dans 12 s');
-	assert.deepEqual([...banc.minuteries.values()].map(m => m.delaiMs), [1000]);
-	banc.avancer(1000);
+	assert.equal(banc.minuteries.size, 1);
+	banc.avancer(1100);
 	assert.equal(banc.delai.textContent, 'dans 11 s');
 	banc.avancer(20_000);
 	assert.equal(banc.delai.textContent, 'dans 0 s');
+	assert.equal(banc.minuteries.size, 0, 'plus aucune minuterie une fois à zéro');
+});
+
+test('chaque seconde s’affiche une fois, même quand les minuteries tirent en retard', () => {
+	const banc = installer('ecran', 12_300);
+	banc.transition.afficher(vueTransition());
+	const vus = [banc.delai.textContent];
+	// Retards sous la seconde, marge comprise : au-delà, la minuterie a forcément manqué une seconde.
+	const retards = [0, 400, 0, 950, 10, 700, 0, 900, 300, 0, 500, 0, 0, 0];
+	for (let i = 0; banc.minuteries.size > 0; i++) {
+		assert.ok(i < 30, 'le compte à rebours s’arrête');
+		banc.declencher(retards[i % retards.length]);
+		vus.push(banc.delai.textContent);
+	}
+	assert.deepEqual(vus, Array.from({ length: 14 }, (_, i) => `dans ${13 - i} s`));
 });
 
 test('une seule minuterie vit pendant la transition et disparaît avec elle ou au départ de la page', () => {
