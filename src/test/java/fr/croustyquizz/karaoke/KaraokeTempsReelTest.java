@@ -595,8 +595,11 @@ class KaraokeTempsReelTest {
         assertThat(vues.get(console).at("/karaoke/passagesEnAttente/0/passageId").asString()).isEqualTo(passage);
         Thread.sleep(300);
         flux.forEach(abonne -> abonne.messages().clear());
+        // Un départ sans effet ne réécrit pas la Manche et ne publie rien.
+        clearInvocations(persistance);
         modes.retirerJoueurParti(soiree, silencieux.identifiant());
         modes.retirerJoueurParti(soiree, UUID.randomUUID());
+        verify(persistance, never()).enregistrer(eq(manche), any());
         for (var abonne : flux) { assertThat(abonne.messages().poll(300, TimeUnit.MILLISECONDS)).isNull(); }
 
         // Sans Manche active, le départ ne touche plus la File.

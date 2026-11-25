@@ -118,7 +118,8 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     }
     /**
      * Départ d’un Joueur (#205) : retiré de ses Passages en attente, il laisse le Passage aux autres Interprètes. Sans
-     * reçu ; une Manche terminée entre-temps refuse sans mutation, et ce refus n’a personne à qui répondre.
+     * reçu ; un départ sans effet ou une Manche terminée entre-temps refuse sans mutation ni publication, et ce refus
+     * n’a personne à qui répondre.
      */
     @Override public void retirerJoueurParti(UUID soireeId, UUID mancheId, UUID joueurId) {
         appliquer(soireeId, mancheId, d -> ((DeroulementKaraoke) d).retirerJoueurParti(joueurId,

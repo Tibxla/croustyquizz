@@ -642,7 +642,7 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
                 .isInstanceOf(Accepte.class);
     }
 
-    /** Départ d’un Interprète (#205) : sans reçu, même en pause, et jamais sur le Passage déjà appelé. */
+    /** Départ d’un Interprète (#205) : sans reçu, même en pause, jamais sur le Passage déjà appelé, refusé s’il est sans effet. */
     @Test
     void leDepartDeLInscripteurTransmetLePassageAttenduEtEpargneLePassageAppele() {
         deroulement.demarrer();
@@ -659,15 +659,14 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(passage(PASSAGE).interpretes()).containsExactly(invite);
         assertThat(karaoke().instantane().file().invitations()).extracting(InvitationPassage::etat)
                 .containsExactly(InvitationPassage.Etat.ACCEPTEE, InvitationPassage.Etat.EXPIREE);
-        var avant = karaoke().instantane();
-        accepter(karaoke().retirerJoueurParti(INCONNU, horloge.maintenant()), "file-attente-modifiee", false);
-        assertThat(karaoke().instantane()).isEqualTo(avant);
+        // Un départ sans effet n'est pas accepté : le service ne réécrit pas la Manche pour rien.
+        refuserSansMutation(() -> karaoke().retirerJoueurParti(INCONNU, horloge.maintenant()), 409, "ETAT_INCOMPATIBLE",
+                "aucun Passage en attente");
 
         accepter(deroulement.reprendre(pilotage()), "manche-reprise", true);
         accepter(appeler(cible(PASSAGE)), "passage-appele", true);
-        var appele = karaoke().instantane();
-        accepter(karaoke().retirerJoueurParti(invite, horloge.maintenant()), "file-attente-modifiee", false);
-        assertThat(karaoke().instantane()).isEqualTo(appele);
+        refuserSansMutation(() -> karaoke().retirerJoueurParti(invite, horloge.maintenant()), 409, "ETAT_INCOMPATIBLE",
+                "aucun Passage en attente");
         deroulement.terminer(pilotage());
         refuserSansMutation(() -> karaoke().retirerJoueurParti(invite, horloge.maintenant()), 409, "ETAT_INCOMPATIBLE", null);
     }
