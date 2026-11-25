@@ -56,21 +56,21 @@ final class PresenceDesManettes {
 		if (!(utilisateur instanceof IdentiteStomp identite) || identite.acteur().type() != Acteur.Type.JOUEUR) {
 			return;
 		}
-		Acteur joueur = identite.acteur();
-		UUID soireeId = joueur.soireeId();
+		UUID joueurId = identite.acteur().identifiant();
+		UUID soireeId = identite.acteur().soireeId();
 		try {
 			if (!soirees.estEnregistree(soireeId)) {
 				return; // Les Joueurs de démonstration sont toujours affichés connectés.
 			}
 			verrous.executer(soireeId, () -> {
-				if (changement.test(joueur.identifiant())) {
+				if (changement.test(joueurId)) {
 					vues.publier(soireeId, JOUEURS_MODIFIES);
 				}
 				return null;
 			});
 		} catch (RuntimeException erreur) {
 			// La connexion est déjà ouverte ou fermée : un échec de publication ne la remet pas en cause.
-			JOURNAL.error("Présence du Joueur {} non publiée pour la Soirée {}", joueur.identifiant(), soireeId, erreur);
+			JOURNAL.error("Présence du Joueur {} non publiée pour la Soirée {}", joueurId, soireeId, erreur);
 		}
 	}
 }
