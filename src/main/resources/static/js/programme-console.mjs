@@ -9,6 +9,10 @@ function decrireReglages({ reglages }) {
 		const limite = reglages.limitePassagesEnAttente;
 		return `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`;
 	}
+	if (reglages.nombreMorceaux !== undefined) {
+		const nombre = reglages.nombreMorceaux, { type, idDeezer } = reglages.source;
+		return `${nombre} Morceau${nombre === 1 ? '' : 'x'} · ${type === 'GENRE' ? 'genre' : 'playlist'} Deezer ${idDeezer}`;
+	}
 	return '';
 }
 
@@ -24,6 +28,7 @@ export function monterProgramme(panneau, contexte) {
 	const nombre = champAvecErreur('nombre-etapes');
 	const temps = champAvecErreur('temps-par-etape');
 	const erreurAjout = element('ajout-manche-erreur');
+	const blindTest = element('reglages-blindtest');
 	const ajout = element('soumettre-manche');
 	const liste = element('programme');
 	const route = `/api/soirees/${contexte.soireeId}`;
@@ -69,6 +74,18 @@ export function monterProgramme(panneau, contexte) {
 		effacerErreurs();
 		communs.hidden = mode.value !== 'QUIZ';
 		communs.disabled = communs.hidden;
+		if (blindTest) {
+			blindTest.hidden = mode.value !== 'BLIND_TEST';
+			blindTest.disabled = blindTest.hidden;
+		}
+	}
+
+	/** Réglages du Blind test ; le Quiz est validé champ par champ, le Karaoké utilise la limite du serveur. */
+	function reglagesBlindTest() {
+		return {
+			source: { type: element('source-blindtest').value, idDeezer: Number(element('id-deezer').value) },
+			nombreMorceaux: Number(element('nombre-morceaux').value),
+		};
 	}
 
 	function effacerErreurs() {
@@ -111,6 +128,8 @@ export function monterProgramme(panneau, contexte) {
 			const tempsParEtapeSecondes = lireEntier(temps, (min, max) => `Indique une durée entière entre ${min} et ${max} secondes.`);
 			if (tempsParEtapeSecondes === undefined) return;
 			reglages = { nombreEtapes, tempsParEtapeSecondes };
+		} else if (modeDemande === 'BLIND_TEST') {
+			reglages = reglagesBlindTest();
 		}
 		void modifier('POST', '/manches', { mode: modeDemande, reglages }, reponse => {
 			// Le Probleme ne désigne aucun champ : le refus s'affiche sous le formulaire, sans en marquer un,
