@@ -1,14 +1,14 @@
 {
-  "commit": "560c9fcc769d4410b0b27d1c75e3f0759159634c",
-  "execution_ci": "45572357292",
+  "commit": "bd5840c8785e8e1c752868f52b6793f5b91ebf62",
+  "execution_ci": "45572368116",
   "lignes": {
-    "couverts": 3869,
-    "total": 3992,
-    "pourcentage": 96.9
+    "couverts": 4004,
+    "total": 4129,
+    "pourcentage": 97.0
   },
   "branches": {
-    "couverts": 2118,
-    "total": 2387,
+    "couverts": 2192,
+    "total": 2471,
     "pourcentage": 88.7
   },
   "alertes_pmd": 0
