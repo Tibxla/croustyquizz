@@ -26,7 +26,7 @@ Les listes et Lexique n'ont pas la même échelle de fréquence. Leurs suggestio
 - avec un thème, ses mots viennent d'abord. Si la Famille de rimes du thème donne moins de 32 suggestions, de quoi remplir une Grille, Lexique la complète ;
 - sans thème, Lexique vient d'abord, puis les mots des listes qu'il ne contient pas.
 
-Une flexion du mot de départ qui se prononce comme lui n'est jamais proposée : `maison` ne donne pas `maisons`. Un homophone d'un autre mot reste une rime : `vert` donne `verre`. Pour la recherche, `cœur` et `coeur` sont un même mot.
+Une flexion du mot de départ qui se prononce comme lui n'est jamais proposée, même quand une liste thématique la contient : `maison` ne donne pas `maisons`, ni `soirées` le `soirée` du thème Soirée. Lexique fournit pour cela la prononciation complète et les lemmes des deux formes. Un homophone d'un autre mot reste une rime : `vert` donne `verre`. Pour la recherche, `cœur` et `coeur` sont un même mot.
 
 ## Filtre de vulgarité
 

@@ -85,7 +85,7 @@ final class DictionnaireDeRimesPhonetique implements DictionnaireDeRimes {
         for (EntreePhonetique depart : departs) {
             for (EntreePhonetique entree : parFamille.get(depart.famille())) {
                 String motCandidat = normaliserMot(entree.mot());
-                if (!motCherche.equals(motCandidat) && source.test(entree) && !flexionHomophone(departs, entree)) {
+                if (!motCherche.equals(motCandidat) && source.test(entree) && !flexionHomophone(departs, motCandidat)) {
                     Candidat candidat = new Candidat(entree.mot(), depart.rimeRicheAvec(entree), entree.frequence());
                     candidats.merge(motCandidat, candidat, DictionnaireDeRimesPhonetique::meilleurCandidat);
                 }
@@ -94,9 +94,14 @@ final class DictionnaireDeRimesPhonetique implements DictionnaireDeRimes {
         return candidats.values().stream().sorted(ORDRE).toList();
     }
 
-    private static boolean flexionHomophone(List<EntreePhonetique> departs, EntreePhonetique entree) {
-        return departs.stream().anyMatch(depart -> depart.sons().equals(entree.sons())
-                && !Collections.disjoint(depart.lemmes(), entree.lemmes()));
+    /**
+     * Compare le départ à toutes les entrées du mot candidat, quelle que soit leur source : une liste thématique ne
+     * note qu'une terminaison, sans lemme, et seul le lexique général permet de reconnaître la flexion.
+     */
+    private boolean flexionHomophone(List<EntreePhonetique> departs, String motCandidat) {
+        List<EntreePhonetique> formes = parMot.get(motCandidat);
+        return departs.stream().anyMatch(depart -> formes.stream().anyMatch(forme -> depart.sons().equals(forme.sons())
+                && !Collections.disjoint(depart.lemmes(), forme.lemmes())));
     }
 
     private static void ajouter(Map<String, String> rimes, List<Candidat> candidats) {

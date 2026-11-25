@@ -76,6 +76,26 @@ class DictionnaireDeRimesFourniTest {
 
     @ParameterizedTest
     @CsvSource({
+        "soirées, soirée",
+        "chansons, chanson",
+        "ballons, ballon",
+        "passages, passage",
+        "villages, village",
+        "lumières, lumière",
+        "actions, action"
+    })
+    void neProposeJamaisUneFlexionHomophoneQueDonneUneListeThematique(String depart, String flexion) {
+        DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.partage();
+
+        assertThat(dictionnaire.rimesDe(depart)).isNotEmpty().doesNotContain(flexion);
+        for (ThemeDeRimes theme : ThemeDeRimes.values()) {
+            assertThat(dictionnaire.rimesDe(depart, theme)).as("thème %s", theme)
+                    .isNotEmpty().doesNotContain(flexion);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
         "bonne, conne",
         "bonne, connes",
         "partout, fout",

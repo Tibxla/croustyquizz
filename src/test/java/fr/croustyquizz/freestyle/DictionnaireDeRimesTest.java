@@ -104,6 +104,19 @@ class DictionnaireDeRimesTest {
     }
 
     @Test
+    void reconnaitUneFlexionDuDepartMemeQuandUneListeThematiqueLaPropose() {
+        DictionnaireDeRimes dictionnaire = new DictionnaireDeRimesPhonetique(List.of(
+                entree("soirée", "a ʁ e", 90),
+                entree("marée", "a ʁ e", 20),
+                general("soirée", "s w a ʁ e", 90),
+                new EntreePhonetique("soirées", List.of("s", "w", "a", "ʁ", "e"), 30, null, List.of("soirée")),
+                general("entrée", "ɑ̃ t ʁ e", 50)), List.of());
+
+        assertThat(dictionnaire.rimesDe("soirées")).containsExactly("entrée", "marée");
+        assertThat(dictionnaire.rimesDe("soirées", ThemeDeRimes.SOIREE)).containsExactly("marée", "entrée");
+    }
+
+    @Test
     void confondLaLigatureOeEtSesDeuxLettres() {
         DictionnaireDeRimes dictionnaire = new DictionnaireDeRimesPhonetique(List.of(
                 entree("cœur", "k œ ʁ", 50),
