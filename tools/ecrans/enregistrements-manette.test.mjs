@@ -254,3 +254,21 @@ test('Coquille : une prise finie après pagehide ne laisse aucune URL vivante', 
 	assert.equal(registreDe(b.document).fichiers.size, 0);
 	assert.equal(section(b).hidden, true);
 });
+
+test('Coquille : un fichier republié sous le même identifiant remplace le lien et le lecteur', async t => {
+	const urls = suivreUrls(t);
+	const b = monterManette(t);
+	await b.afficher(soireeTerminee, evenement('soiree-terminee'));
+	const registre = registreDe(b.document);
+	registre.ajouter({ id: 'p', titre: 'Lune', url: 'blob:ancienne', nom: 'Lune.webm' });
+	await terminerMicrotaches();
+	boutons(b.zone, 'Retirer')[0].click();
+	assert.equal(b.zone.querySelector('dialog').open, true);
+	registre.ajouter({ id: 'p', titre: 'Lune', url: 'blob:nouvelle', nom: 'Lune.webm' });
+	await terminerMicrotaches();
+	assert.deepEqual(urls.revoquees, ['blob:ancienne']);
+	assert.equal(lien(b.zone).href, 'blob:nouvelle');
+	assert.equal(b.zone.querySelector('audio').src, 'blob:nouvelle');
+	assert.equal(b.zone.querySelectorAll('a').length, 1);
+	assert.equal(b.zone.querySelector('dialog'), null, 'La confirmation de l’ancien fichier se ferme.');
+});

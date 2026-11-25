@@ -90,15 +90,17 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 	titre.tabIndex = -1;
 	const liste = e('div', 'enregistrements__liste');
 	section.append(titre, e('p', '', AVERTISSEMENT), liste);
+	// Par identifiant : l'entrée affichée et sa vue. Une entrée republiée sous le même id est un autre fichier.
 	const vues = new Map();
 	// Un fichier déjà là n'est pas annoncé une seconde fois par une nouvelle liste.
-	const vus = new Set(registre.fichiers.keys());
-	let visible = false, dialogue = null, dialogueId = null;
+	const vus = new WeakSet(registre.fichiers.values());
+	let visible = false, dialogue = null, dialogueEntree = null;
 
 	function fermerDialogue() {
 		if (dialogue?.open) dialogue.close();
 		dialogue?.remove();
 		dialogue = null;
+		dialogueEntree = null;
 	}
 
 	function retirerFichier(id) {
@@ -115,7 +117,7 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 		element.setAttribute('aria-labelledby', titreDialogue.id);
 		element.setAttribute('tabindex', '-1');
 		const confirmer = bouton('Confirmer le retrait', () => {
-			if (!registre.fichiers.has(entree.id)) return;
+			if (registre.fichiers.get(entree.id) !== entree) return;
 			element.close();
 			retirerFichier(entree.id);
 		});
@@ -128,7 +130,7 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 			if (dialogue === element) dialogue = null;
 		});
 		dialogue = element;
-		dialogueId = entree.id;
+		dialogueEntree = entree;
 		section.append(element);
 		ouvrirDialogue(element, declencheur);
 	}
@@ -166,30 +168,31 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 	function rendre(affichee = true) {
 		visible = affichee;
 		if (!affichee) {
-			for (const id of registre.fichiers.keys()) vus.add(id);
+			for (const entree of registre.fichiers.values()) vus.add(entree);
 			vues.clear();
 			liste.replaceChildren();
 			section.hidden = true;
 			fermerDialogue();
 			return;
 		}
-		for (const [id, vue] of vues) {
-			if (!registre.fichiers.has(id)) { vue.remove(); vues.delete(id); }
+		// Une entrée retirée, ou remplacée sous le même id (son ancienne URL est révoquée), perd sa vue.
+		for (const [id, { entree, vue }] of vues) {
+			if (registre.fichiers.get(id) !== entree) { vue.remove(); vues.delete(id); }
 		}
 		for (const entree of registre.fichiers.values()) {
 			if (!vues.has(entree.id)) {
 				const vue = creerVue(entree);
-				vues.set(entree.id, vue);
+				vues.set(entree.id, { entree, vue });
 				liste.append(vue);
 			}
-			if (vus.has(entree.id)) continue;
-			vus.add(entree.id);
+			if (vus.has(entree)) continue;
+			vus.add(entree);
 			annoncer(entree.echec ? `La prise de ${entree.titre} a échoué : aucun son n’a été capté.`
 				: `Ton Enregistrement est prêt : ${entree.titre}.`);
 		}
 		section.hidden = registre.fichiers.size === 0;
-		// Un fichier effacé entre-temps (pagehide) ferme la confirmation en cours.
-		if (dialogue && !registre.fichiers.has(dialogueId)) fermerDialogue();
+		// Un fichier effacé ou remplacé entre-temps (pagehide, nouvelle prise) ferme la confirmation en cours.
+		if (dialogue && registre.fichiers.get(dialogueEntree.id) !== dialogueEntree) fermerDialogue();
 	}
 
 	return {
