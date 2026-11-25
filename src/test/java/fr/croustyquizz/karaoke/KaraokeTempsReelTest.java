@@ -158,6 +158,9 @@ class KaraokeTempsReelTest {
         verifierRefusAccord(accord, joueur,
                 Map.of("accord", true, "numeroModification", 0, "audio", "data:audio/webm;base64,AAAA"),
                 400, "REQUETE_INVALIDE");
+        // Un champ manquant ou un compteur négatif est refusé en 400, jamais en 500, même pour l'Interprète.
+        verifierRefusAccord(accord, joueur, Map.of("accord", true), 400, "REQUETE_INVALIDE");
+        verifierRefusAccord(accord, joueur, Map.of("accord", true, "numeroModification", -3), 400, "REQUETE_INVALIDE");
 
         KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
                 envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
