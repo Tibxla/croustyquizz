@@ -1,3 +1,4 @@
+import { creerUuid } from '../karaoke/commun.mjs';
 import { creerSocle, ecrire, rendreParties } from './commun.mjs';
 import { creerEnvoiBrouillon, formaterSecondes, tempsRestantMs, texteNumero, verdictPersonnel } from './logique.mjs';
 
@@ -12,7 +13,8 @@ export function monter(zones, contexte, dependances = {}) {
 	const { e } = socle;
 	const programmerDelai = dependances.programmerDelai ?? ((f, ms) => setTimeout(f, ms));
 	const annulerDelai = dependances.annulerDelai ?? (id => clearTimeout(id));
-	const creerId = dependances.creerUuid ?? (() => globalThis.crypto.randomUUID());
+	// Sur un téléphone en http:// (réseau local), crypto.randomUUID n'existe pas : creerUuid a un repli.
+	const creerId = dependances.creerUuid ?? (() => creerUuid());
 
 	const numero = e('p', 'blindtest__numero chiffres');
 	const titre = e('h2', 'blindtest__titre');
