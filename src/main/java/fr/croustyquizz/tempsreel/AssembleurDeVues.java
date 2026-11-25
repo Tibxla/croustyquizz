@@ -27,19 +27,31 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 	private final VerrousSoiree verrous;
 	private final JsonMapper json;
 	private final List<FournisseurDeChampCommun> champsCommuns;
+	private final Function<UUID, MusiqueDAttente> lireMusiqueDAttente;
 	private final Map<ModeDeJeu, FournisseurDeBloc> blocs = new EnumMap<>(ModeDeJeu.class);
+
+	@Autowired
+	AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
+			ObjectProvider<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json,
+			DepotMusiqueDAttente musique) {
+		this(commun, fournisseurs, champs.orderedStream().toList(), verrous, json, musique::lire);
+	}
+
 	public AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
 			VerrousSoiree verrous, JsonMapper json) {
-		this(commun, fournisseurs, List.of(), verrous, json);
+		this(commun, fournisseurs, List.of(), verrous, json, soireeId -> MusiqueDAttente.PAR_DEFAUT);
 	}
-	@Autowired
+
 	public AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
 			ObjectProvider<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json) {
-		this(commun, fournisseurs, champs.orderedStream().toList(), verrous, json);
+		this(commun, fournisseurs, champs.orderedStream().toList(), verrous, json, soireeId -> MusiqueDAttente.PAR_DEFAUT);
 	}
+
 	private AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
-			List<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json) {
+			List<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json,
+			Function<UUID, MusiqueDAttente> lireMusiqueDAttente) {
 		this.commun = commun; this.verrous = verrous; this.json = json;
+		this.lireMusiqueDAttente = lireMusiqueDAttente;
 		champsCommuns = champs;
 		Set<String> noms = new HashSet<>();
 		for (var fournisseur : champsCommuns) {
@@ -58,18 +70,24 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 	}
 	Map<Destination, VueComposee> assembler(UUID soireeId, Set<Destination> destinations, String type) {
 		return verrous.executer(soireeId, () -> {
+			MusiqueDAttente musique = destinations.contains(Destination.SALLE) || destinations.contains(Destination.CONSOLE)
+					? lireMusiqueDAttente.apply(soireeId) : null;
 			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
+			var parties = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
-				vues.put(destination, composer(soireeId, destination, type, projections));
+				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, musique));
 			}
 			return vues;
 		});
 	}
-	private VueComposee composer(UUID soireeId, Destination destination, String type,
-			Map<ModeDeJeu, Function<Destination, Object>> projections) {
-		var partieCommune = Collections.unmodifiableMap(commun.fournir(soireeId, destination));
+	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partie,
+			Map<ModeDeJeu, Function<Destination, Object>> projections, MusiqueDAttente musique) {
+		var partieCommune = Collections.unmodifiableMap(partie);
 		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
+		if (destination.equals(Destination.SALLE) || destination.equals(Destination.CONSOLE)) {
+			vue.put("musiqueAttente", musique);
+		}
 		for (var fournisseur : champsCommuns) {
 			if (!fournisseur.concerne(destination)) { continue; }
 			var nom = fournisseur.champ();

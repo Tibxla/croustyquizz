@@ -42,3 +42,7 @@ croustyquizz:
     delaiSourceMs: 5000
     tailleReponseSourceMaxOctets: 2097152
     longueurRechercheMax: 120
+  blindtest:
+    urlDeezer: https://api.deezer.com
+    delaiDeezerMs: 5000
+    tailleReponseMaxOctets: 2097152

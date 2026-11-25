@@ -33,6 +33,11 @@ class ErreursSoiree {
 		return refus(409, "ETAT_INCOMPATIBLE", "La Soirée est déjà lancée ou terminée.", requete);
 	}
 
+	@ExceptionHandler(AucunCodeLibre.class)
+	ResponseEntity<?> aucunCodeLibre(HttpServletRequest requete) {
+		return refus(503, "SERVICE_INDISPONIBLE", "Aucun code d'accès libre pour l'instant. Réessaie l'ouverture.", requete);
+	}
+
 	@ExceptionHandler(TitreInvalide.class)
 	ResponseEntity<?> titreInvalide(TitreInvalide erreur, HttpServletRequest requete) {
 		return refus(422, "DONNEES_INVALIDES", erreur.getMessage() + ".", requete);
