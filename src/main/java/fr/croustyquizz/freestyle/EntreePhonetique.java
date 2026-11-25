@@ -3,8 +3,12 @@ package fr.croustyquizz.freestyle;
 import java.util.List;
 import java.util.Set;
 
-/** Prononciation normalisée, commune aux sources du dictionnaire. */
-record EntreePhonetique(String mot, List<String> sons, double frequence, ThemeDeRimes theme) {
+/**
+ * Prononciation normalisée, commune aux sources du dictionnaire. Une entrée d'une liste thématique porte son thème.
+ * Une entrée du lexique général (Lexique 3.83) n'a pas de thème et porte ses lemmes, que le filtre de vulgarité
+ * examine aussi pour écarter les formes fléchies.
+ */
+record EntreePhonetique(String mot, List<String> sons, double frequence, ThemeDeRimes theme, List<String> lemmes) {
     private static final Set<String> VOYELLES = Set.of(
             "a", "ɑ", "e", "ɛ", "ə", "i", "o", "ɔ", "u", "y", "ø", "œ", "ɑ̃", "ɛ̃", "ɔ̃", "œ̃");
 
@@ -13,11 +17,24 @@ record EntreePhonetique(String mot, List<String> sons, double frequence, ThemeDe
             throw new IllegalArgumentException("Mot vide ou fréquence invalide : " + mot);
         }
         sons = List.copyOf(sons);
+        lemmes = List.copyOf(lemmes);
+    }
+
+    EntreePhonetique(String mot, List<String> sons, double frequence, ThemeDeRimes theme) {
+        this(mot, sons, frequence, theme, List.of());
+    }
+
+    static boolean estVoyelle(String son) {
+        return VOYELLES.contains(son);
+    }
+
+    boolean generale() {
+        return theme == null;
     }
 
     List<String> famille() {
         for (int i = sons.size() - 1; i >= 0; i--) {
-            if (VOYELLES.contains(sons.get(i))) {
+            if (estVoyelle(sons.get(i))) {
                 return sons.subList(i, sons.size());
             }
         }

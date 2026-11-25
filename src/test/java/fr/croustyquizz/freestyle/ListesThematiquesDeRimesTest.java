@@ -17,7 +17,7 @@ class ListesThematiquesDeRimesTest {
         "SPORT, ballon, peloton"
     })
     void chaqueFamilleRemplitTrenteDeuxMesuresDistinctes(ThemeDeRimes theme, String depart, String exemple) {
-        DictionnaireDeRimes dictionnaire = ListesThematiquesDeRimes.charger();
+        DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.partage();
 
         assertThat(dictionnaire.rimesDe(depart, theme))
                 .hasSizeGreaterThanOrEqualTo(32)
@@ -27,22 +27,24 @@ class ListesThematiquesDeRimesTest {
     }
 
     @Test
-    void limiteLesSuggestionsAuThemeDemande() {
-        DictionnaireDeRimes dictionnaire = ListesThematiquesDeRimes.charger();
+    void prefereLeThemeDemandeQuandSaFamilleRemplitUneGrille() {
+        DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.partage();
 
         assertThat(dictionnaire.rimesDe("ballon")).contains("bouchon", "peloton").doesNotHaveDuplicates();
         assertThat(dictionnaire.rimesDe("ballon", ThemeDeRimes.SPORT))
                 .contains("peloton").doesNotContain("bouchon");
         assertThat(dictionnaire.rimesDe("ballon", ThemeDeRimes.SOIREE))
                 .contains("bouchon").doesNotContain("peloton");
-        assertThat(dictionnaire.rimesDe("ballon", ThemeDeRimes.VILLE)).isEmpty();
+        assertThat(dictionnaire.rimesDe("ballon", ThemeDeRimes.VILLE))
+                .as("le thème Ville n'a aucun mot en « on » : le lexique général le complète")
+                .contains("bouchon", "peloton", "maison").doesNotHaveDuplicates();
     }
 
     @Test
     void neDevinePasLaPrononciationDUnMotAbsent() {
-        DictionnaireDeRimes dictionnaire = ListesThematiquesDeRimes.charger();
+        DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.partage();
 
-        assertThat(dictionnaire.rimesDe("abricot")).isEmpty();
+        assertThat(dictionnaire.rimesDe("croustimolle")).isEmpty();
         assertThat(dictionnaire.rimesDe(" ")).isEmpty();
     }
 }

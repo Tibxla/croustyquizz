@@ -2,40 +2,28 @@ package fr.croustyquizz.freestyle;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Charge les listes et le filtre fournis avec le Freestyle. */
-public final class ListesThematiquesDeRimes {
-    private static final String DOSSIER = "/freestyle/";
+/** Lit les listes thématiques écrites pour le Freestyle, une par {@link ThemeDeRimes}. */
+final class ListesThematiquesDeRimes {
     private static final int NOMBRE_COLONNES = 3;
 
     private ListesThematiquesDeRimes() {
     }
 
-    public static DictionnaireDeRimes charger() {
+    static List<EntreePhonetique> lire() throws IOException {
         List<EntreePhonetique> entrees = new ArrayList<>();
-        try {
-            for (ThemeDeRimes theme : ThemeDeRimes.values()) {
-                lireTheme(theme, entrees);
-            }
-            try (BufferedReader filtre = ouvrir("mots-filtres.txt")) {
-                List<String> motsFiltres = filtre.lines().map(String::strip).filter(mot -> !mot.isEmpty()).toList();
-                return new DictionnaireDeRimesPhonetique(entrees, motsFiltres);
-            }
-        } catch (IOException erreur) {
-            throw new UncheckedIOException("Impossible de charger le dictionnaire de rimes", erreur);
+        for (ThemeDeRimes theme : ThemeDeRimes.values()) {
+            lireTheme(theme, entrees);
         }
+        return entrees;
     }
 
     private static void lireTheme(ThemeDeRimes theme, List<EntreePhonetique> entrees) throws IOException {
         String fichier = theme.name().toLowerCase(Locale.ROOT) + ".tsv";
-        try (BufferedReader lecteur = ouvrir(fichier)) {
+        try (BufferedReader lecteur = DictionnaireDeRimesFourni.ouvrir(fichier)) {
             if (!"mot\tterminaison\tfréquence".equals(lecteur.readLine())) {
                 throw new IOException("En-tête du dictionnaire invalide dans " + fichier);
             }
@@ -54,13 +42,5 @@ public final class ListesThematiquesDeRimes {
                 }
             }
         }
-    }
-
-    private static BufferedReader ouvrir(String fichier) throws IOException {
-        InputStream flux = ListesThematiquesDeRimes.class.getResourceAsStream(DOSSIER + fichier);
-        if (flux == null) {
-            throw new IOException("Ressource introuvable : " + DOSSIER + fichier);
-        }
-        return new BufferedReader(new InputStreamReader(flux, StandardCharsets.UTF_8));
     }
 }
