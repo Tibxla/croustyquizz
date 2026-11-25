@@ -41,6 +41,7 @@ http:
             pseudo: Basile
             connecte: true
         classement: &a5 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -55,6 +56,9 @@ http:
             delaiConsultationNavigateurMs: 8000
             delaiConfirmationNavigateurMs: 10000
             delaiAppelMs: 30000
+            dureeVoteMs: 30000
+            dureeAffichageMoyenneMs: 10000
+          votes: []
           prochainsPassages: &a12
             - &a8
               passageId: 98000000-0000-4000-8000-000000000041
@@ -136,6 +140,7 @@ http:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a5
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -158,6 +163,7 @@ http:
           passagePrioritaireId: null
           courant: null
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a8
             - *a9
@@ -222,6 +228,7 @@ http:
           configurationInterface: *a7
           prochainsPassages: *a12
           nombreAutresPassages: 1
+          votes: []
           mesPassagesEnAttente:
             - *a8
             - *a10
@@ -461,6 +468,7 @@ http:
                 etat: ESTIMEE
                 dureeMs: 715000
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a23
           nombrePersonnelEnAttente: 1
@@ -499,6 +507,7 @@ http:
           configurationInterface: *a7
           prochainsPassages: *a27
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a28
             - *a29
@@ -655,6 +664,7 @@ http:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a67 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -682,6 +692,7 @@ http:
             calculeLe: 2026-11-17T21:00:30.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a73
             - &a69
               passageId: 98000000-0000-4000-8000-000000000042
@@ -984,6 +995,7 @@ http:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a112 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -1023,6 +1035,7 @@ http:
             calculeLe: 2026-11-17T21:01:40.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - &a114
               passageId: 98000000-0000-4000-8000-000000000042
@@ -1212,6 +1225,7 @@ http:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a130 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -1239,6 +1253,7 @@ http:
             calculeLe: 2026-11-17T21:04:35.500Z
             clotureLe: 2026-11-17T21:04:35.500Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a135
             - &a132
               passageId: 98000000-0000-4000-8000-000000000042
@@ -1626,6 +1641,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a36 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -1636,6 +1652,7 @@ evenements:
           passagePrioritaireId: null
           courant: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a37
               passageId: 98000000-0000-4000-8000-000000000041
@@ -1693,6 +1710,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a36
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -1715,6 +1733,7 @@ evenements:
           passagePrioritaireId: null
           courant: null
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a37
             - *a38
@@ -1755,6 +1774,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a25
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -1765,6 +1785,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a26
           configurationInterface: *a7
+          votes: []
           prochainsPassages: *a27
           nombreAutresPassages: 0
           lecteurDesigneId: 98000000-0000-4000-8000-000000000061
@@ -1783,6 +1804,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a25
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -1805,6 +1827,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a26
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a28
             - *a23
@@ -1854,6 +1877,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a43 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -1881,6 +1905,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:20.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a45
               passageId: 98000000-0000-4000-8000-000000000042
@@ -1947,6 +1972,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a43
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -1969,6 +1995,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a44
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a45
             - *a46
@@ -2002,6 +2029,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a51 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -2029,6 +2057,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:22.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a53
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2095,6 +2124,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a51
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -2117,6 +2147,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a52
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a53
             - *a54
@@ -2150,6 +2181,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a58 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -2177,6 +2209,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:24.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a64
             - &a60
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2243,6 +2276,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a58
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -2265,6 +2299,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a59
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a60
             - *a61
@@ -2309,6 +2344,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a64
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a61
           nombrePersonnelEnAttente: 1
@@ -2345,6 +2381,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a64
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a60
             - *a62
@@ -2374,6 +2411,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a67
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -2396,6 +2434,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a68
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a69
             - *a70
@@ -2440,6 +2479,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a73
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a70
           nombrePersonnelEnAttente: 1
@@ -2476,6 +2516,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a73
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a69
             - *a71
@@ -2502,6 +2543,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a75 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -2529,6 +2571,7 @@ evenements:
             calculeLe: 2026-11-17T21:00:58.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a81
             - &a77
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2608,6 +2651,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a75
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme: &a213
           - id: 98000000-0000-4000-8000-000000000002
@@ -2630,6 +2674,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a76
           configurationInterface: *a7
+          votes: []
           passagesEnAttente: &a214
             - *a77
             - *a78
@@ -2674,6 +2719,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a81
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: &a212
             - *a78
           nombrePersonnelEnAttente: 1
@@ -2710,6 +2756,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a81
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a77
             - *a79
@@ -2736,6 +2783,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a84 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -2763,6 +2811,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:11.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a86
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2831,6 +2880,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a84
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -2853,6 +2903,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a85
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a86
             - *a87
@@ -2886,6 +2937,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a91 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -2913,6 +2965,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:11.500Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a93
               passageId: 98000000-0000-4000-8000-000000000042
@@ -2981,6 +3034,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a91
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -3003,6 +3057,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a92
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a93
             - *a94
@@ -3036,6 +3091,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a98 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -3063,6 +3119,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:12.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a211
             - &a100
               passageId: 98000000-0000-4000-8000-000000000042
@@ -3129,6 +3186,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a98
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -3151,6 +3209,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a99
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a100
             - *a101
@@ -3184,6 +3243,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a105 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -3211,6 +3271,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:14.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a107
               passageId: 98000000-0000-4000-8000-000000000042
@@ -3277,6 +3338,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a105
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -3299,6 +3361,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a106
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a107
             - *a108
@@ -3327,6 +3390,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a112
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -3337,6 +3401,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a113
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a119
             - *a114
             - *a115
@@ -3382,6 +3447,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a119
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a115
           nombrePersonnelEnAttente: 1
@@ -3418,6 +3484,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a119
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a114
             - *a116
@@ -3444,6 +3511,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a121 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -3471,6 +3539,7 @@ evenements:
             calculeLe: 2026-11-17T21:01:50.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a127
             - &a123
               passageId: 98000000-0000-4000-8000-000000000042
@@ -3537,6 +3606,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a121
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -3559,6 +3629,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a122
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a123
             - *a124
@@ -3603,6 +3674,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a127
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a124
           nombrePersonnelEnAttente: 1
@@ -3639,6 +3711,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a127
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a123
             - *a125
@@ -3668,6 +3741,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a130
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -3690,6 +3764,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a131
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a132
             - *a133
@@ -3734,6 +3809,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a135
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a133
           nombrePersonnelEnAttente: 1
@@ -3770,6 +3846,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a135
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a132
             - *a134
@@ -3796,6 +3873,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a137 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -3823,6 +3901,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:00.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a141
             - &a139
               passageId: 98000000-0000-4000-8000-000000000043
@@ -3867,6 +3946,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a137
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -3889,6 +3969,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a138
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a139
             - *a140
@@ -3932,6 +4013,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a141
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a139
           nombrePersonnelEnAttente: 1
@@ -3968,6 +4050,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a141
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a140
           nombrePersonnelEnAttente: 1
@@ -3993,6 +4076,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a143 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -4020,6 +4104,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:20.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a148
             - &a145
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4080,6 +4165,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a143
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -4102,6 +4188,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a144
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a145
             - *a146
@@ -4145,6 +4232,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a148
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a145
           nombrePersonnelEnAttente: 1
@@ -4181,6 +4269,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a148
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a146
           nombrePersonnelEnAttente: 1
@@ -4206,6 +4295,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a151 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -4233,6 +4323,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:34.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a153
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4286,6 +4377,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a151
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -4308,6 +4400,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a152
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a153
             - *a154
@@ -4340,6 +4433,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a157 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -4367,6 +4461,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:40.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a162
             - &a159
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4420,6 +4515,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a157
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -4442,6 +4538,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a158
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a159
             - *a160
@@ -4485,6 +4582,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a162
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a159
           nombrePersonnelEnAttente: 1
@@ -4521,6 +4619,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a162
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a160
           nombrePersonnelEnAttente: 1
@@ -4546,6 +4645,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a164 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -4573,6 +4673,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:45.000Z
             clotureLe: 2026-11-17T21:05:45.000Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a168
             - &a166
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4617,6 +4718,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a164
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -4639,6 +4741,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a165
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a166
             - *a167
@@ -4682,6 +4785,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a168
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a166
           nombrePersonnelEnAttente: 1
@@ -4718,6 +4822,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a168
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a167
           nombrePersonnelEnAttente: 1
@@ -4743,6 +4848,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a170 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -4770,6 +4876,7 @@ evenements:
             calculeLe: 2026-11-17T21:05:50.000Z
             clotureLe: 2026-11-17T21:05:45.000Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a174
             - &a172
               passageId: 98000000-0000-4000-8000-000000000043
@@ -4814,6 +4921,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a170
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -4836,6 +4944,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a171
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a172
             - *a173
@@ -4879,6 +4988,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a174
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a172
           nombrePersonnelEnAttente: 1
@@ -4915,6 +5025,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a174
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a173
           nombrePersonnelEnAttente: 1
@@ -4940,6 +5051,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a176 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -4967,6 +5079,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:00.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a179
             - &a178
               passageId: 98000000-0000-4000-8000-000000000044
@@ -4998,6 +5111,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a176
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -5020,6 +5134,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a177
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a178
           peutGererFile: true
@@ -5062,6 +5177,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a179
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -5097,6 +5213,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a179
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a178
           nombrePersonnelEnAttente: 1
@@ -5122,6 +5239,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a181 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -5149,6 +5267,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:05.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a183
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5189,6 +5308,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a181
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -5211,6 +5331,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a182
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a183
           peutGererFile: true
@@ -5242,6 +5363,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a186 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -5269,6 +5391,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:10.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a188
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5300,6 +5423,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a186
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -5322,6 +5446,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a187
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a188
           peutGererFile: true
@@ -5353,6 +5478,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a190 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -5380,6 +5506,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:13.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages:
             - &a192
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5420,6 +5547,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a190
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -5442,6 +5570,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a191
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a192
           peutGererFile: true
@@ -5473,6 +5602,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a195 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -5500,6 +5630,7 @@ evenements:
             calculeLe: 2026-11-17T21:06:20.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a199
             - &a197
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5549,6 +5680,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a195
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -5571,6 +5703,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a196
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a197
           peutGererFile: true
@@ -5613,6 +5746,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a199
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -5648,6 +5782,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a199
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a197
           nombrePersonnelEnAttente: 1
@@ -5673,6 +5808,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a201 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -5700,6 +5836,7 @@ evenements:
             calculeLe: 2026-11-17T21:10:19.000Z
             clotureLe: 2026-11-17T21:10:19.000Z
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a204
             - &a203
               passageId: 98000000-0000-4000-8000-000000000044
@@ -5731,6 +5868,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a201
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -5753,6 +5891,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a202
           configurationInterface: *a7
+          votes: []
           passagesEnAttente:
             - *a203
           peutGererFile: true
@@ -5795,6 +5934,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a204
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -5830,6 +5970,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a204
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente:
             - *a203
           nombrePersonnelEnAttente: 1
@@ -5855,6 +5996,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a206 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke:
           mancheId: 98000000-0000-4000-8000-000000000002
@@ -5882,6 +6024,7 @@ evenements:
             calculeLe: 2026-11-17T21:10:39.000Z
             clotureLe: null
           configurationInterface: *a7
+          votes: []
           prochainsPassages: &a208 []
           nombreAutresPassages: 0
           lecteurDesigneId: 98000000-0000-4000-8000-000000000062
@@ -5900,6 +6043,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a206
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -5922,6 +6066,7 @@ evenements:
           passagePrioritaireId: null
           courant: *a207
           configurationInterface: *a7
+          votes: []
           passagesEnAttente: []
           peutGererFile: true
           peutReglerLimite: true
@@ -5963,6 +6108,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a208
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -5998,6 +6144,7 @@ evenements:
           configurationInterface: *a7
           prochainsPassages: *a208
           nombreAutresPassages: 0
+          votes: []
           mesPassagesEnAttente: []
           nombrePersonnelEnAttente: 0
           peutRechercher: true
@@ -6022,6 +6169,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: &a210 []
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         karaoke: null
   - nom: manche-terminee — console (68)
@@ -6037,6 +6185,7 @@ evenements:
         modeEnCours: KARAOKE
         joueurs: *a4
         classement: *a210
+        musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
         dernierBuzz: null
         programme:
           - id: 98000000-0000-4000-8000-000000000002
@@ -6370,6 +6519,8 @@ cases:
       delaiConsultationNavigateurMs: 8000
       delaiConfirmationNavigateurMs: 10000
       delaiAppelMs: 0
+      dureeVoteMs: 30000
+      dureeAffichageMoyenneMs: 10000
     valide: false
     correction:
       chemin:
@@ -6393,6 +6544,7 @@ cases:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a98
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -6403,6 +6555,7 @@ cases:
         passagePrioritaireId: null
         courant: *a99
         configurationInterface: *a7
+        votes: []
         prochainsPassages: *a211
         nombreAutresPassages: 0
         lecteurDesigneId: 98000000-0000-4000-8000-000000000061
@@ -6434,6 +6587,7 @@ cases:
         configurationInterface: *a7
         prochainsPassages: *a81
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: *a212
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -6466,6 +6620,7 @@ cases:
         configurationInterface: *a7
         prochainsPassages: *a81
         nombreAutresPassages: 0
+        votes: []
         mesPassagesEnAttente: *a212
         nombrePersonnelEnAttente: 1
         peutRechercher: true
@@ -6496,6 +6651,7 @@ cases:
         passagePrioritaireId: null
         courant: *a76
         configurationInterface: *a7
+        votes: []
         prochainsPassages: *a81
         nombreAutresPassages: 0
         mesPassagesEnAttente: *a212
@@ -6514,6 +6670,7 @@ cases:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a75
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: *a213
       karaoke:
@@ -6525,6 +6682,7 @@ cases:
         passagePrioritaireId: null
         courant: *a76
         configurationInterface: *a7
+        votes: []
         passagesEnAttente: *a214
         peutGererFile: true
         peutReglerLimite: true
@@ -6547,6 +6705,7 @@ cases:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a75
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: *a213
       karaoke:
@@ -6558,6 +6717,7 @@ cases:
         passagePrioritaireId: null
         courant: *a76
         configurationInterface: *a7
+        votes: []
         passagesEnAttente: *a214
         peutGererFile: true
         peutReglerLimite: true
@@ -6584,6 +6744,7 @@ cases:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a25
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 98000000-0000-4000-8000-000000000002
@@ -6594,6 +6755,7 @@ cases:
         passagePrioritaireId: null
         courant: *a26
         configurationInterface: *a7
+        votes: []
         prochainsPassages: *a27
         nombreAutresPassages: 0
         lecteurDesigneId: 98000000-0000-4000-8000-000000000061

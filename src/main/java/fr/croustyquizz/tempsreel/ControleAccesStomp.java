@@ -4,12 +4,9 @@ import java.security.Principal;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import fr.croustyquizz.animateur.AnimateurConnecte;
-import fr.croustyquizz.manche.Acteur;
-import fr.croustyquizz.manche.RefusDeCommande;
-import org.springframework.http.HttpHeaders;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.http.HttpHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageDeliveryException;
@@ -20,16 +17,26 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
-/** Identifie CONNECT et autorise chaque destination ; seul le prototype dev/recette reste anonyme. */
+import fr.croustyquizz.animateur.AnimateurConnecte;
+import fr.croustyquizz.manche.Acteur;
+import fr.croustyquizz.manche.EtatDeSoiree;
+import fr.croustyquizz.manche.RefusDeCommande;
+
+/**
+ * Identifie CONNECT et autorise chaque destination : la session de l'Animateur à chaque SUBSCRIBE pour
+ * une Soirée de son Lieu ; l'abonnement anonyme reste réservé aux canaux de salle de démonstration.
+ */
 @Component
 public final class ControleAccesStomp implements ChannelInterceptor {
 	static final String ACTEUR_ABONNE = "croustyquizz.acteurAbonne";
 	private static final Pattern CANAL_SOIREE = Pattern.compile(
 			"/topic/soirees/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/(salle|console)");
 	private final ResolveurDActeur resolveur;
+	private final EtatDeSoiree soirees;
 	private final boolean prototype;
-	public ControleAccesStomp(ResolveurDActeur resolveur, Environment environnement) {
+	public ControleAccesStomp(ResolveurDActeur resolveur, Environment environnement, EtatDeSoiree soirees) {
 		this.resolveur = resolveur;
+		this.soirees = soirees;
 		prototype = environnement.acceptsProfiles(Profiles.of("dev", "recette"));
 	}
 	@Override
@@ -81,7 +88,8 @@ public final class ControleAccesStomp implements ChannelInterceptor {
 			verifierDestination(entetes, destination, acteur);
 			return;
 		}
-		if (!prototype || !canalDeSoiree || !"salle".equals(canal.group(2))) {
+		if (!prototype || !canalDeSoiree || !"salle".equals(canal.group(2))
+				|| soirees.estEnregistree(UUID.fromString(canal.group(1)))) {
 			throw new MessageDeliveryException("Une authentification est requise.");
 		}
 	}

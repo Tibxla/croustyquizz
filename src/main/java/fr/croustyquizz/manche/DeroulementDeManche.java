@@ -20,5 +20,6 @@ public interface DeroulementDeManche {
 	/** Capture immuable à égalité par valeur, utilisée pour les vues, la persistance et les rappels de minuteur. */
 	Object instantane();
 	boolean estTerminee();
+	/** Cumul des attributions acquises, publiables et restaurées avec l'instantané. */
 	List<AttributionDePoints> points();
 }

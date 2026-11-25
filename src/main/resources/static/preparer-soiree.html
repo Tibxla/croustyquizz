@@ -7,8 +7,6 @@
 	<link rel="stylesheet" href="/css/croustyquizz.css">
 	<link rel="stylesheet" href="/css/console.css">
 	<style>
-		/* Les classes d'affichage (flex, grid) ne doivent pas l'emporter sur l'attribut hidden. */
-		[hidden] { display: none !important; }
 		.preparation { display: grid; gap: var(--espace-4); max-width: 36rem; }
 		.preparation label, .preparation legend { color: var(--texte-2); }
 		.preparation input[type="text"] { font: inherit; padding: var(--espace-3); border-radius: var(--rayon); border: 1px solid var(--fond-4); background: var(--fond-1); color: var(--texte); }
@@ -140,8 +138,9 @@
 				return;
 			}
 			// La clé passe par le fragment, que l'Écran retire dès sa lecture.
-			const fragment = new URLSearchParams({ soiree: acces.corps.soireeId, cle: acces.corps.cleEcran });
-			const adresse = `/ecran-de-salle.html#${fragment}`;
+			const parametres = new URLSearchParams({ soiree: acces.corps.soireeId });
+			const fragment = new URLSearchParams({ cle: acces.corps.cleEcran });
+			const adresse = `/ecran.html?${parametres}#${fragment}`;
 			if (fenetre) fenetre.location.href = adresse; else location.href = adresse;
 		});
 

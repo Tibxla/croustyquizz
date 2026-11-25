@@ -1,5 +1,5 @@
 /**
- * Classement général et Palmarès du Karaoké.
+ * Calcul du Classement général de la Soirée.
  *
  * <p>Propriétaire : Piyakabib.
  */
