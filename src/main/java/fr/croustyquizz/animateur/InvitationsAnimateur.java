@@ -21,6 +21,7 @@ class InvitationsAnimateur {
 
 	private static final Duration DUREE = Duration.ofDays(7);
 	private static final int PLAFOND_PAR_LIEU = 20;
+	private static final String LIEU = "lieuId";
 	private final SecureRandom hasard = new SecureRandom();
 	private final JdbcClient jdbc;
 	private final ComptesAnimateur comptes;
@@ -38,11 +39,11 @@ class InvitationsAnimateur {
 		comptes.verifierEmailDisponible(email);
 		Instant maintenant = horloge.maintenant();
 		// Le verrou du Lieu sérialise ses créations : le plafond ne se franchit pas en parallèle.
-		jdbc.sql("select id from lieu where id = :lieuId for no key update").param("lieuId", lieuId).query(UUID.class).single();
+		jdbc.sql("select id from lieu where id = :lieuId for no key update").param(LIEU, lieuId).query(UUID.class).single();
 		jdbc.sql("delete from invitation_animateur where lieu_id = :lieuId and expire_le <= :maintenant")
-				.param("lieuId", lieuId).param("maintenant", maintenant.atOffset(ZoneOffset.UTC)).update();
+				.param(LIEU, lieuId).param("maintenant", maintenant.atOffset(ZoneOffset.UTC)).update();
 		int enCours = jdbc.sql("select count(*) from invitation_animateur where lieu_id = :lieuId")
-				.param("lieuId", lieuId).query(Integer.class).single();
+				.param(LIEU, lieuId).query(Integer.class).single();
 		if (enCours >= PLAFOND_PAR_LIEU) {
 			throw new Refuse(409, "LIMITE_ATTEINTE",
 					"Ce Lieu a déjà " + PLAFOND_PAR_LIEU + " invitations en cours. Attends qu’elles soient utilisées ou expirées.")
@@ -54,7 +55,7 @@ class InvitationsAnimateur {
 				insert into invitation_animateur (empreinte_cle, lieu_id, email, expire_le)
 				values (:empreinte, :lieuId, :email, :expireLe)
 				""")
-				.param("empreinte", Secrets.empreinte(cle)).param("lieuId", lieuId).param("email", email)
+				.param("empreinte", Secrets.empreinte(cle)).param(LIEU, lieuId).param("email", email)
 				.param("expireLe", expireLe.atOffset(ZoneOffset.UTC)).update();
 		return new InvitationCreee(cle, expireLe);
 	}
