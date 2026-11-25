@@ -699,6 +699,7 @@ classDiagram
         +champ() String
         +concerne(Destination) boolean
         +fournir(UUID, Destination, Map) Object
+        +preparer(UUID) ChampPrepare
     }
     class AssembleurDeVues
     class FournisseurPalmaresKaraoke

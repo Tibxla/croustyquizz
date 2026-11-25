@@ -152,6 +152,17 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 	/** R7 : appelé sous le verrou, dans la transaction de la publication ou dans une lecture propre. */
 	@Override
 	public Object fournir(UUID soireeId, Destination destination, Map<String, Object> partieCommune) {
+		return transition(soireeId);
+	}
+
+	/** La même transition vaut pour la salle, la Console et chaque Manette : une seule lecture par assemblage. */
+	@Override
+	public ChampPrepare preparer(UUID soireeId) {
+		TransitionManche transition = transition(soireeId);
+		return (destination, partieCommune) -> transition;
+	}
+
+	private TransitionManche transition(UUID soireeId) {
 		return lecture.execute(statut -> {
 			var transition = entites.find(TransitionPersistante.class, soireeId);
 			if (transition == null) {

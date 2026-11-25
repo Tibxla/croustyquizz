@@ -46,6 +46,33 @@ class PublicationEtAssemblageTest {
 		assertThatThrownBy(() -> assembleur.capturerSalle(soiree)).isInstanceOf(IllegalStateException.class);
 	}
 
+	@Test
+	void unChampCommunSePrepareUneFoisParAssemblagePourToutesSesDestinations() {
+		var banc = new BancDuSocle();
+		UUID soiree = UUID.randomUUID();
+		banc.creer(soiree);
+		var preparations = new java.util.concurrent.atomic.AtomicInteger();
+		var champ = new FournisseurDeChampCommun() {
+			@Override public String champ() { return "transitionManche"; }
+			@Override public boolean concerne(Destination destination) { return true; }
+			@Override public Object fournir(UUID soireeId, Destination destination, Map<String, Object> partieCommune) {
+				throw new AssertionError("La préparation sert toutes les destinations.");
+			}
+			@Override public ChampPrepare preparer(UUID soireeId) {
+				preparations.incrementAndGet();
+				return (destination, partieCommune) -> "même valeur";
+			}
+		};
+		var destinations = java.util.Set.of(Destination.SALLE, Destination.CONSOLE,
+				Destination.joueur(UUID.randomUUID()), Destination.joueur(UUID.randomUUID()));
+
+		var vues = avecChamps(banc, champ).assembler(soiree, destinations, "manche-terminee");
+
+		assertThat(preparations).hasValue(1);
+		assertThat(vues.values()).hasSize(4)
+				.allSatisfy(vue -> assertThat(vue.champs()).containsEntry("transitionManche", "même valeur"));
+	}
+
 	private static AssembleurDeVues avecChamps(BancDuSocle banc, FournisseurDeChampCommun... champs) {
 		var beans = new StaticListableBeanFactory();
 		for (int i = 0; i < champs.length; i++) {
