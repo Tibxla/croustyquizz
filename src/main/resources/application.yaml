@@ -29,6 +29,9 @@ server:
   forward-headers-strategy: native
 
 croustyquizz:
+  manche:
+    # Transition du Pilotage Automatique entre deux Manches (#123).
+    dureeTransitionSecondes: 15
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30

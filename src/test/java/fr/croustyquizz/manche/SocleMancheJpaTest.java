@@ -126,24 +126,41 @@ class SocleMancheJpaTest {
 				.isEqualTo(json.valueToTree(ReponsesDeCommande.corps(accepte, envoi.route())));
 	}
 
+	static final class PannesDuServiceFactice {
+		final java.util.concurrent.atomic.AtomicBoolean demarrage = new java.util.concurrent.atomic.AtomicBoolean();
+		final java.util.concurrent.atomic.AtomicBoolean enregistrement = new java.util.concurrent.atomic.AtomicBoolean();
+	}
+
 	@TestConfiguration(proxyBeanMethods = false)
 	static class Configuration {
 		@Bean
 		@org.springframework.context.annotation.Primary
 		HorlogeFactice horlogeFacticeJpa() { return new HorlogeFactice(); }
 
+		/** Pannes à la demande du service factice, pour les échecs de l'enchaînement automatique (#123). */
 		@Bean
-		ServiceDeManche<?, ?> serviceFacticeJpa(SocleDeManche socle, EntityManager entites, JsonMapper json) {
+		PannesDuServiceFactice pannesDuServiceFactice() { return new PannesDuServiceFactice(); }
+
+		@Bean
+		ServiceDeManche<?, ?> serviceFacticeJpa(SocleDeManche socle, EntityManager entites, JsonMapper json,
+				PannesDuServiceFactice pannes) {
 			var fabrique = new ModeFacticeDuSocle();
 			PersistanceDuMode<DeroulementFactice.Etat> persistance = new PersistanceDuMode<>() {
 				public DeroulementFactice.Etat charger(UUID mancheId) {
 					return json.readValue(entites.find(EtatFacticePersistant.class, mancheId).getDonnees(), DeroulementFactice.Etat.class);
 				}
 				public void enregistrer(UUID mancheId, Object instantane) {
+					if (pannes.enregistrement.get()) { throw new IllegalStateException("Panne d'enregistrement du mode factice"); }
 					entites.merge(new EtatFacticePersistant(mancheId, json.writeValueAsString(instantane)));
 				}
 			};
-			return new ServiceDeManche<>(fabrique, persistance, socle);
+			return new ServiceDeManche<>(fabrique, persistance, socle) {
+				@Override
+				public ResultatDeCommande demarrer(UUID mancheId, EnvoiDeCommande envoi) {
+					if (pannes.demarrage.get()) { throw new IllegalStateException("Panne de démarrage du mode factice"); }
+					return super.demarrer(mancheId, envoi);
+				}
+			};
 		}
 
 		@Bean
