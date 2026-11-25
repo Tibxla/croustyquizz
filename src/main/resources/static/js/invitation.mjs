@@ -1,5 +1,6 @@
 import { appeler, appelerAvecCsrf, memoire } from './api.js';
 import { ouvrirDialogue } from './dialogue.mjs';
+import { ROUTE_SESSION } from './compte.mjs';
 import { afficherErreurChamp, erreurDeCompte, validerChamps } from './formulaire-compte.mjs';
 
 const INVITATIONS = '/api/animateurs/invitations';
@@ -74,7 +75,7 @@ export function monterInvitationConsole(bouton, dialogue, origine = location.ori
 }
 
 // La clé arrive dans le fragment : elle est rangée dans l'onglet puis retirée de l'adresse et de l'historique,
-// comme la clé d'Écran ; un rechargement la retrouve dans l'onglet.
+// comme la clé d'Écran ; un rechargement la retrouve dans l'onglet, jusqu'à ce qu'elle ne serve plus.
 const CLE_ONGLET = 'croustyquizz.invitation';
 export function lireCleInvitation(navigation, memoire = globalThis.sessionStorage, historique = globalThis.history) {
 	const depuisFragment = new URLSearchParams(navigation.hash.slice(1)).get('cle');
@@ -86,16 +87,53 @@ export function lireCleInvitation(navigation, memoire = globalThis.sessionStorag
 	try { return memoire?.getItem(CLE_ONGLET) ?? null; } catch { return null; }
 }
 
-export async function monterInvitationInvite(racine, navigation = location) {
+function oublierCleInvitation(memoire) {
+	try { memoire?.removeItem(CLE_ONGLET); } catch { /* stockage indisponible */ }
+}
+
+export async function monterInvitationInvite(racine, navigation = location, onglet = globalThis.sessionStorage) {
 	const statut = racine.querySelector('[role="status"]');
-	const cle = lireCleInvitation(navigation);
+	const cle = lireCleInvitation(navigation, onglet);
 	if (!FORME_CLE.test(cle)) {
+		oublierCleInvitation(onglet);
 		statut.textContent = LIEN_INVALIDE;
 		return;
 	}
 	statut.textContent = 'Vérification de l’invitation…';
+	// Accepter ouvrirait la session du nouveau compte à la place de celle-ci, Console ouverte comprise.
+	const session = await appeler('GET', ROUTE_SESSION);
+	if (session.statut === 200 && session.corps?.id) {
+		demanderDeconnexion(racine, session.corps.nom, () => ouvrirInvitation(racine, navigation, onglet, cle));
+		return;
+	}
+	await ouvrirInvitation(racine, navigation, onglet, cle);
+}
+
+function demanderDeconnexion(racine, nom, continuer) {
+	const statut = racine.querySelector('[role="status"]');
+	const bouton = racine.querySelector('[data-deconnexion]');
+	statut.textContent = `Ce navigateur est connecté au compte de ${nom}. Déconnecte-toi pour rejoindre ce Lieu avec un nouveau compte.`;
+	bouton.hidden = false;
+	bouton.addEventListener('click', async () => {
+		if (bouton.disabled) return;
+		bouton.disabled = true;
+		const sortie = await appelerAvecCsrf('DELETE', ROUTE_SESSION);
+		bouton.disabled = false;
+		if (!sortie.ok && sortie.statut !== 401) {
+			statut.textContent = 'Impossible de confirmer la déconnexion. Réessaie.';
+			return;
+		}
+		bouton.hidden = true;
+		await continuer();
+	});
+}
+
+async function ouvrirInvitation(racine, navigation, onglet, cle) {
+	const statut = racine.querySelector('[role="status"]');
+	statut.textContent = 'Vérification de l’invitation…';
 	const invitation = await appeler('POST', `${INVITATIONS}/consultation`, { corps: { cle } });
 	if (invitation.statut !== 200 || !invitation.corps?.nomLieu) {
+		if (invitation.code === 'INVITATION_INVALIDE') oublierCleInvitation(onglet);
 		statut.textContent = invitation.code === 'INVITATION_INVALIDE' ? LIEN_INVALIDE
 			: 'Impossible de vérifier l’invitation. Recharge cette page pour réessayer.';
 		return;
@@ -115,6 +153,16 @@ export async function monterInvitationInvite(racine, navigation = location) {
 	for (const champ of [nom, motDePasse]) {
 		champ.addEventListener('input', () => afficherErreurChamp(champ, ''));
 	}
+	// La clé ne sert plus : le formulaire laisse la place au seul message, annoncé et focalisé.
+	function conclure(texte, lien = null) {
+		oublierCleInvitation(onglet);
+		formulaire.hidden = true;
+		motDePasse.value = '';
+		statut.textContent = texte;
+		if (lien) statut.append(lien);
+		statut.hidden = false;
+		statut.focus();
+	}
 	formulaire.addEventListener('submit', async evenement => {
 		evenement.preventDefault();
 		if (bouton.disabled) return;
@@ -127,21 +175,19 @@ export async function monterInvitationInvite(racine, navigation = location) {
 		});
 		if (reponse.statut === 201 && reponse.corps?.id) {
 			motDePasse.value = '';
+			oublierCleInvitation(onglet);
 			if (memoire.lire('croustyquizz.jeton')?.startsWith('demo:ANIMATEUR:')) memoire.oublier('croustyquizz.jeton');
 			navigation.replace('/preparer-soiree.html');
 			return;
 		}
 		bouton.textContent = 'Rejoindre le Lieu';
 		if (reponse.code === 'INVITATION_INVALIDE') {
-			formulaire.hidden = true;
-			motDePasse.value = '';
-			statut.textContent = LIEN_INVALIDE;
-			statut.hidden = false;
-			statut.focus();
+			conclure(LIEN_INVALIDE);
 		} else if (reponse.code === 'EMAIL_DEJA_UTILISE') {
-			motDePasse.value = '';
-			afficherErreurChamp(emailInvite, erreurDeCompte(reponse.code).texte);
-			emailInvite.focus();
+			const connexion = statut.ownerDocument.createElement('a');
+			connexion.href = '/connexion.html';
+			connexion.textContent = 'te connecter avec ce compte';
+			conclure(`Un compte existe déjà pour ${email} : `, connexion);
 		} else {
 			erreur.textContent = erreurDeCompte(reponse.code).texte;
 			erreur.hidden = false;
