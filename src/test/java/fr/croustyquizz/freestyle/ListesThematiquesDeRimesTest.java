@@ -1,7 +1,12 @@
 package fr.croustyquizz.freestyle;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -46,5 +51,34 @@ class ListesThematiquesDeRimesTest {
 
         assertThat(dictionnaire.rimesDe("croustimolle")).isEmpty();
         assertThat(dictionnaire.rimesDe(" ")).isEmpty();
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "néon\tn  e ɔ̃\t55",
+        "néon\tn\t55",
+        "néon\t\t55"
+    })
+    void situeUneTerminaisonSansVoyelleDesLaLecture(String ligneInvalide) {
+        String contenu = "mot\tterminaison\tfréquence\nsoirée\ta ʁ e\t98\n" + ligneInvalide + "\n";
+
+        assertThatThrownBy(() -> lire(contenu))
+                .isInstanceOf(IOException.class).hasMessageContaining("essai.tsv:3")
+                .rootCause().hasMessageContaining("néon");
+    }
+
+    @Test
+    void lesEntreesDUneListePortentLeurTheme() throws IOException {
+        List<EntreePhonetique> entrees = lire("mot\tterminaison\tfréquence\nsoirée\ta ʁ e\t98\n");
+
+        assertThat(entrees).singleElement().satisfies(entree -> {
+            assertThat(entree.theme()).isEqualTo(ThemeDeRimes.SOIREE);
+            assertThat(entree.famille()).containsExactly("e");
+        });
+    }
+
+    private static List<EntreePhonetique> lire(String contenu) throws IOException {
+        return ListesThematiquesDeRimes.lire(new BufferedReader(new StringReader(contenu)), "essai.tsv",
+                ThemeDeRimes.SOIREE);
     }
 }
