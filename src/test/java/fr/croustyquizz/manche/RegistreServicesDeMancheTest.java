@@ -14,7 +14,10 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
-/** Routage d'une Manche vers le service de son mode (#240), sans Spring. */
+/**
+ * Routage d'une Manche vers le service de son mode (#240), sans Spring. Les faux notent si la lecture tourne dans une
+ * transaction en lecture seule, ce que {@code StockageMancheFactice} ne permet pas d'observer.
+ */
 class RegistreServicesDeMancheTest {
 	private static final UUID SOIREE = new UUID(0, 1);
 	private static final Instant CREEE_LE = Instant.parse("2026-11-25T20:00:00Z");
