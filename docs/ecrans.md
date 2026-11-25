@@ -196,40 +196,40 @@ dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
    ```
 
    La fiche JSON complète ou remplace les champs déduits du nom. Sans
-   renseignement, le départ du beat vaut 0 ms. Choisis des fichiers plus
-   longs que la Grille retenue, introduction comprise.
+   renseignement, le départ du beat vaut 0 ms. L’Écran de salle mesure la
+   durée de chaque fichier et écarte celui dont la durée reste inconnue.
+   Ajoute un fichier plus court que la Grille retenue, introduction
+   comprise : la Console doit refuser une Manche qui le sélectionne
+   (`INSTRUMENTALE_TROP_COURTE`), et le tirage « Au hasard » ne le propose
+   jamais.
 
 2. Ouvre l’Écran de salle, clique **Choisir le dossier de musique** et
    sélectionne le dossier parent. Vérifie le nombre d’Instrumentales
    déclarées. Essaie un troisième fichier sans tempo exploitable et vérifie
-   que sa fiche est écartée. Après un refus ou une confirmation inconnue,
-   le bouton de réessai renvoie la même déclaration avec la même clé.
+   que sa fiche est écartée. Après une confirmation inconnue ou une erreur
+   5xx, le bouton de réessai renvoie la même déclaration avec la même clé.
+   Un refus 4xx est définitif : choisis à nouveau le dossier. Ouvre un
+   second Écran de salle et choisis-y le même dossier : il devient le
+   lecteur désigné et joue seul l’Instrumentale, tandis que le premier
+   affiche la Grille sans son et l’indique.
 
 3. Dans la Console, sélectionne **Freestyle**, puis règle le thème, le
    schéma, la difficulté, le nombre de mesures (8, 16 ou 32) et les
    Instrumentales proposées. Utilise **Actualiser le catalogue** si le
    dossier a changé depuis l’ouverture du formulaire. Ajoute la Manche.
-   Pour la recette sur cette branche, démarre la Manche par la route de
-   démonstration `POST /api/test/soirees/{soireeId}/manches/{mancheId}/demarrer`
-   avec l’identité Animateur et un `Idempotency-Key`. Le lancement complet
-   d’une Soirée enregistrée relève de #12. Deux parcours sont possibles :
+   Deux parcours sont possibles :
 
    - Avec les identités de démonstration décrites en haut de cette page,
      crée la Manche par `POST /api/test/soirees/{soireeId}/manches` avec
-     le même corps que `ajouterManche`, après la déclaration du dossier.
+     le même corps que `ajouterManche`, après la déclaration du dossier,
+     puis démarre-la par `POST /api/test/soirees/{soireeId}/manches/{mancheId}/demarrer`
+     avec l’identité Animateur et un `Idempotency-Key`.
    - Pour vérifier le Programme de la Console, utilise une Soirée enregistrée
      et la clé de son Écran de salle. Après avoir préparé la Manche, ouvre
-     la Soirée, fais rejoindre deux Joueurs, puis simule le lancement comme
-     dans le test de bout en bout, sur ta base locale de recette :
-
-     ```sql
-     UPDATE soiree
-     SET etat = 'EN_COURS', debutee_le = now()
-     WHERE id = '<UUID de la Soirée>'::uuid AND etat = 'OUVERTE';
-     ```
-
-     Appelle ensuite la route de démarrage de démonstration avec l’identifiant
-     de la Manche ajoutée dans le Programme.
+     la Soirée, fais rejoindre deux Joueurs, puis lance-la depuis la Console
+     avec « Lancer la Soirée ». Ce bouton vient de #12, fusionné dans
+     `develop` après la création de cette branche : il y sera disponible
+     à sa prochaine mise à jour depuis `develop`.
 
 4. Inscris un Passage depuis une Manette en choisissant un titre, puis
    essaie **Au hasard** depuis une autre. En Pilotage manuel, l’Animateur
@@ -243,9 +243,13 @@ dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
 5. Mets en pause puis reprends la Manche. Vérifie que la balle et la
    Grille se figent, que la Musique d’attente reste suspendue, et que la
    reprise recale la lecture. Coupe puis rétablis la connexion pendant un
-   Passage. La capture reprend à la position courante, sans rejouer
-   l’animation d’appel. Vérifie aussi **Passer** avec un fichier devenu
-   indisponible et le retour de la Musique d’attente après l’arrêt.
+   Passage : l’Instrumentale continue de jouer pendant la coupure, puis la
+   capture la recale sur la position du serveur sans pause et sans rejouer
+   l’animation d’appel. Si le fichier s’arrête avant la fin prévue, la
+   dernière mesure reste affichée et la Musique d’attente ne reprend
+   qu’à la fin du Passage. Vérifie aussi **Passer** avec un fichier devenu
+   indisponible, le retour de la Musique d’attente après l’arrêt et le
+   bouton **Retirer** d’un Passage en attente sur la Console.
 
 6. Laisse un Passage arriver à sa fin prévue. Vote d’une autre Manette
    avec une note de 1 à 5. Termine la Manche depuis la Console. Vérifie
