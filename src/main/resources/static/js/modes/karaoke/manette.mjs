@@ -11,7 +11,9 @@ export function monter(zones, contexte) {
 	const titreScene = e('h2', '', 'En scène'); titreScene.tabIndex = -1;
 	const scene = e('div', 'karaoke__scene-manette'); scene.hidden = true;
 	ui.principale.append(scene);
-	const enregistrements = installerEnregistrementsManette(ui);
+	// Le titre de la scène ou de la liste reçoit le focus quand le bouton d'Enregistrement disparaît.
+	const enregistrements = installerEnregistrementsManette(ui,
+		{ repli: commandes => (commandes && scene.contains(commandes) ? titreScene : titre) });
 	const titre = e('h2', '', 'Tes Passages'); titre.tabIndex = -1;
 	const personnels = e('div', 'karaoke__personnels');
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
@@ -135,10 +137,11 @@ export function monter(zones, contexte) {
 		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
 		autres.hidden = !ui.bloc.nombreAutresPassages;
 		catalogue.rendre();
+		enregistrements.restaurerFocus();
 	};
 	ui.surManche = () => {
 		votes.reinitialiser();
-		enregistrements.detruire();
+		enregistrements.reinitialiser();
 		dernierCourant = undefined; descriptionTicket = undefined;
 		catalogue.reinitialiser(); invalidation.textContent = '';
 	};
