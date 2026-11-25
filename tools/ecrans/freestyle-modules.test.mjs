@@ -379,6 +379,34 @@ test('la Manette invite des Joueurs présents et répond à une Invitation reçu
 	} finally { banc.module.demonter(); }
 });
 
+test('une inscription acceptée décoche les invités, et un refus les garde pour corriger', async () => {
+	const banc = creerBanc(monterManette);
+	try {
+		banc.connecter('synchronisee');
+		const joueurs = [{ id: 'j', pseudo: 'Jo' }, { id: 'i', pseudo: 'Inès' }, { id: 'z', pseudo: 'Zoé' }];
+		const afficher = () => banc.module.afficher({ ...vue({ peutInscrire: true }), joueurs }, capture);
+		afficher();
+		const cocher = () => { const cases = banc.principale.querySelectorAll('input'); cases[1].checked = true; };
+		const coches = () => banc.principale.querySelectorAll('input').filter(c => c.checked).map(c => c.value);
+		cocher();
+		bouton(banc, 'M’inscrire').click();
+		banc.appels[0].resolve({ statut: 422, corps: { code: 'DONNEES_INVALIDES', detail: 'Invitation impossible.' } });
+		await terminerMicrotaches();
+		afficher();
+		assert.deepEqual(coches(), ['z'], 'un refus garde les invités choisis');
+		bouton(banc, 'M’inscrire').click();
+		assert.deepEqual(banc.appels[1].args[2].invitesIds, ['z']);
+		banc.appels[1].resolve({ statut: 201, corps: { passageId: 'p' } });
+		await terminerMicrotaches();
+		assert.deepEqual(coches(), [], 'la prochaine inscription ne réinvite personne en silence');
+		afficher();
+		assert.deepEqual(coches(), []);
+		cocher();
+		afficher();
+		assert.deepEqual(coches(), ['z'], 'un nouveau choix survit au rendu suivant');
+	} finally { banc.module.demonter(); }
+});
+
 test('seule la Manette annoncée vibre, une fois, à l’événement d’annonce', () => {
 	const vibrations = [];
 	const banc = creerBanc(monterManette);

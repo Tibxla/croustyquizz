@@ -22,7 +22,7 @@ export function monter(zones, contexte) {
 	const label = e('label', '', 'Instrumentale'); label.setAttribute('for', choix.id);
 	const inscription = envoi => envoi.commande.type === 'INSCRIRE_FREESTYLE';
 	const moi = contexte.acteur.identifiant;
-	let invites, signatureInvites;
+	let invites, signatureInvites, inscriptionVidee;
 	const zoneInvites = e('div');
 	const envoyer = bouton('M’inscrire', () => {
 		const invitesIds = invites?.choisis() ?? [];
@@ -58,9 +58,13 @@ export function monter(zones, contexte) {
 			vibrations.add(cle);
 			ui.document.defaultView?.navigator?.vibrate?.(200);
 		}
+		const envoi = ui.dernierEnvoi(inscription);
+		// Une inscription acceptée a déjà invité ces Joueurs : la suivante repart sans invité coché.
+		const viderInvites = envoi?.etat === 'accepte' && envoi.cle !== inscriptionVidee;
+		if (viderInvites) inscriptionVidee = envoi.cle;
 		const candidats = invitesPossibles(ui.joueurs, moi).map(j => `${j.id}:${j.pseudo}`).join();
-		if (candidats !== signatureInvites) {
-			const choisis = invites?.choisis() ?? [];
+		if (candidats !== signatureInvites || viderInvites) {
+			const choisis = viderInvites ? [] : invites?.choisis() ?? [];
 			invites = creerChoixInvites(ui, moi, { verbe: 'Rapper', choisis });
 			zoneInvites.replaceChildren(...(invites ? [invites.element] : []));
 			signatureInvites = candidats;
@@ -78,7 +82,6 @@ export function monter(zones, contexte) {
 			choix.value = disponibles.some(fiche => fiche.instrumentaleId === precedent) ? precedent : '';
 			choixPrecedents = signature;
 		}
-		const envoi = ui.dernierEnvoi(inscription);
 		const enCours = envoi?.etat === 'en-cours';
 		// Sans confirmation, un nouvel envoi pourrait doubler l'inscription : seul le réessai du même envoi reste permis.
 		const aConfirmer = ['inconnu', 'indisponible'].includes(envoi?.etat);
