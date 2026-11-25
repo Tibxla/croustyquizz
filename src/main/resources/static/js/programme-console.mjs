@@ -23,6 +23,7 @@ export function monterProgramme(panneau, contexte) {
 	const mode = choixMode.champ;
 	const nombre = champAvecErreur('nombre-etapes');
 	const temps = champAvecErreur('temps-par-etape');
+	const erreurAjout = element('ajout-manche-erreur');
 	const ajout = element('soumettre-manche');
 	const liste = element('programme');
 	const route = `/api/soirees/${contexte.soireeId}`;
@@ -76,6 +77,8 @@ export function monterProgramme(panneau, contexte) {
 			erreur.textContent = '';
 			champ.removeAttribute('aria-invalid');
 		}
+		erreurAjout.hidden = true;
+		erreurAjout.textContent = '';
 	}
 
 	function signalerChamp({ champ, erreur }, message) {
@@ -108,9 +111,10 @@ export function monterProgramme(panneau, contexte) {
 			reglages = { nombreEtapes, tempsParEtapeSecondes };
 		}
 		void modifier('POST', '/manches', { mode: modeDemande, reglages }, reponse => {
-			// Le refus ne désigne pas de champ. Le premier réglage visible sert de point de reprise.
-			const saisie = modeDemande === 'QUIZ' && mode.value === modeDemande ? nombre : choixMode;
-			signalerChamp(saisie, reponse?.detail || 'Vérifie le Mode de jeu et les réglages de la Manche.');
+			// Le Probleme ne désigne aucun champ : le refus s'affiche sous le formulaire, sans en marquer un,
+			// et s'annonce par son rôle alert. Le focus reste où l'Animateur l'a laissé.
+			erreurAjout.textContent = reponse?.detail || 'Vérifie le Mode de jeu et les réglages de la Manche.';
+			erreurAjout.hidden = false;
 		});
 	}
 

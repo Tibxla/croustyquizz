@@ -31,23 +31,29 @@ function banc() {
 	nombre.setAttribute('max', '100');
 	temps.setAttribute('min', '1');
 	temps.setAttribute('max', '3600');
+	const erreurAjout = creer('ajout-manche-erreur', 'p', formulaire);
+	erreurAjout.id = 'ajout-manche-erreur';
+	erreurAjout.hidden = true;
 	const ajout = creer('soumettre-manche', 'button', formulaire);
+	ajout.setAttribute('aria-describedby', erreurAjout.id);
+	const ailleurs = creer('ailleurs', 'button', document.body);
 	const liste = creer('programme', 'ol');
 	const programmeFige = creer('programme-fige', 'p');
 	creer('programme-vide', 'p');
 	const appels = [];
 	const annonces = [];
 	let captures = 0;
-	const { contexte, changerEtat } = creerContexte({
+	const contexteCree = creerContexte({
 		soireeId: 's',
 		envoyer: (...args) => new Promise((resoudre, rejeter) => appels.push({ args, resoudre, rejeter })),
 		resynchroniser: () => captures++,
 		surEnvoi: etat => annonces.push(etat),
 	});
+	const { contexte, changerEtat } = contexteCree;
 	const programme = monterProgramme(panneau, contexte);
 	return {
-		ajout, annonces, appels, communs, document, erreurs, formulaire, liste, mode, nombre, programmeFige, temps, programme,
-		captures: () => captures, connecter: changerEtat,
+		ailleurs, ajout, annonces, appels, communs, contexte, document, erreurAjout, erreurs, formulaire, liste, mode, nombre,
+		programmeFige, temps, programme, captures: () => captures, connecter: changerEtat,
 		afficher: (manches, etat = 'PREPARATION') => programme.afficher({ soiree: { etat }, programme: manches }),
 	};
 }
@@ -91,7 +97,7 @@ test('guide la correction des réglages du Quiz avant tout envoi', () => {
 	assert.equal(b.temps.getAttribute('aria-invalid'), null);
 });
 
-test('affiche un refus HTTP 400 de l’ajout sous un champ visible de la Manche', async () => {
+test('affiche un refus HTTP 400 de l’ajout sous le formulaire, sans marquer de champ', async () => {
 	const b = banc();
 	b.afficher([]);
 	b.connecter('synchronisee');
@@ -101,30 +107,46 @@ test('affiche un refus HTTP 400 de l’ajout sous un champ visible de la Manche'
 	b.temps.value = '25';
 	const detail = 'Le Mode de jeu ou les réglages de la Manche sont invalides.';
 
+	b.ajout.focus();
 	b.formulaire.dispatchEvent({ type: 'submit' });
 	b.appels[0].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail } });
 	await terminerMicrotaches();
-	const erreurNombre = b.erreurs['nombre-etapes'];
-	assert.equal(erreurNombre.hidden, false);
-	assert.equal(erreurNombre.textContent, detail);
-	assert.equal(b.nombre.getAttribute('aria-invalid'), 'true');
-	assert.equal(b.document.activeElement === b.nombre, true);
+	assert.equal(b.erreurAjout.hidden, false);
+	assert.equal(b.erreurAjout.textContent, detail);
+	assert.equal(b.ajout.getAttribute('aria-describedby'), b.erreurAjout.id);
+	for (const [nom, champ] of [['mode-manche', b.mode], ['nombre-etapes', b.nombre], ['temps-par-etape', b.temps]]) {
+		assert.equal(b.erreurs[nom].hidden, true, nom);
+		assert.equal(champ.getAttribute('aria-invalid'), null, nom);
+	}
+	assert.equal(b.document.activeElement === b.ajout, true, 'le focus reste sur le bouton d’ajout');
 	assert.deepEqual(b.annonces, ['en-cours', null]);
 	assert.equal(b.captures(), 0);
 
 	b.mode.value = 'KARAOKE';
 	b.mode.dispatchEvent({ type: 'change' });
-	assert.equal(erreurNombre.hidden, true);
-	assert.equal(b.nombre.getAttribute('aria-invalid'), null);
+	assert.equal(b.erreurAjout.hidden, true);
+	assert.equal(b.erreurAjout.textContent, '');
 	b.formulaire.dispatchEvent({ type: 'submit' });
-	b.appels[1].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail } });
+	b.appels[1].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE' } });
 	await terminerMicrotaches();
-	const erreurMode = b.erreurs['mode-manche'];
-	assert.equal(erreurMode.hidden, false);
-	assert.equal(erreurMode.textContent, detail);
-	assert.equal(b.mode.getAttribute('aria-describedby'), erreurMode.id);
-	assert.equal(b.mode.getAttribute('aria-invalid'), 'true');
-	assert.equal(b.document.activeElement === b.mode, true);
+	assert.equal(b.erreurAjout.hidden, false);
+	assert.equal(b.erreurAjout.textContent, 'Vérifie le Mode de jeu et les réglages de la Manche.');
+	assert.equal(b.mode.getAttribute('aria-invalid'), null);
+});
+
+test('un refus HTTP 400 tardif ne ramène pas le focus dans le formulaire', async () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'KARAOKE';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.ajout.focus();
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	b.ailleurs.focus();
+	b.appels[0].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail: 'Refusé.' } });
+	await terminerMicrotaches();
+	assert.equal(b.erreurAjout.textContent, 'Refusé.');
+	assert.equal(b.document.activeElement === b.ailleurs, true);
 });
 
 test('ajoute les réglages communs du Quiz, puis laisse la vue synchronisée afficher la Manche', async () => {
