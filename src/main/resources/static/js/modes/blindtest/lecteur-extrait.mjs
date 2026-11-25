@@ -1,13 +1,16 @@
-import { aligner, extraitJouable } from './logique.mjs';
+import { aligner, DUREE_EXTRAIT_MS, extraitJouable } from './logique.mjs';
 
 /** Une seule fenêtre de salle lit l'extrait : celle qui tient ce verrou, de son élection au démontage. */
+/** En deçà de cette marge, l'extrait est considéré comme fini : la Révélation ne le relance pas. */
+const MARGE_FIN_MS = 250;
 export const VERROU_EXTRAIT = 'croustyquizz:son:extrait-blindtest';
 
 /**
  * Lecteur de l'extrait sur l'Écran de salle. Il réserve le son de Manche auprès de la coquille dès qu'une Manche est
  * affichée (la Musique d'attente se tait jusqu'au démontage), puis suit l'état de lecture publié sans rien signaler
  * au serveur. Parmi les fenêtres dont le son est activé, la première qui obtient le verrou joue ; les autres restent
- * muettes et prennent la relève si elle se ferme.
+ * muettes et prennent la relève si elle se ferme. Pendant la Révélation, la fenêtre qui jouait laisse l'extrait aller
+ * jusqu'à sa fin, pour l'ambiance : la vue ne porte plus de lecture, la salle continue d'où elle était.
  */
 export function creerLecteurExtrait({ audio, verrous, signalerSonDeManche, sonActive, maintenantServeur,
 	surBlocage = () => {}, surLecture = () => {} }) {
@@ -37,6 +40,20 @@ export function creerLecteurExtrait({ audio, verrous, signalerSonDeManche, sonAc
 		lienCharge = undefined;
 	}
 
+	/**
+	 * Révélation : l'extrait déjà chargé continue d'où il était, en pause avec la Manche. Rien ne reprend après un
+	 * rechargement (plus de lien dans la vue), ni sur un extrait arrivé au bout.
+	 */
+	async function prolonger(t) {
+		const reste = lienCharge && elue && !audio.termine() && audio.position() < DUREE_EXTRAIT_MS - MARGE_FIN_MS;
+		if (!reste) { arreter(); return; }
+		if (bloc.etat === 'EN_PAUSE') { audio.pause(); return; }
+		try {
+			await audio.lire();
+			if (t === tour && !detruit) surLecture();
+		} catch (erreur) { if (t === tour && !detruit) surBlocage(erreur); }
+	}
+
 	async function suivre(nouveau) {
 		if (detruit || !nouveau) return;
 		bloc = nouveau;
@@ -44,6 +61,7 @@ export function creerLecteurExtrait({ audio, verrous, signalerSonDeManche, sonAc
 		signale = true;
 		const autorise = await signalerSonDeManche(true);
 		if (t !== tour || detruit) return;
+		if (bloc.phase === 'REVELATION') { await prolonger(t); return; }
 		if (!extraitJouable(bloc)) { arreter(); return; }
 		candidater();
 		if (!elue || !autorise) { arreter(); return; }
@@ -88,6 +106,7 @@ export function creerAudioExtrait(document) {
 		lire: () => element.play(),
 		pause: () => element.pause(),
 		position: () => element.currentTime * 1000,
+		termine: () => element.ended,
 		aller(ms) { element.currentTime = ms / 1000; },
 		arreter() {
 			element.pause();

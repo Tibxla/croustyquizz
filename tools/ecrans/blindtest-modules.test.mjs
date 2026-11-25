@@ -50,6 +50,7 @@ function bancEcran(document = creerDocument(), { sonActive = true } = {}) {
 	const journal = [], signaux = [], abonnes = new Set();
 	let position = 0;
 	const audio = {
+		termine: () => false,
 		charger: lien => journal.push(`charger ${lien}`), lire: async () => { journal.push('lire'); },
 		pause: () => journal.push('pause'), position: () => position,
 		aller: ms => { position = ms; journal.push(`aller ${ms}`); }, arreter: () => journal.push('arrêter'),
@@ -218,10 +219,12 @@ test('Écran rechargé : l’extrait reprend à la bonne position, ou reste en p
 test('Écran : le Buzz, la partie trouvée et la Révélation s’animent sur un événement', async () => {
 	const b = bancEcran();
 	b.module.afficher(vueSalle('PROPOSITION', { lecture: lectureEnPause(5000), main: mainDe('lea', 'Léa') }), evenement('buzz-recu'));
+	await terminerMicrotaches();
 	assert.equal(b.principale.querySelector('.blindtest__main').classList.contains('blindtest--arrivee'), true);
 	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(5000, T0 + 3000),
 		partiesTrouvees: [{ partie: 'ARTISTE', valeur: 'Beyoncé', joueurId: 'lea', pseudo: 'Léa', points: 30 }] }),
 	evenement('proposition-jugee'));
+	await terminerMicrotaches();
 	assert.equal(texte(b.laterale.querySelector('.blindtest__parties')), 'Artiste trouvé par Léa : Beyoncé');
 	assert.equal(b.laterale.querySelector('.blindtest__parties').classList.contains('blindtest--arrivee'), true);
 	b.module.afficher(vueSalle('REVELATION', { revelation: { titre: 'Halo', artiste: 'Beyoncé',
@@ -232,7 +235,7 @@ test('Écran : le Buzz, la partie trouvée et la Révélation s’animent sur un
 	assert.equal(revelation.classList.contains('blindtest--arrivee'), true);
 	assert.match(texte(revelation), /HaloBeyoncé/);
 	assert.equal(revelation.querySelector('img').getAttribute('alt'), 'Pochette de Halo');
-	assert.equal(b.journal.at(-1), 'arrêter', 'La Révélation arrête l’extrait.');
+	assert.equal(b.journal.at(-1), 'lire', 'La Révélation laisse l’extrait finir, pour l’ambiance.');
 	assert.equal(b.signaux.includes(false), false, 'La Musique d’attente reste muette jusqu’à la fin de la Manche.');
 	b.module.demonter();
 });

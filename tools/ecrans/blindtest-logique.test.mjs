@@ -135,8 +135,9 @@ function verrousPartages() {
 
 function fenetre(verrous, { sonActive = true, maintenant = T0 } = {}) {
 	const journal = [], signaux = [];
-	let position = 0, autorise = true;
+	let position = 0, autorise = true, termine = false;
 	const audio = {
+		termine: () => termine,
 		charger: lien => journal.push(`charger ${lien}`),
 		lire: async () => { journal.push('lire'); },
 		pause: () => journal.push('pause'),
@@ -148,7 +149,8 @@ function fenetre(verrous, { sonActive = true, maintenant = T0 } = {}) {
 	const lecteur = creerLecteurExtrait({ audio, verrous,
 		signalerSonDeManche: async actif => { signaux.push(actif); return actif && autorise; },
 		sonActive: () => etat.sonActive, maintenantServeur: () => etat.maintenant });
-	return { lecteur, journal, signaux, etat, regler: p => { position = p; }, refuser() { autorise = false; } };
+	return { lecteur, journal, signaux, etat, regler: p => { position = p; }, refuser() { autorise = false; },
+		finir() { termine = true; } };
 }
 
 test('restauration : la fenêtre élue reprend l’extrait à la position publiée, ou le laisse en pause', async () => {
@@ -200,15 +202,41 @@ test('sans son activé, la fenêtre ne se porte pas candidate ; elle le fait qua
 	assert.equal(f.journal.at(-1), 'lire');
 });
 
-test('la Révélation arrête l’extrait mais garde le son de Manche jusqu’au démontage', async () => {
-	const f = fenetre(verrousPartages());
-	await f.lecteur.suivre(bloc('EXTRAIT', enLecture(0)));
+const revelation = (etat = 'EN_COURS') => ({ phase: 'REVELATION', etat, lecture: null, lienExtrait: null });
+
+test('la Révélation laisse l’extrait aller jusqu’à sa fin, en pause avec la Manche, puis le Morceau suivant l’arrête', async () => {
+	const f = fenetre(verrousPartages(), { maintenant: T0 + 9000 });
+	await f.lecteur.suivre(bloc('PROPOSITION', enPause(9000)));
 	await terminerMicrotaches();
-	await f.lecteur.suivre({ phase: 'REVELATION', lecture: null, lienExtrait: null });
+	assert.equal(f.journal.at(-1), 'pause', 'La Proposition met l’extrait en pause.');
+
+	await f.lecteur.suivre(revelation());
+	assert.equal(f.journal.at(-1), 'lire', 'Les deux parties trouvées : l’extrait reprend d’où il était.');
+	assert.equal(f.journal.filter(ligne => ligne.startsWith('aller')).length, 1, 'Aucun déplacement : rien à aligner.');
+	await f.lecteur.suivre(revelation('EN_PAUSE'));
+	assert.equal(f.journal.at(-1), 'pause');
+	await f.lecteur.suivre(revelation());
+	assert.equal(f.journal.at(-1), 'lire');
+
+	await f.lecteur.suivre({ phase: 'PREPARATION', etat: 'EN_COURS', lecture: null, lienExtrait: null });
 	assert.equal(f.journal.at(-1), 'arrêter');
-	assert.equal(f.signaux.includes(false), false);
+	assert.equal(f.signaux.includes(false), false, 'Le son de Manche reste réservé jusqu’au démontage.');
 	f.lecteur.detruire();
 	assert.equal(f.signaux.at(-1), false);
+});
+
+test('la Révélation ne relance ni un extrait fini, ni rien après un rechargement', async () => {
+	const fini = fenetre(verrousPartages());
+	await fini.lecteur.suivre(bloc('EXTRAIT', enLecture(0)));
+	await terminerMicrotaches();
+	fini.finir();
+	await fini.lecteur.suivre(revelation());
+	assert.equal(fini.journal.at(-1), 'arrêter', 'Un extrait arrivé au bout ne repart pas du début.');
+
+	const recharge = fenetre(verrousPartages());
+	await recharge.lecteur.suivre(revelation());
+	await terminerMicrotaches();
+	assert.equal(recharge.journal.includes('lire'), false, 'Sans lien dans la vue, la salle rechargée reste muette.');
 });
 
 test('rien ne joue tant que la coquille ne rend pas le son de Manche', async () => {
