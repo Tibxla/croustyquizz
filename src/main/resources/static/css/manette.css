@@ -114,3 +114,27 @@
   30% { transform: translate(0, 2px) rotate(-0.4deg); }
   100% { transform: translate(-4px, 14px) rotate(-3deg); box-shadow: var(--ombre); }
 }
+
+/* « Tes Enregistrements » : présentés par le Karaoké pendant sa Manche, par la coquille sinon (#208).
+   Les règles vivent ici, car karaoke.css quitte la page avec le module. */
+.manette__enregistrements { display: contents; }
+.enregistrements,
+.enregistrements__liste {
+  display: grid;
+  gap: var(--espace-4);
+  min-width: 0;
+}
+.enregistrements__fichier {
+  display: grid;
+  gap: var(--espace-2);
+  justify-items: start;
+  overflow-wrap: anywhere;
+}
+.enregistrements__fichier a.bouton {
+  color: var(--texte);
+  text-decoration: none;
+  white-space: normal;
+}
+.enregistrements audio {
+  max-width: 100%;
+}
