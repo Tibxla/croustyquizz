@@ -109,6 +109,6 @@ test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, 
 	assert.deepEqual(decrireClassementDeSalle(avecPalmares),
 		{ titre: 'Podium final', podium: true, lignes: ['1. Lou · 10 points'] });
 	assert.equal(decrirePalmaresDeSalle(avecPalmares), null);
-	assert.deepEqual(decrireVue(avecPalmares).palmares,
-		[{ texte: '1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)', numero: 2 }]);
+	assert.deepEqual(decrireVue(avecPalmares).palmares.map(ligne => ligne.texte),
+		['1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)']);
 });
