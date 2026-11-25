@@ -1,6 +1,6 @@
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
 import { preparerPlacement } from './placement.mjs';
-import { formaterDecalage, formaterTempsRestant, passageActif } from './presentation.mjs';
+import { enumererInterpretes, formaterDecalage, formaterTempsRestant, passageActif } from './presentation.mjs';
 import { delaiAppelRestant, tempsAvantFinPrevue } from './paroles.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes } from './vote.mjs';
 
@@ -138,7 +138,7 @@ function installerPassage(ui, commande) {
 				if (ui.document.activeElement === reessayer) titre.focus();
 				reessayer.remove(); reessayer = undefined;
 			}
-			identite.textContent = p ? `N° ${p.numero} · ${p.interpretes.map(i => i.pseudo).join(', ')} · ${p.chanson.titre} · ${p.chanson.artiste}`
+			identite.textContent = p ? `N° ${p.numero} · ${enumererInterpretes(p.interpretes)} · ${p.chanson.titre} · ${p.chanson.artiste}`
 				: 'Aucun Passage appelé.';
 			phase.textContent = p ? phases[p.etat] : '';
 			if (enPause && p?.etat !== 'EN_PAUSE') phase.textContent = phase.textContent ? phase.textContent + ' · En pause' : 'En pause';

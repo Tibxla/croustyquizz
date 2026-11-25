@@ -1,7 +1,7 @@
 import { ouvrirDialogue } from '../../dialogue.mjs';
 import { creerMachineEnvoi, exigeCapture, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
-import { teintePassage, formaterDuree, formaterAttente, etatInscription, libelleEtatTicketPublic } from './presentation.mjs';
+import { teintePassage, formaterDuree, formaterAttente, etatInscription, libelleEtatTicketPublic, enumererInterpretes } from './presentation.mjs';
 
 export const texteAutresPassages = n => (n ? `et ${n} ${n > 1 ? 'autres' : 'autre'}` : '');
 
@@ -214,12 +214,12 @@ export function creerTicket(ui, passage, { personnel = false, courant = false, s
 	const ticket = e(selectionner ? 'button' : 'article', personnel ? 'mon-ticket' : `ticket ticket--${teinte}`);
 	ticket.style.setProperty('--teinte', `var(--${teinte})`);
 	ticket.setAttribute('data-passage-id', passage.passageId);
-	ticket.setAttribute('aria-label', `Passage ${passage.numero} · ${passage.interpretes.map(i => i.pseudo).join(', ')} · ${passage.chanson.titre} · ${passage.chanson.artiste}${passage.prioritaire ? ' · Prioritaire' : ''}`);
+	ticket.setAttribute('aria-label', `Passage ${passage.numero} · ${enumererInterpretes(passage.interpretes)} · ${passage.chanson.titre} · ${passage.chanson.artiste}${passage.prioritaire ? ' · Prioritaire' : ''}`);
 	const haut = e(personnel ? 'div' : 'span', personnel ? 'mon-ticket__haut' : 'ticket__numero', personnel ? undefined : passage.numero);
 	if (personnel) haut.append(e('span', 'mon-ticket__numero', passage.numero));
 	if (personnel) haut.append(e('span', 'mon-ticket__etiquette', passage.prioritaire ? 'Prioritaire' : 'En attente'));
 	const bas = e('div', personnel ? 'mon-ticket__bas' : 'ticket__corps');
-	bas.append(e('p', personnel ? 'mon-ticket__quoi' : 'ticket__qui', passage.interpretes.map(i => i.pseudo).join(', ')),
+	bas.append(e('p', personnel ? 'mon-ticket__quoi' : 'ticket__qui', enumererInterpretes(passage.interpretes)),
 		e('p', personnel ? 'mon-ticket__quoi' : 'ticket__quoi', passage.chanson.titre),
 		e('p', 'ticket__quoi', passage.chanson.artiste));
 	if ((personnel && !courant) || details) bas.append(e('p', 'karaoke__position', `Position ${passage.position} · Tour ${passage.tour}`));

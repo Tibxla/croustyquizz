@@ -1,7 +1,7 @@
 import { creerInterface, creerTicket, creerUuid, texteAutresPassages } from './commun.mjs';
 import { creerCycleLecture } from './cycle-lecture.mjs';
 import { delaiAppelRestant, determinerLignes, positionChronologique } from './paroles.mjs';
-import { formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
+import { enumererInterpretes, formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes, votesVisiblesSalle } from './vote.mjs';
 
 const designations = new WeakMap();
@@ -106,7 +106,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 				fiche.bandeau.style.setProperty('--teinte', `var(--${teintePassage(vote.numero)})`);
 				fiche.numero.textContent = vote.numero;
 				fiche.chanson.textContent = vote.chanson.titre;
-				fiche.interpretes.textContent = vote.interpretes.map(interprete => interprete.pseudo).join(', ');
+				fiche.interpretes.textContent = enumererInterpretes(vote.interpretes);
 				fiche.invitationVote.hidden = fiche.temps.hidden = !ouvert;
 				fiche.moyenne.hidden = ouvert || vote.moyenneDixiemes == null;
 				fiche.moyenne.textContent = fiche.moyenne.hidden ? '' : formaterMoyenne(vote.moyenneDixiemes);

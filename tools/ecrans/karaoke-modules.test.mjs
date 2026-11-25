@@ -849,3 +849,29 @@ test('Salle : « Aucun vote » seul à la clôture, en Atkinson et sans aplat ci
 	assert.match(css, /\.bandeau-vote\s*\{[^}]*var\(--police-texte\)/s);
 	assert.doesNotMatch(css.match(/[^{}]*\.bandeau-vote[^{}]*\{[^}]*\}/g).join(''), /var\(--citron/);
 });
+
+test('les trois écrans énumèrent les Interprètes à la française, tickets, Passage en cours et votes compris', t => {
+	const trio = [{ joueurId: 'a', pseudo: 'Alizé' }, { joueurId: 'b', pseudo: 'Basile' }, { joueurId: 'c', pseudo: 'Chloé' }];
+	const enumeres = 'Alizé, Basile et Chloé';
+	const enCours = courant('EN_COURS', { interpretes: trio });
+	const suivant = { ...passage('q', 15), interpretes: trio };
+	const v = vue({ courant: enCours, prochainsPassages: [suivant], passagesEnAttente: [{ ...suivant, position: 1 }],
+		mesPassagesEnAttente: [{ ...passage('m', 16), interpretes: [{ joueurId: 'j', pseudo: 'Jo' }, ...trio.slice(0, 1)] }],
+		votes: [{ ...voteDuPublic('v', 13), interpretes: trio }] });
+	for (const [monter, type] of [[manette, 'JOUEUR'], [consoleKaraoke, 'ANIMATEUR'], [ecran, 'ECRAN']]) {
+		const b = creerBanc(monter, type);
+		t.after(() => b.module.demonter());
+		b.connecter('synchronisee');
+		b.module.afficher(v, capture);
+		const zones = [b.principale, b.laterale];
+		const noms = zones.flatMap(zone => [...zone.querySelectorAll('[aria-label]')]).map(element => element.getAttribute('aria-label'))
+			.filter(nom => nom.startsWith('Passage '));
+		assert.ok(noms.length > 0, type);
+		for (const nom of noms) assert.match(nom, /^Passage \d+ · (Alizé, Basile et Chloé|Jo et Alizé) · /, type);
+		const texte = zones.map(zone => zone.textContent).join(' ');
+		assert.match(texte, new RegExp(enumeres), type);
+		if (type === 'JOUEUR') assert.match(texte, /Jo et Alizé/);
+		assert.doesNotMatch(texte, /Basile, Chloé|Jo, Alizé/, type);
+		if (type === 'ANIMATEUR') assert.match(b.principale.textContent, new RegExp(`N° 14 · ${enumeres} · `));
+	}
+});

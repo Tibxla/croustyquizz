@@ -70,6 +70,15 @@ Recette exécutée en Chromium sans interface graphique sur le port 18113, avec 
 
 Le test constate le décodage, la progression et la fin du WAV dans Chromium. L’audibilité sur le matériel du Lieu, la lecture à cinq mètres, le tactile physique et l’intégration des routes #99 et #100 restent à vérifier en situation.
 
+### Énumération des Interprètes (#237)
+
+Les trois écrans énumèrent les Interprètes d’un Passage à la française, par `enumererInterpretes` de `vue-commune.mjs` : « Alizé », « Alizé et Basile », « Alizé, Basile et Chloé ». Le serveur ne crée pas encore de Passage à plusieurs Interprètes : pour la recette, ajouter à un Passage de `tools/ecrans/karaoke-recette-navigateur.mjs` un puis deux Interprètes après le premier, dans son champ `interpretes`, avec un `joueurId` qui n’est celui d’aucune Manette (par exemple `{ joueurId: 'invite-1', pseudo: 'Basile' }`) : le script garde ainsi ses propres vérifications. Lancer ensuite la recette du Passage (#112).
+
+1. Sur l’Écran de salle, vérifier l’énumération sur le Passage en cours, le prochain ticket, les tickets de « Ensuite » et le bandeau du Vote du public.
+2. Sur la Console, vérifier la ligne du Passage courant (« N° 12 · Jo, Basile et Chloé · … » par exemple) et les tickets de la File d’attente.
+3. Sur la Manette, vérifier le ticket « En scène », « Tes Passages » et « Ensuite ». Avec un lecteur d’écran, le nom de chaque ticket énumère les Interprètes de la même façon.
+4. Aucun écran ne sépare plus les pseudos par une simple virgule, sans « et ».
+
 ### Recette du Vote du public (#115)
 
 Reprendre la Soirée de démonstration du ticket #114 avec la Console, l’Écran de salle et deux
