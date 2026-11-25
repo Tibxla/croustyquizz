@@ -52,7 +52,7 @@ export function monterMusiqueDAttenteConsole(bouton, statut, contexte) {
 
 export function monterMusiqueDAttenteSalle(audio, contexte) {
 	const fin = new AbortController();
-	let synchronisee = false, affichage, dernierDossier, dernierSignal, aSignaler, enCours = false;
+	let synchronisee = false, affichage, dernierDossier, dernierSignal, aSignaler, enCours = false, absenceEnAttente;
 
 	function actualiserLecture() {
 		const courant = affichage;
@@ -67,10 +67,19 @@ export function monterMusiqueDAttenteSalle(audio, contexte) {
 
 	async function signaler() {
 		if (fin.signal.aborted || !synchronisee || enCours || aSignaler === undefined) return;
-		const morceauxDisponibles = aSignaler;
+		const morceauxDisponibles = aSignaler, absence = absenceEnAttente;
 		aSignaler = undefined;
 		enCours = true;
 		try {
+			if (!morceauxDisponibles) {
+				// Le serveur ne garde qu'un signal pour toute la salle : juste avant de partir, l'absence attend
+				// qu'aucune autre fenêtre n'ait de morceaux. Un nouveau changement de cette fenêtre l'annule.
+				await audio.attendreAucunMorceauAilleurs(absence.signal);
+				if (!synchronisee) {
+					aSignaler ??= false;
+					return;
+				}
+			}
 			await contexte.envoyer('PUT', route(contexte.soireeId) + '/disponibilite', { morceauxDisponibles },
 				{ signal: fin.signal, annoncer: false });
 		} catch {
@@ -85,7 +94,10 @@ export function monterMusiqueDAttenteSalle(audio, contexte) {
 		// Le même dossier peut perdre ses morceaux quand la Musique d'attente les écarte comme illisibles.
 		if (fichiers === null || (fichiers === dernierDossier && morceauxDisponibles === dernierSignal)) return;
 		dernierDossier = fichiers;
-		dernierSignal = aSignaler = morceauxDisponibles;
+		dernierSignal = morceauxDisponibles;
+		absenceEnAttente?.abort();
+		absenceEnAttente = morceauxDisponibles ? undefined : new AbortController();
+		aSignaler = morceauxDisponibles;
 		void signaler();
 	});
 	const seDesabonner = contexte.surEtatConnexion(etat => {
@@ -100,6 +112,6 @@ export function monterMusiqueDAttenteSalle(audio, contexte) {
 			affichage = { etat: vue.musiqueAttente?.etat, modeAffiche };
 			actualiserLecture();
 		},
-		demonter() { fin.abort(); retirerDossier(); seDesabonner(); },
+		demonter() { fin.abort(); absenceEnAttente?.abort(); retirerDossier(); seDesabonner(); },
 	};
 }

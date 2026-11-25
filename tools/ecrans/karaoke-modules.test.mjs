@@ -27,7 +27,8 @@ function bancLecteur() {
 	const audioSalle = creerAudioSalle({ lecteur, lecteurId: 'lecteur',
 		sonde: { charger: async () => ({ dureeMs: 2000 }), detruire() {} },
 		coordonner: () => ({ activer() {}, signalerSonDeManche: actif => sonsDeManche.push(actif),
-			attendreSonDeManche: async () => sonsDeManche.at(-1), detruire() {} }),
+			attendreSonDeManche: async () => sonsDeManche.at(-1), annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {},
+			detruire() {} }),
 	});
 	return { audioSalle, appels, sonsDeManche, trames,
 		dependances: { requestAnimationFrame(f) { trames.set(++numero, f); return numero; },

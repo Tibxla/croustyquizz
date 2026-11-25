@@ -1,10 +1,13 @@
 const PREFIXE = 'croustyquizz:son:';
 const PRESENCE = `${PREFIXE}fenetre:`;
 const AUDIO = `${PREFIXE}lecture`;
+// Tenu par chaque fenêtre dont le dossier a des morceaux dans Attente, que son son soit activé ou non.
+const MORCEAUX = `${PREFIXE}morceaux:`;
 
 export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente }) {
 	const candidature = `${PRESENCE}${ouverteA.toFixed(3).padStart(18, '0')}:${id}`;
-	let presence, attente, manche, surveillance, revision = 0, fermeture;
+	const nomVerrouMorceaux = `${MORCEAUX}${id}`;
+	let presence, attente, manche, surveillance, revision = 0, fermeture, verrouMorceaux, liberationMorceaux;
 
 	function prendre(nom, mode) {
 		const controle = new AbortController();
@@ -92,11 +95,35 @@ export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente 
 			}
 		},
 		attendreSonDeManche: () => manche?.prise ?? Promise.resolve(false),
+		annoncerMorceaux(disponibles) {
+			if (fermeture || disponibles === Boolean(verrouMorceaux)) return;
+			if (disponibles) {
+				verrouMorceaux = prendre(nomVerrouMorceaux, 'exclusive');
+			} else {
+				liberationMorceaux = verrouMorceaux.liberer();
+				verrouMorceaux = undefined;
+			}
+		},
+		// Résout quand plus aucune autre fenêtre n'a de morceaux dans Attente ; rejette si `signal` est annulé.
+		async attendreAucunMorceauAilleurs(signal) {
+			for (;;) {
+				// La fenêtre qui vient de perdre ses morceaux doit d'abord avoir rendu son verrou : de deux fenêtres
+				// qui les perdent ensemble, la dernière à regarder voit alors l'autre libre.
+				await liberationMorceaux;
+				signal.throwIfAborted();
+				const { held, pending } = await verrous.query();
+				const autres = new Set([...held, ...pending].filter(verrou => verrou.mode === 'exclusive'
+					&& verrou.name.startsWith(MORCEAUX) && verrou.name !== nomVerrouMorceaux).map(verrou => verrou.name));
+				if (!autres.size) return;
+				// Le navigateur libère ces verrous même si l'autre fenêtre ferme sans envoyer de message.
+				await Promise.all([...autres].map(nom => verrous.request(nom, { mode: 'shared', signal }, () => {})));
+			}
+		},
 		detruire() {
 			if (fermeture) return fermeture;
 			revision++;
 			surveiller();
-			fermeture = Promise.all([taireAttente(), manche?.liberer(), presence?.liberer()]).then(() => {
+			fermeture = Promise.all([taireAttente(), manche?.liberer(), presence?.liberer(), verrouMorceaux?.liberer()]).then(() => {
 				canal.postMessage(null);
 				canal.close();
 			});

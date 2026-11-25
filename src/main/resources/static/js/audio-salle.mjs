@@ -21,6 +21,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 	}, surMorceauxEpuises() {
 		// Tous les morceaux d'Attente sont illisibles : comme un dossier sans Attente, jusqu'au prochain choix.
 		morceauxDisponibles = false;
+		coordination.annoncerMorceaux(false);
 		actualiserCandidature();
 		notifier();
 	} });
@@ -34,11 +35,13 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		lecteur: creerLecteurDePassage({ lecteur, sonde, attendreSonDeManche: coordination.attendreSonDeManche }),
 		etat,
 		surChangement(rappel) { abonnes.add(rappel); return () => abonnes.delete(rappel); },
+		attendreAucunMorceauAilleurs: signal => coordination.attendreAucunMorceauAilleurs(signal),
 		choisirDossier(selection) {
 			fichiers = selection.filter(estFichierAudio);
 			const morceaux = fichiersDeMusiqueDAttente(fichiers);
 			morceauxDisponibles = morceaux.length > 0;
 			musique.choisirFichiers(morceaux);
+			coordination.annoncerMorceaux(morceauxDisponibles);
 			actualiserCandidature();
 			notifier();
 		},
@@ -77,7 +80,7 @@ function coordonnerDans(navigateur, id, surAttente) {
 	if (!navigateur.navigator.locks || !navigateur.BroadcastChannel) {
 		// Sans Web Locks (page en http:// hors localhost), la fenêtre se croit seule : elle joue dès qu'elle candidate.
 		return { activer: candidate => surAttente(candidate), signalerSonDeManche() {}, attendreSonDeManche: async () => true,
-			detruire() {} };
+			annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {}, detruire() {} };
 	}
 	return creerCoordinationSon({ verrous: navigateur.navigator.locks,
 		canal: new navigateur.BroadcastChannel('croustyquizz:son'),

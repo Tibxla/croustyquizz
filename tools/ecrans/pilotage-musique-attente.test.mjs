@@ -81,7 +81,7 @@ test('la salle applique la coupure dès la capture et ne relance qu’après le 
 		position: () => 0, surFin: () => () => {}, surErreur: () => () => {},
 	}, coordonner(surAttente) {
 		return { activer: surAttente, signalerSonDeManche: actif => surAttente(!actif),
-			attendreSonDeManche: async () => true, detruire() {} };
+			attendreSonDeManche: async () => true, annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {}, detruire() {} };
 	} });
 	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree', envoyer: async () => ({ statut: 200 }) });
 	const salle = monterMusiqueDAttenteSalle(audio, contexte);
@@ -123,6 +123,8 @@ test('la salle signale seulement la disponibilité du dossier choisi, dans l’o
 	const audio = {
 		reglerMusiqueDAttente() {},
 		surChangement(rappel) { dossierChoisi = rappel; return () => { dossierChoisi = undefined; }; },
+		// Fenêtre seule : l'absence de morceaux part dès que les autres fenêtres ont été regardées.
+		async attendreAucunMorceauAilleurs(signal) { signal.throwIfAborted(); },
 	};
 	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree',
 		envoyer(methode, route, corps, options) {
@@ -134,6 +136,7 @@ test('la salle signale seulement la disponibilité du dossier choisi, dans l’o
 	dossierChoisi({ fichiers: [], morceauxDisponibles: false });
 	assert.equal(envois.length, 0);
 	changerEtat('synchronisee');
+	await terminerMicrotaches();
 	const fichiers = [{ name: 'Fichier local.ogg' }];
 	dossierChoisi({ fichiers, morceauxDisponibles: true });
 	dossierChoisi({ fichiers, morceauxDisponibles: true, sonDebloque: true });
@@ -158,7 +161,9 @@ test('la salle signale l’absence de morceaux quand elle a écarté tous ceux d
 		detruire() {},
 		position: () => 0, surFin: () => () => {}, surErreur: () => () => {},
 	}, coordonner(surAttente) {
-		return { activer: surAttente, signalerSonDeManche() {}, attendreSonDeManche: async () => true, detruire() {} };
+		// Fenêtre seule : aucune autre n'a de morceaux.
+		return { activer: surAttente, signalerSonDeManche() {}, attendreSonDeManche: async () => true,
+			annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {}, detruire() {} };
 	} });
 	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree',
 		async envoyer(methode, route, corps) { envois.push({ methode, route, corps }); return { statut: 200 }; } });
