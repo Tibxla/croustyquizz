@@ -62,7 +62,7 @@ public class ControleDesDelegations implements PouvoirsDelegues {
 		return verrous.executer(soireeId, () -> depot.pouvoirs(soireeId, joueurId));
 	}
 
-	/** Délégations de la Soirée, par Joueur, dans l'ordre d'attribution. */
+	/** Délégations de la Soirée, par Joueur, de la moins récemment modifiée à la plus récente. */
 	Map<UUID, Set<Pouvoir>> deLaSoiree(UUID soireeId) {
 		return verrous.executer(soireeId, () -> depot.deLaSoiree(soireeId));
 	}

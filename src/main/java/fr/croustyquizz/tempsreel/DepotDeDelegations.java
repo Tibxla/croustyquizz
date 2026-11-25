@@ -34,7 +34,7 @@ class DepotDeDelegations {
 				.query((ligne, numero) -> lire(ligne)).optional().orElse(EnumSet.noneOf(Pouvoir.class));
 	}
 
-	/** Délégations de la Soirée, par Joueur, dans l'ordre d'attribution. */
+	/** Délégations de la Soirée, par Joueur, de la moins récemment modifiée à la plus récente. */
 	Map<UUID, Set<Pouvoir>> deLaSoiree(UUID soireeId) {
 		Map<UUID, Set<Pouvoir>> delegations = new LinkedHashMap<>();
 		jdbc.sql("""
@@ -51,7 +51,7 @@ class DepotDeDelegations {
 				    values (:joueur, :soiree, :file, :musique, :photos, :maintenant)
 				on conflict (joueur_id) do update
 				    set file_attente = excluded.file_attente, musique_attente = excluded.musique_attente,
-				        photos = excluded.photos
+				        photos = excluded.photos, modifiee_le = excluded.modifiee_le
 				""").param("joueur", joueurId).param(SOIREE, soireeId)
 				.param("file", pouvoirs.contains(Pouvoir.FILE_ATTENTE))
 				.param("musique", pouvoirs.contains(Pouvoir.MUSIQUE_ATTENTE))

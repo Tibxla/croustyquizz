@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -284,6 +285,15 @@ class DelegationTempsReelTest {
 		var console = verifier("retrouverEtatConsole", 200, envoyer(HttpMethod.GET, racine() + "/etat/console", animateur, null, null));
 		assertThat(console.at("/vue/delegations")).hasSize(2);
 		assertThat(console.at("/vue/delegations/0/pseudo").asString()).isEqualTo("Alizé");
+		// Une modification date la ligne ; la Console garde l'ordre d'arrivée des Joueurs.
+		String dateAlize = "select modifiee_le from tempsreel_delegation where joueur_id = ?::uuid";
+		var attribueeLe = jdbc.queryForObject(dateAlize, Timestamp.class, id(alize).toString());
+		verifier("attribuerDelegation", 200, envoyer(HttpMethod.PUT, delegation(alize), animateur,
+				Map.of("pouvoirs", List.of("MUSIQUE_ATTENTE", "PHOTOS")), null));
+		assertThat(jdbc.queryForObject(dateAlize, Timestamp.class, id(alize).toString())).isAfter(attribueeLe);
+		console = verifier("retrouverEtatConsole", 200, envoyer(HttpMethod.GET, racine() + "/etat/console", animateur, null, null));
+		assertThat(console.at("/vue/delegations/0/pseudo").asString()).isEqualTo("Alizé");
+		assertThat(console.at("/vue/delegations/0/pouvoirs")).hasSize(2);
 
 		lancerKaraoke();
 		verifier("piloterSoiree", 200, envoyer(HttpMethod.POST, racine() + "/commandes", animateur,
