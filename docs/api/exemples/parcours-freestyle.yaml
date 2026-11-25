@@ -10,13 +10,15 @@ http:
   acteur: ecran
   parametres:
     Idempotency-Key: &declaration 70000000-0000-4000-8000-000000000010
-  requete: &declarationInstrumentales
+  requete:
+    lecteurId: &lecteurId 70000000-0000-4000-8000-000000000030
     instrumentales: &instrumentales
     - &instrumentale
       instrumentaleId: &instrumentaleId 70000000-0000-4000-8000-000000000004
       titre: À la lueur
       tempoBpm: 120
       departBeatMs: 250
+      dureeMs: 95000
   statut: 200
   reponse:
     envoiId: *declaration
@@ -26,7 +28,8 @@ http:
   operationId: consulterInstrumentales
   acteur: animateur
   statut: 200
-  reponse: *declarationInstrumentales
+  reponse:
+    instrumentales: *instrumentales
 - nom: Préparer une Manche de huit mesures
   operationId: ajouterManche
   acteur: animateur
@@ -165,6 +168,7 @@ http:
           finPrevueLe: &fin '2026-11-24T20:00:21.250Z'
           positionChronologiqueMs: 0
           calculeLe: *depart
+        lecteurDesigneId: *lecteurId
         votes: []
         grille: &masquee
           nombreMesures: 8
@@ -237,6 +241,7 @@ evenements:
           - { mesure: 6, temps: 3, positionMs: 11250, famille: B, mot: fuit }
           - { mesure: 7, temps: 3, positionMs: 13250, famille: A, mot: poussière }
           - { mesure: 8, temps: 3, positionMs: 15250, famille: B, mot: luit }
+        peutGererFile: true
         peutAppeler: false
         peutPasser: true
         instrumentales: *instrumentales
@@ -312,6 +317,7 @@ evenements:
           positionChronologiqueMs: null
           calculeLe: *fin
         grille: null
+        lecteurDesigneId: *lecteurId
         votes:
         - passageId: *passageId
           numeroModification: 3
@@ -406,7 +412,29 @@ cases:
     titre: À la lueur
     tempoBpm: 120
     departBeatMs: 250
+    dureeMs: 95000
     chemin: Instrumentales/À la lueur.mp3
+- nom: Une fiche sans durée exploitable est refusée
+  schema: Instrumentale
+  valide: false
+  valeur:
+    instrumentaleId: *instrumentaleId
+    titre: À la lueur
+    tempoBpm: 120
+    departBeatMs: 250
+    dureeMs: 0
+  correction:
+    chemin: [dureeMs]
+    valeur: 95000
+- nom: Une déclaration désigne la fenêtre qui l’envoie par son UUID
+  schema: DeclarationInstrumentales
+  valide: false
+  valeur:
+    lecteurId: Écran du bar
+    instrumentales: *instrumentales
+  correction:
+    chemin: [lecteurId]
+    valeur: *lecteurId
 - nom: Configuration Freestyle refusée avec neuf mesures
   schema: CreationManche
   valide: false
@@ -435,6 +463,7 @@ cases:
     passagesEnAttente: []
     courant: *courant
     grille: *complete
+    lecteurDesigneId: null
     votes: []
   correction:
     chemin: [difficulte]
