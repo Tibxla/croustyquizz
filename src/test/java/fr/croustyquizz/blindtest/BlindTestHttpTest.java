@@ -242,6 +242,19 @@ class BlindTestHttpTest {
 	}
 
 	@Test
+	void unProgrammeFigeRefuseLAjoutAvantDeConsulterDeezer() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		rejoindre(soiree, "Léa");
+		ajouterBlindTest(soiree);
+		lancer(soiree);
+		catalogue.enPanne = true;
+
+		verifierRefus("ajouterManche", envoyer(HttpMethod.POST, soiree.route() + "/manches", soiree.animateur(),
+				Map.of("mode", "BLIND_TEST", "reglages", Map.of("source", Map.of("type", "GENRE", "idDeezer", 132),
+						"nombreMorceaux", 2)), null), 409, "ETAT_INCOMPATIBLE");
+	}
+
+	@Test
 	void unMorceauSansExtraitEstSauteEtLaMancheSeTermineApresLeDernier() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
 		rejoindre(soiree, "Léa");
