@@ -78,8 +78,17 @@ export function afficherSoireesDuLieu(zone, soirees) {
 	}));
 }
 
-async function monterPage(document) {
+export async function monterSoireesDuLieu(document) {
 	const zone = document.querySelector('[data-soirees]');
+	try {
+		await chargerSoirees(document, zone);
+	} finally {
+		// Succès, refus ou panne : la zone ne reste jamais annoncée comme en cours de chargement.
+		zone.setAttribute('aria-busy', 'false');
+	}
+}
+
+async function chargerSoirees(document, zone) {
 	const statut = document.querySelector('[data-statut-soirees]');
 	const session = await consulterSession();
 	if (session.statut === 401) return;
@@ -98,8 +107,7 @@ async function monterPage(document) {
 	}
 	statut.hidden = true;
 	afficherSoireesDuLieu(zone, liste.corps.soirees);
-	zone.setAttribute('aria-busy', 'false');
 }
 
 const zonePage = globalThis.document?.querySelector('[data-soirees]');
-if (zonePage) void monterPage(globalThis.document);
+if (zonePage) void monterSoireesDuLieu(globalThis.document);

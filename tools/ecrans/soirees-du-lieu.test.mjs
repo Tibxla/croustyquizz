@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { afficherSoireesDuLieu, destinationDeSoiree, regrouperSoirees }
+import { afficherSoireesDuLieu, destinationDeSoiree, monterSoireesDuLieu, regrouperSoirees }
 	from '../../src/main/resources/static/js/soirees-du-lieu.mjs';
 import { creerDocument } from './karaoke-dom-factice.mjs';
 
@@ -71,4 +71,40 @@ test('le code d’accès n’apparaît que pour une Soirée qu’on peut encore 
 		'Ouverte · Solo · Pilotage manuel · Code K7M2QX',
 		'Terminée · Solo · Pilotage manuel',
 	]);
+});
+
+function creerPageSoirees() {
+	const document = creerDocument();
+	const statut = document.createElement('p');
+	statut.setAttribute('data-statut-soirees', '');
+	const zone = document.createElement('div');
+	zone.setAttribute('data-soirees', '');
+	zone.setAttribute('aria-busy', 'true');
+	document.body.append(statut, zone);
+	return { document, statut, zone };
+}
+
+for (const [cas, reponse] of [
+	['une erreur du serveur', () => Response.json({ code: 'ERREUR_INATTENDUE' }, { status: 500 })],
+	['une panne réseau', () => { throw new TypeError('fetch failed'); }],
+]) {
+	test(`après ${cas}, la liste n’est plus annoncée en chargement et l’échec s’affiche`, async t => {
+		const { document, statut, zone } = creerPageSoirees();
+		t.mock.method(globalThis, 'fetch', async route => route === '/api/animateurs/session'
+			? Response.json({ id: 'animateur', nom: 'Camille', lieuId: 'lieu' }) : reponse());
+		await monterSoireesDuLieu(document);
+		assert.equal(zone.getAttribute('aria-busy'), 'false');
+		assert.equal(statut.hidden, false);
+		assert.match(statut.textContent, /Recharge la page/);
+	});
+}
+
+test('une liste chargée n’est plus annoncée en chargement', async t => {
+	const { document, statut, zone } = creerPageSoirees();
+	t.mock.method(globalThis, 'fetch', async route => route === '/api/animateurs/session'
+		? Response.json({ id: 'animateur', nom: 'Camille', lieuId: 'lieu' }) : Response.json({ soirees: [] }));
+	await monterSoireesDuLieu(document);
+	assert.equal(zone.getAttribute('aria-busy'), 'false');
+	assert.equal(statut.hidden, true);
+	assert.match(zone.textContent, /Aucune Soirée pour ce Lieu/);
 });
