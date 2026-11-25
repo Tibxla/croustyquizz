@@ -19,6 +19,17 @@ La Console connectée consulte sa session toutes les cinq minutes (`maintenirSes
 5. Dans la Console, clique « Se déconnecter ». La page de connexion doit s’ouvrir et une nouvelle connexion doit ramener à la même Console. Avec un paramètre `retour` qui contient une URL absolue, la connexion doit ouvrir la préparation.
 6. En `dev` ou `recette`, reprends le parcours de démonstration avec un UUID absent de la base.
 
+## Recette du parcours du jalon 1 avec un vrai Animateur (#8)
+
+Le test `SoireeDeBoutEnBoutTest` joue ce parcours en profil `prod`, en HTTP et STOMP, sans identité de démonstration. Dans le navigateur, garder la Console et l’Écran de salle côte à côte, et la Manette dans un autre profil (ou sur un téléphone), sans passer par `/test/identite.html`.
+
+1. Inscris un Lieu, connecte-toi, puis crée et ouvre une Soirée depuis `/preparer-soiree.html` (recette #5, étapes 1 à 4). Ouvre l’Écran de salle et la Console depuis la préparation. L’Écran affiche le code et le QR code ; « Joueurs (0) » et « Aucun Joueur pour le moment. » sur les deux écrans.
+2. Rejoins la Soirée avec le code dans `/rejoindre.html` sous le pseudo « Léa ». Sans recharger, la Console et l’Écran de salle passent à « Joueurs (1) » avec « Léa · connecté ».
+3. Sur la Manette, appuie sur « Buzzer ». Les trois écrans affichent « Dernier Buzz : Léa », sans rechargement.
+4. Ferme l’onglet de la Manette. En quelques secondes, la Console et l’Écran de salle affichent « Léa · déconnecté » ; le compteur reste à 1 et le dernier Buzz ne change pas. Un téléphone mis en veille ou privé de réseau peut garder sa connexion ouverte jusqu’à ce que le serveur constate l’absence de battements STOMP, soit trois intervalles de dix secondes : l’indication arrive alors au bout d’une trentaine de secondes.
+5. Rouvre la Manette depuis `/rejoindre.html` ou en rescannant le QR code. Elle retrouve Léa sans redemander de pseudo, et les deux écrans repassent à « Léa · connecté ». Ouvre la même Manette dans deux onglets, ferme-en un : Léa reste connectée ; ferme le second : elle passe hors ligne.
+6. Recharge l’Écran de salle pendant que Léa est hors ligne : la capture affiche toujours « Léa · déconnecté ».
+
 ## Recette du programme de la Soirée (#9)
 
 1. Connecté comme Animateur, créer une Soirée dans `/preparer-soiree.html`, puis ouvrir sa Console depuis la préparation.
