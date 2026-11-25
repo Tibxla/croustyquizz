@@ -211,9 +211,9 @@ Vérification dans un navigateur à effectuer.
 
 1. Ouvrir la Console, l’Écran de salle et deux Manettes dans une Soirée neuve en Pilotage Automatique, puis démarrer une Manche de Karaoké comme dans la recette #120. Vérifier qu’elle reste ouverte avec une File d’attente vide au démarrage.
 2. Confirmer un premier Passage et inscrire le second pendant le chant. Retirer le second depuis la Console. Vérifier que le chant continue et que, sous « Passage courant », la Console affiche « File d'attente vide : la Manche se terminera après ce Passage et son vote. ».
-3. Laisser le premier Passage se terminer, puis voter depuis la Manette du public. Vérifier que la note de la Console reste visible pendant le vote et que le Karaoké reste affiché. À la clôture du vote, vérifier que le Karaoké se retire des trois écrans comme après « Terminer la Manche », puis recharger les écrans pour vérifier leurs captures.
+3. Laisser le premier Passage se terminer, puis voter depuis la Manette du public. Vérifier que la note de la Console devient « File d'attente vide : la Manche se terminera à la clôture du vote en cours. » pendant le vote et que le Karaoké reste affiché. À la clôture du vote, vérifier que le Karaoké se retire des trois écrans comme après « Terminer la Manche », puis recharger les écrans pour vérifier leurs captures.
 4. Rejouer et inscrire un Passage depuis une Manette pendant le dernier vote. Vérifier l’appel immédiat et la poursuite de la Manche à la clôture de ce vote.
-5. Dans une Manche neuve, laisser expirer l’unique appel. Vérifier la fin automatique sur les trois écrans. Dans une autre Manche, mettre l’unique appel en pause, cliquer sur « Passer » et vérifier que la Manche reste en pause jusqu’à « Reprendre », qui la termine.
+5. Dans une Manche neuve, laisser expirer l’unique appel. Pendant l’appel, vérifier que la Console affiche « File d'attente vide : la Manche se terminera après ce Passage, puis son vote s'il est chanté. ». Vérifier la fin automatique sur les trois écrans. Dans une autre Manche, mettre l’unique appel en pause, cliquer sur « Passer » et vérifier que la Manche reste en pause jusqu’à « Reprendre », qui la termine.
 6. Rejouer le chant et le vote en Pilotage Manuel. Vérifier l’absence de la note sur la Console et la poursuite de la Manche après la clôture du vote.
 
 Vérification dans un navigateur à effectuer.
