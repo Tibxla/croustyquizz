@@ -10,7 +10,7 @@ record ProjectionAccesJoueur(UUID soireeId, JoueurPublic joueur, String jetonRec
 
 	static ProjectionAccesJoueur de(ArriveeDeJoueur arrivee) {
 		Joueur joueur = arrivee.joueur();
-		// Le suivi de présence arrive avec #7 et #47 : un Joueur qui vient d'arriver est connecté.
+		// Un Joueur qui vient d'arriver est connecté (#8, ConnexionsDesManettes).
 		return new ProjectionAccesJoueur(arrivee.soiree().getId(),
 				new JoueurPublic(joueur.getId(), joueur.getPseudo(), true), arrivee.jeton().valeur());
 	}

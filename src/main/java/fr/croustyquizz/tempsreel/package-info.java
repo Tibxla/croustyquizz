@@ -26,6 +26,10 @@
  * les connexions de la Console. Le Buzz anonyme /api/test conserve ses vues et son cache
  * distincts du métier sur les mêmes canaux.
  *
+ * <p>PresenceDesManettes suit les connexions STOMP des Joueurs dans ConnexionsDesManettes, que lit
+ * FournisseurCommunSoiree pour le champ connecte : la fermeture de la dernière connexion d'une
+ * Manette, puis son retour, publient joueurs-modifies sous le verrou de la Soirée (#8).
+ *
  * <p>Propriétaire : Tibxla.
  */
 package fr.croustyquizz.tempsreel;
