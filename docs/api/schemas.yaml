@@ -965,7 +965,9 @@ $defs:
     properties:
       morceauxDisponibles:
         type: boolean
-        description: Le dossier choisi contient au moins un fichier audio dans Attente.
+        description: >
+          Le dossier choisi contient au moins un fichier audio dans Attente que l’Écran de salle n’a pas
+          encore écarté comme illisible.
     required: [morceauxDisponibles]
   MusiqueDAttente:
     type: object
