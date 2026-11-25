@@ -180,7 +180,7 @@ exécuter la requête ; la Manette affiche le message, rien ne réessaie tout se
 | Buzz | jeton du Joueur | 10 | 1 toutes les 200 ms | La Manette attend la réponse avant un nouveau Buzz ; un doigt ne tient pas 5 Buzz par seconde. |
 | Brouillon, Proposition, Vote, Réponse du Quiz | jeton, par route | 20 | 1 toutes les 100 ms | Le brouillon du Blind test part au plus toutes les 500 ms pendant la saisie. |
 | Arrivée par code, codes inconnus | adresse IP | 20 | 1 toutes les 3 s | Seuls les `404 CODE_ACCES_INVALIDE` comptent, une fois la réponse connue : au-delà, le `404` devient `429`. Le bon code n'est jamais refusé par ce seau. |
-| Arrivée par code, toutes | adresse IP | 120 | 1 par seconde | Deux salles de 60 Joueurs derrière le même Wi-Fi arrivent d'un coup ; un script qui crée des Joueurs en boucle est freiné. C'est aussi ce seuil qui borne un script qui cherche un code : à 1 essai par seconde parmi 32⁶ codes (10⁹), une adresse mettrait en moyenne trois ans à tomber sur l'une de dix Soirées ouvertes. |
+| Arrivée par code, toutes | adresse IP | 120 | 1 toutes les 3 s | Deux salles de 60 Joueurs derrière le même Wi-Fi arrivent d'un coup ; les retardataires passent ensuite à 20 par minute, et un script qui crée des Joueurs en boucle est freiné. C'est aussi ce seuil qui borne un script qui cherche un code : à 20 essais par minute parmi 32⁶ codes (10⁹), une adresse mettrait en moyenne une dizaine d'années à tomber sur l'une de dix Soirées ouvertes. |
 | Accès de l'Écran de salle | adresse IP | 10 | 1 toutes les 6 s | L'Animateur ouvre un ou deux Écrans par Soirée. |
 | QR code | clé d'Écran | 10 | 1 par seconde | L'Écran ne le charge qu'au changement de code. |
 
@@ -218,7 +218,7 @@ plages dans `server.tomcat.remoteip.trusted-proxies`.
 À vérifier sur la recette, publique elle aussi, dès la fusion dans `develop`, puis avant
 la première démo publique : si le relais
 n'envoyait pas `X-Forwarded-For`, tous les téléphones auraient la même clé : toutes les
-arrivées du service partageraient 120 arrivées puis 1 par seconde, et 20 codes faux par
+arrivées du service partageraient 120 arrivées puis 1 toutes les 3 s, et 20 codes faux par
 minute suffiraient à faire refuser tous les codes faux suivants. Le seau des codes regagne un essai
 toutes les 3 s, à peu près le temps de taper un code à la main : les essais doivent
 partir en rafale. Depuis un téléphone en 4G en partage de connexion, ou depuis un

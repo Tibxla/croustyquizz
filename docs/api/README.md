@@ -116,7 +116,7 @@ Avant toute exposition publique (#4), le serveur limite le Buzz, les Réponses e
 | `envoyerBuzz` | jeton (`Authorization`) | 10, puis 5 par seconde |
 | `envoyerReponse`, `deposerBrouillonProposition`, `validerProposition`, `voterPassage` | jeton | 20, puis 10 par seconde |
 | `rejoindreSoiree`, codes inconnus (`404 CODE_ACCES_INVALIDE`) | adresse IP | 20, puis 1 toutes les 3 s |
-| `rejoindreSoiree`, toutes les arrivées | adresse IP | 120, puis 1 par seconde |
+| `rejoindreSoiree`, toutes les arrivées | adresse IP | 120, puis 1 toutes les 3 s |
 | `creerAccesEcran` | adresse IP | 10, puis 1 toutes les 6 s |
 | `consulterQrCodeSoiree` | jeton | 10, puis 1 par seconde |
 

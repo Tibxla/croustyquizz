@@ -21,9 +21,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *                       l'empêche pas d'arriver
  * @param arrivees       par adresse IP : deux salles de 60 Joueurs derrière la même adresse arrivent d'un coup, un
  *                       script qui crée des Joueurs en boucle est freiné. Comme le bon code passe toujours le seau
- *                       des codes inconnus, c'est ce seuil qui borne un script qui cherche un code : à 1 essai par
- *                       seconde parmi les 32<sup>6</sup> codes (10<sup>9</sup>), une adresse mettrait en moyenne
- *                       trois ans à tomber sur l'une de dix Soirées ouvertes
+ *                       des codes inconnus, c'est ce seuil qui borne un script qui cherche un code : à 1 essai
+ *                       toutes les 3 s parmi les 32<sup>6</sup> codes (10<sup>9</sup>), une adresse mettrait en
+ *                       moyenne une dizaine d'années à tomber sur l'une de dix Soirées ouvertes. La rafale de 120
+ *                       couvre l'arrivée d'une salle entière ; les retardataires passent ensuite à 20 par minute
  * @param accesEcran     par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle
  * @param qrCode         par clé d'Écran : l'Écran de salle ne le charge qu'au changement de code
  */

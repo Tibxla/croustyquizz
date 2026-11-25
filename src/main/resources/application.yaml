@@ -49,10 +49,10 @@ croustyquizz:
       rafale: 20
       intervalle: 3s
     # Par adresse IP, toutes les arrivées : deux salles de 60 Joueurs derrière un même Wi-Fi. Borne aussi le
-    # rythme des essais de code d'un script, à 1 par seconde parmi 10^9 codes.
+    # rythme des essais de code d'un script : 20 par minute parmi 10^9 codes, une dizaine d'années pour en trouver un.
     arrivees:
       rafale: 120
-      intervalle: 1s
+      intervalle: 3s
     # Par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle.
     acces-ecran:
       rafale: 10
