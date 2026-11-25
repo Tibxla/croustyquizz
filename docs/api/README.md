@@ -403,3 +403,42 @@ reste celui choisi à sa création. Le Buzz de test et son format historique res
 Voir [le contrat du prototype](prototype/openapi.yaml).
 Le cycle interne `PRETE` apparaît sous le nom HTTP existant `EN_ATTENTE` dans le programme.
 Les schémas des Manches restent limités au Quiz jusqu'aux contrats des autres modes.
+
+## Photos de la salle (#72)
+
+Un Joueur envoie un JPEG brut par HTTP. Le serveur vérifie sa signature, sa taille
+(1 500 000 octets maximum) et ses dimensions (2048 pixels maximum de chaque côté).
+Un `Content-Length` supérieur à la borne est refusé (`422 DONNEES_INVALIDES`) sans
+lire le corps. Le serveur lit au plus quatre envois à la fois : au-delà, il répond
+`503 SERVICE_INDISPONIBLE` sans reçu. Avant de lire le corps, il vérifie sous le
+verrou de Soirée l'état de la Soirée, le réglage, l'exclusion du Joueur, les files
+et le budget, puis les revérifie au moment de l'ajout.
+Il conserve les JPEG en mémoire uniquement, dans la limite de 64 000 000 octets
+pour l'ensemble des Soirées (`503 SERVICE_INDISPONIBLE`) et de 16 000 000 octets par
+Soirée, photos en attente, acceptées et à l'affiche comprises (`409 LIMITE_ATTEINTE`).
+La file de modération est bornée à trois photos par Joueur et à trente par Soirée,
+et la file des photos acceptées à trente (`409 LIMITE_ATTEINTE` à la modération,
+la photo reste en attente). Un refus ou la fin de l'affichage rend sa place
+au JPEG suivant. La fin de Soirée efface toutes ses photos, le réglage et ses
+reçus. Une Soirée sans commande photo ni changement d'affiche pendant douze heures
+perd ses photos et ses reçus ; son réglage reste. Un redémarrage perd ces données
+et remet les envois ouverts par défaut.
+
+Les mutations exigent un `Idempotency-Key` UUID. Pour une Soirée ouverte ou en
+cours, une commande réussie, rejouée par le même Acteur avec la même clé et le
+même contenu, rend le même reçu. Si la publication a échoué, le rejeu peut
+achever la première publication. Réutiliser la clé pour une
+autre commande ou un autre contenu donne `409 ENVOI_REUTILISE`. Un refus
+ne crée pas de reçu. Les opérations de l'Animateur utilisent l'identité de
+démonstration en dev et recette tant que la session du Lieu (#5) est en attente.
+
+Le bloc `photos` contient le réglage sur la Manette, et sur la Console le
+réglage et la file d'attente avec le pseudo des auteurs. La salle ne reçoit
+que l'UUID et l'échéance de la photo à l'affiche, ou `null`. Si une Manche
+démarre avant la fin des huit secondes, la photo retourne en tête de file
+et aura huit secondes consécutives au prochain créneau. Une Manche en pause
+occupe toujours la scène. Couper les envois laisse les deux files intactes.
+Un Écran de salle ne peut télécharger que le JPEG à l'affiche. Aucun Joueur
+n'a accès au téléchargement. Les octets ne figurent dans aucune vue.
+
+Voir [le parcours complet](exemples/parcours-photos.yaml).

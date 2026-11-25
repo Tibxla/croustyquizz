@@ -102,6 +102,9 @@ async function demarrer() {
 		...(factice ? { charger: () => import(`./modes/factice/${ecran}.mjs`) } : {}),
 		surErreur: () => afficherErreur('Le module de ce Mode de jeu est indisponible. Réessaie la synchronisation.'),
 	});
+	const zonePhotos = element('photos');
+	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
+		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
@@ -113,6 +116,7 @@ async function demarrer() {
 			afficherCommun(vue);
 			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
+			photos?.afficher(vue);
 			buzz?.afficher(vue);
 			pilotage?.afficher(vue);
 			const modeAffiche = gestionnaire.afficher(vue, origine);
@@ -130,7 +134,7 @@ async function demarrer() {
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		talon?.demonter();
-		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter();
+		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
 		pilotage?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();

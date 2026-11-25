@@ -18,6 +18,7 @@ tags:
 - name: Soirée
 - name: Quiz
 - name: Socle
+- name: Photos
 - name: Karaoké
 paths:
   /api/csrf:
@@ -3088,6 +3089,228 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas.yaml#/$defs/AccuseLectureChanson
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos:
+    post:
+      operationId: envoyerPhoto
+      summary: Envoyer une photo à modérer
+      description: >-
+        Joueur de cette Soirée. Corps JPEG brut de 1 500 000 octets et 2048 pixels de côté au plus. Photo invalide, ou Content-Length supérieur à 1 500 000 octets annoncé avant toute lecture du corps : 422 DONNEES_INVALIDES. Envois coupés : 409 PHOTOS_COUPEES. Trois photos en attente par Joueur et trente par Soirée au plus, ou 16 000 000 octets de JPEG conservés par Soirée (en attente, acceptés et à l’affiche) : 409 LIMITE_ATTEINTE. Quatre envois déjà en cours de lecture sur le serveur, ou budget de 64 000 000 octets de JPEG pour toutes les Soirées atteint : 503 SERVICE_INDISPONIBLE, à réessayer avec la même clé. Les gardes de Soirée, de Joueur et de file sont vérifiées avant la lecture du corps, puis de nouveau à l’ajout ; une clé qui a déjà un reçu rend ce reçu. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
+      tags: [Photos]
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ImageJpeg
+      responses:
+        '201':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePhoto
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos/{photoId}:
+    get:
+      operationId: consulterPhoto
+      summary: Lire le JPEG validé d’une photo
+      description: >-
+        Animateur de la Soirée : toute photo encore conservée. Écran de salle : uniquement la photo à l’affiche hors Manche active et avant son échéance, sinon 404 RESSOURCE_INTROUVABLE. Joueur : 403 ACCES_REFUSE. Photo supprimée ou hors portée : 404. Les identifiants ne donnent aucun droit.
+      tags: [Photos]
+      security:
+      - cleEcran: []
+      - sessionAnimateur: []
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            image/jpeg:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ImageJpeg
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos/{photoId}/moderation:
+    post:
+      operationId: modererPhoto
+      summary: Accepter ou refuser une photo en attente
+      description: >-
+        Animateur de cette Soirée. Refuser efface le JPEG. Accepter l’inscrit dans l’ordre d’acceptation pour l’Écran de salle. Trente photos acceptées au plus attendent l’affiche : au-delà, 409 LIMITE_ATTEINTE et la photo reste en attente. Une photo déjà acceptée renvoie 409 COMMANDE_PERIMEE avec une nouvelle clé ; une photo effacée renvoie 404 RESSOURCE_INTROUVABLE. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
+      tags: [Photos]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ModerationPhoto
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePhoto
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos/reglages:
+    put:
+      operationId: reglerPhotos
+      summary: Ouvrir ou couper les envois de photos
+      description: >-
+        Animateur de cette Soirée. Les envois sont ouverts par défaut. Couper conserve la file de modération et les photos déjà acceptées. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
+      tags: [Photos]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ReglagesPhotos
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
         '400':
           $ref: '#/components/responses/Erreur400'
         '401':

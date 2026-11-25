@@ -16,6 +16,7 @@ import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
 import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.photos.PhotosEnMemoire;
 import fr.croustyquizz.tempsreel.FournisseurPartieCommune;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -39,18 +40,20 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 	private final JsonMapper json;
 	private final ClassementDeSoiree calculDuClassement;
 	private final ResultatsDeSoiree resultats;
+	private final PhotosEnMemoire photos;
 	private final ObjectProvider<FournisseurPartieCommune> fournisseurs;
 
 	FournisseurCommunSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs,
 			DepotDeManches depotDeManches, JsonMapper json, ClassementDeSoiree calculDuClassement,
 			ResultatsDeSoiree resultats,
-			ObjectProvider<FournisseurPartieCommune> fournisseurs) {
+			ObjectProvider<FournisseurPartieCommune> fournisseurs, PhotosEnMemoire photos) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.depotDeManches = depotDeManches;
 		this.json = json;
 		this.calculDuClassement = calculDuClassement;
 		this.resultats = resultats;
+		this.photos = photos;
 		this.fournisseurs = fournisseurs;
 	}
 
@@ -87,14 +90,15 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 		vue.put("dernierBuzz", soiree.getDernierBuzz());
 		Map<Destination, Map<String, Object>> parties = new LinkedHashMap<>();
 		for (Destination destination : destinations) {
-			parties.put(destination, completer(soireeId, destination, vue, programme, active != null));
+			parties.put(destination, completer(soireeId, destination, vue, programme, active != null, soiree.accepteLesArrivees()));
 		}
 		return parties;
 	}
 
 	private Map<String, Object> completer(UUID soireeId, Destination destination, Map<String, Object> commun,
-			List<ManchePersistante> programme, boolean mancheActive) {
+			List<ManchePersistante> programme, boolean mancheActive, boolean accepteLesArrivees) {
 		Map<String, Object> vue = new LinkedHashMap<>(commun);
+		vue.put("photos", photos.projection(soireeId, destination, accepteLesArrivees, mancheActive));
 		if (destination.type() == Destination.Type.CONSOLE) {
 			vue.put("programme", programme.stream().map(manche -> ProjectionManche.de(manche, json)).toList());
 		}

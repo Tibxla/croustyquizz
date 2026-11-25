@@ -169,3 +169,61 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 4. Confirmer le premier Passage après la préparation de son fichier. À la fin de lecture, vérifier que le Joueur 2 est appelé, que l’Écran de salle prépare son fichier et que le Vote du public du premier Passage s’ouvre sur sa Manette. Confirmer le deuxième Passage une fois préparé et vérifier que le fichier local démarre.
 5. Rejouer avec une pause pendant un Passage alors que le Joueur 2 attend. Cliquer sur « Passer » et vérifier que le Joueur 2 reste en attente jusqu’à « Reprendre ».
 6. Rejouer dans une Soirée neuve en Manuel. Vérifier que « Appeler le suivant » est disponible quand la File d’attente est libre et que l’Animateur doit l’utiliser après la première inscription et après la fin du Passage.
+
+## Photos de la salle (#72)
+
+La Manette propose « Envoyer une photo » tant que les envois sont ouverts.
+Le champ n’impose pas l’appareil photo (`accept="image/*"`, sans `capture`) :
+le téléphone propose de prendre une photo ou d’en choisir une dans la
+photothèque. La Manette respecte l’orientation de l’image, la réduit à 1600
+pixels de côté au plus et la réencode en JPEG avant l’envoi. Ce réencodage
+retire les métadonnées EXIF, dont la position GPS. Si le JPEG dépasse 1,5 Mo,
+la Manette réduit de nouveau ses dimensions. Une image illisible ou trop lourde
+affiche une erreur sous le champ. « Photo envoyée » confirme la réponse du
+serveur. Pendant l’envoi, le champ reste focalisable mais `aria-disabled` et
+n’ouvre pas le sélecteur. Après une confirmation inconnue ou un refus, choisir
+de nouveau le même fichier (même nom, taille et date) renvoie le même JPEG avec
+la même `Idempotency-Key` : un envoi déjà enregistré rend son reçu au lieu d’un
+doublon. Seuls un autre fichier ou un succès tirent une nouvelle clé. Si
+l’Animateur coupe les envois pendant un envoi déjà parti, la Manette masque le
+champ sans annuler la requête et affiche sa réponse.
+
+Le serveur borne la mémoire avant de lire le corps : `Content-Length` au-delà de
+1,5 Mo refusé, quatre envois lus à la fois au plus, gardes de Soirée, de Joueur
+et de file vérifiées sous le verrou avant la lecture puis de nouveau à l’ajout.
+Chaque Soirée garde au plus 16 Mo de photos (en attente, acceptées et à
+l’affiche) et trente photos acceptées, et toutes les Soirées 64 Mo. Une Soirée
+sans commande photo ni changement d’affiche pendant douze heures perd ses
+photos et ses reçus ; un réglage coupé reste coupé.
+
+Le panneau « Photos de la salle » de la Console suit l’ordre d’arrivée. Chaque
+vignette et son pseudo permettent d’accepter ou de refuser la photo. Pendant
+la commande, le bouton garde le focus avec `aria-disabled`. Une fois la photo
+modérée, le focus passe au même bouton de la ligne suivante, sinon de la
+précédente, ou au titre du panneau quand la file est vide. L’interrupteur
+« Recevoir les photos des Joueurs » garde ce libellé fixe, qui est aussi son nom accessible ;
+la case indique l’état. Couper les envois masque la commande sur les Manettes
+et laisse les photos déjà reçues dans leurs files. L’Écran de salle affiche les
+photos dans l’ordre d’acceptation, huit secondes chacune hors Manche, dans le
+cadre principal, et masque alors la note d’attente et le classement de salle.
+Un début de Manche retire immédiatement la photo à l’affiche. Elle repassera
+au prochain créneau. Une Manche en pause occupe la scène.
+
+Recette sur téléphone Android et iPhone : prendre une photo et en choisir une
+depuis la photothèque, puis vérifier l’orientation d’un portrait et d’un paysage.
+Sur iPhone, inclure une photo au format HEIC et vérifier le message si le
+navigateur ne la décode pas. Provoquer un refus et réessayer sans recharger.
+Côté Console, couper puis rouvrir les envois et valider des photos dans un ordre
+autre que celui de leur arrivée. Sur deux Écrans de salle, recharger l’un d’eux
+au milieu d’un affichage. Vérifier la même photo et la même fin d’affichage,
+puis démarrer et terminer une Manche. Vérifier le portrait et le paysage à 5 m.
+
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans
+interface : Soirée enregistrée et ouverte, deux Écrans de salle ouverts par leur clé, deux
+Manettes arrivées par le code, et la Console. Une image illisible est refusée sous le champ,
+puis un nouvel essai passe sans recharger. Un paysage de 3000 × 2000 et un portrait de
+1200 × 1800 arrivent en 1600 × 1066 et 1066 × 1600. La photo de Sam, acceptée avant celle
+de Léa, passe la première sur les deux Écrans, et un Écran rechargé retrouve la même photo.
+L'affiche se vide après le dernier créneau. Couper les envois retire le champ des Manettes.
+Aucun des écrans ne déborde. Restent l'orientation EXIF, le HEIC, l'appareil photo sur
+téléphone et la lecture à 5 m.

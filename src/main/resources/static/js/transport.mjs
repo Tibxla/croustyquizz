@@ -22,11 +22,12 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 	function requerir(methode, chemin, corps, { entetes = {}, signal } = {}) {
 		const url = new URL(chemin, adresse);
 		if (url.origin !== new URL(adresse).origin) throw new Error('La requête doit rester sur CroustyQuizz.');
+		const binaire = corps instanceof Blob;
 		return requete(url, {
 			method: methode, credentials: 'same-origin', cache: 'no-store', signal,
 			headers: { Accept: 'application/json', ...entetes,
-				...(corps === undefined ? {} : { 'Content-Type': 'application/json' }), ...entetesIdentite() },
-			...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
+				...(corps === undefined ? {} : { 'Content-Type': binaire ? corps.type : 'application/json' }), ...entetesIdentite() },
+			...(corps === undefined ? {} : { body: binaire ? corps : JSON.stringify(corps) }),
 		});
 	}
 	async function envoyer(methode, chemin, corps, options) {
@@ -39,6 +40,13 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 	}
 	return {
 		envoyer,
+		async chargerImage(chemin, { signal } = {}) {
+			const reponse = await requerir('GET', chemin, undefined, { entetes: { Accept: 'image/jpeg' }, signal });
+			if (!reponse.ok || reponse.headers?.get('Content-Type') !== 'image/jpeg') {
+				throw new Error('Cette photo est indisponible.');
+			}
+			return reponse.blob();
+		},
 		async chargerQrCode(soireeId, signal) {
 			if (!jeton || jeton.startsWith('demo:')) return null;
 			const reponse = await requerir('GET', `/api/soirees/${encodeURIComponent(soireeId)}/qrcode`, undefined, {
