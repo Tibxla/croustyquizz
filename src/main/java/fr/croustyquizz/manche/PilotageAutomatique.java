@@ -210,8 +210,8 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 			ecriture.execute(statut -> supprimer(soireeId, finPrevueLe));
 			return true;
 		} catch (RuntimeException erreur) {
-			JOURNAL.error("Échec de la suppression de la transition de la Soirée {}, nouvel essai dans {} s", soireeId,
-					NOUVEL_ESSAI.toSeconds(), erreur);
+			JOURNAL.error("Échec de la suppression de la transition de la Soirée {}, nouvel essai programmé", soireeId,
+					erreur);
 			return false;
 		}
 	}
