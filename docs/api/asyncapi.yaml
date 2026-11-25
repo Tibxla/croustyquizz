@@ -149,6 +149,7 @@ x-stomp:
   connect:
     Authorization: Bearer <jetonJoueur ou cleEcran> ; sinon session Animateur par cookie du handshake
     X-CSRF-TOKEN: Jeton obtenu par HTTP dans ce navigateur, requis pour CONNECT
+    refus: Trame ERROR dont l’en-tête message porte un motif affichable, puis fermeture de la WebSocket, sans CONNECTED ; la coquille ne se reconnecte pas d’elle-même
   subscribe:
     id: UUID neuf ; utilisé comme abonnementId pour la capture HTTP cohérente
     destination: Adresse autorisée du canal
