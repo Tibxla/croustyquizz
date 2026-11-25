@@ -1,19 +1,51 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { decrireClassementDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
 	const description = decrireVue({ soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
 		modeEnCours: 'BLIND_TEST', mancheActive: { ordre: 2, etat: 'EN_PAUSE' },
 		joueurs: [{ id: 'j1', pseudo: '<script>Joueur</script>', connecte: false }], joueurId: 'j1', eligiblePourMancheActive: false,
-		classement: [{ rang: 1, nom: 'Joueur', points: 850 }], dernierBuzz: { pseudo: 'Joueur' },
+		classement: [{ concurrentId: 'j1', rang: 1, nom: 'Joueur', points: 850 }], dernierBuzz: { pseudo: 'Joueur' },
 		programme: [{ ordre: 2, mode: 'BLIND_TEST', etat: 'EN_PAUSE' }], resultatPersonnel: { pointsGagnes: 850 },
 	});
 	assert.equal(description.manche, 'Blind test · Manche 3 · En pause');
 	assert.deepEqual(description.joueurs, ['<script>Joueur</script> · déconnecté']);
 	assert.deepEqual(description.classement, ['1. Joueur · 850 points']);
-	assert.equal(description.personnel, '<script>Joueur</script> · Tu participeras à la prochaine Manche. · 850 points à la dernière correction');
+	assert.equal(description.personnel, '<script>Joueur</script> · Rang 1 · 850 points · Tu participeras à la prochaine Manche. · 850 points à la dernière correction');
 	assert.deepEqual(description.programme, ['3. Blind test · En pause']);
+});
+
+test('la salle affiche dix lignes entre deux Manches et retire le classement pendant une Manche', () => {
+	const classement = Array.from({ length: 12 }, (_, i) => ({ rang: i + 1, nom: `Joueur ${i + 1}`, points: 15 - i }));
+	const vue = { soiree: { etat: 'EN_COURS' }, mancheActive: null, classement };
+	const description = decrireClassementDeSalle(vue);
+	assert.equal(description.titre, 'Classement général · Top 10');
+	assert.equal(description.lignes.length, 10);
+	assert.equal(description.lignes.at(-1), '10. Joueur 10 · 6 points');
+	assert.equal(decrireClassementDeSalle({ ...vue, mancheActive: { ordre: 1, etat: 'EN_PAUSE' } }), null);
+	assert.deepEqual(decrireClassementDeSalle({ ...vue, classement: [] }).lignes, []);
+	assert.equal(decrireClassementDeSalle({ ...vue, soiree: { etat: 'OUVERTE' }, classement: [] }), null);
+});
+
+test('le podium garde tous les ex æquo aux rangs donnés par le serveur', () => {
+	const vue = { soiree: { etat: 'TERMINEE' }, mancheActive: null, classement: [
+		{ rang: 1, nom: 'Lou', points: 10 }, { rang: 1, nom: 'Sam', points: 10 },
+		{ rang: 3, nom: 'Léa', points: 8 }, { rang: 3, nom: 'Maé', points: 8 },
+		{ rang: 5, nom: 'Noémie', points: 1 },
+	] };
+	assert.deepEqual(decrireClassementDeSalle(vue), {
+		titre: 'Podium final', podium: true,
+		lignes: ['1. Lou · 10 points', '1. Sam · 10 points', '3. Léa · 8 points', '3. Maé · 8 points'],
+	});
+	assert.deepEqual(decrireClassementDeSalle({ ...vue, classement: [] }).lignes, []);
+});
+
+test('la Manette affiche le rang hors du Top 10 et indique les Joueurs encore sans classement', () => {
+	const vue = { soiree: { format: 'SOLO' }, joueurs: [{ id: 'j', pseudo: 'Léa' }], joueurId: 'j',
+		classement: [{ concurrentId: 'j', rang: 12, nom: 'Léa', points: 1 }] };
+	assert.equal(decrireVue(vue).personnel, 'Léa · Rang 12 · 1 point');
+	assert.equal(decrireVue({ ...vue, classement: [] }).personnel, 'Léa · Non classé · 0 point');
 });
 
 test('l’avertissement du retardataire ne dépend que de eligiblePourMancheActive, quel que soit le Mode de jeu', () => {
@@ -51,4 +83,17 @@ test('le Palmarès affiche le rang éventuel, le numéro, les Interprètes et le
 		{ texte: '1. n° 12 · Les quais · Alizé, Basile · 4,3 sur 5 (7 votes)', numero: 12 },
 		{ texte: 'n° 9 · Le phare · Joueur parti · Aucun vote', numero: 9 },
 	]);
+});
+
+test('le Palmarès du Karaoké prend la place du Classement de salle et du texte d’attente', () => {
+	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
+	const vue = { soiree: { etat: 'EN_COURS' }, modeEnCours: null, mancheActive: null, joueurs: [], classement };
+	assert.equal(decrireVue(vue).attente, 'La prochaine Manche s’affichera ici.');
+	assert.equal(decrireVue({ ...vue, palmaresKaraoke: [] }).attente, '');
+	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: [] }), null);
+	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: null }).titre, 'Classement général · Top 10');
+	const terminee = { ...vue, soiree: { etat: 'TERMINEE' } };
+	assert.equal(decrireVue(terminee).attente, '');
+	assert.equal(decrireClassementDeSalle(terminee).titre, 'Podium final');
+	assert.equal(decrireClassementDeSalle({ ...terminee, palmaresKaraoke: [] }), null);
 });
