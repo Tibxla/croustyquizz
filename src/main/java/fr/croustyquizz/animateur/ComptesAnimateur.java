@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -40,7 +41,7 @@ class ComptesAnimateur {
 				on conflict (lower(email)) do nothing
 				""")
 				.param("id", animateur.id()).param("lieuId", lieu.id()).param("nom", animateur.nom())
-				.param("email", saisie.email()).param("hachage", hachage).update();
+				.param("email", normaliser(saisie.email())).param("hachage", hachage).update();
 		if (insertions == 0) {
 			throw new Refuse(409, "EMAIL_DEJA_UTILISE", "Cet e-mail est déjà utilisé.").exception();
 		}
@@ -49,9 +50,9 @@ class ComptesAnimateur {
 
 	IdentiteAnimateur reconnaitre(SaisiesAnimateur.Connexion saisie) {
 		var compte = jdbc.sql("""
-				select id, nom, lieu_id, mot_de_passe_hache from animateur where lower(email) = lower(:email)
+				select id, nom, lieu_id, mot_de_passe_hache from animateur where lower(email) = :email
 				""")
-				.param("email", saisie.email())
+				.param("email", normaliser(saisie.email()))
 				.query((ligne, numero) -> new Compte(
 						new IdentiteAnimateur(ligne.getObject("id", UUID.class), ligne.getString("nom"),
 								ligne.getObject("lieu_id", UUID.class)),
@@ -64,6 +65,11 @@ class ComptesAnimateur {
 			throw new Refuse(401, "IDENTIFIANTS_INVALIDES", "L’e-mail ou le mot de passe est invalide.").exception();
 		}
 		return compte.orElseThrow().identite();
+	}
+
+	/** La casse est repliée en Java : le lower() de PostgreSQL dépend de la locale de la base. */
+	private static String normaliser(String email) {
+		return email.toLowerCase(Locale.ROOT);
 	}
 
 	/** BCrypt accepte au plus 72 octets. L'empreinte encodée couvre tout le mot de passe. */

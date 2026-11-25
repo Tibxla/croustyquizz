@@ -12,8 +12,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.logout.CompositeLogoutHandler;
-import org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
@@ -47,9 +45,10 @@ class AnimateurControleur {
 		this.comptes = comptes;
 		this.sessions = sessions;
 		this.renouvellement = renouvellement;
+		// Invalider la session suffit : le cookie restant ne désigne plus aucune session.
 		var sortie = new SecurityContextLogoutHandler();
 		sortie.setSecurityContextRepository(sessions);
-		this.fermeture = new CompositeLogoutHandler(sortie, new CookieClearingLogoutHandler("JSESSIONID"));
+		this.fermeture = sortie;
 	}
 
 	@GetMapping(CSRF)

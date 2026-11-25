@@ -10,13 +10,16 @@ import tools.jackson.databind.JsonNode;
 
 final class SaisiesAnimateur {
 
+	/** Ni NUL ni surrogate isolé : le pilote JDBC remplacerait ce dernier par « ? » sans erreur. */
+	static final String TEXTE_ENREGISTRE = "[^\\x00\\p{Cs}]*";
+
 	private SaisiesAnimateur() {
 	}
 
 	record Inscription(
 			@Valid LieuSaisi lieu,
-			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = "[^\\x00]*") String nom,
-			@NotBlank @Email @CodePointLength(max = 254) String email,
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String nom,
+			@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email,
 			@CodePointLength(min = 12, max = 128) @Pattern(regexp = "[^\\p{Cs}]*") String motDePasse) {
 
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
@@ -35,12 +38,12 @@ final class SaisiesAnimateur {
 	}
 
 	record LieuSaisi(
-			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = "[^\\x00]*") String nom,
-			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = "[^\\x00]*") String ville) {
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String nom,
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String ville) {
 	}
 
 	record Connexion(
-			@NotBlank @Email @CodePointLength(max = 254) String email,
+			@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email,
 			@CodePointLength(min = 1, max = 128) @Pattern(regexp = "[^\\p{Cs}]*") String motDePasse) {
 
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
