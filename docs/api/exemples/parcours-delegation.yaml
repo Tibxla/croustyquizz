@@ -357,7 +357,7 @@ http:
     title: Accès refusé
     status: 403
     code: ACCES_REFUSE
-    detail: Ta Délégation ne comprend pas ce pouvoir.
+    detail: Cette commande demande une Délégation de l’Animateur.
     instance: /api/soirees/67000000-0000-4000-8000-000000000001/manches/67000000-0000-4000-8000-000000000002/file-attente/priorite
 evenements:
 - nom: La Console voit la Délégation d’Alizé

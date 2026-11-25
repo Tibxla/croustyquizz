@@ -29,8 +29,8 @@ class MusiqueDAttenteControleur {
 
 	@PutMapping
 	ResponseEntity<Reglage> regler(@PathVariable UUID soireeId, @Valid @RequestBody Reglage reglage, Acteur acteur) {
-		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
-		service.regler(soireeId, MusiqueDAttente.Etat.valueOf(reglage.etat()));
+		AccesAuxVues.verifier(acteur, soireeId, null);
+		service.regler(acteur, soireeId, MusiqueDAttente.Etat.valueOf(reglage.etat()));
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(reglage);
 	}
 

@@ -54,6 +54,21 @@ public final class VuesKaraoke {
             List<PassageEnAttentePublic> mesPassagesEnAttente, long nombrePersonnelEnAttente,
             boolean peutRechercher, boolean peutInscrire, String motifInscriptionRefusee, boolean peutConfirmerPresence,
             List<VoteDuPassageManette> votes) { }
+    /**
+     * File d'attente du pouvoir délégué FILE_ATTENTE (#67) : la partie de la Console qui sert à placer, prioriser,
+     * appeler et passer, sans lecture, fichier local, paroles ni votes.
+     */
+    public record FileAttenteDeleguee(UUID mancheId, EtatManche etat, long limitePassagesEnAttente, long nombreEnAttente,
+            long tourOuvert, UUID passagePrioritaireId, CourantPourFile courant,
+            ConfigurationInterfaceKaraoke configurationInterface, List<PassageEnAttentePublic> passagesEnAttente,
+            boolean peutGererFile, boolean peutAppeler, boolean peutPasser) {
+        static FileAttenteDeleguee de(BlocKaraokeConsole console) {
+            return new FileAttenteDeleguee(console.mancheId(), console.etat(), console.limitePassagesEnAttente(),
+                    console.nombreEnAttente(), console.tourOuvert(), console.passagePrioritaireId(), console.courant(),
+                    console.configurationInterface(), console.passagesEnAttente(), console.peutGererFile(),
+                    console.peutAppeler(), console.peutPasser());
+        }
+    }
     public record DemandePositionLecture(UUID demandeId, Instant demandeeLe) { }
     public record LectureDeChanson(UUID lectureId, UUID lecteurId, EtatLecture etat, SourceLecture source,
             MotifParolesSeules motifParolesSeules, OrigineParoles origineParoles, long decalageMs,

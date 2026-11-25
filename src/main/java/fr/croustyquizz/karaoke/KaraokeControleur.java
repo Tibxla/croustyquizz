@@ -72,7 +72,7 @@ public class KaraokeControleur {
             @Valid @RequestBody CorpsKaraoke.PlacementPassage corps,
             @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
             Acteur acteur) {
-        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        AccesAuxVues.verifier(acteur, soireeId, null); // Animateur ou Joueur délégué : le service tranche (#67).
         String route = passage(soireeId, mancheId, passageId) + "/placement";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId,
                 new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
@@ -83,7 +83,7 @@ public class KaraokeControleur {
             @Valid @RequestBody CorpsKaraoke.PrioritePassage corps,
             @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
             Acteur acteur) {
-        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        AccesAuxVues.verifier(acteur, soireeId, null); // Animateur ou Joueur délégué : le service tranche (#67).
         String route = racine(soireeId, mancheId) + "/file-attente/priorite";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId,
                 new CorpsKaraoke.EmpreinteHttp(HttpMethod.PUT.name(), corps));
@@ -106,7 +106,7 @@ public class KaraokeControleur {
             @Valid @RequestBody CorpsKaraoke.AppelPassage corps,
             @RequestHeader(CLE_IDEMPOTENCE) UUID envoiId,
             Acteur acteur) {
-        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+        AccesAuxVues.verifier(acteur, soireeId, null); // Animateur ou Joueur délégué : le service tranche (#67).
         String route = passage(soireeId, mancheId, passageId) + "/appel";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId, new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service.appelerPassage(mancheId, passageId, envoi, corps), route);

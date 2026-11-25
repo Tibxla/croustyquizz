@@ -9,6 +9,7 @@ import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,8 @@ import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.Horloge;
 import fr.croustyquizz.manche.Minuteur;
+import fr.croustyquizz.manche.Pouvoir;
+import fr.croustyquizz.manche.PouvoirsDelegues;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.soiree.EtatSoiree;
 import fr.croustyquizz.soiree.Joueur;
@@ -46,9 +49,17 @@ class ServicePhotos {
 	private final PublicationDeVues vues;
 	private final Horloge horloge;
 	private final TransactionTemplate nouvelleLecture;
+	private final PouvoirsDelegues pouvoirs;
 
 	ServicePhotos(PhotosEnMemoire photos, ServiceSoiree soirees, DepotDeManches manches, VerrousSoiree verrous,
 			PublicationDeVues vues, Horloge horloge, PlatformTransactionManager transactions) {
+		this(photos, soirees, manches, verrous, vues, horloge, transactions, PouvoirsDelegues.ANIMATEUR_SEUL);
+	}
+
+	@Autowired
+	ServicePhotos(PhotosEnMemoire photos, ServiceSoiree soirees, DepotDeManches manches, VerrousSoiree verrous,
+			PublicationDeVues vues, Horloge horloge, PlatformTransactionManager transactions, PouvoirsDelegues pouvoirs) {
+		this.pouvoirs = pouvoirs;
 		this.photos = photos;
 		this.soirees = soirees;
 		this.manches = manches;
@@ -103,9 +114,18 @@ class ServicePhotos {
 		});
 	}
 
-	Accepte moderer(Acteur animateur, UUID cle, UUID photoId, boolean acceptee) {
-		UUID soireeId = animateur.soireeId();
-		return executer(animateur, cle, new Moderation(photoId, acceptee), file -> {
+	/** Animateur ou Joueur délégué du pouvoir PHOTOS (#67), vérifié sous le verrou avant tout reçu. */
+	Accepte moderer(Acteur moderateur, UUID cle, UUID photoId, boolean acceptee) {
+		UUID soireeId = moderateur.soireeId();
+		return verrous.executer(soireeId, () -> {
+			pouvoirs.autoriser(moderateur, Pouvoir.PHOTOS);
+			return modererAutorise(moderateur, cle, photoId, acceptee);
+		});
+	}
+
+	private Accepte modererAutorise(Acteur moderateur, UUID cle, UUID photoId, boolean acceptee) {
+		UUID soireeId = moderateur.soireeId();
+		return executer(moderateur, cle, new Moderation(photoId, acceptee), file -> {
 			boolean sceneLibre = acceptee && !mancheActive(soireeId);
 			var photo = file.moderer(photoId, acceptee);
 			if (!acceptee) {
@@ -156,12 +176,14 @@ class ServicePhotos {
 	}
 
 	byte[] lire(Acteur acteur, UUID photoId) {
-		if (acteur.type() == Acteur.Type.JOUEUR) {
-			throw new Refuse(403, "ACCES_REFUSE", "Les Joueurs ne peuvent pas télécharger les photos.").exception();
-		}
 		UUID soireeId = acteur.soireeId();
-		boolean lecturePrivee = acteur.type() == Acteur.Type.ANIMATEUR;
 		return verrous.executer(soireeId, () -> {
+			// Le Joueur délégué du pouvoir PHOTOS voit la photo pour en juger, comme l’Animateur (#67).
+			boolean moderateur = acteur.type() == Acteur.Type.ANIMATEUR || pouvoirs.detient(acteur, Pouvoir.PHOTOS);
+			if (acteur.type() == Acteur.Type.JOUEUR && !moderateur) {
+				throw new Refuse(403, "ACCES_REFUSE", "Les Joueurs ne peuvent pas télécharger les photos.").exception();
+			}
+			boolean lecturePrivee = moderateur;
 			var file = photos.trouver(soireeId);
 			if (file == null || !soireeOuverte(soireeId)
 					|| !lecturePrivee && mancheActive(soireeId)) {
