@@ -39,7 +39,7 @@ Docker doit tourner pour lancer l'application et pour les tests.
 | `./mvnw verify` | build, tests (PostgreSQL jetable par Testcontainers), couverture JaCoCo et alertes PMD bloquantes |
 | `./mvnw test -Dtest=NomDuTest` | un seul test |
 | `npm ci --prefix tools/api` puis `npm test --prefix tools/api` | valide les contrats, les exemples et les cas de confidentialité de `docs/api/` (Node 24) |
-| `python3 tools/generer-dossier.py [rendu-2]` | régénère le PDF d'un dossier de rendu depuis `doc/rendu-1/` (par défaut, quatre pages à vérifier) ou `doc/rendu-2/` (Pandoc et Chrome) |
+| `python3 tools/generer-dossier.py [rendu-2\|rendu-3]` | régénère le PDF d'un dossier de rendu depuis `doc/rendu-1/` (par défaut, quatre pages à vérifier), `doc/rendu-2/` ou `doc/rendu-3/` (Pandoc et Chrome) |
 | `tools/demo.sh demarrer` / `arreter` | démo sur le serveur, le temps d'une séance : jamais en développement, procédure dans `docs/deploiement.md` |
 | `docker compose down -v` | efface la base locale pour repartir de zéro |
 | `git config core.hooksPath .githooks` | une fois par clone : refuse les messages de commit hors format |
