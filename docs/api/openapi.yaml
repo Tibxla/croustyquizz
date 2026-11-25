@@ -210,6 +210,8 @@ paths:
         La session détermine le Lieu. La clé n’est remise qu’à la création. La Console compose le lien
         /invitation.html#cle=… et l’Animateur le transmet lui-même. La clé expire après sept jours.
         Un e-mail déjà associé à un compte, quelle que soit sa casse, entraîne 409 EMAIL_DEJA_UTILISE.
+        La création efface les invitations expirées du Lieu ; vingt invitations en cours au plus par Lieu,
+        au-delà 409 LIMITE_ATTEINTE.
       tags:
       - Accès
       security:

@@ -70,6 +70,29 @@ test('la Console crée puis copie un lien qui porte la clé dans son fragment', 
 	assert.ok(document.activeElement === bouton);
 });
 
+test('la Console explique le plafond des invitations en cours du Lieu', async t => {
+	const { document, ajouter, champ } = creerInterface();
+	const bouton = ajouter(document.body, 'button');
+	const dialogue = ajouter(document.body, 'dialog');
+	const formulaire = ajouter(dialogue, 'form');
+	champ(formulaire, 'email', 'vingt-et-unieme@exemple.test');
+	ajouter(formulaire, 'button', { type: 'submit' });
+	const resultat = ajouter(dialogue, 'div', { 'data-lien-invitation': '' });
+	resultat.hidden = true;
+	ajouter(resultat, 'input');
+	ajouter(resultat, 'button');
+	const statut = ajouter(dialogue, 'p', { role: 'status' });
+	ajouter(dialogue, 'button', { 'data-fermer-invitation': '' });
+	t.mock.method(globalThis, 'fetch', async route => route === '/api/csrf'
+		? json({ token: 'csrf-fictif' }) : json({ code: 'LIMITE_ATTEINTE', detail: 'Plafond.' }, 409));
+	monterInvitationConsole(bouton, dialogue, 'https://croustyquizz.test', { writeText() {} });
+	bouton.click();
+	formulaire.dispatchEvent({ type: 'submit' });
+	await setImmediate();
+	assert.match(statut.textContent, /vingt invitations en cours/);
+	assert.equal(resultat.hidden, true);
+});
+
 test('l’invité voit le Lieu puis crée son compte avec la clé dans les corps JSON', async t => {
 	const { document, ajouter, champ } = creerInterface();
 	const racine = ajouter(document.body, 'section');

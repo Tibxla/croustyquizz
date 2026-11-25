@@ -4,6 +4,7 @@ import { afficherErreurChamp, erreurDeCompte, validerChamps } from './formulaire
 
 const INVITATIONS = '/api/animateurs/invitations';
 const FORME_CLE = /^[A-Za-z0-9_-]{43}$/;
+const PLAFOND_ATTEINT = 'Ce Lieu a déjà vingt invitations en cours. Attends qu’une invitation soit utilisée ou expire.';
 const LIEN_INVALIDE = 'Ce lien d’invitation est invalide, expiré ou déjà utilisé. Demande un nouveau lien à l’Animateur qui t’a invité.';
 
 export function monterInvitationConsole(bouton, dialogue, origine = location.origin, pressePapiers = navigator.clipboard) {
@@ -54,7 +55,8 @@ export function monterInvitationConsole(bouton, dialogue, origine = location.ori
 				? 'Cet e-mail est déjà utilisé.' : 'Indique une adresse e-mail valide.');
 			email.focus();
 		} else {
-			statut.textContent = reponse.statut === 401 ? 'Reconnecte-toi pour créer une invitation.' : erreurDeCompte(reponse.code).texte;
+			statut.textContent = reponse.statut === 401 ? 'Reconnecte-toi pour créer une invitation.'
+				: reponse.code === 'LIMITE_ATTEINTE' ? PLAFOND_ATTEINT : erreurDeCompte(reponse.code).texte;
 		}
 	});
 	copier.addEventListener('click', async () => {

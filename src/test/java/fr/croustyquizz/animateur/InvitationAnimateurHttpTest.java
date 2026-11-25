@@ -144,6 +144,30 @@ class InvitationAnimateurHttpTest {
 	}
 
 	@Test
+	void effaceLesInvitationsExpireesEtPlafonneCellesEnCoursDuLieu() throws Exception {
+		var invitant = SessionAnimateurHttp.ouvrir(port, json);
+		String lieuId = consulterSession(invitant.cookie()).path("lieuId").asString();
+		creerInvitation(invitant.entetes(), "perimee@example.com");
+		horloge.avancer(Duration.ofDays(7));
+		creerInvitation(invitant.entetes(), "recente@example.com");
+		assertThat(jdbc.sql("select email from invitation_animateur where lieu_id = cast(:lieuId as uuid)")
+				.param("lieuId", lieuId).query(String.class).list()).containsExactly("recente@example.com");
+
+		for (int numero = 2; numero <= 20; numero++) {
+			creerInvitation(invitant.entetes(), "invite-" + numero + "@example.com");
+		}
+		verifierRefus("creerInvitationAnimateur", 409, "LIMITE_ATTEINTE",
+				poster(INVITATIONS, invitant.entetes(), Map.of("email", "invite-21@example.com")));
+		var autreLieu = SessionAnimateurHttp.ouvrir(port, json);
+		creerInvitation(autreLieu.entetes(), "invite-21@example.com");
+
+		horloge.avancer(Duration.ofDays(7));
+		creerInvitation(invitant.entetes(), "invite-21@example.com");
+		assertThat(jdbc.sql("select count(*) from invitation_animateur where lieu_id = cast(:lieuId as uuid)")
+				.param("lieuId", lieuId).query(Integer.class).single()).isOne();
+	}
+
+	@Test
 	void refuseUnEmailPrisEntreLaCreationEtLAcceptationMemeSiLaCasseDiffere() throws Exception {
 		var invitant = SessionAnimateurHttp.ouvrir(port, json);
 		String cle = creerInvitation(invitant.entetes(), "doublon@example.com").path("cle").asString();
