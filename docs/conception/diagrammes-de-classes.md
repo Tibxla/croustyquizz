@@ -603,8 +603,19 @@ classDiagram
         +terminer(UUID soireeId)
     }
     class PilotageAutomatique {
-        +surFinDeManche(UUID mancheId)
+        +surFinDeManche(UUID soireeId, UUID mancheId, Instant)
+        +fournir(UUID, Destination, Map) TransitionManche
     }
+    class ObservateurDeFinDeManche {
+        <<interface>>
+        +surFinDeManche(UUID soireeId, UUID mancheId, Instant)
+    }
+    class EnchainementDeSoiree {
+        <<interface>>
+        +mancheSuivante(UUID soireeId, UUID mancheTermineeId)
+    }
+    class EnchainementDeSoireeEnregistree
+    class TransitionPersistante
     class RegistreDesModes {
         +FabriqueDeDeroulement pour(ModeDeJeu)
     }
@@ -1001,7 +1012,12 @@ classDiagram
 
     OrchestrateurDeSoiree --> RegistreDesModes
     OrchestrateurDeSoiree --> DiffuseurTempsReel
-    PilotageAutomatique --> OrchestrateurDeSoiree
+    ObservateurDeFinDeManche <|.. PilotageAutomatique
+    PilotageAutomatique --> EnchainementDeSoiree : à l'échéance
+    PilotageAutomatique --> EtatDeSoiree
+    PilotageAutomatique --> TransitionPersistante
+    EnchainementDeSoiree <|.. EnchainementDeSoireeEnregistree : soiree
+    EnchainementDeSoireeEnregistree --> OrchestrateurDeSoiree : MANCHE_SUIVANTE
     RegistreDesModes o-- FabriqueDeDeroulement
     ServiceSoiree --> FiltreDePseudos
     ServiceClassement ..> ServiceEquipe
@@ -1077,6 +1093,7 @@ classDiagram
     FournisseurDeBlocKaraoke --> ServiceKaraoke : instantané
     AssembleurDeVues o-- FournisseurDeChampCommun : champs de la vue
     FournisseurDeChampCommun <|.. FournisseurPalmaresKaraoke
+    FournisseurDeChampCommun <|.. PilotageAutomatique
     FournisseurPalmaresKaraoke --> ServiceKaraoke : Palmarès
     ServiceKaraoke ..> ClassementParVote
     ServiceKaraoke ..> LignePalmaresKaraoke
@@ -1121,4 +1138,4 @@ npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-domai
 npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-services.mmd -o docs/conception/diagramme-classes-services.png
 ```
 
-Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
+Depuis `@mermaid-js/mermaid-cli` 12, ajouter aussi `--size 3500` à la commande des services : sans lui, l'image est ramenée à 800 px de large avant l'échelle. Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
