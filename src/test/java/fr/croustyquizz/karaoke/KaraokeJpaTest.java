@@ -134,6 +134,30 @@ class KaraokeJpaTest {
                 .containsExactlyInAnyOrderEntriesOf(Map.of(celia, 1L, boris, 1L));
     }
 
+    @Test void lAccordDEnregistrementSurvitALaReecritureDesInterpretesEtPartAvecCeluiQuiQuitteLePassage() {
+        UUID soiree = UUID.randomUUID();
+        UUID ana = joueursDe(soiree).getFirst();
+        UUID boris = joueursDe(soiree).get(1);
+        var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
+        UUID passage = inscrire(manche, new Acteur(Acteur.Type.JOUEUR, ana, soiree), 1);
+        var file = FileAttente.depuis(((InstantaneKaraoke) service.instantane(soiree, manche)).file());
+        file.ajouterInterprete(new CiblePassage(passage, 0), boris);
+        var duo = enregistrerFilePuisRestaurer(file.etat());
+        var transaction = new TransactionTemplate(socle.transactions());
+        transaction.executeWithoutResult(s -> List.of(ana, boris).forEach(j -> contenus.enregistrerAccord(passage, j, true)));
+
+        // [Ana, Boris] devient [Boris] : Boris est réécrit à la position 0 et garde son accord.
+        var restauree = FileAttente.depuis(duo);
+        restauree.retirerJoueurParti(ana, socle.horloge().maintenant());
+        assertThat(enregistrerFilePuisRestaurer(restauree.etat()).passages().getFirst().interpretes()).containsExactly(boris);
+        assertThat(transaction.<Boolean>execute(s -> contenus.accordEnregistrement(passage, boris))).isTrue();
+        assertThat(transaction.<Boolean>execute(s -> contenus.accordEnregistrement(passage, ana))).isFalse();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM accord_enregistrement_passage WHERE passage_id = ?",
+                Long.class, passage)).isEqualTo(1);
+    }
+
     private EtatFileAttente enregistrerFilePuisRestaurer(EtatFileAttente file) {
         UUID manche = file.mancheId();
         new TransactionTemplate(socle.transactions()).executeWithoutResult(s -> passages.enregistrer(manche, file));

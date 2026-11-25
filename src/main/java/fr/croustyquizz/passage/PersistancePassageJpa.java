@@ -28,9 +28,11 @@ public class PersistancePassageJpa {
         var parPassage = interpretesParPassage(mancheId);
         List<InterpretePersistant> aRetirer = new ArrayList<>();
         List<InterpretePersistant> aInscrire = new ArrayList<>();
+        List<InterpretePersistant> partis = new ArrayList<>();
         for (Passage passage : etat.passages()) {
             var anciens = parPassage.getOrDefault(passage.id(), List.of());
             var actuels = passage.interpretes();
+            anciens.stream().filter(i -> !actuels.contains(i.getJoueurId())).forEach(partis::add);
             int ordre = 0;
             while (ordre < anciens.size() && ordre < actuels.size()
                     && anciens.get(ordre).getJoueurId().equals(actuels.get(ordre))) {
@@ -41,6 +43,10 @@ public class PersistancePassageJpa {
                 aInscrire.add(new InterpretePersistant(passage.id(), actuels.get(ordre), ordre));
             }
         }
+        // Un Interprète réécrit à une autre position garde son accord ; celui qui quitte le Passage le perd.
+        partis.forEach(i -> entites.createNativeQuery("""
+                DELETE FROM accord_enregistrement_passage WHERE passage_id = :passage AND joueur_id = :joueur
+                """).setParameter("passage", i.getPassageId()).setParameter("joueur", i.getJoueurId()).executeUpdate());
         if (!aRetirer.isEmpty()) {
             aRetirer.forEach(entites::remove);
             // Libère les anciennes positions et la contrainte d’unicité par Joueur avant toute réinsertion.
