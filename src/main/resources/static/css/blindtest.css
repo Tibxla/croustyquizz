@@ -89,6 +89,9 @@
 .salle .blindtest--salle .blindtest__revele-artiste { font-size: 2.6vw; }
 .salle .blindtest--salle h2 { font-size: 1.5vw; }
 .salle .blindtest--salle .blindtest__partie { padding: 0.8vw 1.2vw; font-size: 1.6vw; }
+/* Son de l'extrait : la raison du silence, et le geste qui le relance quand le navigateur bloque. */
+.blindtest__son { display: flex; flex-wrap: wrap; align-items: center; gap: 1vw; }
+.salle .blindtest--salle .blindtest__annonce { font-size: 2.6vw; font-weight: 700; color: var(--texte-2); }
 
 /* Arrivée d'un Buzz, d'une partie trouvée ou de la Révélation : seulement sur un événement, jamais sur une capture. */
 .blindtest--arrivee { animation: blindtest-arrivee 900ms var(--sortie); }
