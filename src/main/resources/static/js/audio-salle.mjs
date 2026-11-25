@@ -70,7 +70,9 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 
 function coordonnerDans(navigateur, id, surAttente) {
 	if (!navigateur.navigator.locks || !navigateur.BroadcastChannel) {
-		return { activer() {}, signalerSonDeManche() {}, attendreSonDeManche: async () => true, detruire() {} };
+		// Sans Web Locks (page en http:// hors localhost), la fenêtre se croit seule : elle joue dès qu'elle candidate.
+		return { activer: candidate => surAttente(candidate), signalerSonDeManche() {}, attendreSonDeManche: async () => true,
+			detruire() {} };
 	}
 	return creerCoordinationSon({ verrous: navigateur.navigator.locks,
 		canal: new navigateur.BroadcastChannel('croustyquizz:son'),

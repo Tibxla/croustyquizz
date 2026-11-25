@@ -117,7 +117,7 @@ test('une fenêtre de salle sans dossier active le son sans prendre la Musique d
 });
 
 // Une page `ecran.html` réduite à sa zone audio, avec de faux éléments média et les vrais Web Locks de Node.
-function ecranDeSalle(t, ouverteA) {
+function ecranDeSalle(t, ouverteA, { verrous = navigator.locks } = {}) {
 	const document = creerDocument(), creer = document.createElement;
 	let lecture = Promise.withResolvers();
 	document.createElement = tag => {
@@ -138,7 +138,7 @@ function ecranDeSalle(t, ouverteA) {
 		if (tag === 'audio') ecran.audio = element;
 		return element;
 	};
-	document.defaultView = { navigator: { locks: navigator.locks }, BroadcastChannel, performance: { timeOrigin: ouverteA },
+	document.defaultView = { navigator: verrous ? { locks: verrous } : {}, BroadcastChannel, performance: { timeOrigin: ouverteA },
 		crypto: globalThis.crypto, URL: { createObjectURL: fichier => `blob:${fichier.name}`, revokeObjectURL() {} } };
 	const zone = document.createElement('div');
 	zone.hidden = true;
@@ -206,4 +206,14 @@ test('l’Écran de salle qui annule « Choisir le dossier » laisse jouer celui
 	nouveau.choisirDossier([morceauAttente('Autre')]);
 	assert.equal(await relais, 'blob:Autre.ogg');
 	assert.equal(ancien.joue(), false);
+});
+
+test('sans Web Locks, en http:// hors localhost, l’Écran de salle joue seul la Musique d’attente', { timeout: 3000 }, async t => {
+	const ecran = ecranDeSalle(t, 100, { verrous: null });
+	const lecture = ecran.attendreLecture();
+	ecran.activer.click();
+	await ecran.sonActive();
+	ecran.choisirDossier([morceauAttente('Ambiance')]);
+	assert.equal(await lecture, 'blob:Ambiance.ogg');
+	assert.equal(ecran.joue(), true);
 });
