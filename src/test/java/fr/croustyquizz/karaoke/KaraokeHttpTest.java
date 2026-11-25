@@ -68,6 +68,26 @@ class KaraokeHttpTest {
         verifier("consulterChanson", envoyer(HttpMethod.GET, racine + "/chansons/" + IdentifiantsChanson.encoder(1), joueur, null, null), 409);
     }
 
+    // Comme leurs voisines, les deux routes de l'Enregistrement lisent tout corps *+json (#239).
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"application/problem+json", "application/vnd.croustyquizz+json"})
+    void lEnregistrementLitLesCorpsPlusJsonCommeLesRoutesVoisines(String typeContenu) throws Exception {
+        UUID manche = demarrer(); String racine = racine(manche);
+        var type = MediaType.parseMediaType(typeContenu);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        verifier("inscrirePassage", inscription, 201);
+        UUID passage = UUID.fromString(json.readTree(inscription.getBody()).path("passageId").asString());
+        var accord = envoyer(HttpMethod.PUT, racine + "/passages/" + passage + "/accord-enregistrement", joueur,
+                "{\"accord\":true,\"numeroModification\":0}", UUID.randomUUID(), type);
+        verifier("definirAccordEnregistrement", accord, 200);
+        assertThat(json.readTree(accord.getBody()).path("accord").asBoolean()).isTrue();
+        var autorisation = envoyer(HttpMethod.PUT, racine + "/autorisation-enregistrement", animateur,
+                "{\"autorise\":false}", UUID.randomUUID(), type);
+        verifier("reglerAutorisationEnregistrement", autorisation, 200);
+        assertThat(json.readTree(autorisation.getBody()).path("autorise").asBoolean(true)).isFalse();
+    }
+
     @Test void lesSchemasFermesEtEntiersStrictsPrecedentLIdentite() throws Exception {
         UUID manche = demarrer(); String racine = racine(manche);
         for (String corps : List.of("{}", "{\"envoiId\":null,\"chansonId\":\"x\"}",
@@ -580,10 +600,13 @@ class KaraokeHttpTest {
     }
     String racine(UUID manche) { return "/api/soirees/" + soiree + "/manches/" + manche; }
     ResponseEntity<String> envoyer(HttpMethod methode, String route, Acteur acteur, Object corps, UUID id) {
+        return envoyer(methode, route, acteur, corps, id, MediaType.APPLICATION_JSON);
+    }
+    ResponseEntity<String> envoyer(HttpMethod methode, String route, Acteur acteur, Object corps, UUID id, MediaType typeContenu) {
         var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
         if (acteur != null) { requete.header("Authorization", "Bearer demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant()); }
         if (id != null) { requete.header("Idempotency-Key", id.toString()).header("X-CSRF-TOKEN", "demonstration"); }
-        if (corps != null) { requete.contentType(MediaType.APPLICATION_JSON).body(corps); }
+        if (corps != null) { requete.contentType(typeContenu).body(corps); }
         return requete.retrieve().onStatus(s -> s.isError(), (q, r) -> { }).toEntity(String.class);
     }
     static void verifier(String operation, ResponseEntity<String> reponse, int statut) throws Exception {
@@ -618,15 +641,13 @@ class KaraokeHttpTest {
                     }).build();
             String racine = "/api/soirees/" + UUID.randomUUID() + "/manches/" + UUID.randomUUID();
             record Cas(HttpMethod methode, String route, String operation, String corps) { }
-            var cas = new ArrayList<>(List.of(new Cas(HttpMethod.POST, "/passages", "inscrirePassage", "{}"),
+            var cas = List.of(new Cas(HttpMethod.POST, "/passages", "inscrirePassage", "{}"),
                     new Cas(HttpMethod.POST, "/passages", "inscrirePassage", "{illisible"),
                     new Cas(HttpMethod.POST, "/passages/" + UUID.randomUUID() + "/desinscription", "desinscrirePassage", "{}"),
                     new Cas(HttpMethod.POST, "/passages/" + UUID.randomUUID() + "/retrait", "retirerPassage", "{\"numeroModification\":\"0\"}"),
                     new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/placement", "deplacerPassage", "{\"numeroModification\":0,\"tour\":1}"),
                     new Cas(HttpMethod.PUT, "/file-attente/priorite", "definirPrioritePassage", "{\"passage\":null,\"prioritaire\":false}"),
-                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}")));
-            // L'Enregistrement n'accepte que application/json (README, « Enregistrement d'un Passage »).
-            if (MediaType.APPLICATION_JSON_VALUE.equals(typeContenu)) { cas.addAll(List.of(
+                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}"),
                     new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/accord-enregistrement", "definirAccordEnregistrement", "{}"),
                     new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/accord-enregistrement", "definirAccordEnregistrement",
                             "{\"accord\":true}"),
@@ -639,7 +660,7 @@ class KaraokeHttpTest {
                     new Cas(HttpMethod.PUT, "/autorisation-enregistrement", "reglerAutorisationEnregistrement", "{}"),
                     new Cas(HttpMethod.PUT, "/autorisation-enregistrement", "reglerAutorisationEnregistrement", "{\"autorise\":null}"),
                     new Cas(HttpMethod.PUT, "/autorisation-enregistrement", "reglerAutorisationEnregistrement",
-                            "{\"autorise\":true,\"lieuId\":\"x\"}"))); }
+                            "{\"autorise\":true,\"lieuId\":\"x\"}"));
             for (var c : cas) {
                 var resultat = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request(c.methode(), racine + c.route())
                         .header("Idempotency-Key", UUID.randomUUID()).contentType(typeContenu).content(c.corps())).andReturn();
