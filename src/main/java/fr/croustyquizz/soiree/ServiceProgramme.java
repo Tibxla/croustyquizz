@@ -12,6 +12,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import fr.croustyquizz.manche.Accepte;
+import fr.croustyquizz.manche.AjoutDeManche;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
@@ -32,6 +33,7 @@ class ServiceProgramme {
 	private final RegistreServicesDeManche modes;
 	private final DiffuseurStomp vues;
 	private final TransactionTemplate transaction;
+	private final TransactionTemplate lecture;
 
 	ServiceProgramme(DepotDeSoirees soirees, SocleDeManche socle, RegistreServicesDeManche modes, DiffuseurStomp vues) {
 		this.soirees = soirees;
@@ -40,16 +42,25 @@ class ServiceProgramme {
 		this.vues = vues;
 		this.transaction = new TransactionTemplate(socle.transactions());
 		this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+		this.lecture = new TransactionTemplate(socle.transactions());
+		this.lecture.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+		this.lecture.setReadOnly(true);
 	}
 
 	ProjectionManche ajouter(UUID soireeId, ModeDeJeu mode, JsonNode reglages) {
+		// Un programme figé refuse avant tout appel externe : Deezer en panne ne masque pas le 409. Revérifié sous le verrou.
+		lecture.executeWithoutResult(statut -> verifierModifiable(
+				soirees.findById(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId)),
+				socle.depot().deLaSoiree(soireeId)));
+		// Hors du verrou : un mode peut consulter un service externe (le tirage Deezer du Blind test, ADR 0009).
+		AjoutDeManche ajout = mode == ModeDeJeu.QUIZ
+				// Le Quiz peut être préparé avant la livraison de son service de déroulement.
+				? new AjoutDeManche(new ManchePersistante(UUID.randomUUID(), soireeId, mode, reglages.toString(),
+						socle.horloge().maintenant()), manche -> { })
+				: modes.pourMode(mode).preparerAjout(soireeId, reglages);
 		return socle.verrous().executer(soireeId, () -> modifier(soireeId, programme -> {
-			// Le Quiz peut être préparé avant la livraison de son service de déroulement.
-			ManchePersistante manche = mode == ModeDeJeu.QUIZ
-					? new ManchePersistante(UUID.randomUUID(), soireeId, mode, reglages.toString(), socle.horloge().maintenant())
-					: modes.pourMode(mode).preparer(soireeId, reglages);
-			socle.depot().enregistrer(manche);
-			return ProjectionManche.de(manche, socle.json());
+			ajout.enregistrer(socle.depot());
+			return ProjectionManche.de(ajout.manche(), socle.json());
 		}));
 	}
 
@@ -98,11 +109,15 @@ class ServiceProgramme {
 	private List<ManchePersistante> programmeModifiable(UUID soireeId) {
 		Soiree soiree = soirees.verrouiller(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
 		List<ManchePersistante> programme = socle.depot().deLaSoiree(soireeId);
+		verifierModifiable(soiree, programme);
+		return programme;
+	}
+
+	private static void verifierModifiable(Soiree soiree, List<ManchePersistante> programme) {
 		if ((soiree.getEtat() != EtatSoiree.PREPARATION && soiree.getEtat() != EtatSoiree.OUVERTE)
 				// Le démarrage d'une Manche par la route de test ne fait pas avancer l'état de Soirée.
 				|| programme.stream().anyMatch(manche -> manche.getEtat() != EtatManche.PRETE)) {
 			throw new Refuse(409, "ETAT_INCOMPATIBLE", "La Soirée a commencé. Son programme est figé.").exception();
 		}
-		return programme;
 	}
 }

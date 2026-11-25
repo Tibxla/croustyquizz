@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -39,11 +40,19 @@ public class ServiceDeManche<R, E> {
 	}
 	public ModeDeJeu mode() { return fabrique.mode(); }
 	public UUID creer(UUID soireeId, Object reglages) {
-		ManchePersistante manche = preparer(soireeId, reglages);
-		return sousTransaction(soireeId, manche.getMancheId(), () -> {
-			socle.depot().enregistrer(manche);
-			return manche.getMancheId();
+		AjoutDeManche ajout = preparerAjout(soireeId, reglages);
+		UUID mancheId = ajout.manche().getMancheId();
+		return sousTransaction(soireeId, mancheId, () -> {
+			ajout.enregistrer(socle.depot());
+			return mancheId;
 		});
+	}
+	/**
+	 * Prépare un ajout hors du verrou de la Soirée ; un mode qui consulte un service externe à la création le
+	 * redéfinit. L'appelant enregistre le résultat sous le verrou.
+	 */
+	public AjoutDeManche preparerAjout(UUID soireeId, Object reglages) {
+		return new AjoutDeManche(preparer(soireeId, reglages), manche -> { });
 	}
 	/** Construit une Manche prête à enregistrer dans la transaction qui compose le programme. */
 	public ManchePersistante preparer(UUID soireeId, Object reglages) {
@@ -124,6 +133,37 @@ public class ServiceDeManche<R, E> {
 			return resultat;
 		});
 	}
+	/**
+	 * Mutation décidée par le service lui-même, sans envoi ni reçu (par exemple après une préparation externe) :
+	 * verrou, transaction, domaine, persistance et publication, comme une commande. Une Manche qui n'est ni en cours
+	 * ni en pause la refuse sans appeler le domaine.
+	 */
+	protected ResultatDeCommande appliquer(UUID soireeId, UUID mancheId,
+			Function<DeroulementDeManche, ResultatDeCommande> action) {
+		return sousTransaction(soireeId, mancheId, () -> {
+			ManchePersistante manche = charger(mancheId, soireeId);
+			if (manche.getEtat() != EtatManche.EN_COURS && manche.getEtat() != EtatManche.EN_PAUSE) {
+				return refusHorsDeroulement(manche);
+			}
+			var d = deroulement(manche);
+			ResultatDeCommande resultat = action.apply(d);
+			if (resultat instanceof Accepte accepte) {
+				enregistrer(manche, d, null, accepte, d.instantane(), socle.horloge().maintenant().truncatedTo(MICROS));
+			}
+			return resultat;
+		});
+	}
+	/** Refus de {@link #appliquer} pour une Manche ni en cours ni en pause ; un mode peut le préciser. */
+	protected Refuse refusHorsDeroulement(ManchePersistante manche) {
+		return new Refuse(409, "ETAT_INCOMPATIBLE", "La Manche n'est pas en cours.");
+	}
+	/**
+	 * Appelé sous le verrou, avant le commit, après chaque mutation enregistrée, minuteurs compris : un mode y lance
+	 * la préparation externe que sa nouvelle phase attend. Il ne doit ni bloquer ni appeler de service externe.
+	 */
+	protected void apresEnregistrement(ManchePersistante manche, Object instantane) {
+		// Aucun mode du socle n'attend de préparation externe.
+	}
 	/** Par défaut les autres modes ne décident rien avant leur préparation externe. */
 	protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {
 		return null;
@@ -195,6 +235,7 @@ public class ServiceDeManche<R, E> {
 		persistance.enregistrer(manche.getMancheId(), instantane);
 		socle.depot().enregistrer(manche);
 		socle.vues().publier(manche.getSoireeId(), accepte, classementModifie);
+		apresEnregistrement(manche, instantane);
 	}
 	private <T> T sousTransaction(UUID soireeId, UUID mancheId, Supplier<T> action) {
 		return socle.verrous().executer(soireeId, () -> {
