@@ -23,7 +23,9 @@ test('la salle affiche les pseudos complets et fournit une seule phrase aux lect
 	assert.equal(presentation?.querySelector('.palmares__numero')?.textContent, 'n° 10');
 	assert.equal(presentation?.querySelector('.palmares__interpretes')?.textContent, `${pseudo} et Basile`);
 	assert.equal(presentation?.querySelector('.palmares__chanson')?.textContent, titre);
-	assert.equal(presentation?.querySelector('.palmares__note')?.textContent, '4,3 sur 5');
+	const note = presentation?.querySelector('.palmares__note');
+	assert.deepEqual(note?.children.map(enfant => [enfant.className, enfant.textContent]),
+		[['palmares__moyenne', '4,3'], ['palmares__sur', 'sur 5']]);
 	assert.equal(presentation?.querySelector('.palmares__votes')?.textContent, '7 votes');
 	assert.deepEqual(ligne.children.filter(enfant => enfant.getAttribute('aria-hidden') !== 'true')
 		.map(enfant => [enfant.className, enfant.textContent]), [
@@ -52,4 +54,16 @@ test('les règles des lignes du Palmarès sont limitées à la coquille de salle
 	for (const selecteur of regles.flatMap(regle => regle.selecteurs)) {
 		assert.match(selecteur, /^\.salle--coquille \.palmares \.palmares__/, selecteur);
 	}
+});
+
+test('aucune colonne fixe ne coupe le rang, le numéro ou la note, et les colonnes restent alignées d’une ligne à l’autre', async () => {
+	const css = await cssSalle();
+	const corpsDe = selecteur => css.match(new RegExp(`(?:^|[}/])\\s*${selecteur.replace(/[.*]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+	assert.match(corpsDe('.salle--coquille .palmares ul'), /grid-template-columns:\s*max-content minmax\(0, 1fr\) max-content;/);
+	for (const selecteur of ['.salle--coquille .palmares li', '.salle--coquille .palmares .palmares__ligne']) {
+		assert.match(corpsDe(selecteur), /grid-template-columns:\s*subgrid;/, selecteur);
+	}
+	assert.doesNotMatch(css, /grid-template-columns:\s*[\d.]+vw minmax\(0, 1fr\) [\d.]+vw/);
+	const tronques = reglesPalmares(css).filter(regle => /text-overflow:\s*ellipsis/.test(regle.corps)).flatMap(regle => regle.selecteurs);
+	assert.deepEqual(tronques, ['.salle--coquille .palmares .palmares__chanson']);
 });
