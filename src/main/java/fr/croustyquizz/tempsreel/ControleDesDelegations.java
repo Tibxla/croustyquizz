@@ -57,6 +57,11 @@ public class ControleDesDelegations implements PouvoirsDelegues {
 				? EnumSet.noneOf(Pouvoir.class) : depot.pouvoirs(soireeId, joueur.identifiant()));
 	}
 
+	/** Pouvoirs enregistrés, pour un assemblage qui a déjà écarté une Soirée terminée. */
+	Set<Pouvoir> enregistres(UUID soireeId, UUID joueurId) {
+		return verrous.executer(soireeId, () -> depot.pouvoirs(soireeId, joueurId));
+	}
+
 	/** Délégations de la Soirée, par Joueur, dans l'ordre d'attribution. */
 	Map<UUID, Set<Pouvoir>> deLaSoiree(UUID soireeId) {
 		return verrous.executer(soireeId, () -> depot.deLaSoiree(soireeId));

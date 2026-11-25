@@ -59,7 +59,8 @@ class DelegationsControleur {
 				try {
 					pouvoir = Pouvoir.valueOf(String.valueOf(nom));
 				} catch (IllegalArgumentException inconnu) {
-					throw invalide("Ce pouvoir ne peut pas être délégué : " + nom + ".");
+					throw new Refuse(400, "REQUETE_INVALIDE", "Ce pouvoir ne peut pas être délégué : " + nom + ".")
+							.exception(inconnu);
 				}
 				if (!lus.add(pouvoir)) {
 					throw invalide("Chaque pouvoir ne figure qu’une fois.");

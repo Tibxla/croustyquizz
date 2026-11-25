@@ -9,7 +9,6 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.Pouvoir;
 import tools.jackson.databind.json.JsonMapper;
@@ -20,6 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Component
 class FournisseurDeDelegation implements FournisseurDeChampCommun {
+	static final String TERMINEE = "TERMINEE";
 	private final ControleDesDelegations delegations;
 	private final Map<Pouvoir, DonneesDeDelegation> donnees = new EnumMap<>(Pouvoir.class);
 	private final JsonMapper json;
@@ -45,7 +45,7 @@ class FournisseurDeDelegation implements FournisseurDeChampCommun {
 		if (!concerne(destination) || soireeTerminee(partieCommune)) {
 			return null;
 		}
-		Set<Pouvoir> pouvoirs = delegations.pouvoirs(new Acteur(Acteur.Type.JOUEUR, destination.joueurId(), soireeId));
+		Set<Pouvoir> pouvoirs = delegations.enregistres(soireeId, destination.joueurId());
 		if (pouvoirs.isEmpty()) {
 			return null;
 		}
@@ -63,6 +63,6 @@ class FournisseurDeDelegation implements FournisseurDeChampCommun {
 
 	private boolean soireeTerminee(Map<String, Object> partieCommune) {
 		Object soiree = partieCommune.get("soiree");
-		return soiree != null && "TERMINEE".equals(json.valueToTree(soiree).path("etat").asString());
+		return soiree != null && TERMINEE.equals(json.valueToTree(soiree).path("etat").asString());
 	}
 }

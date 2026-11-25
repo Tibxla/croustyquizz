@@ -18,6 +18,7 @@ import fr.croustyquizz.manche.Pouvoir;
 /** Délégations conservées avec la Soirée (#67), une ligne par Joueur délégué. */
 @Repository
 class DepotDeDelegations {
+	private static final String SOIREE = "soiree";
 	private final JdbcClient jdbc;
 
 	DepotDeDelegations(JdbcClient jdbc) {
@@ -29,7 +30,7 @@ class DepotDeDelegations {
 		return jdbc.sql("""
 				select file_attente, musique_attente, photos from tempsreel_delegation
 				where soiree_id = :soiree and joueur_id = :joueur
-				""").param("soiree", soireeId).param("joueur", joueurId)
+				""").param(SOIREE, soireeId).param("joueur", joueurId)
 				.query((ligne, numero) -> lire(ligne)).optional().orElse(EnumSet.noneOf(Pouvoir.class));
 	}
 
@@ -39,7 +40,7 @@ class DepotDeDelegations {
 		jdbc.sql("""
 				select joueur_id, file_attente, musique_attente, photos from tempsreel_delegation
 				where soiree_id = :soiree order by modifiee_le, joueur_id
-				""").param("soiree", soireeId)
+				""").param(SOIREE, soireeId)
 				.query(ligne -> { delegations.put(ligne.getObject("joueur_id", UUID.class), lire(ligne)); });
 		return delegations;
 	}
@@ -51,7 +52,7 @@ class DepotDeDelegations {
 				on conflict (joueur_id) do update
 				    set file_attente = excluded.file_attente, musique_attente = excluded.musique_attente,
 				        photos = excluded.photos
-				""").param("joueur", joueurId).param("soiree", soireeId)
+				""").param("joueur", joueurId).param(SOIREE, soireeId)
 				.param("file", pouvoirs.contains(Pouvoir.FILE_ATTENTE))
 				.param("musique", pouvoirs.contains(Pouvoir.MUSIQUE_ATTENTE))
 				.param("photos", pouvoirs.contains(Pouvoir.PHOTOS))
@@ -60,11 +61,11 @@ class DepotDeDelegations {
 
 	boolean retirer(UUID soireeId, UUID joueurId) {
 		return jdbc.sql("delete from tempsreel_delegation where soiree_id = :soiree and joueur_id = :joueur")
-				.param("soiree", soireeId).param("joueur", joueurId).update() > 0;
+				.param(SOIREE, soireeId).param("joueur", joueurId).update() > 0;
 	}
 
 	void effacer(UUID soireeId) {
-		jdbc.sql("delete from tempsreel_delegation where soiree_id = :soiree").param("soiree", soireeId).update();
+		jdbc.sql("delete from tempsreel_delegation where soiree_id = :soiree").param(SOIREE, soireeId).update();
 	}
 
 	private static Set<Pouvoir> lire(ResultSet ligne) throws SQLException {

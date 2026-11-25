@@ -40,7 +40,7 @@ class FournisseurDesDelegations implements FournisseurDeChampCommun {
 			return liste;
 		}
 		var commun = json.valueToTree(partieCommune);
-		if ("TERMINEE".equals(commun.path("soiree").path("etat").asString())) {
+		if (FournisseurDeDelegation.TERMINEE.equals(commun.path("soiree").path("etat").asString())) {
 			return liste;
 		}
 		for (var joueur : commun.path("joueurs")) {

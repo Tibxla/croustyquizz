@@ -100,7 +100,9 @@ public class ServiceDesDelegations {
 		try {
 			nouvelleTransaction.executeWithoutResult(statut -> depot.effacer(cycle.soireeId()));
 		} catch (RuntimeException erreur) {
-			JOURNAL.error("Effacement des Délégations impossible pour la Soirée {}", cycle.soireeId(), erreur);
+			if (JOURNAL.isErrorEnabled()) {
+				JOURNAL.error("Effacement des Délégations impossible pour la Soirée {}", cycle.soireeId(), erreur);
+			}
 		}
 	}
 
