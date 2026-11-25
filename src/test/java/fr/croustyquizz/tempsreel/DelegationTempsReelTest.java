@@ -137,6 +137,9 @@ class DelegationTempsReelTest {
 		var recue = evenement(manetteAlize, "delegation-modifiee");
 		assertThat(recue.at("/delegation/pouvoirs").toString()).isEqualTo("[\"FILE_ATTENTE\",\"PHOTOS\"]");
 		assertThat(recue.at("/delegation/fileAttente/passagesEnAttente")).hasSize(2);
+		// La Manette n'appelle que le Passage en position 1, que le serveur numérote comme pour la Console.
+		assertThat(recue.at("/delegation/fileAttente/passagesEnAttente/0/position").asInt()).isEqualTo(1);
+		assertThat(recue.at("/delegation/fileAttente/passagesEnAttente/0/passageId").asString()).isEqualTo(passageBasile);
 		assertThat(recue.at("/delegation/fileAttente/peutAppeler").asBoolean()).isTrue();
 		assertThat(recue.at("/delegation/photos/enAttente")).isEmpty();
 		assertThat(recue.path("delegation").has("musiqueAttente")).isFalse();

@@ -57,6 +57,8 @@ test('Délégation : les commandes de la File suivent les droits de la vue, sans
 	assert.deepEqual(enScene.passage.corps, { action: 'PASSER_ETAPE', etapeId: 'e' });
 	assert.equal(enScene.gestes.size, 0);
 	assert.deepEqual(commandesFile(null, 's').gestes, new Map());
+	const sansTete = commandesFile(file({ passagesEnAttente: [passage('b', 2), passage('c', 3)] }), 's');
+	assert.equal(sansTete.appel, null);
 });
 
 test('Délégation : absente, la section reste cachée ; reçue, elle présente ses seuls pouvoirs', () => {

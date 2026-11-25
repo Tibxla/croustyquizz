@@ -18,7 +18,8 @@ export function decrirePouvoirs(pouvoirs) {
 export function commandesFile(file, soireeId) {
 	if (!file) return { appel: null, passage: null, gestes: new Map() };
 	const racine = `/api/soirees/${soireeId}/manches/${file.mancheId}`;
-	const tete = file.passagesEnAttente.find(p => p.position === 1) ?? file.passagesEnAttente[0];
+	// Comme la Console, seul le Passage en position 1 s'appelle : sans lui, pas de bouton plutôt qu'un 409.
+	const tete = file.passagesEnAttente.find(p => p.position === 1);
 	const appel = file.peutAppeler && tete ? { methode: 'POST', chemin: `${racine}/passages/${tete.passageId}/appel`,
 		corps: { numeroModification: tete.numeroModification }, cible: `appel:${tete.passageId}` } : null;
 	const passage = file.peutPasser && file.courant?.etapeId ? { methode: 'POST', chemin: `${racine}/commandes`,
