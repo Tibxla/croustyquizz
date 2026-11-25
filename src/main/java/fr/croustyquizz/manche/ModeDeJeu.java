@@ -5,5 +5,9 @@ public enum ModeDeJeu {
 	QUIZ,
 	BLIND_TEST,
 	KARAOKE,
-	FREESTYLE
+	FREESTYLE;
+
+	public boolean compteAuClassementGeneral() {
+		return this == QUIZ || this == BLIND_TEST;
+	}
 }

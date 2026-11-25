@@ -26,6 +26,9 @@ import tools.jackson.databind.JsonNode;
 @RestController
 @RequestMapping("/api/soirees/{soireeId}")
 class ProgrammeSoireeControleur {
+	/** Bornes du contrat : ReglagesBlindTest.nombreMorceaux et SourceDeMorceaux.idDeezer. */
+	private static final int NOMBRE_MAX_MORCEAUX = 50;
+	private static final long ID_DEEZER_MAX = 9_007_199_254_740_991L;
 	private static final Pattern FORMAT_UUID = Pattern.compile(
 			"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", Pattern.CASE_INSENSITIVE);
 	private final ServiceProgramme service;
@@ -44,11 +47,15 @@ class ProgrammeSoireeControleur {
 		ModeDeJeu mode = switch (demande.path("mode").asString("")) {
 			case "QUIZ" -> ModeDeJeu.QUIZ;
 			case "KARAOKE" -> ModeDeJeu.KARAOKE;
+			case "BLIND_TEST" -> ModeDeJeu.BLIND_TEST;
 			case "FREESTYLE" -> ModeDeJeu.FREESTYLE;
 			default -> throw reglagesInvalides();
 		};
 		if (mode == ModeDeJeu.QUIZ && (reglages.size() != 2 || !entierPositif(reglages.path("nombreEtapes"), 100)
 				|| !entierPositif(reglages.path("tempsParEtapeSecondes"), 3600))) {
+			throw reglagesInvalides();
+		}
+		if (mode == ModeDeJeu.BLIND_TEST && !reglagesBlindTestValides(reglages)) {
 			throw reglagesInvalides();
 		}
 		return ResponseEntity.status(201).cacheControl(CacheControl.noStore()).body(service.ajouter(soireeId, mode, reglages));
@@ -76,6 +83,17 @@ class ProgrammeSoireeControleur {
 			}
 		}
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.ordonner(soireeId, List.copyOf(ordre)));
+	}
+
+	/** ReglagesBlindTest : une source Deezer et de 1 à 50 Morceaux, rien d'autre (la sélection n'y figure jamais). */
+	private static boolean reglagesBlindTestValides(JsonNode reglages) {
+		JsonNode source = reglages.path("source");
+		JsonNode idDeezer = source.path("idDeezer");
+		return reglages.size() == 2 && entierPositif(reglages.path("nombreMorceaux"), NOMBRE_MAX_MORCEAUX)
+				&& source.isObject() && source.size() == 2
+				&& ("PLAYLIST".equals(source.path("type").asString("")) || "GENRE".equals(source.path("type").asString("")))
+				&& idDeezer.isIntegralNumber() && idDeezer.canConvertToLong() && idDeezer.longValue() >= 0
+				&& idDeezer.longValue() <= ID_DEEZER_MAX;
 	}
 
 	private static boolean entierPositif(JsonNode valeur, int maximum) {

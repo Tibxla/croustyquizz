@@ -11,7 +11,7 @@ import { parse } from 'yaml';
 const dossier = new URL('../../docs/api/', import.meta.url);
 // Les parcours partagent leurs vues complètes par ancres YAML ; garder une borne
 // d’expansion tout en acceptant les trois projections du parcours Karaoké.
-const lire = async (nom) => parse(await readFile(new URL(nom, dossier), 'utf8'), { maxAliasCount: 1000 });
+const lire = async (nom) => parse(await readFile(new URL(nom, dossier), 'utf8'), { maxAliasCount: 1000, merge: true });
 const ouvert = await lire('openapi.yaml');
 const asynchrone = await lire('asyncapi.yaml');
 const schemas = await lire('schemas.yaml');
@@ -67,9 +67,9 @@ function dependances(nom, vues = new Set()) {
 // Le fichier local ne sort que vers la Console. Paroles et lecture restent hors de la Manette pour la
 // légèreté de sa vue, pas pour le secret : la vue salle est lisible par un Joueur.
 const interditsParVue = {
-  salle: ['FichierAudioLocal'],
+  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg'],
   console: ['ParolesDuPassage'],
-  joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal'],
+  joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg'],
 };
 for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console'], ['VueManette', 'joueur'],
   ['EvenementSalle', 'salle'], ['EvenementConsole', 'console'], ['EvenementJoueur', 'joueur']]) {
@@ -84,6 +84,15 @@ function valider(schema, valeur, contexte) {
   const validation = validations.get(schema);
   assert.ok(validation, `Schéma inconnu : ${schema}`);
   assert.ok(validation(valeur), `${contexte} : ${JSON.stringify(validation.errors, null, 2)}`);
+}
+
+function verifierJpeg(base64, contexte) {
+  valider('ImageJpeg', base64, contexte);
+  const octets = Buffer.from(base64, 'base64');
+  assert.equal(octets.toString('base64'), base64, `${contexte} : base64 canonique attendu`);
+  assert.ok(octets.length <= 1_500_000, `${contexte} : JPEG trop volumineux`);
+  assert.equal(octets.subarray(0, 3).toString('hex'), 'ffd8ff', `${contexte} : signature JPEG`);
+  assert.equal(octets.subarray(-2).toString('hex'), 'ffd9', `${contexte} : fin du JPEG`);
 }
 
 function nomSchema(reference) {
@@ -115,7 +124,7 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'freestyle'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'freestyle'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();
@@ -154,7 +163,8 @@ for (const { nom, exemples } of parcours) {
       assert.ok(validation(parametres[parametre.name]), `${etape.nom} : paramètre ${parametre.name} invalide`);
     }
     if (operation.requestBody) {
-      valider(nomSchema(operation.requestBody.content['application/json'].schema.$ref), etape.requete, etape.nom);
+      if (operation.requestBody.content['image/jpeg']) verifierJpeg(etape.requete, etape.nom);
+      else valider(nomSchema(operation.requestBody.content['application/json'].schema.$ref), etape.requete, etape.nom);
     } else {
       assert.equal(etape.requete, undefined, `${etape.nom} : corps non prévu par le contrat`);
     }
@@ -162,7 +172,8 @@ for (const { nom, exemples } of parcours) {
     assert.ok(reponse, `${etape.nom} : statut ${etape.statut} non décrit`);
     if (reponse.$ref) reponse = ouvert.components.responses[reponse.$ref.split('/').at(-1)];
     const contenu = reponse.content && Object.values(reponse.content)[0];
-    if (contenu) valider(nomSchema(contenu.schema.$ref), etape.reponse, etape.nom);
+    if (reponse.content?.['image/jpeg']) verifierJpeg(etape.reponse, etape.nom);
+    else if (contenu) valider(nomSchema(contenu.schema.$ref), etape.reponse, etape.nom);
     else assert.equal(etape.reponse, undefined, `${etape.nom} : réponse sans corps attendue`);
     const canal = { EtatSalle: 'salle', EtatConsole: 'console', EtatManette: 'joueur' }[
       contenu && nomSchema(contenu.schema.$ref)

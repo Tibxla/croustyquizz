@@ -7,16 +7,21 @@ import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 
 export function creerAudioSalle({ lecteur, sonde, mesureur, coordonner, lecteurId }) {
 	const abonnes = new Set();
-	let selectionLocale = null, fichiers = null, sonDebloque = false, suspendu = false, detruit = false;
+	let selectionLocale = null, fichiers = null, morceauxDisponibles = null, sonDebloque = false, suspendu = false, detruit = false;
+	let musiqueAutorisee = false, attenteAutorisee = false;
 	let mesures = Promise.resolve(null);
-	const etat = () => ({ fichiers, sonDebloque });
+	const etat = () => ({ fichiers, sonDebloque, morceauxDisponibles });
 	function notifier() { for (const rappel of abonnes) rappel(etat()); }
 	const musique = creerMusiqueDAttente({ lecteur, surSonBloque() {
 		sonDebloque = false;
 		coordination.activer(false);
 		notifier();
 	} });
-	const coordination = coordonner(musique.autoriserLecture);
+	function actualiserMusique() { musique.autoriserLecture(musiqueAutorisee && attenteAutorisee); }
+	const coordination = coordonner(autorisee => {
+		attenteAutorisee = autorisee;
+		actualiserMusique();
+	});
 	return {
 		lecteurId,
 		lecteur: creerLecteurDePassage({ lecteur, sonde, attendreSonDeManche: coordination.attendreSonDeManche }),
@@ -37,8 +42,14 @@ export function creerAudioSalle({ lecteur, sonde, mesureur, coordonner, lecteurI
 		choisirDossier(selection) {
 			selectionLocale = selection;
 			fichiers = selection.filter(estFichierAudio);
-			musique.choisirFichiers(fichiersDeMusiqueDAttente(fichiers));
+			const morceaux = fichiersDeMusiqueDAttente(fichiers);
+			morceauxDisponibles = morceaux.length > 0;
+			musique.choisirFichiers(morceaux);
 			notifier();
+		},
+		reglerMusiqueDAttente(autorisee) {
+			musiqueAutorisee = autorisee;
+			actualiserMusique();
 		},
 		async activerSon() {
 			if (sonDebloque || detruit) return;
