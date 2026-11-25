@@ -38,7 +38,7 @@ class InvitationsAnimateur {
 		comptes.verifierEmailDisponible(email);
 		Instant maintenant = horloge.maintenant();
 		// Le verrou du Lieu sérialise ses créations : le plafond ne se franchit pas en parallèle.
-		jdbc.sql("select id from lieu where id = :lieuId for update").param("lieuId", lieuId).query(UUID.class).single();
+		jdbc.sql("select id from lieu where id = :lieuId for no key update").param("lieuId", lieuId).query(UUID.class).single();
 		jdbc.sql("delete from invitation_animateur where lieu_id = :lieuId and expire_le <= :maintenant")
 				.param("lieuId", lieuId).param("maintenant", maintenant.atOffset(ZoneOffset.UTC)).update();
 		int enCours = jdbc.sql("select count(*) from invitation_animateur where lieu_id = :lieuId")
