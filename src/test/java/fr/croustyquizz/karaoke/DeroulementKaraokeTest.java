@@ -390,6 +390,28 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(finsSignalees).isEqualTo(avecSuivant ? 0 : 1);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void laRepriseApresUnePauseALEcheanceSauteLePassageAussitot(boolean avecSuivant) {
+        // La pause arrive à l’échéance, avant le rappel du saut.
+        horloge.programmer(Duration.ofSeconds(30), () -> deroulement.mettreEnPause(pilotage()));
+        ouvrirPremierPassage(true);
+        if (avecSuivant) { inscrire(SUIVANT); }
+        horloge.avancer(Duration.ofSeconds(30));
+        assertThat(projection().etat()).isEqualTo("APPELE");
+        horloge.avancer(Duration.ofSeconds(10));
+
+        accepter(deroulement.reprendre(pilotage()), avecSuivant ? "passage-appele" : "manche-terminee", true);
+
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(passage(PASSAGE).traceTerminale()).isEqualTo(new TraceTerminale("ECHEANCE_APPEL", null, horloge.maintenant()));
+        assertThat(karaoke().instantane().voteDuPublic().votes()).isEmpty();
+        assertThat(projection().courant().id()).isEqualTo(avecSuivant ? SUIVANT : PASSAGE);
+        assertThat(projection().etat()).isEqualTo(avecSuivant ? "APPELE" : "SAUTE");
+        assertThat(deroulement.estTerminee()).isEqualTo(!avecSuivant);
+        assertThat(finsSignalees).isEqualTo(avecSuivant ? 0 : 1);
+    }
+
     @Test
     void confirmeEnAutomatiqueUneMillisecondeAvantLEcheance() {
         ouvrirPremierPassage(true);

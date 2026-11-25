@@ -36,6 +36,8 @@ channels:
       de vote ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la
       place du Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
       ne déclenche ni un nouvel appel ni la fin de la Manche.
+      Une reprise après une pause posée à l’échéance ou après saute le Passage dans sa propre vue :
+      manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
       En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
       la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
       termine la Manche. La vue porte alors karaoke à null ;
@@ -68,6 +70,8 @@ channels:
       ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la place du
       Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
       ne déclenche ni un nouvel appel ni la fin de la Manche.
+      Une reprise après une pause posée à l’échéance ou après saute le Passage dans sa propre vue :
+      manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
       En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
       la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
       termine la Manche. La vue porte alors karaoke à null ;
@@ -99,6 +103,8 @@ channels:
       une clôture de vote ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE
       à la place du Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
       ne déclenche ni un nouvel appel ni la fin de la Manche.
+      Une reprise après une pause posée à l’échéance ou après saute le Passage dans sa propre vue :
+      manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
       En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
       la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
       termine la Manche. La vue porte alors karaoke à null.

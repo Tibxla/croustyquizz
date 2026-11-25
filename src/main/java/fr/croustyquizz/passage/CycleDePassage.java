@@ -123,12 +123,15 @@ public final class CycleDePassage {
         Duration pause = dureePositive(Duration.between(chronologie.pauseDepuis(), maintenant));
         boolean enAppel = courant.etat() == EtatPassage.APPELE;
         Instant echeance = enAppel ? chronologie.echeanceAppelLe().plus(pause) : chronologie.echeanceAppelLe();
-        if (enAppel && sauterALEcheance && echeance.isBefore(maintenant)) { echeance = maintenant; }
         Duration tempsPause = enAppel ? chronologie.tempsPause() : chronologie.tempsPause().plus(pause);
         chronologie = new EtatCyclePassage(chronologie.passageId(), chronologie.etapeId(), chronologie.appeleLe(), echeance,
                 chronologie.demarreLe(), chronologie.dureeReference(), tempsPause, null, null);
-        if (enAppel) { reprogrammerEcheanceAppel(); }
-        else { reprogrammerFin(); }
+        // Une échéance déjà atteinte saute le Passage à la reprise, sans vue d’un appel à 0 ms.
+        if (!enAppel) { reprogrammerFin(); }
+        else if (sauterALEcheance && !echeance.isAfter(maintenant)) {
+            clore(EtatPassage.SAUTE, TraceTerminale.ECHEANCE_APPEL, null, maintenant);
+        }
+        else { reprogrammerEcheanceAppel(); }
     }
 
     /** Réarme l’échéance d’un appel automatique hors pause, notamment après restauration. */
@@ -151,11 +154,9 @@ public final class CycleDePassage {
         long rappel = generation;
         UUID etapeId = chronologie.etapeId();
         Duration reste = dureePositive(Duration.between(horloge.maintenant(), echeance));
-        if (terminal == EtatPassage.SAUTE) {
-            // L’Horloge réelle tronque le délai à la milliseconde.
-            Duration millisecondes = reste.truncatedTo(MILLIS);
-            if (!millisecondes.equals(reste)) { reste = millisecondes.plusMillis(1); }
-        }
+        // L’Horloge réelle tronque le délai à la milliseconde : arrondir au-dessus, puis réarmer si le rappel est en avance.
+        Duration millisecondes = reste.truncatedTo(MILLIS);
+        if (!millisecondes.equals(reste)) { reste = millisecondes.plusMillis(1); }
         minuteur = horloge.programmer(reste, () -> {
             Passage actif = courantActif();
             if (rappel != generation || !Objects.equals(chronologie.etapeId(), etapeId)
@@ -163,7 +164,7 @@ public final class CycleDePassage {
                 return;
             }
             Instant maintenant = horloge.maintenant();
-            if (terminal == EtatPassage.SAUTE && maintenant.isBefore(echeance)) {
+            if (maintenant.isBefore(echeance)) {
                 programmerCloture(actif, echeance, terminal, motif);
                 return;
             }

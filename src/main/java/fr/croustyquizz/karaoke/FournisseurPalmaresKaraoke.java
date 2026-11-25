@@ -31,15 +31,37 @@ public final class FournisseurPalmaresKaraoke implements FournisseurDeChampCommu
     }
 
     @Override public Object fournir(UUID soireeId, Destination destination, Map<String, Object> partieCommune) {
-        if (!concerne(destination)) { return null; }
-        var karaoke = service.getObject();
-        return karaoke.lecture(soireeId, () -> {
-            var manches = depot.deLaSoiree(soireeId);
-            if (!visible(manches)) { return null; }
-            var palmares = karaoke.composerPalmares(soireeId, manches);
+        return preparer(soireeId).fournir(destination, partieCommune);
+    }
+
+    /** Calcule la liste au plus une fois par assemblage, partagée par la salle et la Console. */
+    @Override public ChampPrepare preparer(UUID soireeId) {
+        var calcul = new Calcul(soireeId);
+        return calcul::pour;
+    }
+
+    private final class Calcul {
+        private final UUID soireeId;
+        private List<VuesKaraoke.LignePalmaresKaraoke> palmares;
+        private boolean fait;
+
+        Calcul(UUID soireeId) { this.soireeId = soireeId; }
+
+        Object pour(Destination destination, Map<String, Object> partieCommune) {
+            // Une Manche en cours ou en pause masque le Palmarès : un Buzz n'a pas à relire les Manches.
+            if (!concerne(destination) || partieCommune.get("mancheActive") != null) { return null; }
+            if (!fait) {
+                var karaoke = service.getObject();
+                palmares = karaoke.lecture(soireeId, () -> {
+                    var manches = depot.deLaSoiree(soireeId);
+                    return visible(manches) ? karaoke.composerPalmares(soireeId, manches) : null;
+                });
+                fait = true;
+            }
+            if (palmares == null) { return null; }
             return Destination.CONSOLE.equals(destination) ? palmares
                     : palmares.stream().filter(ligne -> ligne.rang() != null).limit(3).toList();
-        });
+        }
     }
 
     private static boolean visible(List<ManchePersistante> manches) {

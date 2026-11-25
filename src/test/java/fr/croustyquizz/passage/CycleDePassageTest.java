@@ -152,6 +152,53 @@ class CycleDePassageTest {
     }
 
     @Test
+    void uneFinPrevueTronqueeEnMillisecondesNeTerminePasLePassageAvantLHeure() {
+        var cycle = creer(tronquee());
+        cycle.appeler(cible(), ETAPE, debut);
+        horloge.avancer(Duration.ofNanos(500_000));
+        cycle.demarrer(cible(), ETAPE, Duration.ofSeconds(10), debut);
+        horloge.avancer(Duration.ofSeconds(10).minusMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("EN_COURS");
+        assertThat(clotures).isEmpty();
+
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("TERMINE");
+        assertThat(clotures).singleElement().satisfies(cloture -> {
+            assertThat(cloture.motif()).isEqualTo("FIN_PREVUE");
+            assertThat(cloture.instant()).isAfterOrEqualTo(debut.plusSeconds(10));
+        });
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(longs = {30, 31})
+    void laRepriseApresUneEcheanceAtteinteSauteLePassageSansMontrerDAppelAZero(long pauseApresAppel) {
+        var cycle = creerAvecSaut(sansRappel());
+        cycle.appeler(cible(), ETAPE, debut);
+        avancer(pauseApresAppel);
+        cycle.suspendre(horloge.maintenant());
+        avancer(10);
+        cycle.reprendre(horloge.maintenant());
+
+        assertThat(clotures).containsExactly(new CloturePassage(PASSAGE, ETAPE, EtatPassage.SAUTE,
+                "ECHEANCE_APPEL", horloge.maintenant()));
+        assertThat(projection(cycle, false).etat()).isEqualTo("SAUTE");
+        assertThat(cycle.courantActif()).isNull();
+    }
+
+    @Test
+    void enPilotageManuelLaRepriseApresLEcheanceGardeLAppel() {
+        var manuel = new CycleDePassage(file, sansRappel(), APPEL, EtatCyclePassage.vide(), clotures::add);
+        inscrirePassage();
+        manuel.appeler(cible(), ETAPE, debut);
+        avancer(31);
+        manuel.suspendre(horloge.maintenant());
+        avancer(10);
+        manuel.reprendre(horloge.maintenant());
+        assertThat(clotures).isEmpty();
+        assertThat(manuel.courantActif().etat()).isEqualTo(EtatPassage.APPELE);
+    }
+
+    @Test
     void ignoreUnRappelDAppelAnnulePourLaMemeEtape() {
         var cycle = creerAvecSaut(sansAnnulation());
         cycle.appeler(cible(), ETAPE, debut);
@@ -316,6 +363,22 @@ class CycleDePassageTest {
         avancer(3);
         assertThat(clotures).containsExactly(new CloturePassage(PASSAGE, ETAPE, EtatPassage.TERMINE,
                 "FIN_PREVUE", debut.plusSeconds(13)));
+    }
+
+    private Horloge tronquee() {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+            @Override public Minuteur programmer(Duration delai, Runnable rappel) {
+                return horloge.programmer(delai.truncatedTo(MILLIS), rappel);
+            }
+        };
+    }
+
+    private Horloge sansRappel() {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+            @Override public Minuteur programmer(Duration delai, Runnable rappel) { return () -> { }; }
+        };
     }
 
     private Horloge sansAnnulation() {

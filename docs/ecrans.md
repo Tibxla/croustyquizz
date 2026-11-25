@@ -143,8 +143,13 @@ deux Manettes de la même Soirée de démonstration.
    la salle et de la Console à la réception de la nouvelle vue.
    Tant que le Palmarès est présent, il prend sur la salle la place du Classement général
    et de la note d’attente (Q24, #123) ; une photo à l’affiche le masque comme eux.
+   Une fois la Soirée terminée, le Podium final passe avant lui sur la salle (#224) :
+   la salle masque le Palmarès, la Console le garde.
 5. Terminer une Manche de Karaoké sans Passage terminé dans une Soirée neuve. Vérifier
    « Aucun Passage noté. » sur la salle et la Console.
+6. Terminer la Soirée juste après une Manche de Karaoké notée. Vérifier que la salle
+   affiche le « Podium final » sans le Palmarès, et que la Console affiche toujours
+   le Palmarès du Karaoké.
 
 ### Musique d'attente (#140)
 
@@ -195,7 +200,7 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 ## Recette navigateur du saut à l’échéance de l’appel (#121)
 
 1. Reprendre les étapes 1 à 3 de la recette #120 avec deux Manettes, sans préparer de fichier audio.
-2. Laisser le Joueur 1 attendre sans cliquer sur « Je suis prêt ». À zéro, vérifier que sa Manette retire le bouton et affiche « Le temps est écoulé. » si la vue d’appel est encore affichée. Si un envoi en cours reçoit `HORS_DELAI`, vérifier le détail « Le temps pour confirmer est écoulé. ».
+2. Laisser le Joueur 1 attendre sans cliquer sur « Je suis prêt ». À zéro, vérifier que sa Manette retire le bouton et affiche « Le temps est écoulé. » si la vue d’appel est encore affichée. Si un envoi en cours reçoit `HORS_DELAI`, vérifier le détail « Le temps pour confirmer est écoulé. ». Rejouer en coupant le réseau du Joueur 1 juste après « Je suis prêt » vers vingt-huit secondes, puis en le rétablissant : « Réessayer le même envoi » apparaît, puis disparaît à zéro.
 3. Vérifier que le Joueur 2 est appelé, que son décompte démarre à trente secondes et qu’aucun Vote du public ne s’ouvre. Inscrire un troisième Passage, puis laisser expirer l’appel du Joueur 2. Vérifier que le troisième Passage est appelé. Pour un dernier appel sans attente ni vote ouvert, suivre la recette #122.
 4. Rejouer en mettant la Manche en pause lorsqu’il reste dix secondes à l’appel. Attendre plus de trente secondes. Vérifier que le Passage reste appelé et que « Je suis prêt » est indisponible pendant la pause. À la reprise, vérifier que le saut arrive après les dix secondes restantes.
 5. Rejouer en Pilotage Manuel. À zéro, vérifier « Le temps est écoulé, tu peux encore confirmer. », puis confirmer et vérifier que le Passage démarre.

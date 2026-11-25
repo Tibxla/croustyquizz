@@ -146,9 +146,11 @@ class FabriqueKaraokeTest {
         long reste = Math.max(0, 30 - apresAppel);
         if (enPause) {
             redemarrage.avancer(Duration.ofMinutes(1));
-            assertThat(restaure.instantane()).isEqualTo(avant);
-            assertThat(projection.echeanceAppelLe()).isNull();
-            assertThat(projection.delaiAppelRestantMs()).isEqualTo(10_000L);
+            var enPauseApres = restaure.instantane();
+            assertThat(enPauseApres).isEqualTo(avant);
+            var figee = CycleDePassage.projeter(enPauseApres.file(), enPauseApres.cycle(), true, redemarrage.maintenant());
+            assertThat(figee.echeanceAppelLe()).isNull();
+            assertThat(figee.delaiAppelRestantMs()).isEqualTo(10_000L);
             var joueurInterprete = new Acteur(Acteur.Type.JOUEUR, joueur, soiree);
             assertThat(restaure.recevoir(new ConfirmerPresencePassage(joueurInterprete, redemarrage.maintenant(),
                     UUID.randomUUID(), new CiblePassage(PASSAGE, 1), ETAPE))).isInstanceOfSatisfying(
