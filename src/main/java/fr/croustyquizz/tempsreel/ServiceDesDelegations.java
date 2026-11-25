@@ -4,6 +4,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ public class ServiceDesDelegations {
 	static final String EVENEMENT = "delegation-modifiee";
 	private static final Logger JOURNAL = LoggerFactory.getLogger(ServiceDesDelegations.class);
 	private final DepotDeDelegations depot;
+	private final ControleDesDelegations controle;
 	private final EtatDeSoiree soirees;
 	private final ParticipantsDePassage participants;
 	private final PublicationDeVues publication;
@@ -39,9 +41,11 @@ public class ServiceDesDelegations {
 	private final TransactionTemplate transaction;
 	private final TransactionTemplate nouvelleTransaction;
 
-	ServiceDesDelegations(DepotDeDelegations depot, EtatDeSoiree soirees, ParticipantsDePassage participants,
-			PublicationDeVues publication, VerrousSoiree verrous, Horloge horloge, PlatformTransactionManager transactions) {
+	ServiceDesDelegations(DepotDeDelegations depot, ControleDesDelegations controle, EtatDeSoiree soirees,
+			ParticipantsDePassage participants, PublicationDeVues publication, VerrousSoiree verrous, Horloge horloge,
+			PlatformTransactionManager transactions) {
 		this.depot = depot;
+		this.controle = controle;
 		this.soirees = soirees;
 		this.participants = participants;
 		this.publication = publication;
@@ -55,7 +59,7 @@ public class ServiceDesDelegations {
 	/** Remplace l'ensemble des pouvoirs du Joueur ; le même ensemble ne publie rien. */
 	Delegation attribuer(Acteur acteur, UUID soireeId, UUID joueurId, Set<Pouvoir> pouvoirs) {
 		verifierAnimateur(acteur, soireeId);
-		return verrous.executer(soireeId, () -> transaction.execute(statut -> {
+		return verrous.executer(soireeId, () -> enOubliantApres(soireeId, () -> transaction.execute(statut -> {
 			verifierSoiree(soireeId);
 			if (soirees.estTerminee(soireeId)) {
 				throw new Refuse(409, "ETAT_INCOMPATIBLE", "La Soirée est terminée : plus aucune Délégation.").exception();
@@ -69,13 +73,13 @@ public class ServiceDesDelegations {
 				publier(soireeId, joueurId);
 			}
 			return new Delegation(joueurId, pseudo, List.copyOf(EnumSet.copyOf(pouvoirs)));
-		}));
+		})));
 	}
 
 	/** Retire la Délégation ; un Joueur sans Délégation n'entraîne aucune publication. */
 	void retirer(Acteur acteur, UUID soireeId, UUID joueurId) {
 		verifierAnimateur(acteur, soireeId);
-		verrous.executer(soireeId, () -> {
+		verrous.executer(soireeId, () -> enOubliantApres(soireeId, () -> {
 			transaction.executeWithoutResult(statut -> {
 				verifierSoiree(soireeId);
 				if (depot.retirer(soireeId, joueurId)) {
@@ -85,7 +89,7 @@ public class ServiceDesDelegations {
 				}
 			});
 			return null;
-		});
+		}));
 	}
 
 	/**
@@ -98,7 +102,10 @@ public class ServiceDesDelegations {
 			return;
 		}
 		try {
-			nouvelleTransaction.executeWithoutResult(statut -> depot.effacer(cycle.soireeId()));
+			enOubliantApres(cycle.soireeId(), () -> {
+				nouvelleTransaction.executeWithoutResult(statut -> depot.effacer(cycle.soireeId()));
+				return null;
+			});
 		} catch (RuntimeException erreur) {
 			if (JOURNAL.isErrorEnabled()) {
 				JOURNAL.error("Effacement des Délégations impossible pour la Soirée {}", cycle.soireeId(), erreur);
@@ -106,7 +113,20 @@ public class ServiceDesDelegations {
 		}
 	}
 
+	/**
+	 * Les vues relisent les Délégations modifiées : oubli avant la publication, qui les lit dans la transaction,
+	 * puis de nouveau après, validée ou annulée, pour qu'aucune lecture non validée ne reste en mémoire.
+	 */
+	private <T> T enOubliantApres(UUID soireeId, Supplier<T> modification) {
+		try {
+			return modification.get();
+		} finally {
+			controle.oublier(soireeId);
+		}
+	}
+
 	private void publier(UUID soireeId, UUID joueurId) {
+		controle.oublier(soireeId);
 		publication.publier(soireeId, Set.of(Destination.CONSOLE, Destination.joueur(joueurId)), EVENEMENT);
 	}
 

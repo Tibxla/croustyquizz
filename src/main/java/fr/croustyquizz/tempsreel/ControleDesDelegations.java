@@ -1,9 +1,12 @@
 package fr.croustyquizz.tempsreel;
 
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 
@@ -16,12 +19,17 @@ import fr.croustyquizz.manche.Refuse;
 /**
  * Lecture des Délégations (#67) pour le contrôle des commandes et l'assemblage des vues, sous le verrou de la
  * Soirée. Une Soirée terminée n'a plus de Délégation, même avant l'effacement de ses lignes.
+ *
+ * <p>Les vues lisent les Délégations à chaque publication vers la Console et vers chaque Manette : elles sont
+ * gardées en mémoire par Soirée, et {@link ServiceDesDelegations} les oublie à chaque attribution, retrait ou fin
+ * de Soirée, sous le même verrou. Le contrôle d'une commande, lui, relit toujours la base.
  */
 @Component
 public class ControleDesDelegations implements PouvoirsDelegues {
 	private final DepotDeDelegations depot;
 	private final EtatDeSoiree soirees;
 	private final VerrousSoiree verrous;
+	private final Map<UUID, Map<UUID, Set<Pouvoir>>> enMemoire = new ConcurrentHashMap<>();
 
 	ControleDesDelegations(DepotDeDelegations depot, EtatDeSoiree soirees, VerrousSoiree verrous) {
 		this.depot = depot;
@@ -59,11 +67,26 @@ public class ControleDesDelegations implements PouvoirsDelegues {
 
 	/** Pouvoirs enregistrés, pour un assemblage qui a déjà écarté une Soirée terminée. */
 	Set<Pouvoir> enregistres(UUID soireeId, UUID joueurId) {
-		return verrous.executer(soireeId, () -> depot.pouvoirs(soireeId, joueurId));
+		return deLaSoiree(soireeId).getOrDefault(joueurId, Set.of());
 	}
 
 	/** Délégations de la Soirée, par Joueur, de la moins récemment modifiée à la plus récente. */
 	Map<UUID, Set<Pouvoir>> deLaSoiree(UUID soireeId) {
-		return verrous.executer(soireeId, () -> depot.deLaSoiree(soireeId));
+		return verrous.executer(soireeId, () -> {
+			var connues = enMemoire.get(soireeId);
+			if (connues == null) {
+				Map<UUID, Set<Pouvoir>> lues = new LinkedHashMap<>();
+				depot.deLaSoiree(soireeId).forEach((joueur, pouvoirs) ->
+						lues.put(joueur, Collections.unmodifiableSet(EnumSet.copyOf(pouvoirs))));
+				connues = Collections.unmodifiableMap(lues);
+				enMemoire.put(soireeId, connues);
+			}
+			return connues;
+		});
+	}
+
+	/** Oublie les Délégations gardées pour cette Soirée : la prochaine lecture repasse par la base. */
+	void oublier(UUID soireeId) {
+		verrous.executer(soireeId, () -> enMemoire.remove(soireeId));
 	}
 }
