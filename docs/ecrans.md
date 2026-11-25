@@ -2,7 +2,7 @@
 
 Ouvrir `/test/identite.html?soiree=<UUID>` en profil `dev` ou `recette`. Pour ouvrir deux Manettes, charger la page dans deux onglets avec le même UUID de Soirée, choisir le rôle Joueur dans chacun, puis sélectionner « Joueur 1 » dans le premier et « Joueur 2 » dans le second. Quatre Joueurs de démonstration sont disponibles. La page lit l’UUID stable du Joueur choisi dans la vue du serveur. Le jeton `demo:TYPE:soireeId:acteurId` reste dans le `sessionStorage` de l’onglet (`croustyquizz.jeton`), jamais dans l’URL. La page est stockée dans `resources/demonstration/`, hors de `static/`, et servie par un contrôleur `@Profile({"dev", "recette"})`.
 
-Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. La Console utilise le Bearer de démonstration ; sans ce jeton, elle demande `/api/csrf` et transmet session et CSRF, en prévision de #5. Le serveur de production refuse encore les identités tant que #5/#10 ne sont pas installées. L’Écran de salle envoie les commandes de son lecteur. La Console et la Manette ont un bouton de recapture. Les commandes métier appartiennent aux modules des modes.
+Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. Le formulaire d’identité vérifie le jeton de l’Animateur par la capture de la Console. Sans ce jeton, la Console demande `/api/csrf` et transmet session et CSRF, en prévision de #5. Sur une Soirée enregistrée, la Manette relit l’identité renvoyée par le serveur et enregistrée par `rejoindre.html`. La préparation ouvre l’Écran de salle avec `#cle=…` dans l’adresse. La coquille conserve la clé pour cette Soirée dans le stockage de l’onglet, puis retire le fragment. L’Écran de salle envoie les commandes de son lecteur. La Console et la Manette ont un bouton de recapture. Les commandes de Soirée appartiennent à la Console et celles de Manche aux modules des modes.
 
 Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les WebJars à chaque chargement (`Cache-Control: no-cache` et `Last-Modified`) : après un déploiement, il ne mélange pas un module ancien et un module neuf (#132). Un fichier inchangé coûte une réponse `304`. La page `/test/identite.html` reste en `no-store`. Cette revalidation repose sur la date des fichiers dans le JAR : ne pas ajouter `project.build.outputTimestamp` au `pom.xml` (builds reproductibles) sans passer à un ETag calculé sur le contenu, sinon tous les fichiers garderaient la même date et le navigateur resservirait d'anciens modules.
 
@@ -12,6 +12,16 @@ Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les
 2. Dans « Programme », ajouter un Quiz avec 3 étapes de 20 secondes puis un Karaoké. Déplacer le Karaoké en tête au clavier et vérifier le retour du focus à une commande de la même Manche.
 3. Ouvrir la Soirée depuis la page de préparation. Dans la Console, vérifier le passage à « Ouverte », retirer le Quiz et recharger pour vérifier l’ordre enregistré.
 4. Couper la connexion, vérifier que la Console suspend les commandes puis que la reconnexion restaure le programme. Démarrer ensuite le Karaoké par la route de test de la recette #114, avec l’identifiant de la Manche ajoutée, et vérifier que le programme reste visible avec la mention « Le programme est figé. ».
+
+## Recette du déroulement manuel d’une Soirée (#12)
+
+1. En profil `dev`, créer une Soirée en Pilotage Manuel dans `/preparer-soiree.html`. Ouvrir sa Console via `/test/identite.html?soiree=<UUID>`, rôle Animateur, Pilotage actuel et module factice décoché. Ajouter deux Manches de Karaoké, puis déplacer la seconde en tête. Ouvrir la Soirée aux Joueurs depuis la préparation.
+2. Depuis la préparation, ouvrir l’Écran de salle et vérifier que `#cle=…` disparaît de l’adresse. Rejoindre la Soirée avec le QR code de cet Écran ou saisir le code dans `/rejoindre.html`. Vérifier que la Manette affiche le pseudo choisi, puis rescanner le QR code dans le même navigateur pour retrouver le même Joueur. Garder la Manette et la salle ouvertes pendant le parcours.
+3. Dans la Console, lancer la Soirée. Vérifier le bandeau d’envoi puis le reçu HTTP. Les trois écrans affichent la première Manche du programme et la Console fige l’ordre. Pendant cette Manche, « Manche suivante » est désactivé. Avec un Passage actif, exercer Pause, Reprendre et Passer dans le module Karaoké. Recharger l’Écran de salle en cours de Manche et vérifier la capture.
+4. Terminer la Manche avec le bouton du Karaoké, puis cliquer sur « Manche suivante » dans la barre. Vérifier que la deuxième Manche arrive sur les trois écrans. Couper puis rétablir la connexion de la Console. Vérifier que les commandes se réactivent après la capture.
+5. Ouvrir « Terminer la Soirée ». Le focus initial est sur « Annuler ». Tester Échap et le retour du focus au déclencheur, puis rouvrir et confirmer. La Console, l’Écran de salle et la Manette affichent « Soirée terminée ». Recharger l’Écran avec la même clé et vérifier cette vue finale.
+
+Le test `DeroulementSoireeTempsReelTest` exécute le parcours HTTP et STOMP avec PostgreSQL, une Horloge factice et deux Manches factices. Pour vérifier la disposition et les interactions des coquilles, utiliser une Console à 1440 × 900 et 1024 × 768, une Manette à 390 × 844 et un Écran de salle à 1920 × 1080.
 
 ## Accès d'un vrai Joueur (#10)
 
@@ -27,7 +37,7 @@ Le Karaoké livre désormais ses trois modules de File d'attente (#93), avec rec
 
 ## Vérification visuelle
 
-Tester Manette à 390 × 844, Console à 1440 × 900 et 1024 × 768, salle à 1920 × 1080. Vérifier la capture, un événement, une coupure puis la recapture, la sortie de Manche et le focus clavier. Le talon n'affiche que le code effectivement reçu. Le QR code de l'arrivée est pour l'instant sur `ecran-de-salle.html` (#38) ; il rejoindra le talon d'`ecran.html`. Les maquettes de référence et les deux pages du prototype de Buzz restent utilisables.
+Tester Manette à 390 × 844, Console à 1440 × 900 et 1024 × 768, salle à 1920 × 1080. Vérifier la capture, un événement, une coupure puis la recapture, la sortie de Manche et le focus clavier. Le talon affiche le code de la Soirée ouvert aux arrivées. Pour une Soirée enregistrée, il affiche aussi le QR code d’arrivée.
 
 Le contrat de module est documenté dans `AGENTS.md`, section « Coder un Mode de jeu ». `npm test --prefix tools/api` couvre contrats, synchronisation et logique des coquilles. `IdentiteDeTestParProfilTest` vérifie la route HTML en dev, recette, prod+recette, prod et sans profil de démonstration, sans Docker.
 
@@ -124,6 +134,15 @@ La coordination locale utilise `BroadcastChannel` et les Web Locks. La fenêtre 
 
 Pour la recette, ouvrir deux fenêtres du même profil de navigateur en HTTPS ou sur `localhost`. Choisir dans la première un dossier avec plusieurs morceaux dans `Attente`. Vérifier l'enchaînement puis l'appel d'un Passage de Karaoké. Confirmer le départ, vérifier le silence de la Musique d'attente puis sa reprise à la clôture. Choisir le dossier dans la deuxième fenêtre et vérifier qu'elle prend la main. Fermer la deuxième, puis rouvrir ou recharger l'Écran de salle et choisir à nouveau le dossier. À chaque relais, écouter la fin de la première lecture avant la suivante. Refaire l'essai avec un dossier sans `Attente`, puis avec une Chanson présente uniquement dans `Attente`.
 
+### Pilotage de la Musique d’attente (#141)
+
+La Console coupe ou relance la Musique d’attente depuis la barre de pilotage, y compris sans Manche en cours. La Musique d’attente se tait pendant la resynchronisation puis suit le réglage de la Soirée. La Console affiche « Aucun morceau dans Attente » lorsque le dernier dossier signalé est vide. Le serveur ne reçoit que la présence ou l’absence de morceaux.
+
+1. En `dev` ou `recette`, utiliser un UUID neuf pour une Soirée de démonstration sans Manche. Ouvrir la Console et l’Écran de salle avec les identités correspondantes. La même recette s’applique à une Soirée enregistrée.
+2. Hors Manche, choisir un dossier avec des morceaux dans `Attente`. Vérifier leur lecture et l’état affiché dans la Console. Couper la musique, recharger l’Écran de salle et choisir de nouveau le dossier. Vérifier le silence, puis relancer depuis la Console.
+3. Couper de nouveau et redémarrer le serveur avec la même base. Après resynchronisation, vérifier que la Console propose toujours de relancer et que la salle reste silencieuse. Choisir un dossier sans morceaux dans `Attente` et vérifier le message dans la Console.
+4. Avec un dossier contenant des morceaux, vérifier que la relance pendant un Passage laisse la Chanson audible seule et que la Musique d’attente reprend à la clôture.
+
 ### Recharger l’Écran pendant l’appel (#144)
 
 1. Appeler un Passage dont la Chanson correspond à un fichier audio lisible. Pendant l’appel, recharger l’Écran de salle.
@@ -150,3 +169,61 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 4. Confirmer le premier Passage après la préparation de son fichier. À la fin de lecture, vérifier que le Joueur 2 est appelé, que l’Écran de salle prépare son fichier et que le Vote du public du premier Passage s’ouvre sur sa Manette. Confirmer le deuxième Passage une fois préparé et vérifier que le fichier local démarre.
 5. Rejouer avec une pause pendant un Passage alors que le Joueur 2 attend. Cliquer sur « Passer » et vérifier que le Joueur 2 reste en attente jusqu’à « Reprendre ».
 6. Rejouer dans une Soirée neuve en Manuel. Vérifier que « Appeler le suivant » est disponible quand la File d’attente est libre et que l’Animateur doit l’utiliser après la première inscription et après la fin du Passage.
+
+## Photos de la salle (#72)
+
+La Manette propose « Envoyer une photo » tant que les envois sont ouverts.
+Le champ n’impose pas l’appareil photo (`accept="image/*"`, sans `capture`) :
+le téléphone propose de prendre une photo ou d’en choisir une dans la
+photothèque. La Manette respecte l’orientation de l’image, la réduit à 1600
+pixels de côté au plus et la réencode en JPEG avant l’envoi. Ce réencodage
+retire les métadonnées EXIF, dont la position GPS. Si le JPEG dépasse 1,5 Mo,
+la Manette réduit de nouveau ses dimensions. Une image illisible ou trop lourde
+affiche une erreur sous le champ. « Photo envoyée » confirme la réponse du
+serveur. Pendant l’envoi, le champ reste focalisable mais `aria-disabled` et
+n’ouvre pas le sélecteur. Après une confirmation inconnue ou un refus, choisir
+de nouveau le même fichier (même nom, taille et date) renvoie le même JPEG avec
+la même `Idempotency-Key` : un envoi déjà enregistré rend son reçu au lieu d’un
+doublon. Seuls un autre fichier ou un succès tirent une nouvelle clé. Si
+l’Animateur coupe les envois pendant un envoi déjà parti, la Manette masque le
+champ sans annuler la requête et affiche sa réponse.
+
+Le serveur borne la mémoire avant de lire le corps : `Content-Length` au-delà de
+1,5 Mo refusé, quatre envois lus à la fois au plus, gardes de Soirée, de Joueur
+et de file vérifiées sous le verrou avant la lecture puis de nouveau à l’ajout.
+Chaque Soirée garde au plus 16 Mo de photos (en attente, acceptées et à
+l’affiche) et trente photos acceptées, et toutes les Soirées 64 Mo. Une Soirée
+sans commande photo ni changement d’affiche pendant douze heures perd ses
+photos et ses reçus ; un réglage coupé reste coupé.
+
+Le panneau « Photos de la salle » de la Console suit l’ordre d’arrivée. Chaque
+vignette et son pseudo permettent d’accepter ou de refuser la photo. Pendant
+la commande, le bouton garde le focus avec `aria-disabled`. Une fois la photo
+modérée, le focus passe au même bouton de la ligne suivante, sinon de la
+précédente, ou au titre du panneau quand la file est vide. L’interrupteur
+« Recevoir les photos des Joueurs » garde ce libellé fixe, qui est aussi son nom accessible ;
+la case indique l’état. Couper les envois masque la commande sur les Manettes
+et laisse les photos déjà reçues dans leurs files. L’Écran de salle affiche les
+photos dans l’ordre d’acceptation, huit secondes chacune hors Manche, dans le
+cadre principal, et masque alors la note d’attente et le classement de salle.
+Un début de Manche retire immédiatement la photo à l’affiche. Elle repassera
+au prochain créneau. Une Manche en pause occupe la scène.
+
+Recette sur téléphone Android et iPhone : prendre une photo et en choisir une
+depuis la photothèque, puis vérifier l’orientation d’un portrait et d’un paysage.
+Sur iPhone, inclure une photo au format HEIC et vérifier le message si le
+navigateur ne la décode pas. Provoquer un refus et réessayer sans recharger.
+Côté Console, couper puis rouvrir les envois et valider des photos dans un ordre
+autre que celui de leur arrivée. Sur deux Écrans de salle, recharger l’un d’eux
+au milieu d’un affichage. Vérifier la même photo et la même fin d’affichage,
+puis démarrer et terminer une Manche. Vérifier le portrait et le paysage à 5 m.
+
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans
+interface : Soirée enregistrée et ouverte, deux Écrans de salle ouverts par leur clé, deux
+Manettes arrivées par le code, et la Console. Une image illisible est refusée sous le champ,
+puis un nouvel essai passe sans recharger. Un paysage de 3000 × 2000 et un portrait de
+1200 × 1800 arrivent en 1600 × 1066 et 1066 × 1600. La photo de Sam, acceptée avant celle
+de Léa, passe la première sur les deux Écrans, et un Écran rechargé retrouve la même photo.
+L'affiche se vide après le dernier créneau. Couper les envois retire le champ des Manettes.
+Aucun des écrans ne déborde. Restent l'orientation EXIF, le HEIC, l'appareil photo sur
+téléphone et la lecture à 5 m.

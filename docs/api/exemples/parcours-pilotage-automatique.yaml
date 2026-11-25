@@ -25,6 +25,7 @@ http:
       modeEnCours: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: []
 - nom: La première inscription appelle Alizé
@@ -78,6 +79,7 @@ http:
         pseudo: Basile
         connecte: true
       classement: &classementKaraoke []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *mancheKaraoke
@@ -194,6 +196,7 @@ evenements:
       modeEnCours: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: []
 - nom: Premier appel — salle
@@ -209,6 +212,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *joueursKaraoke
       classement: *classementKaraoke
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 11900000-0000-4000-8000-000000000004
@@ -318,6 +322,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *joueursKaraoke
       classement: *classementKaraoke
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 11900000-0000-4000-8000-000000000004
@@ -383,6 +388,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *joueursKaraoke
       classement: *classementKaraoke
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - *mancheKaraoke

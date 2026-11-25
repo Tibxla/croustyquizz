@@ -6,6 +6,7 @@
   <title>Écran de salle · CroustyQuizz</title>
   <link rel="stylesheet" href="/css/croustyquizz.css">
   <link rel="stylesheet" href="/css/ecran-de-salle.css">
+  <link rel="stylesheet" href="/css/photos.css">
   <script defer src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
   <script type="module" src="/js/page.mjs"></script>
 </head>
@@ -18,6 +19,7 @@
     </div>
     <p class="coupure" role="status" data-connexion>Synchronisation…</p><p class="envoi envoi--refuse" role="alert" data-erreur hidden></p><p class="envoi" role="status" data-envoi hidden></p>
     <div class="coquille__mode" data-principale></div>
+    <div class="photos--affiche" data-photos hidden></div>
     <section class="salle__classement" aria-labelledby="titre-classement" data-classement-salle hidden>
       <h2 id="titre-classement">Classement général</h2>
       <ol class="commun__liste" role="list"></ol>
@@ -40,7 +42,9 @@
       <p data-buzz>Aucun Buzz reçu</p>
     </section>
     <div class="talon" data-talon hidden>
+      <div class="talon__qr" data-qr hidden><img alt="QR code pour rejoindre la Soirée"></div>
       <div><span class="talon__aide">Code d’accès de la Soirée</span><span class="talon__code" data-code></span></div>
+      <span class="talon__adresse" data-adresse hidden></span>
     </div>
   </aside>
 </main>

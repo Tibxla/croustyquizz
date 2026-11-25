@@ -8,6 +8,9 @@ import java.util.PriorityQueue;
 /**
  * Horloge de test : le temps n'avance que par {@link #avancer(Duration)}, et les
  * minuteurs échus s'exécutent à ce moment-là, dans l'ordre de leurs échéances.
+ * Sûre entre fils : une tâche de fond peut programmer pendant que le test avance.
+ * Le moniteur n'est jamais tenu pendant une action, qui peut attendre le verrou
+ * d'une Soirée tenu par un fil qui programme.
  */
 public final class HorlogeFactice implements Horloge {
 
@@ -25,29 +28,42 @@ public final class HorlogeFactice implements Horloge {
 	}
 
 	@Override
-	public Instant maintenant() {
+	public synchronized Instant maintenant() {
 		return maintenant;
 	}
 
 	@Override
-	public Minuteur programmer(Duration delai, Runnable action) {
+	public synchronized Minuteur programmer(Duration delai, Runnable action) {
 		Programme programme = new Programme(maintenant.plus(delai), compteur++, action);
 		programmes.add(programme);
-		return () -> programmes.remove(programme);
+		return () -> annuler(programme);
+	}
+
+	private synchronized void annuler(Programme programme) {
+		programmes.remove(programme);
 	}
 
 	/** Avance le temps et exécute les minuteurs échus, y compris ceux programmés en chemin. */
 	public void avancer(Duration duree) {
-		Instant cible = maintenant.plus(duree);
-		while (!programmes.isEmpty() && !programmes.peek().echeance().isAfter(cible)) {
-			Programme programme = programmes.poll();
-			maintenant = programme.echeance();
+		Instant cible;
+		synchronized (this) {
+			cible = maintenant.plus(duree);
+		}
+		while (true) {
+			Programme programme;
+			synchronized (this) {
+				if (programmes.isEmpty() || programmes.peek().echeance().isAfter(cible)) {
+					maintenant = cible;
+					return;
+				}
+				programme = programmes.poll();
+				maintenant = programme.echeance();
+			}
 			programme.action().run();
 		}
-		maintenant = cible;
 	}
 
-	public int minuteursEnAttente() {
+	public synchronized int minuteursEnAttente() {
 		return programmes.size();
 	}
 

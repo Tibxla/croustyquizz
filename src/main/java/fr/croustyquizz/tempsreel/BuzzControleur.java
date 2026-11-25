@@ -15,8 +15,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.soiree.ServiceSoiree;
+
 /**
- * Buzz générique, sans Manche : une Manette envoie
+ * Buzz du prototype, réservé aux Soirées fictives : une Manette envoie
  * un POST HTTP de démonstration, toute la salle reçoit une {@link VueSallePrototype}.
  * L'heure de réception est celle du serveur, seule à faire foi.
  */
@@ -34,11 +37,13 @@ public class BuzzControleur {
 
 	private final DiffuseurTempsReel diffuseur;
 	private final Clock horloge;
+	private final ServiceSoiree soirees;
 
-	BuzzControleur(DiffuseurTempsReel diffuseur, Clock horloge, VerrousSoiree verrous) {
+	BuzzControleur(DiffuseurTempsReel diffuseur, Clock horloge, VerrousSoiree verrous, ServiceSoiree soirees) {
 		this.diffuseur = diffuseur;
 		this.horloge = horloge;
 		this.verrous = verrous;
+		this.soirees = soirees;
 	}
 
 	@PostMapping("/api/test/soirees/{soireeId}/buzz")
@@ -47,6 +52,9 @@ public class BuzzControleur {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Un pseudo est requis");
 		}
 		return verrous.executer(soireeId, () -> {
+			if (soirees.estEnregistree(soireeId)) {
+				throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Soirée de démonstration introuvable.").exception();
+			}
 			BuzzRecu buzz = new BuzzRecu(demande.pseudo().strip().codePoints().limit(LONGUEUR_MAX_PSEUDO)
 					.collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append).toString(), horloge.instant());
 			List<BuzzRecu> historique = historiques.computeIfAbsent(soireeId, cle -> new ArrayList<>());
