@@ -4,6 +4,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -24,9 +25,10 @@ class ServiceMusiqueDAttente {
 	private final TransactionTemplate transaction;
 	private final PouvoirsDelegues pouvoirs;
 
+	/** Sans contrôle des Délégations (contexte partiel), seul l'Animateur règle la Musique d'attente. */
 	ServiceMusiqueDAttente(DepotMusiqueDAttente depot, EtatDeSoiree etatDeSoiree, PublicationDeVues publication,
-			VerrousSoiree verrous, PlatformTransactionManager transactions, PouvoirsDelegues pouvoirs) {
-		this.pouvoirs = pouvoirs;
+			VerrousSoiree verrous, PlatformTransactionManager transactions, ObjectProvider<PouvoirsDelegues> pouvoirs) {
+		this.pouvoirs = pouvoirs.getIfAvailable(() -> PouvoirsDelegues.ANIMATEUR_SEUL);
 		this.depot = depot;
 		this.etatDeSoiree = etatDeSoiree;
 		this.publication = publication;
