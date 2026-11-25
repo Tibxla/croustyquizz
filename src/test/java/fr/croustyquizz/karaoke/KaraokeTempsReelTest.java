@@ -179,6 +179,14 @@ class KaraokeTempsReelTest {
                 .at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
         lireEvenement(autreManette, "autorisation-enregistrement-modifiee");
         lireEvenement(console, "autorisation-enregistrement-modifiee");
+        // Hors interdiction, un retrait publie une vue sans accord, puis l'accord se redonne.
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", envoyer(HttpMethod.PUT, accord, joueur,
+                Map.of("accord", false, "numeroModification", 0), UUID.randomUUID()), 200);
+        assertThat(lireEvenement(manette, "accord-enregistrement-modifie")
+                .at("/karaoke/mesAccordsEnregistrement").size()).isZero();
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", envoyer(HttpMethod.PUT, accord, joueur, choix, UUID.randomUUID()), 200);
+        assertThat(lireEvenement(manette, "accord-enregistrement-modifie")
+                .at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
         // Pendant l'interdiction, le retrait est accepté sans publication : l'accord suspendu ne revient plus.
         KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
                 envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
