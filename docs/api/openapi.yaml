@@ -1502,8 +1502,8 @@ paths:
       summary: Suggérer une Chanson
       description: >-
         Joueur présent, retardataire compris, pendant une Manche de Karaoké active, pause comprise.
-        Titre et artiste de 1 à 120 points de code, bruts comme après NFC ; blancs Unicode regroupés,
-        extrémités supprimées. REQUETE_INVALIDE pour un champ vide, trop long, qui contient encore un
+        Titre et artiste de 1 à 120 points de code, bruts comme une fois nettoyés : NFC, blancs Unicode
+        regroupés, extrémités supprimées. REQUETE_INVALIDE pour un champ vide, trop long, qui contient encore un
         caractère de contrôle ou de format (catégorie Cf, comme U+200B), ou dont la clé normalisée est vide
         (ponctuation seule, par exemple). Dans la Soirée, la première graphie nettoyée est conservée.
         La clé de regroupement applique NFKC, ramène les apostrophes et guillemets typographiques
