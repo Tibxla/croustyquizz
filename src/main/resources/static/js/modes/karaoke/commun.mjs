@@ -166,10 +166,12 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 		remplacerListe(liste, enfants, titre) {
 			const actif = document.activeElement, avaitFocus = liste.contains(actif);
 			const id = actif?.getAttribute('data-passage-id') ?? actif?.getAttribute('data-chanson-id');
+			const action = actif?.getAttribute('data-action') ?? null;
 			liste.replaceChildren(...enfants);
 			if (avaitFocus) {
 				(Array.from(liste.querySelectorAll('[data-passage-id], [data-chanson-id]')).find(e =>
-					e.tagName === actif.tagName && (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id) ?? titre)?.focus();
+					e.tagName === actif.tagName && (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id
+					&& e.getAttribute('data-action') === action) ?? titre)?.focus();
 			}
 		},
 		afficher(vue, origine) {

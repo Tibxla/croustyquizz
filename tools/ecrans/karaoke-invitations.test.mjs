@@ -74,6 +74,31 @@ test('Manette : un refus de limite garde l’Invitation ouverte avec son motif, 
 	assert.equal(b.appels[1].args[2].reponse, 'REFUSER');
 });
 
+test('Manette : une vue reçue pendant que Refuser a le focus le laisse sur Refuser', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	b.module.afficher(vue({ invitationsRecues: [recue] }), capture); b.connecter('synchronisee');
+	bouton(b.principale, 'Refuser').focus();
+	b.module.afficher(vue({ invitationsRecues: [recue] }), evenement);
+	assert.equal(b.document.activeElement, bouton(b.principale, 'Refuser'));
+	bouton(b.principale, 'Accepter').focus();
+	b.module.afficher(vue({ invitationsRecues: [recue] }), evenement);
+	assert.equal(b.document.activeElement, bouton(b.principale, 'Accepter'));
+});
+
+test('Manette : chaque bouton d’Invitation nomme sa Chanson et qui invite', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const autre = { ...recue, passage: { passageId: 'autre', numeroModification: 0 }, inscrivant: celia, interpretes: [celia],
+		chanson: { ...chanson, chansonId: 'autre', titre: 'Autre titre' } };
+	b.module.afficher(vue({ invitationsRecues: [recue, autre] }), capture);
+	const noms = texte => b.principale.querySelectorAll('button').filter(x => x.textContent === texte).map(x => x.getAttribute('aria-label'));
+	assert.deepEqual(noms('Accepter'), ["Accepter l'Invitation de Basile pour Titre de démonstration",
+		"Accepter l'Invitation de Célia pour Autre titre"]);
+	assert.deepEqual(noms('Refuser'), ["Refuser l'Invitation de Basile pour Titre de démonstration",
+		"Refuser l'Invitation de Célia pour Autre titre"]);
+});
+
 test('Manette : l’inscripteur voit l’état de chaque Invitation et sa confirmation nomme les autres', t => {
 	const b = creerBanc(manette);
 	t.after(() => b.module.demonter());
@@ -164,4 +189,5 @@ test('Console : les invités sans réponse sont nommés à part des Interprètes
 	const ticket = b.principale.querySelector('button.ticket');
 	assert.equal(ticket.querySelector('.karaoke__interpretes').textContent, 'Jo');
 	assert.match(ticket.textContent, /Invités sans réponse : Basile et Célia/);
+	assert.match(ticket.getAttribute('aria-label'), /^Passage 21 · Jo · .* · Invités sans réponse : Basile et Célia$/);
 });

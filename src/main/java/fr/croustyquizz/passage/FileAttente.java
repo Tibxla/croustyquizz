@@ -60,9 +60,7 @@ public final class FileAttente {
         for (UUID interprete : nouveau.interpretes()) {
             Optional<Refuse> refus = verifierInscription(interprete, nouveau.contenuId());
             if (refus.isPresent()) { return new ResultatFile.Refus(refus.get()); }
-            long dernierTourReserve = passages.stream().filter(p -> p.etat() == EtatPassage.EN_ATTENTE
-                    && p.interpretes().contains(interprete)).mapToLong(Passage::tourNormal).max().orElse(0L);
-            tour = Math.max(tour, Math.max(premierTourDisponible(interprete), dernierTourReserve + 1));
+            tour = Math.max(tour, tourReservable(interprete, null));
         }
         if (invitesIds.stream().anyMatch(nouveau.interpretes()::contains)) { return new ResultatFile.Refus(autoInvitation()); }
         if (new HashSet<>(invitesIds).size() != invitesIds.size()
@@ -83,6 +81,14 @@ public final class FileAttente {
         return Math.max(tourOuvert, consommations.getOrDefault(interprete, 0L) + 1);
     }
 
+    /** Premier Tour que l’Interprète peut réserver après ses attentes, sans compter le Passage exclu. */
+    private long tourReservable(UUID interprete, UUID passageExclu) {
+        long dernierTourReserve = passages.stream().filter(p -> p.etat() == EtatPassage.EN_ATTENTE
+                && !p.id().equals(passageExclu) && p.interpretes().contains(interprete))
+                .mapToLong(Passage::tourNormal).max().orElse(0L);
+        return Math.max(premierTourDisponible(interprete), dernierTourReserve + 1);
+    }
+
     public ResultatFile ajouterInterprete(CiblePassage cible, UUID interpreteId) {
         Passage passage = trouver(cible.passageId());
         Refuse refusCible = verifierCible(cible, passage, Set.of(EtatPassage.EN_ATTENTE));
@@ -96,8 +102,15 @@ public final class FileAttente {
 
         List<UUID> interpretes = new ArrayList<>(passage.interpretes());
         interpretes.add(interpreteId);
-        remplacer(avecInterpretes(passage, passage.inscripteurId(), interpretes));
-        recalculerReservations(Set.of(passage.id()));
+        // Seul le Passage accepté peut reculer ; les autres attentes gardent leur Tour et leur compteur (#135).
+        long tour = passage.tourNormal();
+        if (tourReservable(interpreteId, passage.id()) > tour) {
+            for (UUID interprete : interpretes) { tour = Math.max(tour, tourReservable(interprete, passage.id())); }
+        }
+        long cle = passage.cleOrdre();
+        if (tour != passage.tourNormal()) { cle = prochaineCle; prochaineCle++; }
+        remplacer(modifier(avecInterpretes(passage, passage.inscripteurId(), interpretes), tour, cle,
+                passage.etat(), passage.tourConsomme(), passage.traceTerminale(), true));
         return new ResultatFile.Modifiee();
     }
 
@@ -168,6 +181,11 @@ public final class FileAttente {
         expirerInvitations(i -> i.inviteId().equals(joueurId));
         if (attentes.isEmpty()) { return invite ? new ResultatFile.Modifiee() : new ResultatFile.SansEffet(); }
         retirerInterpreteDesAttentes(joueurId, recueLe, attentes);
+        // Comme pour une désinscription, l’Interprète accepté qui part retire son accord (#135).
+        for (Passage passage : attentes) {
+            InvitationPassage invitation = invitationDe(passage.id(), joueurId);
+            if (invitation != null) { changerEtat(invitation, InvitationPassage.Etat.REFUSEE); }
+        }
         return new ResultatFile.Modifiee();
     }
 
@@ -256,12 +274,13 @@ public final class FileAttente {
         remplacer(modifier(p, p.tourNormal(), p.cleOrdre(), p.etat(), p.tourConsomme(), p.traceTerminale(), true));
     }
 
-    /** Réserve par ordre d’inscription ; seules les attentes changeant de Tour rejoignent sa fin. */
+    /**
+     * Réserve dans l’ordre normal courant, et non dans l’ordre d’inscription : un Passage accepté reste derrière les
+     * attentes qu’il a contournées. Seules les attentes changeant de Tour rejoignent sa fin.
+     */
     private void recalculerReservations(Set<UUID> passagesModifies) {
         Map<UUID, Long> prochainsTours = new HashMap<>();
-        for (int index = 0; index < passages.size(); index++) {
-            Passage passage = passages.get(index);
-            if (passage.etat() != EtatPassage.EN_ATTENTE) { continue; }
+        for (Passage passage : ordreNormal()) {
             long tour = tourOuvert;
             for (UUID interprete : passage.interpretes()) {
                 tour = Math.max(tour, prochainsTours.getOrDefault(interprete, premierTourDisponible(interprete)));
@@ -273,7 +292,7 @@ public final class FileAttente {
             if (tourModifie || passagesModifies.contains(passage.id())) {
                 long cle = tourModifie ? prochaineCle : passage.cleOrdre();
                 if (tourModifie) { prochaineCle++; }
-                passages.set(index, modifier(passage, tour, cle, passage.etat(),
+                remplacer(modifier(passage, tour, cle, passage.etat(),
                         passage.tourConsomme(), passage.traceTerminale(), true));
             }
         }

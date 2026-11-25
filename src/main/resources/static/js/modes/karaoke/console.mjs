@@ -236,7 +236,12 @@ export function monter(zones, contexte) {
 			const ticket = creerTicket(ui, p, { estimation: true, details: true, selectionner: id => { selection = id; message.textContent = ''; ui.rendre(); } });
 			// Les Invitations en suspens ne sont pas encore des Interprètes : la Console les nomme à part (#135).
 			const enSuspens = (ui.bloc.invitationsEnAttente ?? []).filter(i => i.passageId === p.passageId).map(i => i.invite.pseudo);
-			if (enSuspens.length) ticket.querySelector('.ticket__corps').append(e('p', 'karaoke__attente', `Invités sans réponse : ${joindrePseudos(enSuspens)}`));
+			if (enSuspens.length) {
+				const texte = `Invités sans réponse : ${joindrePseudos(enSuspens)}`;
+				ticket.querySelector('.ticket__corps').append(e('p', 'karaoke__attente', texte));
+				// L'aria-label du ticket masque son contenu : il nomme aussi les invités en suspens.
+				ticket.setAttribute('aria-label', `${ticket.getAttribute('aria-label')} · ${texte}`);
+			}
 			ticket.setAttribute('aria-pressed', String(p.passageId === selection)); li.append(ticket); return li;
 		});
 		ui.remplacerListe(file, tickets, titre); vide.hidden = Boolean(tickets.length); file.hidden = !tickets.length;

@@ -26,8 +26,13 @@ export function installerInvitations(ui, { verbe = 'chanter' } = {}) {
 			const autreAction = rang > 0 || ui.bloc.peutConfirmerPresence || (ui.bloc.votes ?? []).some(vote => vote.peutVoter);
 			const accepter = bouton('Accepter', () => repondre('ACCEPTER'), autreAction ? 'bouton' : 'bouton bouton--action');
 			const refuser = bouton('Refuser', () => repondre('REFUSER'));
-			for (const action of [accepter, refuser]) {
+			// Une clé par geste : une vue reçue rend le focus au même bouton (#138).
+			for (const [action, geste, libelle] of [[accepter, 'accepter', 'Accepter'], [refuser, 'refuser', 'Refuser']]) {
 				action.setAttribute('data-passage-id', cible.passageId);
+				action.setAttribute('data-action', geste);
+				// Le Karaoké nomme la Chanson, le Freestyle son Instrumentale.
+				const objet = invitation.chanson?.titre ?? invitation.instrumentale?.titre;
+				action.setAttribute('aria-label', `${libelle} l'Invitation de ${invitation.inscrivant.pseudo}${objet ? ` pour ${objet}` : ''}`);
 				action.disabled = !ui.mutationsPermises || envoi?.etat === 'en-cours' || Boolean(peutReessayer(envoi));
 			}
 			const actions = e('div', 'karaoke__commandes'); actions.append(accepter, refuser);

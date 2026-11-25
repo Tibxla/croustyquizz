@@ -48,14 +48,15 @@ class FileAttenteCollectiveTest {
 
         assertThat(file.ajouterInterprete(ancienneCible, BORIS)).isInstanceOf(ResultatFile.Modifiee.class);
 
-        assertThat(file.ordreEffectif()).extracting(Passage::id).containsExactly(boris, celia, duo, ana);
+        // Seul le Passage accepté recule : l’autre attente d’Ana garde son Tour 2 et son compteur (#135).
+        assertThat(file.ordreEffectif()).extracting(Passage::id).containsExactly(boris, celia, ana, duo);
         assertThat(file.ordreEffectif()).extracting(Passage::tourNormal).containsExactly(1L, 1L, 2L, 3L);
         assertThat(file.trouver(duo).interpretes()).containsExactly(ANA, BORIS);
         assertThat(file.trouver(duo).numeroModification()).isEqualTo(1);
-        assertThat(file.trouver(ana).numeroModification()).isEqualTo(1);
+        assertThat(file.trouver(ana).numeroModification()).isZero();
         refuserSansMutation(() -> file.ajouterInterprete(ancienneCible, CELIA), "COMMANDE_PERIMEE");
         assertThat(file.ajouterInterprete(cible(duo), DINA)).isInstanceOf(ResultatFile.Modifiee.class);
-        assertThat(file.trouver(duo).tourNormal()).isEqualTo(2);
+        assertThat(file.trouver(duo).tourNormal()).isEqualTo(3);
         assertThat(file.trouver(duo).numeroModification()).isEqualTo(2);
     }
 
