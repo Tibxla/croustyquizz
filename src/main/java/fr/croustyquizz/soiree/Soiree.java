@@ -132,6 +132,11 @@ public class Soiree {
 		return dernierBuzz;
 	}
 
+	/** Buzz décidé par la Manche active (Blind test, ADR 0009) : la Soirée le reprend comme dernierBuzz. */
+	void retenirBuzz(Buzz buzz) {
+		dernierBuzz = buzz;
+	}
+
 	Buzz getDernierBuzz() {
 		return dernierBuzz;
 	}
