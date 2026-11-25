@@ -9,6 +9,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -72,6 +74,16 @@ class DictionnaireDeRimesFourniTest {
         assertThat(DictionnaireDeRimesFourni.partage().rimesDe("maison"))
                 .contains("raison", "saison").doesNotContain("maison", "maisons");
         assertThat(DictionnaireDeRimesFourni.partage().rimesDe("vert")).contains("verre", "hiver").doesNotContain("verts");
+    }
+
+    @Test
+    void chaqueTerminaisonThematiqueCompteTroisSonsQuandLeMotLePermet() throws IOException {
+        Map<String, Integer> plusLonguePrononciation = entreesDeLExtrait().stream().collect(Collectors.toMap(
+                EntreePhonetique::mot, entree -> entree.sons().size(), Math::max));
+
+        assertThat(ListesThematiquesDeRimes.lire())
+                .filteredOn(entree -> plusLonguePrononciation.getOrDefault(entree.mot(), 0) >= 3)
+                .allSatisfy(entree -> assertThat(entree.sons()).as(entree.mot()).hasSizeGreaterThanOrEqualTo(3));
     }
 
     @ParameterizedTest
