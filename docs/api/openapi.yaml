@@ -543,7 +543,8 @@ paths:
         FREESTYLE reçoit les identifiants choisis dans les fiches déclarées par l’Écran de salle pour cette
         Soirée ; une sélection qui ne correspond plus aux fiches disponibles donne 422 INSTRUMENTALE_INDISPONIBLE.
         Son mesuresParCouplet (#74), 4 par défaut, doit diviser nombreMesures, sinon 422 DONNEES_INVALIDES.
-        Aucun Idempotency-Key ajouté à cette route.
+        Une Instrumentale sélectionnée dont la durée ne couvre pas la Grille, départ du beat compris, donne
+        422 INSTRUMENTALE_TROP_COURTE. Aucun Idempotency-Key ajouté à cette route.
       tags:
       - Soirée
       security:
@@ -1538,11 +1539,15 @@ paths:
       summary: Remplacer les fiches d’Instrumentales disponibles
       description: >-
         Écran de salle de la Soirée, avant ou pendant son déroulement. Le serveur reçoit les seules
-        fiches et remplace la déclaration précédente. Deux fiches portant le même identifiant donnent
-        422 DONNEES_INVALIDES. Une déclaration identique est sans effet. Le rejeu d’un envoi restitue
-        le reçu sans publication ; réutiliser sa clé avec un autre corps donne 409 ENVOI_REUTILISE.
-        Soirée terminée, 409 ETAT_INCOMPATIBLE. Pendant une Manche active de Freestyle, un changement
-        publie instrumentales-modifiees. Les Passages déjà inscrits conservent leur fiche et leur Grille.
+        fiches et remplace la déclaration précédente. La fenêtre qui déclare, repérée par lecteurId,
+        devient le lecteur désigné du Freestyle : seule elle joue l’Instrumentale, les autres Écrans
+        de salle affichent la Grille. Deux fiches portant le même identifiant donnent
+        422 DONNEES_INVALIDES. Une déclaration identique venant du lecteur déjà désigné est sans effet.
+        Le rejeu d’un envoi restitue le reçu sans publication ni changement de lecteur ; réutiliser sa
+        clé avec un autre corps donne 409 ENVOI_REUTILISE. Soirée terminée, 409 ETAT_INCOMPATIBLE.
+        Pendant une Manche active de Freestyle, un changement de fiches publie instrumentales-modifiees
+        sur la Console et, si la sélection disponible change, sur les Manettes ; un changement de
+        lecteur la publie sur la salle. Les Passages déjà inscrits conservent leur fiche et leur Grille.
       tags: [Freestyle]
       security:
       - cleEcran: []
@@ -1560,7 +1565,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: ./schemas.yaml#/$defs/InstrumentalesDisponibles
+              $ref: ./schemas.yaml#/$defs/DeclarationInstrumentales
       responses:
         '200':
           description: Reçu de la déclaration.
@@ -1613,7 +1618,9 @@ paths:
         En Freestyle, instrumentaleId est obligatoire et null demande le hasard. Les fiches admissibles
         sont sélectionnées pour la Manche et disponibles dans la Soirée. Explicitement choisie, une
         Instrumentale non admissible à ce titre donne 422 INSTRUMENTALE_INDISPONIBLE ; sans fiche
-        disponible pour le tirage, même refus. Un doublon en attente ou un quota atteint donne 409
+        disponible pour le tirage, même refus. Une Instrumentale dont la durée ne couvre pas la Grille,
+        départ du beat compris, n’est jamais tirée ; choisie explicitement, ou seule restante pour le
+        tirage, elle donne 422 INSTRUMENTALE_TROP_COURTE. Un doublon en attente ou un quota atteint donne 409
         PASSAGE_DEJA_INSCRIT ou LIMITE_ATTEINTE. La fiche et la Grille sont figées à l’inscription ;
         une Grille impossible à composer donne 422 GRILLE_INDISPONIBLE. Le Freestyle accepte les mêmes
         invitesIds qu’au Karaoké, avec les mêmes refus après ceux de l’Instrumentale et de l’inscripteur (#74).

@@ -15,7 +15,7 @@ final class DictionnaireFreestyleLocal implements DictionnaireDeRimes {
             "sensation", "concentration", "compétition", "formation", "rotation", "sélection", "scansion", "respiration",
             "ascension", "impulsion", "expédition", "transmission", "inspiration", "improvisation", "décision", "mission");
 
-    static List<String> amorces(ThemeDeRimes theme) {
+    @Override public List<String> amorces(ThemeDeRimes theme) {
         return switch (theme) {
             case SOIREE -> List.of("danser", "émotion");
             case VILLE -> List.of("tracer", "station");

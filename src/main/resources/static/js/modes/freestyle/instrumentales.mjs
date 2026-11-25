@@ -20,8 +20,10 @@ function ficheDuFichier(fichier, index) {
 	return { titre, tempoBpm, departBeatMs };
 }
 
+// Le dossier choisi, la casse d'« Instrumentales », la date et la durée mesurée ne changent pas l'identifiant.
 async function identifiantOpaque(fichier, fiche) {
-	const octets = new TextEncoder().encode(JSON.stringify([fichier.webkitRelativePath, fichier.size, fichier.lastModified, fiche]));
+	const cheminRelatif = fichier.webkitRelativePath.split('/').slice(2).join('/');
+	const octets = new TextEncoder().encode(JSON.stringify([cheminRelatif, fichier.size, fiche]));
 	let hex;
 	if (globalThis.crypto?.subtle) {
 		const empreinte = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', octets), 0, 16);
@@ -36,7 +38,8 @@ async function identifiantOpaque(fichier, fiche) {
 	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${variante}${hex.slice(17, 20)}-${hex.slice(20)}`;
 }
 
-export async function lireInstrumentales(selection) {
+/** `mesurer(fichier)` rend la durée du fichier en millisecondes, ou null : une fiche sans durée est écartée. */
+export async function lireInstrumentales(selection, { mesurer }) {
 	const fichiers = selection.filter(dansInstrumentales);
 	const description = fichiers.find(fichier => normaliser(fichier.name) === 'instrumentales.json');
 	let index = {};
@@ -46,12 +49,14 @@ export async function lireInstrumentales(selection) {
 			throw new TypeError('Le fichier instrumentales.json doit contenir un objet.');
 		}
 	}
-	const audio = fichiers.filter(estFichierAudio);
-	const resultats = await Promise.all(audio.map(async fichier => {
+	const resultats = [];
+	for (const fichier of fichiers.filter(estFichierAudio)) {
 		const fiche = ficheDuFichier(fichier, index);
-		if (!fiche) return null;
-		return { fiche: { instrumentaleId: await identifiantOpaque(fichier, fiche), ...fiche }, fichier };
-	}));
-	return resultats.filter(Boolean).sort((a, b) =>
+		if (!fiche) continue;
+		const dureeMs = await mesurer(fichier);
+		if (!Number.isSafeInteger(dureeMs) || dureeMs < 1) continue;
+		resultats.push({ fiche: { instrumentaleId: await identifiantOpaque(fichier, fiche), ...fiche, dureeMs }, fichier });
+	}
+	return resultats.sort((a, b) =>
 		a.fiche.titre.localeCompare(b.fiche.titre, 'fr') || a.fiche.instrumentaleId.localeCompare(b.fiche.instrumentaleId));
 }

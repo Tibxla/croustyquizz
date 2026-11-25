@@ -37,10 +37,11 @@ channels:
       et paroles du Passage démarré, votes), sans invitation, fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
       Pour le Freestyle, les causes de File d’attente, de cycle et de Vote du public sont
-      partagées. La salle reçoit la Grille masquée du Passage démarré. Pour un Passage à plusieurs (#74),
-      couplet-annonce paraît une mesure avant chaque changement de Couplet et couplet-commence au
-      changement, calculés par l’Horloge du serveur ; vote-clos apporte les voix de chaque Interprète.
-      Aucun événement par seconde."
+      partagées. La salle reçoit la Grille masquée du Passage démarré et le lecteur désigné ; une
+      déclaration venant d’une autre fenêtre d’Écran de salle pendant une Manche active publie
+      instrumentales-modifiees. Pour un Passage à plusieurs (#74), couplet-annonce paraît une mesure
+      avant chaque changement de Couplet et couplet-commence au changement, calculés par l’Horloge du
+      serveur ; vote-clos apporte les voix de chaque Interprète. Aucun événement par seconde."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.

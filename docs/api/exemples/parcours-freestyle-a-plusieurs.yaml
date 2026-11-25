@@ -1,13 +1,33 @@
 description: >-
   Passage fictif de Freestyle à trois Interprètes (#74) : Invitations, ordre des Couplets tiré au sort,
   annonce du suivant une mesure avant le changement, vote du meilleur Interprète et Palmarès par victoires.
-  Tempo 120 BPM, départ du beat à 250 ms, huit mesures, Couplets de deux mesures.
+  Tempo 120 BPM, départ du beat à 250 ms, huit mesures, Couplets de deux mesures ; l’Instrumentale dure 95 s
+  et un seul Écran de salle, le lecteur désigné, la joue.
 parametresCommuns:
   soireeId: &soireeId 74000000-0000-4000-8000-000000000001
   mancheId: &mancheId 74000000-0000-4000-8000-000000000002
   passageId: &passageId 74000000-0000-4000-8000-000000000003
   X-CSRF-TOKEN: csrf_session_freestyle_fictif_74
 http:
+- nom: L’Écran de salle déclare l’Instrumentale et devient le lecteur désigné
+  operationId: declarerInstrumentales
+  acteur: ecran
+  parametres:
+    Idempotency-Key: &declaration 74000000-0000-4000-8000-000000000011
+  requete:
+    lecteurId: &lecteurId 74000000-0000-4000-8000-000000000031
+    instrumentales:
+    - &instrumentale
+      instrumentaleId: &instrumentaleId 74000000-0000-4000-8000-000000000004
+      titre: Pavés mouillés
+      tempoBpm: 120
+      departBeatMs: 250
+      dureeMs: 95000
+  statut: 200
+  reponse:
+    envoiId: *declaration
+    soireeId: *soireeId
+    recueLe: '2026-11-25T20:59:50Z'
 - nom: Préparer une Manche aux Couplets de deux mesures
   operationId: ajouterManche
   acteur: animateur
@@ -19,7 +39,7 @@ http:
       difficulte: TOUS
       nombreMesures: 8
       mesuresParCouplet: 2
-      instrumentaleIds: [&instrumentaleId 74000000-0000-4000-8000-000000000004]
+      instrumentaleIds: [*instrumentaleId]
   statut: 201
   reponse:
     id: *mancheId
@@ -111,11 +131,7 @@ http:
         - passageId: *passageId
           numeroModification: 0
           numero: 1
-          instrumentale: &instrumentale
-            instrumentaleId: *instrumentaleId
-            titre: Pavés mouillés
-            tempoBpm: 120
-            departBeatMs: 250
+          instrumentale: *instrumentale
           interpretes:
           - &ines
             joueurId: *inesId
@@ -277,6 +293,7 @@ http:
             courant: &couplet1 { numero: 1, interprete: *zoe, premiereMesure: 1, derniereMesure: 2 }
             suivant: &couplet2 { numero: 2, interprete: *ines, premiereMesure: 3, derniereMesure: 4 }
             suivantAnnonce: false
+        lecteurDesigneId: *lecteurId
         votes: []
         grille: &grille
           nombreMesures: 8
@@ -401,6 +418,7 @@ evenements:
             courant: *couplet1
             suivant: *couplet2
             suivantAnnonce: true
+        lecteurDesigneId: *lecteurId
         votes: []
         grille: *grille
 - nom: Seule la Manette d’Inès porte l’annonce et vibre
@@ -520,6 +538,7 @@ evenements:
             courant: *couplet2
             suivant: { numero: 3, interprete: *mael, premiereMesure: 5, derniereMesure: 6 }
             suivantAnnonce: false
+        lecteurDesigneId: *lecteurId
         votes: []
         grille: *grille
 - nom: La fin prévue ouvre le vote du meilleur Interprète
@@ -566,6 +585,7 @@ evenements:
             suivant: null
             suivantAnnonce: false
         grille: null
+        lecteurDesigneId: *lecteurId
         votes:
         - passageId: *passageId
           numeroModification: 5
@@ -654,6 +674,7 @@ evenements:
         passagesEnAttente: []
         courant: *courantClos
         grille: null
+        lecteurDesigneId: *lecteurId
         votes:
         - passageId: *passageId
           numeroModification: 5

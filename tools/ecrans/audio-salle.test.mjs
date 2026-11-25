@@ -36,3 +36,27 @@ test('le même lecteur joue la Musique d’attente pendant la préparation puis 
 	await audio.signalerSonDeManche(false);
 	assert.equal(await debut.promise, attente);
 });
+
+test('le catalogue mesure ses fichiers un par un, hors du lecteur de Passage', { timeout: 3000 }, async t => {
+	const charges = [];
+	let enCours = 0;
+	const mesureur = {
+		async charger(fichier) {
+			enCours++;
+			assert.equal(enCours, 1);
+			charges.push(fichier.name);
+			await new Promise(resolve => setTimeout(resolve, 5));
+			enCours--;
+			if (fichier.name === 'illisible.mp3') throw new Error('illisible');
+			return { dureeMs: fichier.name === 'court.mp3' ? 1000 : null };
+		},
+		detruire() {},
+	};
+	const audio = creerAudioSalle({ lecteur: { detruire() {}, surFin: () => () => {}, surErreur: () => () => {} },
+		sonde: { detruire() {} }, mesureur, lecteurId: 'lecteur',
+		coordonner: () => ({ activer() {}, signalerSonDeManche() {}, attendreSonDeManche: async () => true, detruire() {} }) });
+	t.after(() => audio.detruire());
+	const durees = await Promise.all(['court.mp3', 'illisible.mp3', 'inconnu.mp3'].map(name => audio.mesurerDuree({ name })));
+	assert.deepEqual(durees, [1000, null, null]);
+	assert.deepEqual(charges, ['court.mp3', 'illisible.mp3', 'inconnu.mp3']);
+});

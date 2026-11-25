@@ -85,9 +85,11 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         if (disponibles.isEmpty()) {
             return new Refuse(422, "INSTRUMENTALE_INDISPONIBLE", "Aucune Instrumentale ne correspond à ce choix dans la sélection disponible.");
         }
-        List<Instrumentale> admissibles = disponibles.stream()
+        List<Instrumentale> assezLongues = disponibles.stream().filter(fiche -> fiche.couvre(reglages.nombreMesures())).toList();
+        if (assezLongues.isEmpty()) { return tropCourte(); }
+        List<Instrumentale> admissibles = assezLongues.stream()
                 .filter(fiche -> refusInscription(inscription.joueurId(), fiche) == null).toList();
-        if (admissibles.isEmpty()) { return refusInscription(inscription.joueurId(), disponibles.getFirst()); }
+        if (admissibles.isEmpty()) { return refusInscription(inscription.joueurId(), assezLongues.getFirst()); }
 
         Instrumentale instrumentale = admissibles.size() == 1 ? admissibles.getFirst()
                 : admissibles.get(hasard.nextInt(admissibles.size()));
@@ -104,6 +106,10 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
                 inscription.envoiId());
         if (resultat instanceof Accepte) { contenus.put(nouveau.id(), new EtatFreestyle.Contenu(instrumentale, grille.get())); }
         return resultat;
+    }
+
+    static Refuse tropCourte() {
+        return new Refuse(422, "INSTRUMENTALE_TROP_COURTE", "Cette Instrumentale finit avant la Grille de rimes de la Manche.");
     }
 
     private Refuse refusInscription(UUID joueur, Instrumentale fiche) {

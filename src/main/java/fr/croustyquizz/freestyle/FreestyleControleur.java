@@ -33,10 +33,10 @@ class FreestyleControleur {
     @PutMapping
     ResponseEntity<?> declarer(@PathVariable UUID soireeId, @RequestHeader("Idempotency-Key") UUID envoiId,
             @RequestBody JsonNode corps, Acteur acteur) {
-        var fiches = CorpsFreestyle.instrumentales(corps, json);
+        var declaration = CorpsFreestyle.declaration(corps, json);
         AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ECRAN);
         String route = "/api/soirees/" + soireeId + "/freestyle/instrumentales";
         var envoi = new EnvoiDeCommande(acteur, route, envoiId, corps);
-        return ReponsesDeCommande.http(service.declarer(envoi, fiches), route);
+        return ReponsesDeCommande.http(service.declarer(envoi, declaration), route);
     }
 }

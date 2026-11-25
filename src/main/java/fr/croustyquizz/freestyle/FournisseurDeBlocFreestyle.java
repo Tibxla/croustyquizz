@@ -2,8 +2,8 @@ package fr.croustyquizz.freestyle;
 
 import fr.croustyquizz.manche.DepotDeManches;
 import fr.croustyquizz.manche.Destination;
-import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ModeDeJeu;
+import fr.croustyquizz.passage.ManchesDePassage;
 import fr.croustyquizz.passage.ParticipantsDePassage;
 import fr.croustyquizz.tempsreel.FournisseurDeBloc;
 import java.util.UUID;
@@ -35,14 +35,13 @@ final class FournisseurDeBlocFreestyle implements FournisseurDeBloc {
     @Override public Function<Destination, Object> preparer(UUID soireeId) {
         var service = services.getObject();
         return service.lecture(soireeId, () -> {
-            var active = depot.deLaSoiree(soireeId).stream().filter(m -> m.getMode() == mode()
-                    && (m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE)).findFirst();
+            var active = ManchesDePassage.active(depot.deLaSoiree(soireeId), mode());
             if (active.isEmpty()) { return destination -> null; }
             var manche = active.get();
             var instantane = (InstantaneFreestyle) service.instantane(soireeId, manche.getMancheId());
             var pseudos = participants.pseudos(soireeId);
-            var disponibles = persistance.instrumentales(soireeId);
-            return destination -> VuesFreestyle.projeter(instantane, destination, pseudos, disponibles, manche.getModifieLe())
+            var catalogue = new VuesFreestyle.Catalogue(persistance.instrumentales(soireeId), persistance.lecteurDesigne(soireeId));
+            return destination -> VuesFreestyle.projeter(instantane, destination, pseudos, catalogue, manche.getModifieLe())
                     .orElse(null);
         });
     }

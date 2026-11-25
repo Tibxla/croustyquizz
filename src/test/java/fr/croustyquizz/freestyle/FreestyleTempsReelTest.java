@@ -65,19 +65,30 @@ class FreestyleTempsReelTest {
         String lea = rejoindre(code, "Léa");
         String tom = rejoindre(code, "Tom");
         String catalogue = racine + "/freestyle/instrumentales";
-        UUID fiche = UUID.randomUUID();
-        var instrumentale = Map.of("instrumentaleId", fiche, "titre", "À la lueur", "tempoBpm", 120, "departBeatMs", 250);
-        var doublon = Map.of("instrumentales", List.of(instrumentale, instrumentale));
+        UUID fiche = UUID.fromString("70000000-0000-4000-8000-000000000004");
+        UUID trop = UUID.fromString("70000000-0000-4000-8000-000000000009");
+        var instrumentale = Map.of("instrumentaleId", fiche, "titre", "À la lueur", "tempoBpm", 120, "departBeatMs", 250,
+                "dureeMs", 95_000);
+        var courte = Map.of("instrumentaleId", trop, "titre", "Trop courte", "tempoBpm", 120, "departBeatMs", 250,
+                "dureeMs", 16_249);
+        UUID premierEcran = UUID.randomUUID();
+        UUID secondEcran = UUID.randomUUID();
+        var doublon = Map.of("lecteurId", premierEcran, "instrumentales", List.of(instrumentale, instrumentale));
         assertThat(appeler(PUT, catalogue, lecteur, doublon, "declarerInstrumentales", 422).path("code").asString())
                 .isEqualTo("DONNEES_INVALIDES");
-        var declaration = Map.of("instrumentales", List.of(instrumentale));
+        var declaration = Map.of("lecteurId", premierEcran, "instrumentales", List.of(courte, instrumentale));
         UUID cle = UUID.randomUUID();
         var recu = appeler(PUT, catalogue, lecteur, declaration, "declarerInstrumentales", 200, cle);
         assertThat(appeler(PUT, catalogue, lecteur, declaration, "declarerInstrumentales", 200, cle)).isEqualTo(recu);
-        assertThat(appeler(PUT, catalogue, lecteur, Map.of("instrumentales", List.of()), "declarerInstrumentales", 409, cle)
-                .path("code").asString()).isEqualTo("ENVOI_REUTILISE");
-        assertThat(appeler(GET, catalogue, animateur, null, "consulterInstrumentales", 200).at("/instrumentales/0/titre").asString())
-                .isEqualTo("À la lueur");
+        assertThat(appeler(PUT, catalogue, lecteur, Map.of("lecteurId", premierEcran, "instrumentales", List.of()),
+                "declarerInstrumentales", 409, cle).path("code").asString()).isEqualTo("ENVOI_REUTILISE");
+        var consultees = appeler(GET, catalogue, animateur, null, "consulterInstrumentales", 200);
+        assertThat(consultees.at("/instrumentales/0/titre").asString()).isEqualTo("À la lueur");
+        assertThat(consultees.at("/instrumentales/0/dureeMs").asLong()).isEqualTo(95_000);
+        var tropCourte = Map.of("theme", "VILLE", "schemaDeRimes", "ABAB", "difficulte", "PREMIER",
+                "nombreMesures", 8, "instrumentaleIds", List.of(fiche, trop));
+        assertThat(appeler(POST, racine + "/manches", animateur, Map.of("mode", "FREESTYLE", "reglages", tropCourte),
+                "ajouterManche", 422).path("code").asString()).isEqualTo("INSTRUMENTALE_TROP_COURTE");
         var reglages = Map.of("theme", "VILLE", "schemaDeRimes", "ABAB", "difficulte", "PREMIER",
                 "nombreMesures", 8, "instrumentaleIds", List.of(fiche));
         String manche = appeler(POST, racine + "/manches", animateur, Map.of("mode", "FREESTYLE", "reglages", reglages),
@@ -112,6 +123,17 @@ class FreestyleTempsReelTest {
             await().atMost(Duration.ofSeconds(3)).until(() -> abonnements.estInstalle(abonnementId, destination));
             String capture = racine + "/etat/salle?abonnementId=" + abonnementId;
             var avant = appeler(GET, capture, lecteur, null, "retrouverEtatSalle", 200);
+            assertThat(avant.at("/vue/freestyle/lecteurDesigneId").asString()).isEqualTo(premierEcran.toString());
+            // Le second Écran choisit le même dossier : il devient le lecteur, et seule la salle l’apprend.
+            appeler(PUT, catalogue, lecteur, Map.of("lecteurId", secondEcran, "instrumentales", List.of(courte, instrumentale)),
+                    "declarerInstrumentales", 200);
+            assertThat(evenement(messages, "instrumentales-modifiees").at("/donnees/freestyle/lecteurDesigneId").asString())
+                    .isEqualTo(secondEcran.toString());
+            // Le premier Écran rejoue sa déclaration : le reçu revient sans reprendre la désignation.
+            assertThat(appeler(PUT, catalogue, lecteur, declaration, "declarerInstrumentales", 200, cle)).isEqualTo(recu);
+            assertThat(messages.poll(300, TimeUnit.MILLISECONDS)).isNull();
+            assertThat(appeler(GET, capture, lecteur, null, "retrouverEtatSalle", 200).at("/vue/freestyle/lecteurDesigneId")
+                    .asString()).isEqualTo(secondEcran.toString());
             jouer(routeManche, manche, animateur, lea, tom, fiche, 2, messages);
             jouer(routeManche, manche, animateur, tom, lea, null, 5, messages);
             appeler(POST, routeManche + "/commandes", animateur, Map.of("action", "TERMINER"), "piloterManche", 200);
@@ -147,8 +169,9 @@ class FreestyleTempsReelTest {
         var zoe = acces(code, "Zoé");
         var noe = acces(code, "Noé");
         UUID fiche = UUID.randomUUID();
-        appeler(PUT, racine + "/freestyle/instrumentales", lecteur, Map.of("instrumentales", List.of(Map.of(
-                "instrumentaleId", fiche, "titre", "Pavés mouillés", "tempoBpm", 120, "departBeatMs", 250))),
+        UUID ecran = UUID.randomUUID();
+        appeler(PUT, racine + "/freestyle/instrumentales", lecteur, Map.of("lecteurId", ecran, "instrumentales", List.of(Map.of(
+                "instrumentaleId", fiche, "titre", "Pavés mouillés", "tempoBpm", 120, "departBeatMs", 250, "dureeMs", 95_000))),
                 "declarerInstrumentales", 200);
         var reglages = new HashMap<String, Object>(Map.of("theme", "VILLE", "schemaDeRimes", "ABAB", "difficulte", "TOUS",
                 "nombreMesures", 8, "mesuresParCouplet", 3, "instrumentaleIds", List.of(fiche)));

@@ -80,7 +80,9 @@ export function monter(zones, contexte) {
 		}
 		const envoi = ui.dernierEnvoi(inscription);
 		const enCours = envoi?.etat === 'en-cours';
-		envoyer.disabled = choix.disabled = !ui.mutationsPermises || !bloc.peutInscrire || enCours;
+		// Sans confirmation, un nouvel envoi pourrait doubler l'inscription : seul le réessai du même envoi reste permis.
+		const aConfirmer = ['inconnu', 'indisponible'].includes(envoi?.etat);
+		envoyer.disabled = choix.disabled = !ui.mutationsPermises || !bloc.peutInscrire || enCours || aConfirmer;
 		if (invites) invites.element.disabled = envoyer.disabled;
 		aide.textContent = disponibles.length ? (bloc.peutInscrire ? '' : 'Tu ne peux pas ajouter de Passage pour le moment.')
 			: 'Aucune Instrumentale disponible pour le moment.';

@@ -3,19 +3,26 @@ package fr.croustyquizz.freestyle;
 import fr.croustyquizz.freestyle.SchemaDeRimes.Famille;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.random.RandomGenerator;
 
-/** Choisit des familles distinctes et place un mot par mesure sur l’Instrumentale. */
+/**
+ * Choisit des familles distinctes et place un mot par mesure sur l’Instrumentale. Les mots de départ et les
+ * rimes sont mélangés à chaque Grille : deux Passages d’une même Manche ne reçoivent pas la même Grille.
+ */
 public final class CompositeurDeGrille {
     private final DictionnaireDeRimes dictionnaire;
+    private final RandomGenerator hasard;
 
-    public CompositeurDeGrille(DictionnaireDeRimes dictionnaire) {
+    public CompositeurDeGrille(DictionnaireDeRimes dictionnaire, RandomGenerator hasard) {
         this.dictionnaire = dictionnaire;
+        this.hasard = hasard;
     }
 
     public Optional<GrilleDeRimes> composer(ReglagesFreestyle reglages, Instrumentale instrumentale,
@@ -32,18 +39,24 @@ public final class CompositeurDeGrille {
         int minimum = reglages.schemaDeRimes().motsDeFamille(Famille.A, reglages.nombreMesures());
         boolean deuxFamilles = reglages.schemaDeRimes() != SchemaDeRimes.AAAA;
         List<Map<String, String>> dejaVues = new ArrayList<>();
-        for (String depart : motsDuTheme) {
+        for (String depart : melanger(motsDuTheme)) {
             Map<String, String> candidats = motsDistincts(depart, reglages.theme());
             if (candidats.size() < minimum) { continue; }
-            if (!deuxFamilles) { return Optional.of(new Familles(List.copyOf(candidats.values()), List.of())); }
+            if (!deuxFamilles) { return Optional.of(new Familles(melanger(candidats.values()), List.of())); }
             for (Map<String, String> precedents : dejaVues) {
                 if (Collections.disjoint(precedents.keySet(), candidats.keySet())) {
-                    return Optional.of(new Familles(List.copyOf(precedents.values()), List.copyOf(candidats.values())));
+                    return Optional.of(new Familles(melanger(precedents.values()), melanger(candidats.values())));
                 }
             }
             dejaVues.add(candidats);
         }
         return Optional.empty();
+    }
+
+    private List<String> melanger(Collection<String> mots) {
+        var melange = new ArrayList<>(mots);
+        Collections.shuffle(melange, hasard);
+        return melange;
     }
 
     private Map<String, String> motsDistincts(String depart, ThemeDeRimes theme) {

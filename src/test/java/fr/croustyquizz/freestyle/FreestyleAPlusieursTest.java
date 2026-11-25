@@ -24,9 +24,10 @@ class FreestyleAPlusieursTest {
     private static final UUID LOU = UUID.fromString("74000000-0000-4000-8000-000000000008");
     private static final UUID NOE = UUID.fromString("74000000-0000-4000-8000-000000000009");
     private static final Map<UUID, String> PSEUDOS = Map.of(INES, "Inès", MAEL, "Maël", ZOE, "Zoé", LOU, "Lou", NOE, "Noé");
-    /** 120 BPM : une mesure dure 2 000 ms, le beat part à 250 ms. */
+    /** 120 BPM : une mesure dure 2 000 ms, le beat part à 250 ms ; les 95 s du fichier couvrent la Grille. */
     private static final Instrumentale INSTRUMENTALE = new Instrumentale(
-            UUID.fromString("74000000-0000-4000-8000-000000000004"), "Pavés mouillés", 120, 250);
+            UUID.fromString("74000000-0000-4000-8000-000000000004"), "Pavés mouillés", 120, 250, 95_000);
+    private static final UUID LECTEUR = UUID.fromString("74000000-0000-4000-8000-000000000031");
     private static final ReglagesFreestyle REGLAGES = new ReglagesFreestyle(ThemeDeRimes.VILLE, SchemaDeRimes.ABAB,
             DifficulteFreestyle.TOUS, 8, 2, List.of(INSTRUMENTALE.instrumentaleId()));
 
@@ -255,7 +256,8 @@ class FreestyleAPlusieursTest {
     private Passage passage() { return file().trouver(PASSAGE); }
 
     private Map<String, Object> vue(Destination destination) {
-        return VuesFreestyle.projeter(instantane(), destination, PSEUDOS, List.of(INSTRUMENTALE), horloge.maintenant())
+        return VuesFreestyle.projeter(instantane(), destination, PSEUDOS,
+                new VuesFreestyle.Catalogue(List.of(INSTRUMENTALE), LECTEUR), horloge.maintenant())
                 .orElseThrow();
     }
 
