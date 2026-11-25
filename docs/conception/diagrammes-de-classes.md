@@ -1118,7 +1118,7 @@ for nom, bloc in zip(("domaine", "services"), blocs):
     Path(f"/tmp/croustyquizz-{nom}.mmd").write_text(bloc + "\n")
 PYTHON
 npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-domaine.mmd -o docs/conception/diagramme-classes-domaine.png
-npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-services.mmd -o docs/conception/diagramme-classes-services.png
+npx --yes --package @mermaid-js/mermaid-cli mmdc --size 3424 -s 3 -i /tmp/croustyquizz-services.mmd -o docs/conception/diagramme-classes-services.png
 ```
 
-Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
+Le diagramme des services a besoin de `--size 3424` : sans lui, mermaid-cli 12 le réduit à une image d’environ 2 350 px, illisible. Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
