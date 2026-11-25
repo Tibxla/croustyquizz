@@ -362,6 +362,32 @@ class BlindTestHttpTest {
 		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + ServiceBlindTest.ECHECS_AVANT_SAUT + 1);
 	}
 
+	@Test
+	void uneCommandePendantLAttenteDUnEssaiNeDevancePasLHorloge() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		rejoindre(soiree, "Léa");
+		String mancheId = ajouterBlindTest(soiree);
+		catalogue.pannesImprevues.set(1);
+		int demandes = catalogue.liensDemandes.get();
+		int minuteurs = horloge.minuteursEnAttente();
+
+		lancer(soiree);
+		// La demande a échoué et son essai suivant attend l'Horloge.
+		await().atMost(Duration.ofSeconds(3)).until(() -> horloge.minuteursEnAttente() > minuteurs);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 1);
+
+		// Chaque commande enregistrée relance la préparation des Morceaux attendus (#216) : pas celle-ci.
+		String etape = bloc(soiree).path("etapeId").asString();
+		verifier("piloterManche", piloter(soiree, mancheId, "METTRE_EN_PAUSE", etape), 200);
+		verifier("piloterManche", piloter(soiree, mancheId, "REPRENDRE", etape), 200);
+		await().during(Duration.ofMillis(300)).atMost(Duration.ofSeconds(2))
+				.until(() -> catalogue.liensDemandes.get() == demandes + 1);
+
+		horloge.avancer(ServiceBlindTest.DELAI_NOUVEL_ESSAI);
+		attendrePhase(soiree, "EXTRAIT", 1);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 2);
+	}
+
 	/** Fait passer le temps par pas d'un essai, comme une vraie horloge, jusqu'à l'extrait du Morceau attendu. */
 	private void laisserPasserLesEssais(Soiree soiree, int numero) {
 		await().pollInterval(Duration.ofMillis(100)).atMost(Duration.ofSeconds(10)).until(() -> {
