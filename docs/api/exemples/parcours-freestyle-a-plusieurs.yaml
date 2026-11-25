@@ -252,6 +252,7 @@ http:
     abonnementId: *abonnement
     vue: &vueSalle
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *manche
       modeEnCours: FREESTYLE
       joueurs: *joueurs
@@ -384,6 +385,7 @@ evenements:
     emisLe: &annonceLe '2026-11-25T21:00:07.250Z'
     donnees: &vueAnnonce
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *manche
       modeEnCours: FREESTYLE
       joueurs: *joueurs
@@ -504,6 +506,7 @@ evenements:
     emisLe: &changementLe '2026-11-25T21:00:09.250Z'
     donnees:
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *manche
       modeEnCours: FREESTYLE
       joueurs: *joueurs
@@ -550,6 +553,7 @@ evenements:
     emisLe: *fin
     donnees:
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *manche
       modeEnCours: FREESTYLE
       joueurs: *joueurs
@@ -658,6 +662,7 @@ evenements:
     emisLe: &closLe '2026-11-25T21:00:51.250Z'
     donnees:
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *manche
       modeEnCours: FREESTYLE
       joueurs: *joueurs
@@ -700,6 +705,7 @@ evenements:
     emisLe: '2026-11-25T21:01:30Z'
     donnees:
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: null
       modeEnCours: null
       joueurs: *joueurs
@@ -720,6 +726,7 @@ evenements:
     emisLe: '2026-11-25T21:01:30Z'
     donnees:
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: null
       modeEnCours: null
       joueurs: *joueurs

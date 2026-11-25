@@ -43,8 +43,9 @@ class SoireeControleur {
 
 	@PostMapping("/api/soirees")
 	ResponseEntity<ProjectionSoiree> creer(@RequestBody DemandeDeCreation demande) {
-		if (demande.format() == null || demande.pilotage() == null) {
-			throw new Refuse(400, "REQUETE_INVALIDE", "Le Format et le Pilotage sont obligatoires.").exception();
+		// Un champ requis absent viole le schéma (400) ; un titre vide après nettoyage est refusé par la Soirée (422).
+		if (demande.titre() == null || demande.format() == null || demande.pilotage() == null) {
+			throw new Refuse(400, "REQUETE_INVALIDE", "Le titre, le Format et le Pilotage sont obligatoires.").exception();
 		}
 		Soiree soiree = service.creer(demande.titre(), demande.format(), demande.pilotage());
 		return ResponseEntity.created(URI.create("/api/soirees/" + soiree.getId()))
@@ -80,7 +81,8 @@ class SoireeControleur {
 	/**
 	 * QR code qui mène à la page d'arrivée de la Manette avec le code d'accès dans le fragment : le
 	 * code n'est pas un secret, et un fragment n'est jamais envoyé au serveur. L'adresse reprend le
-	 * schéma et l'hôte publics transmis par le relais HTTPS ({@code server.forward-headers-strategy}).
+	 * schéma et l'hôte publics transmis par le relais HTTPS ({@code server.forward-headers-strategy})
+	 * ainsi que le chemin de contexte de l'application. Le talon reçoit la même adresse sans le fragment.
 	 * Réservé à l'Écran de salle de cette Soirée (l'Animateur s'y ajoutera avec #5) : un Joueur reçoit 403.
 	 */
 	@GetMapping("/api/soirees/{soireeId}/qrcode")
@@ -93,11 +95,13 @@ class SoireeControleur {
 		if (!soiree.accepteLesArrivees()) {
 			throw new Refuse(409, "SOIREE_NON_OUVERTE", "La Soirée n'est pas ouverte aux Joueurs.").exception();
 		}
-		String manette = ServletUriComponentsBuilder.fromCurrentContextPath().path("/rejoindre.html")
-				.fragment("code=" + soiree.getCodeAcces()).toUriString();
+		var pageArrivee = ServletUriComponentsBuilder.fromCurrentContextPath().path("/rejoindre.html");
+		String adresseManette = pageArrivee.toUriString();
+		String cibleQrCode = pageArrivee.fragment("code=" + soiree.getCodeAcces()).toUriString();
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+				.header("Adresse-Manette", adresseManette)
 				.contentType(MediaType.valueOf("image/svg+xml"))
-				.body(QrCodeSvg.de(manette));
+				.body(QrCodeSvg.de(cibleQrCode));
 	}
 
 	private static <T> ResponseEntity<T> ok(T corps) {

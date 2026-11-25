@@ -3,7 +3,9 @@ package fr.croustyquizz.soiree;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -78,6 +80,19 @@ class SoireeTest {
 				.isInstanceOf(TitreInvalide.class);
 		assertThatThrownBy(() -> new Soiree("x".repeat(151), Format.SOLO, Pilotage.MANUEL, CREATION))
 				.isInstanceOf(TitreInvalide.class);
+	}
+
+	@Test
+	void leRangDuBuzzDeSoireeNeReprendPasLeRangDUnBuzzDeManche() {
+		Joueur lea = new Joueur(soiree.getId(), "Léa", JetonDeReconnexion.generer(new SecureRandom()), OUVERTURE);
+		soiree.enregistrerBuzz(lea, UUID.randomUUID(), OUVERTURE);
+		soiree.enregistrerBuzz(lea, UUID.randomUUID(), OUVERTURE.plusSeconds(1));
+		// Un Blind test retient son propre Buzz, de rang 1 dans son Morceau.
+		soiree.retenirBuzz(new Buzz(UUID.randomUUID(), lea.getId(), "Léa", OUVERTURE.plusSeconds(2), 1));
+
+		Buzz suivant = soiree.enregistrerBuzz(lea, UUID.randomUUID(), OUVERTURE.plusSeconds(3));
+
+		assertThat(suivant.rang()).isEqualTo(3);
 	}
 
 }

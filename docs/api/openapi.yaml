@@ -18,6 +18,7 @@ tags:
 - name: Soirée
 - name: Quiz
 - name: Socle
+- name: Photos
 - name: Karaoké
 - name: Freestyle
 paths:
@@ -245,7 +246,8 @@ paths:
       summary: Créer une Soirée avec son Format et son Pilotage
       description: Le serveur affecte id, Lieu et état PREPARATION ; codeAcces est null jusqu’à ouverture. Format
         SOLO ou EQUIPE, Pilotage MANUEL ou AUTOMATIQUE ; les deux sont enregistrés tels quels, le déroulement en Équipe
-        (#26) et l’enchaînement automatique (#25) viennent ensuite. Un titre vide ou trop long donne 422 DONNEES_INVALIDES.
+        (#26) et l’enchaînement automatique (#25) viennent ensuite. Un titre, un Format ou un Pilotage absent viole le
+        schéma et donne 400 REQUETE_INVALIDE. Un titre vide après nettoyage ou trop long donne 422 DONNEES_INVALIDES.
       tags:
       - Soirée
       security:
@@ -400,7 +402,7 @@ paths:
         distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; un pseudo
         injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
         pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
-        409 PSEUDO_DEJA_PRIS.
+        409 PSEUDO_DEJA_PRIS. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes.
       tags:
       - Soirée
       security: []
@@ -494,8 +496,10 @@ paths:
       summary: QR code qui mène à la Manette de la Soirée
       description: Image SVG générée par le serveur (sans bibliothèque JavaScript, ADR 0001), affichée par l’Écran de
         salle. Elle encode l’adresse de la Manette avec le code d’accès dans un fragment, /rejoindre.html#code=K7PQ2M ;
-        le code d’accès n’est pas un secret. L’adresse reprend le schéma et l’hôte publics vus par le relais HTTPS. Une
-        Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409 SOIREE_NON_OUVERTE. Sans clé, 401
+        le code d’accès n’est pas un secret. L’adresse reprend le schéma et l’hôte publics vus par le relais HTTPS,
+        ainsi que le chemin de contexte de l’application. L’en-tête Adresse-Manette fournit cette adresse sans le
+        fragment pour le talon. Une Soirée en PREPARATION ou TERMINEE, donc sans code utilisable, donne 409
+        SOIREE_NON_OUVERTE. Sans clé, 401
         AUTHENTIFICATION_REQUISE ; la clé d’une autre Soirée donne 404 RESSOURCE_INTROUVABLE ; un jeton de Joueur, 403
         ACCES_REFUSE. L’image se charge avec la clé dans Authorization, jamais dans l’URL.
       tags:
@@ -512,6 +516,12 @@ paths:
               schema:
                 type: string
                 const: no-store
+            Adresse-Manette:
+              description: Adresse publique de la page d’arrivée de la Manette, sans fragment.
+              required: true
+              schema:
+                type: string
+                format: uri
           content:
             image/svg+xml:
               schema:
@@ -536,15 +546,18 @@ paths:
   /api/soirees/{soireeId}/manches:
     post:
       operationId: ajouterManche
-      summary: Ajouter une Manche de Quiz, de Karaoké ou de Freestyle
-      description: PREPARATION ou OUVERTE uniquement, sinon 409 ETAT_INCOMPATIBLE. Le serveur ajoute la Manche
+      summary: Ajouter une Manche de Quiz, de Blind test, de Karaoké ou de Freestyle
+      description: 'PREPARATION ou OUVERTE uniquement, sinon 409 ETAT_INCOMPATIBLE. Le serveur ajoute la Manche
         en fin de programme et publie programme-modifie sur la Console. KARAOKE résout la limite initiale
-        configurée si elle est absente. Un mode ou des réglages hors schéma donnent 400 REQUETE_INVALIDE.
-        FREESTYLE reçoit les identifiants choisis dans les fiches déclarées par l’Écran de salle pour cette
-        Soirée ; une sélection qui ne correspond plus aux fiches disponibles donne 422 INSTRUMENTALE_INDISPONIBLE.
-        Son mesuresParCouplet (#74), 4 par défaut, doit diviser nombreMesures, sinon 422 DONNEES_INVALIDES.
-        Une Instrumentale sélectionnée dont la durée ne couvre pas la Grille, départ du beat compris, donne
-        422 INSTRUMENTALE_TROP_COURTE. Aucun Idempotency-Key ajouté à cette route.
+        configurée si elle est absente. BLIND_TEST tire les Morceaux dans la playlist ou le genre Deezer, hors
+        du verrou de la Soirée, parmi ceux qui ont un extrait ; la sélection reste privée et n’apparaît jamais
+        dans les réglages, publiés à toutes les destinations. Deezer indisponible ou source sans assez de
+        Morceaux jouables : 503 SOURCE_MUSICALE_INDISPONIBLE, rien n’est ajouté. FREESTYLE reçoit les identifiants
+        choisis dans les fiches déclarées par l’Écran de salle pour cette Soirée ; une sélection qui ne correspond
+        plus aux fiches disponibles donne 422 INSTRUMENTALE_INDISPONIBLE. Son mesuresParCouplet (#74), 4 par défaut,
+        doit diviser nombreMesures, sinon 422 DONNEES_INVALIDES. Une Instrumentale sélectionnée dont la
+        durée ne couvre pas la Grille, départ du beat compris, donne 422 INSTRUMENTALE_TROP_COURTE. Un mode ou des réglages hors schéma
+        donnent 400 REQUETE_INVALIDE. Aucun Idempotency-Key ajouté à cette route.'
       tags:
       - Soirée
       security:
@@ -824,10 +837,11 @@ paths:
       operationId: ouvrirSoiree
       summary: Ouvrir la Soirée aux Joueurs
       description: PREPARATION vers OUVERTE ; le serveur génère un code de 6 caractères unique parmi les Soirées
-        accessibles (OUVERTE et EN_COURS). Le serveur publie soiree-ouverte sur la Console lors de la transition.
+        accessibles (OUVERTE et EN_COURS). Le serveur publie soiree-ouverte sur la Console et sur la salle lors de la transition, pour qu’un Écran ouvert pendant la préparation affiche le code et le QR code.
         Le programme peut être complété pendant l’accueil. La clé d’envoi garantit
         qu’une répétition ne régénère pas le code ; rouvrir une Soirée déjà OUVERTE la rend aussi inchangée. Soirée
-        EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE.
+        EN_COURS ou TERMINEE donne 409 ETAT_INCOMPATIBLE. Sans code libre après 20 tirages, 503 SERVICE_INDISPONIBLE ;
+        la Soirée reste en PREPARATION et l’Animateur peut réessayer.
       tags:
       - Soirée
       security:
@@ -885,11 +899,15 @@ paths:
     post:
       operationId: piloterSoiree
       summary: Lancer, enchaîner ou terminer la Soirée
-      description: 'LANCER : OUVERTE vers EN_COURS et démarrage de la première Manche ; programme non vide, sinon
-        409 PROGRAMME_INCOMPLET. Ce code vise aussi les Manches de Quiz sans le nombre de Questions prêtes prévu ;
-        les Manches de Karaoké et de Freestyle ne nécessitent pas de Questions. MANCHE_SUIVANTE : EN_COURS avec Manche précédente terminée
-        ; démarre la suivante ou termine la Soirée si le programme est épuisé. TERMINER : EN_COURS vers TERMINEE
-        et clôture de la Manche active. En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
+      description: 'LANCER : vérifie le programme, passe la Soirée d’OUVERTE à EN_COURS, puis démarre sa première Manche.
+        Un programme vide donne 409 PROGRAMME_INCOMPLET. Ce code vise aussi les Manches de Quiz sans le nombre
+        de Questions prêtes prévu ; les Manches de Karaoké et de Freestyle ne nécessitent pas de Questions.
+        MANCHE_SUIVANTE : en Soirée EN_COURS sans Manche active, démarre la première Manche EN_ATTENTE dans
+        l’ordre enregistré, ou termine la Soirée si le programme est épuisé. Une Manche active (en cours ou en pause),
+        un état de Soirée incompatible ou un Mode de jeu sans service donne 409 ETAT_INCOMPATIBLE.
+        TERMINER : en Soirée EN_COURS, clôt la Manche active éventuelle sans etapeId, puis passe la Soirée à TERMINEE.
+        La fin de Soirée publie soiree-terminee à la Console, à l’Écran de salle et à toutes les Manettes, avec
+        mancheActive et modeEnCours à null. En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
         d’une Question attend PASSER_ETAPE avant la prochaine Question ; le serveur déclenche la correction à l’échéance
         ou sur PASSER_ETAPE. Idempotence selon Idempotency-Key.'
       tags:
@@ -955,7 +973,8 @@ paths:
     post:
       operationId: piloterManche
       summary: Intervenir sur la Manche active
-      description: 'Uniquement la Manche active en Soirée EN_COURS. Idempotence selon Idempotency-Key. Quiz :
+      description: 'Uniquement la Manche active en Soirée EN_COURS. Une nouvelle commande de Manche hors de cet
+        état de Soirée donne 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key. Quiz :
         METTRE_EN_PAUSE gèle une Question ouverte ; REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la
         Question ouverte et révèle la correction, ou passe de CORRECTION à la Question suivante ; après la dernière
         correction, termine la Manche. TERMINER arrête la Manche sans révéler une Question abandonnée ni lui
@@ -967,7 +986,15 @@ paths:
         ETAT_INCOMPATIBLE au Karaoké pour REPRENDRE pendant une lecture EN_ERREUR. PASSER_ETAPE saute le courant actif
         (SAUTE, Tour conservé, passage-saute), et une Manche en pause le reste. TERMINER annule le courant actif
         (ANNULE, Tour conservé, lecture arrêtée) et le bloc du Mode devient null. Conditions : README.md,
-        section Karaoké, « Passage : appel, lecture et calage ».'
+        section Karaoké, « Passage : appel, lecture et calage ». Blind test : etapeId est toujours celui du Morceau
+        affiché, même révélé (absent ou différent : 409 ETAPE_INACTIVE). PASSER_ETAPE sur un Morceau en
+        PREPARATION, EXTRAIT ou PROPOSITION le termine et le révèle (morceau-revele, sans points pour une saisie
+        en cours) ; pendant la REVELATION, il prépare le Morceau suivant (morceau-en-preparation) ou, après le
+        dernier, termine la Manche (manche-terminee). METTRE_EN_PAUSE gèle l’extrait et, pendant une saisie, le
+        temps restant du Joueur qui a la main (main.tempsRestantMs) ; REPRENDRE relance l’un et l’autre
+        d’où ils étaient (manche-en-pause, manche-reprise). Pendant la pause, PASSER_ETAPE reçoit 409
+        ETAT_INCOMPATIBLE ; le Joueur garde la main et peut encore déposer son brouillon, pas le valider.
+        Conditions : README.md, section Blind test.'
       tags:
       - Soirée
       security:
@@ -1101,13 +1128,157 @@ paths:
           application/json:
             schema:
               $ref: ./schemas.yaml#/$defs/ReponseSaisie
+  /api/soirees/{soireeId}/manches/{mancheId}/morceaux/{etapeId}/brouillon:
+    put:
+      operationId: deposerBrouillonProposition
+      summary: Déposer le brouillon de sa Proposition de titre
+      description: 'Seul le Joueur qui a la main sur ce Morceau dépose son brouillon (ADR 0009, point 6). Chaque
+        envoi porte un numero croissant et remplace le brouillon retenu, sans reçu ; la vue est republiée à la
+        seule Manette de l’auteur (brouillon-depose, monBrouillon), pour qu’un rechargement retrouve sa saisie.
+        Aucun Idempotency-Key : un numero qui ne dépasse pas celui du brouillon retenu est ignoré, sans
+        publication, toujours en 204, si bien qu’un envoi rejoué en retard n’écrase jamais un plus récent. Le
+        dépôt reste permis pendant une pause de la Manche. À l’échéance comptée par le serveur, le dernier
+        brouillon retenu est jugé comme une validation, puis proposition-jugee, ou morceau-revele quand ce
+        jugement termine le Morceau. Ordre des refus : Morceau qui n’est plus le Morceau affiché, 409
+        COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
+        HORS_DELAI ; Joueur sans la main, 409 ETAT_INCOMPATIBLE.'
+      tags:
+      - Blind test
+      security:
+      - jetonJoueur: []
+      responses:
+        '204':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+      parameters:
+      - name: etapeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/BrouillonProposition
+  /api/soirees/{soireeId}/manches/{mancheId}/morceaux/{etapeId}/proposition:
+    post:
+      operationId: validerProposition
+      summary: Valider sa Proposition de titre
+      description: 'Le Joueur qui a la main valide sa Proposition de titre, jugée aussitôt (ADR 0009). Seuls les
+        champs encore demandés sont jugés ; une partie déjà trouvée vaut NON_DEMANDE. Titre juste 70 points,
+        artiste juste 30, au premier qui trouve chaque partie. Un champ demandé faux ou vide bloque le Joueur sur
+        ce Morceau, l’extrait reprend et le Buzz se rouvre. Puis proposition-jugee, ou morceau-revele quand
+        ce jugement termine le Morceau. Dédupliquer avant tout contrôle : même auteur, route et envoiId, même contenu =
+        accusé original, même après la fin du Morceau ; même envoiId avec autre contenu = 409 ENVOI_REUTILISE.
+        Ordre des refus : Morceau qui n’est plus le Morceau affiché (un Morceau révélé l’est encore), 409
+        COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
+        HORS_DELAI ; Joueur sans la main, ou Manche en pause, 409 ETAT_INCOMPATIBLE.'
+      tags:
+      - Blind test
+      security:
+      - jetonJoueur: []
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseProposition
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+      parameters:
+      - name: etapeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/PropositionSaisie
   /api/soirees/{soireeId}/buzz:
     post:
       operationId: envoyerBuzz
-      summary: Buzzer dans le scénario du socle
-      description: 'Scénario #7/#8, Soirée OUVERTE avant Manche : identité, rang et réception attribués par le serveur,
-        puis événement buzz-recu. Répéter le même envoiId retrouve le résultat sans nouvelle diffusion. Refus pendant
-        le Quiz : 409 BUZZ_NON_AUTORISE. L’arbitrage du Blind test étendra ce contrat dans #17.'
+      summary: Buzzer, dans le scénario du socle ou pendant un Blind test
+      description: >-
+        Scénario #7/#8, dans une Soirée ouverte ou en cours, hors Manche active. Le serveur déduit le Joueur du
+        jeton de reconnexion (401 si invalide, 404 pour une autre Soirée), attribue le rang dans la Soirée et
+        horodate la réception. Il publie buzz-recu vers la salle, la Console et les Manettes de la Soirée.
+        Fournir envoiId dans le corps ou Idempotency-Key dans les en-têtes. Si les deux sont fournis, ils doivent
+        être identiques ; un identifiant absent, invalide ou contradictoire donne 400 REQUETE_INVALIDE.
+        Une répétition retrouve le résultat initial sans nouvelle diffusion, même si la Manche a changé.
+        Une Manche active autre que le Blind test (y compris en pause) donne 409 BUZZ_NON_AUTORISE.
+        Pendant une Manche de Blind test (ADR 0009), le corps nomme mancheId et l’etapeId du Morceau visé
+        (absents : 400 REQUETE_INVALIDE) et la route transmet le Buzz au déroulement de la Manche. Le premier
+        Buzz accepté d’un Joueur non bloqué, en phase EXTRAIT, lui donne la main, met l’extrait en pause et
+        ouvre 20 s de saisie, puis buzz-recu ; rang est son ordre parmi les Buzz acceptés du Morceau. Cible qui
+        n’est plus la Manche ou le Morceau affiché : 409 COMMANDE_PERIMEE, distinct des refus de jeu ; un
+        Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise, Manche en
+        pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le révèle :
+        409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.
       tags:
       - Socle
       security:
@@ -1146,8 +1317,14 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: Idempotency-Key
+        in: header
+        description: UUID de cet envoi, obligatoire si le corps est absent.
+        schema:
+          type: string
+          format: uuid
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -1264,6 +1441,112 @@ paths:
         schema:
           type: string
           format: uuid
+  /api/soirees/{soireeId}/musique-attente:
+    put:
+      operationId: reglerMusiqueDAttente
+      summary: Couper ou relancer la Musique d’attente
+      description: >
+        Animateur de la Soirée uniquement. Le choix est conservé après redémarrage, même hors Manche.
+        Un changement publie musique-attente-modifiee sur la Console et l’Écran de salle.
+        Un choix déjà en vigueur réussit avec 200, sans publication.
+        En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
+        Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
+      tags:
+      - Socle
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton de la session Animateur. Les jetons de démonstration en dev et recette en sont dispensés.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ReglageMusiqueDAttente
+      responses:
+        '200':
+          description: Choix appliqué ou déjà en vigueur. La Vue synchronisée reste la référence pour l’affichage.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ReglageMusiqueDAttente
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/musique-attente/disponibilite:
+    put:
+      operationId: signalerDisponibiliteMusiqueDAttente
+      summary: Signaler la présence de morceaux dans Attente
+      description: >
+        Écran de salle de cette Soirée uniquement, même hors Manche. Le dernier signal indique si le dossier
+        choisi contient des morceaux dans Attente. Il ne contient ni fichiers ni noms de morceaux et ne
+        change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur la Console
+        et l’Écran de salle. Un signal identique réussit sans publication.
+        En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
+        Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
+      tags:
+      - Socle
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/DisponibiliteMusiqueDAttente
+      responses:
+        '200':
+          description: Disponibilité enregistrée.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/DisponibiliteMusiqueDAttente
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/etat/manette:
     get:
       operationId: retrouverEtatManette
@@ -1323,8 +1606,9 @@ paths:
     get:
       operationId: consulterClassement
       summary: Consulter le Classement général
-      description: Disponible aux acteurs autorisés de cette Soirée, notamment après sa fin. Ne comprend que les
-        Questions déjà corrigées ; les résultats ne révèlent pas une correction en avance.
+      description: Disponible aux acteurs autorisés de cette Soirée enregistrée, y compris après sa fin.
+        Cumule les Points déjà attribués au Quiz et au Blind test. Au Quiz, les résultats ne révèlent pas
+        de correction en avance.
       tags:
       - Soirée
       security:
@@ -1356,6 +1640,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: soireeId
         in: path
@@ -3088,6 +3374,228 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '503':
           $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos:
+    post:
+      operationId: envoyerPhoto
+      summary: Envoyer une photo à modérer
+      description: >-
+        Joueur de cette Soirée. Corps JPEG brut de 1 500 000 octets et 2048 pixels de côté au plus. Photo invalide, ou Content-Length supérieur à 1 500 000 octets annoncé avant toute lecture du corps : 422 DONNEES_INVALIDES. Envois coupés : 409 PHOTOS_COUPEES. Trois photos en attente par Joueur et trente par Soirée au plus, ou 16 000 000 octets de JPEG conservés par Soirée (en attente, acceptés et à l’affiche) : 409 LIMITE_ATTEINTE. Quatre envois déjà en cours de lecture sur le serveur, ou budget de 64 000 000 octets de JPEG pour toutes les Soirées atteint : 503 SERVICE_INDISPONIBLE, à réessayer avec la même clé. Les gardes de Soirée, de Joueur et de file sont vérifiées avant la lecture du corps, puis de nouveau à l’ajout ; une clé qui a déjà un reçu rend ce reçu. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
+      tags: [Photos]
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ImageJpeg
+      responses:
+        '201':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePhoto
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos/{photoId}:
+    get:
+      operationId: consulterPhoto
+      summary: Lire le JPEG validé d’une photo
+      description: >-
+        Animateur de la Soirée : toute photo encore conservée. Écran de salle : uniquement la photo à l’affiche hors Manche active et avant son échéance, sinon 404 RESSOURCE_INTROUVABLE. Joueur : 403 ACCES_REFUSE. Photo supprimée ou hors portée : 404. Les identifiants ne donnent aucun droit.
+      tags: [Photos]
+      security:
+      - cleEcran: []
+      - sessionAnimateur: []
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            image/jpeg:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ImageJpeg
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos/{photoId}/moderation:
+    post:
+      operationId: modererPhoto
+      summary: Accepter ou refuser une photo en attente
+      description: >-
+        Animateur de cette Soirée. Refuser efface le JPEG. Accepter l’inscrit dans l’ordre d’acceptation pour l’Écran de salle. Trente photos acceptées au plus attendent l’affiche : au-delà, 409 LIMITE_ATTEINTE et la photo reste en attente. Une photo déjà acceptée renvoie 409 COMMANDE_PERIMEE avec une nouvelle clé ; une photo effacée renvoie 404 RESSOURCE_INTROUVABLE. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
+      tags: [Photos]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ModerationPhoto
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccusePhoto
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/photos/reglages:
+    put:
+      operationId: reglerPhotos
+      summary: Ouvrir ou couper les envois de photos
+      description: >-
+        Animateur de cette Soirée. Les envois sont ouverts par défaut. Couper conserve la file de modération et les photos déjà acceptées. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
+      tags: [Photos]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ReglagesPhotos
+      responses:
+        '200':
+          description: Opération réussie.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
 components:
   securitySchemes:
     sessionAnimateur:
@@ -3185,7 +3693,8 @@ components:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur503:
       description: 'SERVICE_INDISPONIBLE : base ou transaction indisponible. SOURCE_PAROLES_INDISPONIBLE :
-        consultation externe en échec sur les routes Karaoké prévues. Aucun reçu ; pour une mutation
+        consultation externe en échec sur les routes Karaoké prévues. SOURCE_MUSICALE_INDISPONIBLE : Deezer
+        indisponible à la création d’une Manche de Blind test. Aucun reçu ; pour une mutation
         seulement, réessayer avec la même clé et le même contenu.'
       headers:
         Cache-Control:
