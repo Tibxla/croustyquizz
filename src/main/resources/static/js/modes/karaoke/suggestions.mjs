@@ -10,13 +10,18 @@ const sansExtremites = texte => texte.replace(/^[ \u001C-\u001F]+|[ \u001C-\u001
  * Anticipe CorpsKaraoke.verifierChampSuggestion, qui fait foi : même nettoyage (NFC, blancs Unicode regroupés,
  * extrémités retirées), mêmes caractères interdits (contrôles, format Cf, demi-surrogates) et même clé vide.
  * Rend le message à afficher sous le champ, ou une chaîne vide.
+ *
+ * Le serveur fait autorité. Les classes Unicode (Cf, Cs, P, M, White_Space) et les tables NFC et NFKC suivent
+ * la version Unicode du navigateur, qui peut différer de celle de Java 21 : un caractère trop récent pour l'un
+ * des deux peut être refusé ici et accepté par le serveur, ou l'inverse (le 400 du serveur prend alors le relais).
+ * Cet écart est accepté : il ne touche que des caractères rares, et le cas courant reste vérifié avant l'envoi.
  */
 export function erreurChampSuggestion(texte) {
-	const message = `Utilise au plus ${LONGUEUR_MAX} caractères.`;
-	if (longueur(texte) > LONGUEUR_MAX) return message;
+	if (longueur(texte) > LONGUEUR_MAX) return `Utilise au plus ${LONGUEUR_MAX} caractères.`;
 	const nettoye = sansExtremites(texte.normalize('NFC').replace(/\p{White_Space}+/gu, ' '));
 	if (!nettoye) return 'Renseigne ce champ.';
-	if (longueur(nettoye) > LONGUEUR_MAX) return message;
+	// Sous la limite à la saisie, au-delà une fois nettoyé : seul NFC allonge un texte (U+0958 devient deux points de code).
+	if (longueur(nettoye) > LONGUEUR_MAX) return `Certains caractères comptent double : raccourcis ce texte à ${LONGUEUR_MAX} caractères au plus.`;
 	if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(nettoye)) return 'Retire les caractères invisibles ou de contrôle.';
 	// Clé de regroupement du serveur (normaliserSuggestion) : sans marques, ponctuation ni blancs, il ne reste rien.
 	const cle = nettoye.normalize('NFKC').normalize('NFD').replace(/[\p{M}\p{P}\p{White_Space}]+/gu, '');
