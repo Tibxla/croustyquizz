@@ -2,6 +2,7 @@ package fr.croustyquizz.animateur;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -47,9 +48,7 @@ class ConfigurationSecuriteAnimateur {
 
 	private static final RequestMatcher AVEC_BEARER = ResolveurAnimateurConnecte::porteUnBearer;
 	private static final PathPatternRequestMatcher.Builder CHEMINS = PathPatternRequestMatcher.withDefaults();
-	private static final String SOIREE = "/api/soirees/{soireeId}";
-	private static final String MANCHE = SOIREE + "/manches/{mancheId}";
-	private static final String PASSAGE = MANCHE + "/passages/{passageId}";
+	private static final Set<String> METHODES_SURES = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
 	private static final String TEST = "/api/test/soirees/{soireeId}";
 
 	@Bean
@@ -113,29 +112,15 @@ class ConfigurationSecuriteAnimateur {
 				.build();
 	}
 
+	/**
+	 * Toute méthode non sûre sous /api/soirees, portée par la session et sans Bearer, exige le CSRF :
+	 * une route ajoutée plus tard est protégée d'office. Seule l'arrivée d'un Joueur, publique, y échappe.
+	 */
 	private static RequestMatcher mutationsParSession(ServiceSoiree soirees) {
-		var metier = new OrRequestMatcher(
-				CHEMINS.matcher(HttpMethod.POST, "/api/soirees"),
-				CHEMINS.matcher(HttpMethod.PATCH, SOIREE),
-				CHEMINS.matcher(HttpMethod.POST, SOIREE + "/ouverture"),
-				CHEMINS.matcher(HttpMethod.POST, SOIREE + "/acces-ecran"),
-				CHEMINS.matcher(HttpMethod.POST, SOIREE + "/manches"),
-				CHEMINS.matcher(HttpMethod.DELETE, MANCHE),
-				CHEMINS.matcher(HttpMethod.PUT, SOIREE + "/ordre-des-manches"),
-				CHEMINS.matcher(HttpMethod.PUT, MANCHE + "/questions"),
-				CHEMINS.matcher(HttpMethod.POST, SOIREE + "/commandes"),
-				CHEMINS.matcher(HttpMethod.POST, MANCHE + "/commandes"),
-				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/retrait"),
-				CHEMINS.matcher(HttpMethod.PUT, PASSAGE + "/placement"),
-				CHEMINS.matcher(HttpMethod.PUT, MANCHE + "/file-attente/priorite"),
-				CHEMINS.matcher(HttpMethod.PUT, MANCHE + "/file-attente/limite"),
-				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/appel"),
-				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/paroles-seules"),
-				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/calage/debut"),
-				CHEMINS.matcher(HttpMethod.POST, PASSAGE + "/calage/correction"),
-				CHEMINS.matcher(HttpMethod.POST, SOIREE + "/photos/{photoId}/moderation"),
-				CHEMINS.matcher(HttpMethod.PUT, SOIREE + "/photos/reglages"),
-				CHEMINS.matcher(HttpMethod.PUT, SOIREE + "/musique-attente"));
+		var sousLesSoirees = new OrRequestMatcher(CHEMINS.matcher("/api/soirees"), CHEMINS.matcher("/api/soirees/**"));
+		var publique = CHEMINS.matcher(HttpMethod.POST, "/api/soirees/rejoindre");
+		RequestMatcher metier = requete -> !METHODES_SURES.contains(requete.getMethod())
+				&& sousLesSoirees.matches(requete) && !publique.matches(requete);
 		var test = new OrRequestMatcher(CHEMINS.matcher(HttpMethod.POST, TEST + "/manches"),
 				CHEMINS.matcher(HttpMethod.POST, TEST + "/manches/{mancheId}/demarrer"),
 				CHEMINS.matcher(HttpMethod.PUT, TEST + "/pilotage"));

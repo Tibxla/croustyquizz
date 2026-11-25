@@ -51,6 +51,8 @@ Le cookie de session ne suffit pas à faire d’une connexion STOMP celle de l�
 
 La session expire après 30 minutes sans requête HTTP, et le trafic STOMP ne la prolonge pas. La Console connectée consulte donc `GET /api/animateurs/session` toutes les cinq minutes tant qu’elle est ouverte : la session tient toute la Soirée, Pilotage Automatique compris. À la déconnexion ou à l’expiration, le serveur ferme les connexions STOMP de cette session.
 
+Sous `/api/soirees`, toute méthode non sûre (`POST`, `PUT`, `PATCH`, `DELETE`) envoyée avec le cookie de session et sans Bearer passe par le contrôle CSRF, y compris une route qui n’existe pas encore au contrat. Seule l’opération publique `rejoindreSoiree` y échappe, pour qu’un navigateur connecté puisse rejoindre une Soirée.
+
 ## Vues et événements
 
 Les vues publiques ne contiennent aucune solution pendant `QUESTION_OUVERTE` ou `EN_PAUSE`. Les résultats personnels et les Points visibles sont publiés **après correction**. Les Questions privées de préparation ont leur propre schéma et une route réservée à l’Animateur ; elles ne sont jamais sérialisées directement sur un canal public.
