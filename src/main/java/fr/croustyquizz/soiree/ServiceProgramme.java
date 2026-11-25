@@ -12,6 +12,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import fr.croustyquizz.manche.Accepte;
+import fr.croustyquizz.manche.AjoutDeManche;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
@@ -43,13 +44,15 @@ class ServiceProgramme {
 	}
 
 	ProjectionManche ajouter(UUID soireeId, ModeDeJeu mode, JsonNode reglages) {
+		// Hors du verrou : un mode peut consulter un service externe (le tirage Deezer du Blind test, ADR 0009).
+		AjoutDeManche ajout = mode == ModeDeJeu.QUIZ
+				// Le Quiz peut être préparé avant la livraison de son service de déroulement.
+				? new AjoutDeManche(new ManchePersistante(UUID.randomUUID(), soireeId, mode, reglages.toString(),
+						socle.horloge().maintenant()), manche -> { })
+				: modes.pourMode(mode).preparerAjout(soireeId, reglages);
 		return socle.verrous().executer(soireeId, () -> modifier(soireeId, programme -> {
-			// Le Quiz peut être préparé avant la livraison de son service de déroulement.
-			ManchePersistante manche = mode == ModeDeJeu.QUIZ
-					? new ManchePersistante(UUID.randomUUID(), soireeId, mode, reglages.toString(), socle.horloge().maintenant())
-					: modes.pourMode(mode).preparer(soireeId, reglages);
-			socle.depot().enregistrer(manche);
-			return ProjectionManche.de(manche, socle.json());
+			ajout.enregistrer(socle.depot());
+			return ProjectionManche.de(ajout.manche(), socle.json());
 		}));
 	}
 
