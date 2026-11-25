@@ -152,6 +152,24 @@ class CycleDePassageTest {
     }
 
     @Test
+    void uneFinPrevueTronqueeEnMillisecondesNeTerminePasLePassageAvantLHeure() {
+        var cycle = creer(tronquee());
+        cycle.appeler(cible(), ETAPE, debut);
+        horloge.avancer(Duration.ofNanos(500_000));
+        cycle.demarrer(cible(), ETAPE, Duration.ofSeconds(10), debut);
+        horloge.avancer(Duration.ofSeconds(10).minusMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("EN_COURS");
+        assertThat(clotures).isEmpty();
+
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("TERMINE");
+        assertThat(clotures).singleElement().satisfies(cloture -> {
+            assertThat(cloture.motif()).isEqualTo("FIN_PREVUE");
+            assertThat(cloture.instant()).isAfterOrEqualTo(debut.plusSeconds(10));
+        });
+    }
+
+    @Test
     void ignoreUnRappelDAppelAnnulePourLaMemeEtape() {
         var cycle = creerAvecSaut(sansAnnulation());
         cycle.appeler(cible(), ETAPE, debut);
@@ -316,6 +334,15 @@ class CycleDePassageTest {
         avancer(3);
         assertThat(clotures).containsExactly(new CloturePassage(PASSAGE, ETAPE, EtatPassage.TERMINE,
                 "FIN_PREVUE", debut.plusSeconds(13)));
+    }
+
+    private Horloge tronquee() {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+            @Override public Minuteur programmer(Duration delai, Runnable rappel) {
+                return horloge.programmer(delai.truncatedTo(MILLIS), rappel);
+            }
+        };
     }
 
     private Horloge sansAnnulation() {

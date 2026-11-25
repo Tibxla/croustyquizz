@@ -151,11 +151,9 @@ public final class CycleDePassage {
         long rappel = generation;
         UUID etapeId = chronologie.etapeId();
         Duration reste = dureePositive(Duration.between(horloge.maintenant(), echeance));
-        if (terminal == EtatPassage.SAUTE) {
-            // L’Horloge réelle tronque le délai à la milliseconde.
-            Duration millisecondes = reste.truncatedTo(MILLIS);
-            if (!millisecondes.equals(reste)) { reste = millisecondes.plusMillis(1); }
-        }
+        // L’Horloge réelle tronque le délai à la milliseconde : arrondir au-dessus, puis réarmer si le rappel est en avance.
+        Duration millisecondes = reste.truncatedTo(MILLIS);
+        if (!millisecondes.equals(reste)) { reste = millisecondes.plusMillis(1); }
         minuteur = horloge.programmer(reste, () -> {
             Passage actif = courantActif();
             if (rappel != generation || !Objects.equals(chronologie.etapeId(), etapeId)
@@ -163,7 +161,7 @@ public final class CycleDePassage {
                 return;
             }
             Instant maintenant = horloge.maintenant();
-            if (terminal == EtatPassage.SAUTE && maintenant.isBefore(echeance)) {
+            if (maintenant.isBefore(echeance)) {
                 programmerCloture(actif, echeance, terminal, motif);
                 return;
             }
