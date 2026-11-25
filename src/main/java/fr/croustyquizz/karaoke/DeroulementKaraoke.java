@@ -175,8 +175,12 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
 
     private ResultatDeCommande apres(ResultatDeCommande resultat, Instant maintenant) {
         if (!(resultat instanceof Accepte accepte)) { return resultat; }
+        // Seule la commande qui provoque la fin publie manche-terminee.
+        boolean dejaTerminee = estTerminee();
         boolean aAppele = enchainer(maintenant);
-        if (estTerminee()) { return new Accepte(accepte.accuse(), ECRANS, "manche-terminee", accepte.statutHttp()); }
+        if (!dejaTerminee && estTerminee()) {
+            return new Accepte(accepte.accuse(), ECRANS, "manche-terminee", accepte.statutHttp());
+        }
         if (aAppele) { return new Accepte(accepte.accuse(), ECRANS, PASSAGE_APPELE, accepte.statutHttp()); }
         return accepte;
     }

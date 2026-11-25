@@ -413,6 +413,18 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
     }
 
     @Test
+    void laFinDeMancheNeLaissePasserNiDesignationNiDeclarationEnAutomatique() {
+        ouvrirPremierPassage(true);
+        designer(LECTEUR);
+        accepter(deroulement.terminer(pilotage()), "manche-terminee", true);
+        var preparation = preparationLocale(300_000L, OrigineParoles.VERSION_ADAPTEE, 0);
+
+        refuserSansMutation(() -> designer(AUTRE_LECTEUR), 409, "ETAT_INCOMPATIBLE", null);
+        refuserSansMutation(() -> declarer(cible(PASSAGE), ETAPE, LECTEUR, preparation), 409, "ETAT_INCOMPATIBLE", null);
+        assertThat(finsSignalees).isZero();
+    }
+
+    @Test
     void confirmeEnAutomatiqueUneMillisecondeAvantLEcheance() {
         ouvrirPremierPassage(true);
         horloge.avancer(Duration.ofMillis(29_999));
