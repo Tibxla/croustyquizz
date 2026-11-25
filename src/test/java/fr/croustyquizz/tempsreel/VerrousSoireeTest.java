@@ -1,5 +1,7 @@
 package fr.croustyquizz.tempsreel;
 
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -19,15 +21,15 @@ class VerrousSoireeTest {
 				var lente = fils.submit(() -> verrous.executer(premiere, () -> {
 					entree.countDown(); attendre(sortir); return "première";
 				}));
-				assertThat(entree.await(2, TimeUnit.SECONDS)).isTrue();
-				assertThat(fils.submit(() -> verrous.executer(seconde, () -> "seconde")).get(2, TimeUnit.SECONDS)).isEqualTo("seconde");
+				assertThat(entree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
+				assertThat(fils.submit(() -> verrous.executer(seconde, () -> "seconde")).get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isEqualTo("seconde");
 				assertThat(lente.isDone()).isFalse();
-				sortir.countDown(); assertThat(lente.get(2, TimeUnit.SECONDS)).isEqualTo("première");
+				sortir.countDown(); assertThat(lente.get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isEqualTo("première");
 			} finally { sortir.countDown(); }
 		}
 	}
 	private static void attendre(CountDownLatch verrou) {
-		try { assertThat(verrou.await(3, TimeUnit.SECONDS)).isTrue(); }
+		try { assertThat(verrou.await(RETENUE_SECONDES, TimeUnit.SECONDS)).isTrue(); }
 		catch (InterruptedException interruption) { Thread.currentThread().interrupt(); throw new IllegalStateException(interruption); }
 	}
 }

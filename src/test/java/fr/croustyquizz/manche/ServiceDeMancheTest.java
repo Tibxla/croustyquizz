@@ -1,5 +1,8 @@
 package fr.croustyquizz.manche;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
@@ -218,12 +221,12 @@ class ServiceDeMancheTest {
 							attendre(sortir); simultanes.decrementAndGet();
 							return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet.");
 						})));
-				assertThat(entree.await(2, TimeUnit.SECONDS)).isTrue();
+				assertThat(entree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 				var filMinuteur = new AtomicReference<Thread>();
 				var minuteur = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); banc.horloge.avancer(Duration.ofSeconds(20)); });
-				await().atMost(Duration.ofSeconds(10)).until(() -> filMinuteur.get() != null && filMinuteur.get().getState() == Thread.State.WAITING);
+				await().atMost(PLAFOND).until(() -> filMinuteur.get() != null && filMinuteur.get().getState() == Thread.State.WAITING);
 				assertThat(minuteur.isDone()).isFalse();
-				sortir.countDown(); premier.get(2, TimeUnit.SECONDS); minuteur.get(2, TimeUnit.SECONDS);
+				sortir.countDown(); premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS); minuteur.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 				assertThat(maximum).hasValue(1);
 				assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
 			} finally { sortir.countDown(); }
@@ -241,13 +244,13 @@ class ServiceDeMancheTest {
 					filMinuteur.set(Thread.currentThread());
 					banc.horloge.avancer(Duration.ofSeconds(20));
 				});
-				await().atMost(Duration.ofSeconds(10)).until(() -> filMinuteur.get() != null
+				await().atMost(PLAFOND).until(() -> filMinuteur.get() != null
 						&& filMinuteur.get().getState() == Thread.State.WAITING);
 				var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, null);
 				assertThat(banc.service.piloter(manche, banc.envoi(soiree, "/commandes", passer), passer)).isInstanceOf(Accepte.class);
 				return rappel;
 			});
-			minuteur.get(2, TimeUnit.SECONDS);
+			minuteur.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		}
 		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
 		assertThat(banc.diffuseur.envois()).hasSize(publications + 6);
@@ -272,7 +275,7 @@ class ServiceDeMancheTest {
 					var rappel = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); action.run(); });
 					expiration.set(rappel);
 					// L'ordonnanceur a lancé le rappel avant que programmer ne rende la main à restaurer.
-					await().atMost(Duration.ofSeconds(10)).until(() -> filMinuteur.get() != null
+					await().atMost(PLAFOND).until(() -> filMinuteur.get() != null
 							&& filMinuteur.get().getState() == Thread.State.WAITING);
 					return () -> rappel.cancel(false);
 				}
@@ -285,7 +288,7 @@ class ServiceDeMancheTest {
 			int publications = restauration.diffuseur.envois().size();
 			restauration.service.instantane(soiree, manche);
 			assertThat(expiration.get()).isNotNull();
-			expiration.get().get(2, TimeUnit.SECONDS);
+			expiration.get().get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 			assertThat(((DeroulementFactice.Etat) restauration.service.instantane(soiree, manche)).etape()).isEqualTo(2);
 			assertThat(restauration.diffuseur.envois()).hasSize(publications + 6);
 			restauration.registre.retirer(manche);
@@ -306,15 +309,15 @@ class ServiceDeMancheTest {
 							ordre.add(1); entree.countDown(); attendre(sortir);
 							return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet.");
 						})));
-				assertThat(entree.await(2, TimeUnit.SECONDS)).isTrue();
+				assertThat(entree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 				var seconde = fils.submit(() -> {
 					secondFil.set(Thread.currentThread());
 					return banc.service.executer(manche, banc.envoi(soiree, "/seconde", Map.of()),
 							() -> PreparationDeCommande.prete(d -> { ordre.add(2); return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet."); }));
 				});
-				await().atMost(Duration.ofSeconds(10)).until(() -> secondFil.get() != null && secondFil.get().getState() == Thread.State.WAITING);
+				await().atMost(PLAFOND).until(() -> secondFil.get() != null && secondFil.get().getState() == Thread.State.WAITING);
 				assertThat(ordre).containsExactly(1);
-				sortir.countDown(); premiere.get(2, TimeUnit.SECONDS); seconde.get(2, TimeUnit.SECONDS);
+				sortir.countDown(); premiere.get(PLAFOND_SECONDES, TimeUnit.SECONDS); seconde.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 				assertThat(ordre).containsExactly(1, 2);
 			} finally { sortir.countDown(); }
 		}
@@ -330,11 +333,11 @@ class ServiceDeMancheTest {
 					preparation.countDown(); attendre(finir);
 					return PreparationDeCommande.refusee(new Refuse(404, "RESSOURCE_INTROUVABLE", "Contenu absent."));
 				}));
-				assertThat(preparation.await(2, TimeUnit.SECONDS)).isTrue();
+				assertThat(preparation.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 				var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
 				var autre = fils.submit(() -> banc.service.piloter(manche, banc.envoi(soiree, "/commandes", pause), pause));
-				assertThat(autre.get(2, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
-				finir.countDown(); assertThat(externe.get(2, TimeUnit.SECONDS)).isInstanceOf(Refuse.class);
+				assertThat(autre.get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
+				finir.countDown(); assertThat(externe.get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isInstanceOf(Refuse.class);
 			} finally { finir.countDown(); }
 		}
 	}
@@ -399,7 +402,7 @@ class ServiceDeMancheTest {
 		return manche;
 	}
 	private static void attendre(CountDownLatch verrou) {
-		try { assertThat(verrou.await(3, TimeUnit.SECONDS)).isTrue(); }
+		try { assertThat(verrou.await(RETENUE_SECONDES, TimeUnit.SECONDS)).isTrue(); }
 		catch (InterruptedException interruption) { Thread.currentThread().interrupt(); throw new IllegalStateException(interruption); }
 	}
 }

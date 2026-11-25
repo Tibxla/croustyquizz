@@ -1,5 +1,8 @@
 package fr.croustyquizz.tempsreel;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
@@ -10,7 +13,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -43,7 +45,7 @@ class EntreesHttpTest {
 		doAnswer(invocation -> {
 			if (((VueSallePrototype) invocation.getArgument(1)).buzz().getLast().pseudo().equals("Premier")) {
 				publicationCommencee.countDown();
-				assertThat(autoriserPublication.await(5, TimeUnit.SECONDS)).isTrue();
+				assertThat(autoriserPublication.await(RETENUE_SECONDES, TimeUnit.SECONDS)).isTrue();
 			}
 			return null;
 		}).when(diffuseur).diffuserSalle(eq(soiree), any());
@@ -52,16 +54,16 @@ class EntreesHttpTest {
 		try (var executeur = Executors.newFixedThreadPool(2)) {
 			try {
 				var premier = executeur.submit(() -> controleur.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Premier")));
-				assertThat(publicationCommencee.await(2, TimeUnit.SECONDS)).isTrue();
+				assertThat(publicationCommencee.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 				var second = executeur.submit(() -> {
 					secondThread.set(Thread.currentThread());
 					return controleur.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Second"));
 				});
-				await().atMost(Duration.ofSeconds(10)).until(() -> secondThread.get() != null
+				await().atMost(PLAFOND).until(() -> secondThread.get() != null
 						&& secondThread.get().getState() == Thread.State.WAITING);
 				assertThat(lectures.get()).isEqualTo(1);
 				autoriserPublication.countDown();
-				assertThat(premier.get(2, TimeUnit.SECONDS).recuLe()).isBefore(second.get(2, TimeUnit.SECONDS).recuLe());
+				assertThat(premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS).recuLe()).isBefore(second.get(PLAFOND_SECONDES, TimeUnit.SECONDS).recuLe());
 			} finally {
 				autoriserPublication.countDown();
 			}
