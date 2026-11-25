@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { creerLignePalmaresSalle } from '../../src/main/resources/static/js/palmares.mjs';
 import { decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
 import { creerDocument } from './karaoke-dom-factice.mjs';
@@ -39,4 +40,16 @@ test('un Passage sans vote conserve sa souche et affiche « Aucun vote » sans r
 	assert.equal(Boolean(ligne.querySelector('.palmares__note')), false);
 	assert.equal(ligne.querySelector('.palmares__votes')?.textContent, 'Aucun vote');
 	assert.equal(ligne.querySelector('.visuellement-cache')?.textContent, 'n° 9 · Le phare · Alizé · Aucun vote');
+});
+
+const cssSalle = () => readFile(new URL('../../src/main/resources/static/css/ecran-de-salle.css', import.meta.url), 'utf8');
+const reglesPalmares = css => [...css.matchAll(/([^{}]*\.palmares__[^{}]*)\{([^}]*)\}/g)]
+	.map(([, selecteurs, corps]) => ({ selecteurs: selecteurs.trim().split(/\s*,\s*/), corps }));
+
+test('les règles des lignes du Palmarès sont limitées à la coquille de salle', async () => {
+	const regles = reglesPalmares(await cssSalle());
+	assert.ok(regles.length > 0);
+	for (const selecteur of regles.flatMap(regle => regle.selecteurs)) {
+		assert.match(selecteur, /^\.salle--coquille \.palmares \.palmares__/, selecteur);
+	}
 });

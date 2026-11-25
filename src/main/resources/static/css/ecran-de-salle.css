@@ -327,7 +327,7 @@
 .salle--coquille .palmares li[data-teinte="3"] { --teinte: var(--rose); }
 .salle--coquille .palmares p { font-size: 1.8vw; }
 
-.palmares__ligne {
+.salle--coquille .palmares .palmares__ligne {
   display: grid;
   grid-template-areas:
     "rang interpretes note"
@@ -337,36 +337,36 @@
   gap: 0.2vw 1.2vw;
   line-height: 1.2;
 }
-.palmares__rang { grid-area: rang; }
-.palmares__numero { grid-area: numero; }
-.palmares__note { grid-area: note; }
-.palmares__votes { grid-area: votes; }
-.palmares__rang,
-.palmares__note {
+.salle--coquille .palmares .palmares__rang { grid-area: rang; }
+.salle--coquille .palmares .palmares__numero { grid-area: numero; }
+.salle--coquille .palmares .palmares__note { grid-area: note; }
+.salle--coquille .palmares .palmares__votes { grid-area: votes; }
+.salle--coquille .palmares .palmares__rang,
+.salle--coquille .palmares .palmares__note {
   font: 800 3vw/1 var(--police-chiffres);
   font-variant-numeric: tabular-nums;
 }
-.palmares__note,
-.palmares__votes { text-align: right; }
-.palmares__interpretes {
+.salle--coquille .palmares .palmares__note,
+.salle--coquille .palmares .palmares__votes { text-align: right; }
+.salle--coquille .palmares .palmares__interpretes {
   grid-area: interpretes;
   font-size: 2.15vw;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-.palmares__chanson {
+.salle--coquille .palmares .palmares__chanson {
   grid-area: chanson;
   color: var(--texte-2);
   font-size: 1.55vw;
 }
-.palmares__numero,
-.palmares__votes {
+.salle--coquille .palmares .palmares__numero,
+.salle--coquille .palmares .palmares__votes {
   color: var(--texte-2);
   font-size: 1.35vw;
   font-variant-numeric: tabular-nums;
 }
-.palmares__numero,
-.palmares__chanson {
+.salle--coquille .palmares .palmares__numero,
+.salle--coquille .palmares .palmares__chanson {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
