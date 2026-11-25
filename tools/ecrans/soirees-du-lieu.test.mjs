@@ -59,3 +59,16 @@ test('annonce un Lieu sans Soirée', () => {
 	assert.equal(zone.querySelectorAll('a').length, 0);
 	assert.match(zone.textContent, /Aucune Soirée pour ce Lieu/);
 });
+
+test('le code d’accès n’apparaît que pour une Soirée qu’on peut encore rejoindre', () => {
+	const document = creerDocument();
+	const zone = document.createElement('div');
+	document.body.append(zone);
+	afficherSoireesDuLieu(zone, [soiree('a', 'EN_COURS'), soiree('b', 'OUVERTE'), soiree('c', 'TERMINEE')]);
+	const details = zone.querySelectorAll('small').map(detail => detail.textContent);
+	assert.deepEqual(details, [
+		'En cours · Solo · Pilotage manuel · Code K7M2QX',
+		'Ouverte · Solo · Pilotage manuel · Code K7M2QX',
+		'Terminée · Solo · Pilotage manuel',
+	]);
+});

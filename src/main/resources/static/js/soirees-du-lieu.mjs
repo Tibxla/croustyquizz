@@ -26,8 +26,12 @@ export function destinationDeSoiree({ id, etat }) {
 	return { adresse: `/console.html?${parametres}`, action: etat === 'EN_COURS' ? 'Ouvrir la Console' : 'Revoir dans la Console' };
 }
 
+// Le serveur garde le code après la fin, mais il ne sert à rejoindre qu'une Soirée ouverte ou en cours.
+const ETATS_JOIGNABLES = new Set(['OUVERTE', 'EN_COURS']);
+
 function decrire({ etat, format, pilotage, codeAcces }) {
-	return [ETATS[etat], FORMATS[format], PILOTAGES[pilotage], ...(codeAcces ? [`Code ${codeAcces}`] : [])].join(' · ');
+	const code = codeAcces && ETATS_JOIGNABLES.has(etat) ? [`Code ${codeAcces}`] : [];
+	return [ETATS[etat], FORMATS[format], PILOTAGES[pilotage], ...code].join(' · ');
 }
 
 function ligne(document, soiree) {
