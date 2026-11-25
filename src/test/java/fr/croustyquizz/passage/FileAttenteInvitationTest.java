@@ -87,6 +87,59 @@ class FileAttenteInvitationTest {
     }
 
     @Test
+    void lAcceptationPlaceLePassageAccepteSansDeplacerLesAutresAttentesDeLInvite() {
+        inscrire("Ana 1", ANA);
+        file.extraireProchainPassage(false);
+        UUID groupe = inscrire("Groupe", List.of(BORIS), ANA);
+        UUID boris = inscrire("Boris", BORIS);
+        assertThat(file.trouver(groupe).tourNormal()).isEqualTo(2);
+        assertThat(file.trouver(boris).tourNormal()).isEqualTo(1);
+
+        accepter(BORIS, groupe);
+
+        assertThat(file.trouver(groupe).tourNormal()).isEqualTo(2);
+        assertThat(file.trouver(groupe).numeroModification()).isEqualTo(1);
+        assertThat(file.trouver(boris).tourNormal()).isEqualTo(1);
+        assertThat(file.trouver(boris).numeroModification()).isZero();
+        assertThat(file.ordreEffectif()).extracting(Passage::id).containsExactly(boris, groupe);
+    }
+
+    @Test
+    void lePassageAccepteReculeDerriereLesAttentesDeLInviteQuiRestentInchangeesApresLAppelSuivant() {
+        UUID celia = inscrire("Célia", CELIA);
+        UUID groupe = inscrire("Groupe", List.of(BORIS), ANA);
+        UUID boris = inscrire("Boris", BORIS);
+
+        accepter(BORIS, groupe);
+
+        assertThat(file.ordreEffectif()).extracting(Passage::id).containsExactly(celia, boris, groupe);
+        assertThat(file.ordreEffectif()).extracting(Passage::tourNormal).containsExactly(1L, 1L, 2L);
+        assertThat(file.trouver(groupe).numeroModification()).isEqualTo(1);
+        assertThat(file.trouver(boris).numeroModification()).isZero();
+
+        assertThat(file.extraireProchainPassage(false).orElseThrow().id()).isEqualTo(celia);
+
+        assertThat(file.ordreEffectif()).extracting(Passage::id).containsExactly(boris, groupe);
+        assertThat(file.ordreEffectif()).extracting(Passage::tourNormal).containsExactly(1L, 2L);
+        assertThat(file.ordreEffectif()).extracting(Passage::numeroModification).containsExactly(0L, 1L);
+        var restauree = FileAttente.depuis(file.etat());
+        restauree.retirer(UUID.randomUUID(), new CiblePassage(boris, 0), RECU);
+        assertThat(restauree.trouver(groupe).tourNormal()).isEqualTo(1);
+    }
+
+    @Test
+    void uneAcceptationQuiNImposeRienNeReculePasLePassageDerriereLesAutresAttentesDeLInscripteur() {
+        UUID groupe = inscrire("Groupe", List.of(BORIS), ANA);
+        UUID solo = inscrire("Ana", ANA);
+
+        accepter(BORIS, groupe);
+
+        assertThat(file.ordreEffectif()).extracting(Passage::id).containsExactly(groupe, solo);
+        assertThat(file.ordreEffectif()).extracting(Passage::tourNormal).containsExactly(1L, 2L);
+        assertThat(file.ordreEffectif()).extracting(Passage::numeroModification).containsExactly(1L, 0L);
+    }
+
+    @Test
     void laPrioriteComptePourLeTourDeChacunDesInterpretesAcceptes() {
         inscrire("Ana 1", ANA);
         file.extraireProchainPassage(false);
@@ -94,6 +147,8 @@ class FileAttenteInvitationTest {
         UUID boris = inscrire("Boris", BORIS);
         accepter(BORIS, groupe);
         assertThat(file.trouver(groupe).tourNormal()).isEqualTo(2);
+        assertThat(file.trouver(boris).tourNormal()).isEqualTo(1);
+        assertThat(file.trouver(boris).numeroModification()).isZero();
 
         file.definirPriorite(cible(groupe), true);
         Passage appele = file.extraireProchainPassage(false).orElseThrow();
