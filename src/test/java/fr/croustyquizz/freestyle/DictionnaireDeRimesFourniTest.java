@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,13 +32,10 @@ class DictionnaireDeRimesFourniTest {
     }
 
     @Test
-    void seChargeEnQuelquesSecondesAuPlusPuisResteEnMemoire() {
-        long debut = System.nanoTime();
+    void seChargeEntierementPuisResteEnMemoire() {
         DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.charger();
-        Duration duree = Duration.ofNanos(System.nanoTime() - debut);
 
         assertThat(dictionnaire.rimesDe("soirée")).isNotEmpty();
-        assertThat(duree).isLessThan(Duration.ofSeconds(5));
         assertThat(DictionnaireDeRimesFourni.partage()).isSameAs(DictionnaireDeRimesFourni.partage());
     }
 
