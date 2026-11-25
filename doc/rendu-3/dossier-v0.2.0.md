@@ -1,12 +1,3 @@
-<!--
-Mise à jour au gel, juste avant le tag v0.2.0 (issue #213) :
-- commit mesuré : git log -1 --format=%h origin/develop ;
-- tests et couverture : ./mvnw -q -o verify, puis target/surefire-reports et target/site/jacoco/jacoco.csv ;
-- tests Node et contrats : npm test --prefix tools/api (ligne « schémas, opérations, échanges ») ;
-- issues, PR et relectures : gh issue list / gh pr list --state all, et les relectures par l'API GraphQL ;
-- état des features : relire « En relecture au moment du tag » et déplacer ce qui a été fusionné.
--->
-
 # CroustyQuizz
 
 **Rendu 3 · Version intermédiaire v0.2.0 · M1 MIAGE, Université Paris Nanterre**\
@@ -25,7 +16,7 @@ Année 2026-2027 · Révision du 25 novembre 2026
 
 Ce dossier fait évoluer celui du Rendu 2. Il en garde l’ossature et dit, section par section, ce qui a changé depuis la `v0.1.0`. Une section s’ajoute : la **conteneurisation**, que le Rendu 2 ne décrivait qu’en passant.
 
-Sauf mention contraire, les chiffres sont mesurés le 25 novembre 2026 sur `develop`, au commit `3061e8f`. Ils seront relevés une dernière fois au gel, juste avant le tag. Comme au Rendu 2, une PR qui n’est pas fusionnée au moment du tag reste « en relecture », et son code n’est pas dans la version.
+Sauf mention contraire, les chiffres sont mesurés le 25 novembre 2026 au gel de `develop`, sur le commit `8562bbd`, celui que contient le tag `v0.2.0`. Comme au Rendu 2, une PR qui n’est pas fusionnée au moment du tag reste « en relecture », et son code n’est pas dans la version.
 
 ## Équipe, comptes développeurs et fonctionnalités majeures
 
@@ -47,18 +38,17 @@ Deux évolutions depuis le Rendu 2 :
 Chaque commit est fait depuis le compte de la personne qui a réalisé le travail. Un agent d’IA committe pour la personne qui le pilote, jamais au nom d’un autre membre.
 
 
-<!-- page -->
 
 # Feature majeure de chaque étudiant : état au 25/11
 
-État relevé sur GitHub le 25 novembre en fin de matinée. Le tableau sera remis à jour au gel.
+État relevé sur GitHub le 25 novembre, au gel de `develop`.
 
 <div class="tableau-large">
 
 | Étudiant | Feature | Issues | PR fusionnées depuis la v0.1.0 | PR en relecture | Ce qui reste |
 |---|---|---|---|---|---|
 | Tibxla | Karaoké | #21 et #22 fermées ; #23 (Vote et Palmarès) en tickets #115 à #118 | 35, dont l’interface de la File (#94), le Passage (#104, #127, #128, #129), le Vote et sa note moyenne (#154, #165), l’appel automatique (#158) | Palmarès et suite de la pile (#168, #172, #184, #189), suggestions et favoris (#199), Enregistrement (#204), Passages à plusieurs (#206) | Palmarès en fin de Soirée (#118), enchaînement automatique des Manches (#123) |
-| nRayen | Blind test | #17, en tranches #174 à #178 | 8, dont la Soirée (#38, #113), les règles (#173), le contrat (#186), le domaine (#192) et le catalogue Deezer (#201) | service, routes et persistance (#210, approuvée), trois écrans (#212, en brouillon) | fusionner #210 et #212 ; correction tolérante (#18), Blind test sur mesure (#19), Format Équipe (#26) |
+| nRayen | Blind test | #17, en tranches #174 à #178 | 9, dont la Soirée (#38, #113), les règles (#173), le contrat (#186), le domaine (#192), le catalogue Deezer (#201) et le service (#210) | trois écrans (#212, en brouillon) | fusionner #212 ; correction tolérante (#18), Blind test sur mesure (#19), Format Équipe (#26) |
 | Piyakabib | Quiz | #13 et #14 | aucune | ADR 0008 sur la source des Questions (#105), première Manche (#147, changements demandés le 24/11), variantes et thématiques (#156) | corriger et fusionner #147, puis #156 ; répartition des Réponses (#16) |
 
 </div>
@@ -90,7 +80,9 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 - le **domaine** du déroulement en Java pur (#192) : Buzz, saisie, Révélation, Morceaux sautés ;
 - le **catalogue Deezer** (#201) : recherche, tirage des Morceaux et lien d’extrait, sans appel réseau dans les tests.
 
-**En relecture.** **#210** (tranche 4) joue une Manche de Blind test de bout en bout côté serveur : tirage hors verrou, préparation du lien de chaque Morceau, Buzz aiguillé vers la Manche, refus `503` quand Deezer est en panne. La relecture publiée par Tibxla le 25/11 demandait cinq points ; ils sont corrigés avec un test chacun, et la PR est approuvée. **#212** (tranche 5), en brouillon, ajoute les trois écrans.
+**Fusionné le jour du gel.** **#210** (tranche 4) joue une Manche de Blind test de bout en bout côté serveur : tirage hors verrou, préparation du lien de chaque Morceau, Buzz aiguillé vers la Manche, refus `503` quand Deezer est en panne. La relecture publiée par Tibxla le 25/11 demandait cinq points ; ils ont été corrigés avec un test chacun avant la fusion.
+
+**En relecture.** **#212** (tranche 5), en brouillon, ajoute les trois écrans : sans elle, la Manche de Blind test se joue par l’API, pas encore depuis la Manette.
 
 **Relectures.** nRayen a approuvé 33 PR depuis la `v0.1.0`, et demandé des changements sur #147 et #179.
 
@@ -98,38 +90,38 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 **En relecture.** **#105** propose l’ADR 0008 : OpenQuizzDB comme source des Questions en français. **#147** livre la première Manche de Quiz jouable ; nRayen y a demandé des changements le 24/11. **#156** ajoute les variantes et les thématiques du Quiz. Aucune de ces PR n’est encore fusionnée au 25/11.
 
-**Relectures.** Piyakabib est le relecteur des PR de Tibxla dans le tourniquet de `CONTRIBUTING.md`. Il a approuvé 10 PR depuis la `v0.1.0`, 36 en tout. Au 25/11, 17 PR de Tibxla attendent sa relecture.
+**Relectures.** Piyakabib est le relecteur des PR de Tibxla dans le tourniquet de `CONTRIBUTING.md`. Il a approuvé 10 PR depuis la `v0.1.0`, 36 en tout. Au gel, 18 PR de Tibxla attendent sa relecture.
 
 **Reste** : faire fusionner #147 avant le gel pour que le Quiz soit dans la `v0.2.0`, puis la répartition des Réponses de la salle (#16) et le Quiz sur mesure (#15).
 
 
 # Ce que contient la version v0.2.0
 
-Le Rendu 1 annonçait `v0.2.0` comme le jalon des **Modes de jeu**. Au 25/11, le **Karaoké** se joue de bout en bout. Le **Blind test** a son contrat, son domaine et son catalogue dans `develop`, son service est approuvé et ses écrans sont en brouillon. Le **Quiz** est en relecture. Le Freestyle, quatrième Mode de jeu, est en relecture.
+Le Rendu 1 annonçait `v0.2.0` comme le jalon des **Modes de jeu**. Au 25/11, le **Karaoké** se joue de bout en bout. Le **Blind test** se joue de bout en bout côté serveur (contrat, domaine, catalogue Deezer, service et routes) ; ses écrans sont en brouillon. Le **Quiz** est en relecture. Le Freestyle, quatrième Mode de jeu, est en relecture.
 
-## Fusionné dans `develop` au 25/11
+## Fusionné dans `develop` au gel
 
 - **Soirée** : création, code d’accès, QR code, arrivée et reconnexion des Joueurs (nRayen) ; programme des Manches composé depuis la Console ; déroulement manuel d’une Soirée, Manche après Manche, depuis la Console.
 - **Karaoké** : File d’attente, Passage avec paroles synchronisées et fichier audio local, Vote du public et note moyenne, appel automatique du Passage suivant.
-- **Blind test** : contrat, domaine en Java pur, catalogue Deezer.
+- **Blind test** : contrat, domaine en Java pur, catalogue Deezer, puis service, routes et persistance : une Manche se joue de bout en bout côté serveur.
 - **Socle commun** : Buzz de Soirée de bout en bout, Classement général (points, bonnes réponses et temps de départage portés par chaque Mode de jeu), Musique d’attente de l’Écran de salle, photos de la salle validées par l’Animateur, quatre Joueurs de démonstration par Soirée pour la recette.
 - **Contrats réseau** (`docs/api/`) : le vérificateur contrôle 125 schémas, 54 opérations, 254 échanges HTTP, 241 événements et 215 cas de schéma, contre 77, 34, 123, 85 et 143 à la `v0.1.0`.
-- **Base** : 16 migrations Flyway, contre 4 à la `v0.1.0`. Flyway applique désormais les migrations hors ordre dans tous les profils (#179) : avec des PR empilées, une migration plus ancienne peut arriver après une plus récente.
+- **Base** : 18 migrations Flyway, contre 4 à la `v0.1.0`. Flyway applique désormais les migrations hors ordre dans tous les profils (#179) : avec des PR empilées, une migration plus ancienne peut arriver après une plus récente.
 - **Décisions** : ADR 0009, déroulement du Blind test.
 
-## En relecture au moment de la rédaction
+## Encore en relecture au gel
 
 | PR | Contenu | Auteur |
 |---|---|---|
 | #105, #147, #156 | Source des Questions (ADR 0008), première Manche de Quiz, variantes | Piyakabib |
-| #210, #212 | Blind test : service et routes, puis trois écrans | nRayen |
+| #212 | Blind test : les trois écrans | nRayen |
 | #168, #172, #184, #189 | Palmarès du Karaoké et fin de Manche | Tibxla |
 | #199, #204, #206 | Suggestions et favoris, Enregistrement, Passages à plusieurs | Tibxla |
 | #197, #200, #207 | Freestyle : Grille de rimes, trois écrans, Couplets à plusieurs | Tibxla |
 | #166, #180, #196 | Compte du Lieu, session de l’Animateur, invitation d’Animateurs | Tibxla |
 | #187, #193, #195, #198 | Correctifs, podium final, dictionnaire de rimes | Tibxla |
 
-## Ce que la v0.2.0 ne contiendra pas
+## Ce que la v0.2.0 ne contient pas
 
 - Pas de Format Équipe (#26), pas de Signalement ni d’Exclusion (#31), pas d’Assistant externe (#28), pas de Contacts du Lieu ni de Campagnes SMS (#32, #33).
 - Pas d’enchaînement automatique des Manches (#123) ni de Palmarès en fin de Soirée (#118).
@@ -207,8 +199,8 @@ Le dossier est maintenu dans **`doc/rendu-3/dossier-v0.2.0.md`** et compilé en 
 
 ## Le suivi en chiffres, au 25/11
 
-- **110 issues**, dont 63 fermées, contre 66 et 26 au 18/11.
-- **101 PR**, dont 79 fusionnées et 22 ouvertes. 43 PR ont été fusionnées depuis la livraison `v0.1.0` : 35 de Tibxla et 8 de nRayen.
+- **110 issues**, dont 64 fermées, contre 66 et 26 au 18/11.
+- **103 PR**, dont 80 fusionnées et 23 ouvertes. 44 PR ont été fusionnées depuis la livraison `v0.1.0` : 35 de Tibxla et 9 de nRayen.
 - **Relectures** : nRayen a approuvé 42 PR (33 depuis la `v0.1.0`), Piyakabib 36 (10), Tibxla 11 (9). Des changements ont été demandés sur 6 PR : par nRayen sur #30, #88, #94, #147 et #179, par Tibxla sur #38. Tibxla publie aussi des relectures détaillées en commentaire, puis approuve une fois les points corrigés, comme sur #186, #192 et #210.
 
 ## Ce qui a changé dans la façon de travailler
@@ -235,7 +227,7 @@ Les parcours décrivent la **cible fonctionnelle** du Rendu 1. Chacun indique so
 ## 3. Prendre la main au Blind test
 
 **Acteurs : les Joueurs et l’Animateur.** Les Joueurs buzzent sur un extrait ; le serveur ordonne les Buzz et donne la main au premier.\
-**État :** le Buzz de Soirée est fusionné et tenu à 60 Manettes (#194). Le contrat, le domaine et le catalogue Deezer du Blind test sont fusionnés ; le service est approuvé (#210) et les écrans sont en brouillon (#212).
+**État :** le Buzz de Soirée est fusionné et tenu à 60 Manettes (#194). Le contrat, le domaine et le catalogue Deezer du Blind test sont fusionnés ; le service est fusionné (#210) et les écrans sont en brouillon (#212).
 
 ## 4. Chanter et voter au Karaoké
 
@@ -261,8 +253,8 @@ L’architecture n’a pas changé : un **monolithe modulaire Spring Boot 4.1.2*
 <p class="arrow">↕ HTTP JSON : commandes et consultations · STOMP : vues complètes numérotées par Révision</p>
 <div><strong>API · Spring Web MVC et WebSocket/STOMP</strong><br>Contrats OpenAPI et AsyncAPI vérifiés en CI · identités de démonstration en attendant la session de l’Animateur (#5)</div>
 <p class="arrow">↕ Service de Manche : préparation externe hors verrou, verrou par Soirée, transaction, publication après validation</p>
-<div><strong>BACK · Packages métier</strong><br>Livrés : manche · tempsreel · passage · karaoke · soiree · blindtest (domaine, Deezer) · classement · photos · En relecture : quiz · freestyle · animateur</div>
-<p class="arrow">↕ Spring Data JPA / Hibernate · 16 migrations Flyway</p>
+<div><strong>BACK · Packages métier</strong><br>Livrés : manche · tempsreel · passage · karaoke · soiree · blindtest (sans écrans) · classement · photos · En relecture : quiz · freestyle · animateur</div>
+<p class="arrow">↕ Spring Data JPA / Hibernate · 18 migrations Flyway</p>
 <div><strong>BD · PostgreSQL 18</strong><br>Docker Compose en développement · Testcontainers en test · Neon pour la recette et la production</div>
 <figcaption>État au 25/11 : le serveur décide des règles et publie à chaque écran sa vue complète.</figcaption>
 </figure>
@@ -280,7 +272,7 @@ L’architecture n’a pas changé : un **monolithe modulaire Spring Boot 4.1.2*
 |---|---|---|
 | Source audio du Karaoké | décidée (ADR 0007) | **livrée** : fichier local sur l’Écran de salle, sinon paroles seules |
 | Paroles synchronisées | adaptateur LRCLIB fusionné | **affichées** pendant le Passage, calées sur la lecture |
-| Extraits du Blind test | Deezer envisagé | **catalogue Deezer fusionné** (#201), service en relecture |
+| Extraits du Blind test | Deezer envisagé | **catalogue Deezer** (#201) **et service** (#210) **fusionnés** |
 | Banque de Questions en français | OpenQuizzDB proposé | inchangé, ADR 0008 en relecture (#105) |
 | Instrumentales du Freestyle | non prévu | dossier local de l’Écran de salle (ADR 0010, en relecture) |
 | Prestataire SMS, Assistant | à choisir | inchangés, non commencés |
@@ -320,7 +312,7 @@ Les jalons n’ont pas changé : **`v0.1.0` pour le socle**, **`v0.2.0` pour les
 | Production | Render et Neon, <https://croustyquizz-prod.onrender.com> | chaque livraison taguée, `v0.1.0` puis `v0.2.0` |
 | Démo de secours | un serveur avec Docker Compose, `tools/demo.sh`, à la demande | un tag |
 
-**Tests.** Au 25/11 sur `3061e8f`, `./mvnw verify` exécute **766 tests JUnit** dans 68 classes, sans échec, contre 308 à la `v0.1.0`. `npm test --prefix tools/api` exécute **244 tests** Node après la vérification des contrats, contre 36. Ils couvrent, en plus de ce que décrivait le Rendu 2 :
+**Tests.** Au gel, sur `8562bbd`, `./mvnw verify` exécute **776 tests JUnit** dans 69 classes, sans échec, contre 308 à la `v0.1.0`. `npm test --prefix tools/api` exécute **244 tests** Node après la vérification des contrats, contre 36. Ils couvrent, en plus de ce que décrivait le Rendu 2 :
 
 - les déroulements du Karaoké et du Blind test en Java pur, par la classe commune `ContratDeroulementDeManche` ;
 - les routes HTTP et le canal STOMP de chaque parcours, sur PostgreSQL, validés contre le contrat ;
@@ -331,14 +323,14 @@ Restent à mesurer l’usage sur de vrais téléphones et une Soirée complète 
 
 ## README, licence et indicateurs
 
-| Indicateur, au 25/11 sur `3061e8f` | v0.1.0 | Au 25/11 |
+| Indicateur | v0.1.0 | v0.2.0, sur `8562bbd` |
 |---|---|---|
-| Couverture des lignes (JaCoCo) | 94,6 % | **96,8 %** (4 361 lignes sur 4 506) |
-| Couverture des branches (JaCoCo) | 85,9 % | **88,2 %** (2 351 sur 2 666) |
+| Couverture des lignes (JaCoCo) | 94,6 % | **96,6 %** (4 632 lignes sur 4 797) |
+| Couverture des branches (JaCoCo) | 85,9 % | **87,6 %** (2 463 sur 2 812) |
 | Alertes PMD (Error Prone et Best Practices) | 0 | **0** |
-| Tests JUnit et tests Node | 308 et 36 | **766** et **244**, sans échec |
-| Migrations Flyway | 4 | **16** |
-| Version du `pom.xml` | `0.1.0` | `0.2.0-SNAPSHOT`, passée à `0.2.0` au gel |
+| Tests JUnit et tests Node | 308 et 36 | **776** et **244**, sans échec |
+| Migrations Flyway | 4 | **18** |
+| Version du `pom.xml` | `0.1.0` | `0.2.0` |
 | Licence | MIT | **MIT**, fichier `LICENSE` |
 
 Zéro alerte PMD signifie qu’aucun problème n’est détecté par les règles configurées, pas l’absence de bug. Le README présente l’installation, le déploiement, les dossiers de rendu et les badges de version, de licence, de couverture, d’alertes PMD et de CI.
