@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -36,8 +37,8 @@ class ComptesAnimateur {
 	}
 
 	void verifierEmailDisponible(String email) {
-		boolean existe = jdbc.sql("select exists (select 1 from animateur where lower(email) = lower(:email))")
-				.param("email", email).query(Boolean.class).single();
+		boolean existe = jdbc.sql("select exists (select 1 from animateur where lower(email) = :email)")
+				.param("email", normaliser(email)).query(Boolean.class).single();
 		if (existe) {
 			throw emailDejaUtilise().exception();
 		}
@@ -52,7 +53,7 @@ class ComptesAnimateur {
 				on conflict (lower(email)) do nothing
 				""")
 				.param("id", animateur.id()).param("lieuId", lieuId).param("nom", animateur.nom())
-				.param("email", email).param("hachage", hachage).update();
+				.param("email", normaliser(email)).param("hachage", hachage).update();
 		if (insertions == 0) {
 			throw emailDejaUtilise().exception();
 		}
@@ -65,9 +66,9 @@ class ComptesAnimateur {
 
 	IdentiteAnimateur reconnaitre(SaisiesAnimateur.Connexion saisie) {
 		var compte = jdbc.sql("""
-				select id, nom, lieu_id, mot_de_passe_hache from animateur where lower(email) = lower(:email)
+				select id, nom, lieu_id, mot_de_passe_hache from animateur where lower(email) = :email
 				""")
-				.param("email", saisie.email())
+				.param("email", normaliser(saisie.email()))
 				.query((ligne, numero) -> new Compte(
 						new IdentiteAnimateur(ligne.getObject("id", UUID.class), ligne.getString("nom"),
 								ligne.getObject("lieu_id", UUID.class)),
@@ -80,6 +81,11 @@ class ComptesAnimateur {
 			throw new Refuse(401, "IDENTIFIANTS_INVALIDES", "L’e-mail ou le mot de passe est invalide.").exception();
 		}
 		return compte.orElseThrow().identite();
+	}
+
+	/** La casse est repliée en Java : le lower() de PostgreSQL dépend de la locale de la base. */
+	static String normaliser(String email) {
+		return email.toLowerCase(Locale.ROOT);
 	}
 
 	/** BCrypt accepte au plus 72 octets. L'empreinte encodée couvre tout le mot de passe. */

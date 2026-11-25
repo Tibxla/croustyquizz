@@ -27,3 +27,14 @@ export async function consulterSession() {
 	if (session.statut === 401) renvoyerVersConnexion();
 	return session;
 }
+
+// Le trafic STOMP ne prolonge pas la session HTTP, qui expire après 30 minutes sans requête :
+// la Console la consulte régulièrement tant qu'elle est ouverte, Pilotage Automatique compris.
+export const INTERVALLE_MAINTIEN_SESSION = 5 * 60_000;
+
+export function maintenirSession({ consulter = consulterSession, planifier = setInterval, annuler = clearInterval } = {}) {
+	const minuterie = planifier(() => Promise.resolve().then(consulter).catch(() => {
+		// Panne réseau : la consultation suivante réessaie, et la coupure STOMP se signale déjà.
+	}), INTERVALLE_MAINTIEN_SESSION);
+	return () => annuler(minuterie);
+}

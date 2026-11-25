@@ -21,8 +21,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 
@@ -54,6 +56,9 @@ class InvitationAnimateurHttpTest {
 
 	@Autowired
 	private HorlogeFactice horloge;
+
+	@Autowired
+	private JdbcClient jdbc;
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TempsDesInvitations {
@@ -139,6 +144,30 @@ class InvitationAnimateurHttpTest {
 	}
 
 	@Test
+	void effaceLesInvitationsExpireesEtPlafonneCellesEnCoursDuLieu() throws Exception {
+		var invitant = SessionAnimateurHttp.ouvrir(port, json);
+		String lieuId = consulterSession(invitant.cookie()).path("lieuId").asString();
+		creerInvitation(invitant.entetes(), "perimee@example.com");
+		horloge.avancer(Duration.ofDays(7));
+		creerInvitation(invitant.entetes(), "recente@example.com");
+		assertThat(jdbc.sql("select email from invitation_animateur where lieu_id = cast(:lieuId as uuid)")
+				.param("lieuId", lieuId).query(String.class).list()).containsExactly("recente@example.com");
+
+		for (int numero = 2; numero <= 20; numero++) {
+			creerInvitation(invitant.entetes(), "invite-" + numero + "@example.com");
+		}
+		verifierRefus("creerInvitationAnimateur", 409, "LIMITE_ATTEINTE",
+				poster(INVITATIONS, invitant.entetes(), Map.of("email", "invite-21@example.com")));
+		var autreLieu = SessionAnimateurHttp.ouvrir(port, json);
+		creerInvitation(autreLieu.entetes(), "invite-21@example.com");
+
+		horloge.avancer(Duration.ofDays(7));
+		creerInvitation(invitant.entetes(), "invite-21@example.com");
+		assertThat(jdbc.sql("select count(*) from invitation_animateur where lieu_id = cast(:lieuId as uuid)")
+				.param("lieuId", lieuId).query(Integer.class).single()).isOne();
+	}
+
+	@Test
 	void refuseUnEmailPrisEntreLaCreationEtLAcceptationMemeSiLaCasseDiffere() throws Exception {
 		var invitant = SessionAnimateurHttp.ouvrir(port, json);
 		String cle = creerInvitation(invitant.entetes(), "doublon@example.com").path("cle").asString();
@@ -150,6 +179,32 @@ class InvitationAnimateurHttpTest {
 				poster(INVITATIONS, invitant.entetes(), Map.of("email", "doublon@example.com")));
 		verifierRefus("accepterInvitationAnimateur", 409, EMAIL_DEJA_UTILISE, accepter(sessionAnonyme().entetes(), cle));
 		verifierRefus("accepterInvitationAnimateur", 409, EMAIL_DEJA_UTILISE, accepter(sessionAnonyme().entetes(), cle));
+	}
+
+	@Test
+	void normaliseLEmailInviteEtRefuseUnSurrogateIsoleCommeLInscription() throws Exception {
+		var invitant = SessionAnimateurHttp.ouvrir(port, json);
+		// Corps écrits à la main : la sérialisation Java remplacerait le surrogate isolé par « ? ».
+		String isole = "\\ud800";
+		verifierRefus("creerInvitationAnimateur", 422, "DONNEES_INVALIDES", posterBrut(INVITATIONS, invitant.entetes(),
+				"{\"email\":\"" + isole + "ines@example.com\"}"));
+
+		String cle = creerInvitation(invitant.entetes(), "Inès.Ñúñez@EXAMPLE.com").path("cle").asString();
+		assertThat(verifier("consulterInvitationAnimateur", 200, consulterInvitation(cle)).path("email").asString())
+				.isEqualTo("inès.ñúñez@example.com");
+		var anonyme = sessionAnonyme();
+		String modele = "{\"cle\":\"%s\",\"nom\":\"%s\",\"motDePasse\":\"%s\"}";
+		verifierRefus("accepterInvitationAnimateur", 422, "DONNEES_INVALIDES", posterBrut(ACCEPTATION, anonyme.entetes(),
+				modele.formatted(cle, "Inès" + isole, MOT_DE_PASSE)));
+		verifierRefus("accepterInvitationAnimateur", 422, "DONNEES_INVALIDES", posterBrut(ACCEPTATION, anonyme.entetes(),
+				modele.formatted(cle, "Inès", MOT_DE_PASSE + isole)));
+
+		var invite = verifier("accepterInvitationAnimateur", 201, accepter(anonyme.entetes(), cle));
+		assertThat(jdbc.sql("select email from animateur where id = cast(:id as uuid)")
+				.param("id", invite.path("id").asString()).query(String.class).single())
+				.isEqualTo("inès.ñúñez@example.com");
+		verifierRefus("creerInvitationAnimateur", 409, EMAIL_DEJA_UTILISE,
+				poster(INVITATIONS, invitant.entetes(), Map.of("email", "INÈS.ÑÚÑEZ@example.COM")));
 	}
 
 	@Test
@@ -204,6 +259,11 @@ class InvitationAnimateurHttpTest {
 	private ResponseEntity<String> poster(String route, HttpHeaders entetes, Map<String, ?> corps) {
 		return client().post().uri(route).headers(copie -> copie.addAll(entetes)).body(corps)
 				.retrieve().onStatus(HttpStatusCode::isError, (requete, reponse) -> { }).toEntity(String.class);
+	}
+
+	private ResponseEntity<String> posterBrut(String route, HttpHeaders entetes, String corps) {
+		return client().post().uri(route).headers(copie -> copie.addAll(entetes)).contentType(MediaType.APPLICATION_JSON)
+				.body(corps).retrieve().onStatus(HttpStatusCode::isError, (requete, reponse) -> { }).toEntity(String.class);
 	}
 
 	private RestClient client() {

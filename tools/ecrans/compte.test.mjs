@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { retourApresConnexion, adresseConnexion } from '../../src/main/resources/static/js/compte.mjs';
+import { retourApresConnexion, adresseConnexion, maintenirSession } from '../../src/main/resources/static/js/compte.mjs';
 import { validerChamp, erreurDeCompte } from '../../src/main/resources/static/js/formulaire-compte.mjs';
 
 test('la connexion revient à la page protégée demandée', () => {
@@ -33,4 +33,37 @@ test('les refus du compte indiquent le champ à corriger', () => {
 	assert.equal(erreurDeCompte('EMAIL_DEJA_UTILISE').champ, 'email');
 	assert.equal(erreurDeCompte('IDENTIFIANTS_INVALIDES').champ, 'motDePasse');
 	assert.equal(erreurDeCompte('CSRF_INVALIDE').champ, undefined);
+});
+
+function minuterieFactice() {
+	const minuteries = new Map();
+	let suivant = 1;
+	return {
+		minuteries,
+		planifier(rappel, delai) { minuteries.set(suivant, { rappel, delai }); return suivant++; },
+		annuler(id) { minuteries.delete(id); },
+	};
+}
+
+test('la Console prolonge sa session bien avant les 30 minutes d’inactivité de Tomcat', async () => {
+	const minuterie = minuterieFactice();
+	let consultations = 0;
+	maintenirSession({ ...minuterie, consulter: async () => { consultations += 1; return { statut: 200 }; } });
+
+	assert.equal(minuterie.minuteries.size, 1);
+	const [{ rappel, delai }] = minuterie.minuteries.values();
+	assert.ok(delai <= 10 * 60_000, `intervalle trop long : ${delai} ms`);
+	await rappel();
+	await rappel();
+	assert.equal(consultations, 2);
+});
+
+test('le maintien de session s’arrête avec la Console et survit à une panne réseau', async () => {
+	const minuterie = minuterieFactice();
+	const arreter = maintenirSession({ ...minuterie, consulter: async () => { throw new TypeError('Failed to fetch'); } });
+	const [{ rappel }] = minuterie.minuteries.values();
+
+	await assert.doesNotReject(rappel());
+	arreter();
+	assert.equal(minuterie.minuteries.size, 0);
 });

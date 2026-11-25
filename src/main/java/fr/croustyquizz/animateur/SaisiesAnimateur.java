@@ -10,7 +10,8 @@ import tools.jackson.databind.JsonNode;
 
 final class SaisiesAnimateur {
 
-	private static final String SANS_CARACTERE_NUL = "[^\\x00]*";
+	/** Ni NUL ni surrogate isolé : le pilote JDBC remplacerait ce dernier par « ? » sans erreur. */
+	static final String TEXTE_ENREGISTRE = "[^\\x00\\p{Cs}]*";
 	private static final String MOT_DE_PASSE_UNICODE = "[^\\p{Cs}]*";
 
 	private SaisiesAnimateur() {
@@ -18,8 +19,8 @@ final class SaisiesAnimateur {
 
 	record Inscription(
 			@Valid LieuSaisi lieu,
-			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = SANS_CARACTERE_NUL) String nom,
-			@NotBlank @Email @CodePointLength(max = 254) String email,
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String nom,
+			@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email,
 			@CodePointLength(min = 12, max = 128) @Pattern(regexp = MOT_DE_PASSE_UNICODE) String motDePasse) {
 
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
@@ -38,12 +39,12 @@ final class SaisiesAnimateur {
 	}
 
 	record LieuSaisi(
-			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = SANS_CARACTERE_NUL) String nom,
-			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = SANS_CARACTERE_NUL) String ville) {
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String nom,
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String ville) {
 	}
 
 	record Connexion(
-			@NotBlank @Email @CodePointLength(max = 254) String email,
+			@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email,
 			@CodePointLength(min = 1, max = 128) @Pattern(regexp = MOT_DE_PASSE_UNICODE) String motDePasse) {
 
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
@@ -58,7 +59,7 @@ final class SaisiesAnimateur {
 		}
 	}
 
-	record CreationInvitation(@NotBlank @Email @CodePointLength(max = 254) String email) {
+	record CreationInvitation(@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email) {
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
 		static CreationInvitation lire(JsonNode corps) {
 			verifierObjet(corps, 1);
@@ -80,7 +81,7 @@ final class SaisiesAnimateur {
 	}
 
 	record AcceptationInvitation(String cle,
-			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = SANS_CARACTERE_NUL) String nom,
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String nom,
 			@CodePointLength(min = 12, max = 128) @Pattern(regexp = MOT_DE_PASSE_UNICODE) String motDePasse) {
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
 		static AcceptationInvitation lire(JsonNode corps) {
