@@ -56,8 +56,9 @@ class VueSynchroniseeTest {
 		var canal = new ExecutorSubscribableChannel();
 		CountDownLatch captureCommencee = new CountDownLatch(1);
 		CountDownLatch terminerCapture = new CountDownLatch(1);
+		var verrous = new VerrousSoiree();
 		var diffuseur = new DiffuseurStomp(new SimpMessagingTemplate(canal),
-				Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), new VerrousSoiree(), soiree -> {
+				Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), verrous, soiree -> {
 					captureCommencee.countDown();
 					try {
 						assertThat(terminerCapture.await(RETENUE_SECONDES, TimeUnit.SECONDS)).isTrue();
@@ -79,7 +80,7 @@ class VueSynchroniseeTest {
 					diffuseur.diffuserSalle(soiree, vue);
 				}, new CaptureSalleFactice());
 				await().atMost(PLAFOND).until(() -> publication.get() != null
-						&& publication.get().getState() == Thread.State.WAITING);
+						&& verrous.estAttenduPar(soiree, publication.get()));
 				terminerCapture.countDown();
 				assertThat(capture.get(PLAFOND_SECONDES, TimeUnit.SECONDS).revision()).isZero();
 				envoi.get(PLAFOND_SECONDES, TimeUnit.SECONDS);

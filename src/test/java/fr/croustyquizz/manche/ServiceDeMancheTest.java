@@ -224,7 +224,7 @@ class ServiceDeMancheTest {
 				assertThat(entree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 				var filMinuteur = new AtomicReference<Thread>();
 				var minuteur = fils.submit(() -> { filMinuteur.set(Thread.currentThread()); banc.horloge.avancer(Duration.ofSeconds(20)); });
-				await().atMost(PLAFOND).until(() -> filMinuteur.get() != null && filMinuteur.get().getState() == Thread.State.WAITING);
+				await().atMost(PLAFOND).until(() -> filMinuteur.get() != null && banc.verrous.estAttenduPar(soiree, filMinuteur.get()));
 				assertThat(minuteur.isDone()).isFalse();
 				sortir.countDown(); premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS); minuteur.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 				assertThat(maximum).hasValue(1);
@@ -245,7 +245,7 @@ class ServiceDeMancheTest {
 					banc.horloge.avancer(Duration.ofSeconds(20));
 				});
 				await().atMost(PLAFOND).until(() -> filMinuteur.get() != null
-						&& filMinuteur.get().getState() == Thread.State.WAITING);
+						&& banc.verrous.estAttenduPar(soiree, filMinuteur.get()));
 				var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, null);
 				assertThat(banc.service.piloter(manche, banc.envoi(soiree, "/commandes", passer), passer)).isInstanceOf(Accepte.class);
 				return rappel;
@@ -265,6 +265,7 @@ class ServiceDeMancheTest {
 		var temps = new HorlogeFactice();
 		var filMinuteur = new AtomicReference<Thread>();
 		var expiration = new AtomicReference<java.util.concurrent.Future<?>>();
+		var verrousDeRestauration = new AtomicReference<fr.croustyquizz.tempsreel.VerrousSoiree>();
 		try (var fils = Executors.newSingleThreadExecutor()) {
 			Horloge immediate = new Horloge() {
 				@Override
@@ -276,11 +277,12 @@ class ServiceDeMancheTest {
 					expiration.set(rappel);
 					// L'ordonnanceur a lancé le rappel avant que programmer ne rende la main à restaurer.
 					await().atMost(PLAFOND).until(() -> filMinuteur.get() != null
-							&& filMinuteur.get().getState() == Thread.State.WAITING);
+							&& verrousDeRestauration.get().estAttenduPar(soiree, filMinuteur.get()));
 					return () -> rappel.cancel(false);
 				}
 			};
 			var restauration = new BancDuSocle(immediate);
+			verrousDeRestauration.set(restauration.verrous);
 			UUID manche = restauration.creer(soiree);
 			restauration.service.demarrer(manche, restauration.envoi(soiree, "/demarrer", Map.of()));
 			restauration.registre.retirer(manche);
@@ -315,7 +317,7 @@ class ServiceDeMancheTest {
 					return banc.service.executer(manche, banc.envoi(soiree, "/seconde", Map.of()),
 							() -> PreparationDeCommande.prete(d -> { ordre.add(2); return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet."); }));
 				});
-				await().atMost(PLAFOND).until(() -> secondFil.get() != null && secondFil.get().getState() == Thread.State.WAITING);
+				await().atMost(PLAFOND).until(() -> secondFil.get() != null && banc.verrous.estAttenduPar(soiree, secondFil.get()));
 				assertThat(ordre).containsExactly(1);
 				sortir.countDown(); premiere.get(PLAFOND_SECONDES, TimeUnit.SECONDS); seconde.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 				assertThat(ordre).containsExactly(1, 2);

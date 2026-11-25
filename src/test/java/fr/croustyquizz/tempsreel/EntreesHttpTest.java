@@ -49,7 +49,8 @@ class EntreesHttpTest {
 			}
 			return null;
 		}).when(diffuseur).diffuserSalle(eq(soiree), any());
-		BuzzControleur controleur = new BuzzControleur(diffuseur, horloge, new VerrousSoiree(), mock(ServiceSoiree.class));
+		var verrous = new VerrousSoiree();
+		BuzzControleur controleur = new BuzzControleur(diffuseur, horloge, verrous, mock(ServiceSoiree.class));
 		AtomicReference<Thread> secondThread = new AtomicReference<>();
 		try (var executeur = Executors.newFixedThreadPool(2)) {
 			try {
@@ -60,7 +61,7 @@ class EntreesHttpTest {
 					return controleur.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Second"));
 				});
 				await().atMost(PLAFOND).until(() -> secondThread.get() != null
-						&& secondThread.get().getState() == Thread.State.WAITING);
+						&& verrous.estAttenduPar(soiree, secondThread.get()));
 				assertThat(lectures.get()).isEqualTo(1);
 				autoriserPublication.countDown();
 				assertThat(premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS).recuLe()).isBefore(second.get(PLAFOND_SECONDES, TimeUnit.SECONDS).recuLe());
