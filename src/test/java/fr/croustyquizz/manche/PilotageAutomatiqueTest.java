@@ -234,6 +234,24 @@ class PilotageAutomatiqueTest {
 	}
 
 	@Test
+	void uneBaseIndisponibleALEcheanceFaitReessayerLEnchainement() throws Exception {
+		var banc = soiree(Pilotage.AUTOMATIQUE, 10, 10);
+		piloterSoiree(banc, "LANCER", 200);
+		horloge.avancer(Duration.ofSeconds(10));
+		jdbc.execute("alter table manche_transition rename to manche_transition_indisponible");
+		try {
+			horloge.avancer(TRANSITION);
+			assertThat(etatManche(banc.manche(1))).isEqualTo("PRETE");
+		} finally {
+			jdbc.execute("alter table manche_transition_indisponible rename to manche_transition");
+		}
+		assertThat(transitions(banc)).isOne();
+		horloge.avancer(Duration.ofSeconds(5));
+		assertThat(etatManche(banc.manche(1))).isEqualTo("EN_COURS");
+		assertThat(transitions(banc)).isZero();
+	}
+
+	@Test
 	void uneMancheSuivanteManuelleEffaceLaTransitionQuiNeRevientPlusAvantSonEcheance() throws Exception {
 		var banc = soiree(Pilotage.AUTOMATIQUE, 10, 60);
 		piloterSoiree(banc, "LANCER", 200);

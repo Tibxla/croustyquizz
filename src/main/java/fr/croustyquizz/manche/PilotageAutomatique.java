@@ -32,6 +32,8 @@ import fr.croustyquizz.tempsreel.VerrousSoiree;
 @Component
 public final class PilotageAutomatique implements ObservateurDeFinDeManche, FournisseurDeChampCommun {
 	private static final Logger JOURNAL = LoggerFactory.getLogger(PilotageAutomatique.class);
+	/** Délai avant de rejouer une échéance quand la base n'a pu ni enchaîner ni effacer la transition. */
+	static final Duration NOUVEL_ESSAI = Duration.ofSeconds(5);
 	private static final Set<Destination> TOUT = Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
 	private final PilotageDeSoiree pilotage;
 	private final Horloge horloge;
@@ -94,8 +96,11 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 				ecriture.execute(statut -> supprimer(soireeId, finPrevueLe));
 			} catch (RuntimeException erreur) {
 				JOURNAL.error("Échec de l'enchaînement automatique de la Soirée {}", soireeId, erreur);
-				effacer(soireeId, finPrevueLe);
-				republier(soireeId);
+				if (effacer(soireeId, finPrevueLe)) {
+					republier(soireeId);
+				} else {
+					programmer(soireeId, NOUVEL_ESSAI, finPrevueLe);
+				}
 			}
 			return null;
 		});
@@ -185,12 +190,18 @@ public final class PilotageAutomatique implements ObservateurDeFinDeManche, Four
 		return null;
 	}
 
-	/** Après un échec, la ligne échue ne doit plus apparaître dans la vue republiée. */
-	private void effacer(UUID soireeId, Instant finPrevueLe) {
+	/**
+	 * Après un échec, la ligne échue ne doit plus apparaître dans la vue republiée. Si la base ne répond pas non
+	 * plus, la ligne reste et l'échéance est rejouée après {@link #NOUVEL_ESSAI}.
+	 */
+	private boolean effacer(UUID soireeId, Instant finPrevueLe) {
 		try {
 			ecriture.execute(statut -> supprimer(soireeId, finPrevueLe));
+			return true;
 		} catch (RuntimeException erreur) {
-			JOURNAL.error("Échec de la suppression de la transition de la Soirée {}", soireeId, erreur);
+			JOURNAL.error("Échec de la suppression de la transition de la Soirée {}, nouvel essai dans {} s", soireeId,
+					NOUVEL_ESSAI.toSeconds(), erreur);
+			return false;
 		}
 	}
 
