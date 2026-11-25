@@ -1,4 +1,4 @@
-import { creerUuid } from '../modes/karaoke/commun.mjs';
+import { creerUuid } from '../uuid.mjs';
 import { creerImage, element, routePhotos } from './commun.mjs';
 
 export function monter(zone, contexte, adaptations = {}) {
