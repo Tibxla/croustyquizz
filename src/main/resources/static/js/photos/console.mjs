@@ -8,7 +8,7 @@ export function monter(zone, contexte, adaptations = {}) {
 	const interrupteur = element(document, 'input', { type: 'checkbox', role: 'switch', id: 'regler-photos' });
 	// Libellé fixe, nom accessible de l’interrupteur (WCAG 2.5.3) ; l’état est celui de la case.
 	const etiquette = element(document, 'label', { for: 'regler-photos' });
-	etiquette.append(interrupteur, element(document, 'span', {}, 'Envois ouverts'));
+	etiquette.append(interrupteur, element(document, 'span', {}, 'Recevoir les photos des Joueurs'));
 	const liste = element(document, 'ol', { class: 'photos__liste', role: 'list', 'aria-label': 'Photos en attente' });
 	const vide = element(document, 'p', { class: 'console__note' }, 'Aucune photo en attente.');
 	zone.setAttribute('aria-labelledby', 'titre-photos');

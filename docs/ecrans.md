@@ -201,7 +201,7 @@ vignette et son pseudo permettent d’accepter ou de refuser la photo. Pendant
 la commande, le bouton garde le focus avec `aria-disabled`. Une fois la photo
 modérée, le focus passe au même bouton de la ligne suivante, sinon de la
 précédente, ou au titre du panneau quand la file est vide. L’interrupteur
-« Envois ouverts » garde ce libellé fixe, qui est aussi son nom accessible ;
+« Recevoir les photos des Joueurs » garde ce libellé fixe, qui est aussi son nom accessible ;
 la case indique l’état. Couper les envois masque la commande sur les Manettes
 et laisse les photos déjà reçues dans leurs files. L’Écran de salle affiche les
 photos dans l’ordre d’acceptation, huit secondes chacune hors Manche, dans le

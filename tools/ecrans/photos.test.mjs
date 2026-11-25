@@ -215,7 +215,7 @@ test('Console : l’interrupteur porte son libellé visible comme nom accessible
 	const etiquette = zone.querySelector('label');
 	assert.equal(interrupteur.getAttribute('aria-labelledby'), null);
 	assert.equal(etiquette.getAttribute('for'), interrupteur.id);
-	assert.equal(etiquette.textContent, 'Envois ouverts');
+	assert.equal(etiquette.textContent, 'Recevoir les photos des Joueurs');
 	assert.equal(etiquette.querySelector('span').getAttribute('aria-hidden'), null);
 	module.demonter();
 });
