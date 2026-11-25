@@ -289,3 +289,41 @@ test('Coquille : une annonce identique à la précédente est vidée puis rééc
 	assert.equal(annonce(b).textContent, 'Ton Enregistrement est prêt : Lune.');
 	assert.equal(b.zone.querySelectorAll('a').length, 2);
 });
+
+test('Coquille : la fin de la Manche rend le focus au même geste dans la liste de la coquille', async t => {
+	suivreUrls(t);
+	const b = monterManette(t);
+	await chanter(b);
+	boutons(b.principale, 'Retirer')[0].focus();
+	await b.afficher(finDeManche, evenement('manche-terminee'));
+	assert.equal(b.document.activeElement, boutons(b.zone, 'Retirer')[0], 'Le focus ne tombe pas sur body.');
+
+	await b.afficher(vue({ mancheId: 'm2', enregistrementAutorise: true }), evenement('manche-demarree'));
+	assert.equal(b.document.activeElement, boutons(b.principale, 'Retirer')[0], 'Le Karaoké reprend le focus de la coquille.');
+	lien(b.principale).focus();
+	await b.afficher(finDeManche, evenement('manche-terminee'));
+	assert.equal(b.document.activeElement, lien(b.zone));
+});
+
+test('Coquille : une confirmation fermée par le début d’une Manche de Karaoké rend le focus au Retirer du module', async t => {
+	const urls = suivreUrls(t);
+	const b = monterManette(t);
+	await chanter(b);
+	await b.afficher(finDeManche, evenement('manche-terminee'));
+	boutons(b.zone, 'Retirer')[0].click();
+	assert.equal(b.zone.querySelector('dialog').open, true);
+	await b.afficher(vue({ mancheId: 'm2', enregistrementAutorise: true }), evenement('manche-demarree'));
+	assert.equal(b.zone.querySelector('dialog'), null);
+	const retirer = boutons(b.principale, 'Retirer')[0];
+	assert.equal(b.document.activeElement, retirer);
+	assert.deepEqual(urls.revoquees, [], 'Rien n’est retiré sans confirmation.');
+});
+
+test('Coquille : le focus resté hors de la liste ne bouge pas à la fin de la Manche', async t => {
+	suivreUrls(t);
+	const b = monterManette(t);
+	await chanter(b);
+	b.titre.focus();
+	await b.afficher(finDeManche, evenement('manche-terminee'));
+	assert.equal(b.document.activeElement, b.titre);
+});

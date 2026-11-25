@@ -14,8 +14,8 @@ const registres = new WeakMap();
 export function registreDe(page) {
 	const existant = registres.get(page);
 	if (existant) return existant;
-	const fichiers = new Map(), abonnes = new Set();
-	let presentations = 0, fermee = false;
+	const fichiers = new Map(), abonnes = new Set(), preneurs = new Set();
+	let presentations = 0, fermee = false, relais = null;
 	const prevenir = () => [...abonnes].forEach(rappel => rappel());
 	const revoquer = entree => { if (entree.url) URL.revokeObjectURL(entree.url); };
 	const registre = {
@@ -52,6 +52,24 @@ export function registreDe(page) {
 			revoquer(entree);
 			fichiers.delete(id);
 			prevenir();
+		},
+		// Relais du focus entre les listes : celle qui se cache ou se détruit avec le focus le cède, celle qui
+		// prend le relais le reprend. Le relais ne vaut que pour la tâche en cours.
+		accueillir(preneur) {
+			preneurs.add(preneur);
+			return () => preneurs.delete(preneur);
+		},
+		ceder(cible, donneur) {
+			relais = { ...cible, donneur };
+			const courant = relais;
+			setTimeout(() => { if (relais === courant) relais = null; }, 0);
+			for (const preneur of preneurs) if (preneur !== donneur && preneur()) return;
+		},
+		prendre(preneur) {
+			if (!relais || relais.donneur === preneur) return null;
+			const cible = relais;
+			relais = null;
+			return cible;
 		},
 	};
 	page.defaultView?.addEventListener?.('pagehide', evenement => {
@@ -95,6 +113,31 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 	// Un fichier déjà là n'est pas annoncé une seconde fois par une nouvelle liste.
 	const vus = new WeakSet(registre.fichiers.values());
 	let visible = false, dialogue = null, dialogueEntree = null;
+	const focusPerdu = () => !document.activeElement || document.activeElement === document.body
+		|| !document.activeElement.isConnected;
+
+	// Où est le focus dans cette liste : le titre, ou un geste d'un fichier (la confirmation vaut « Retirer »).
+	function cibleDuFocus() {
+		const actif = document.activeElement;
+		if (dialogue?.open || (dialogue && dialogue.contains(actif))) return { id: dialogueEntree.id, action: 'retirer' };
+		if (!actif || !section.contains(actif)) return null;
+		for (const [id, { vue }] of vues) {
+			if (vue.contains(actif)) return { id, action: actif.getAttribute('data-action') ?? 'retirer' };
+		}
+		return { action: 'titre' };
+	}
+
+	// Reprend le focus cédé par l'autre liste, seulement s'il n'est allé nulle part entre-temps.
+	function reprendre() {
+		const cible = registre.prendre(preneur);
+		if (!cible || !focusPerdu()) return Boolean(cible);
+		const vue = cible.id === undefined ? null : vues.get(cible.id)?.vue;
+		const controle = vue?.querySelector(`[data-action="${cible.action}"]`) ?? vue?.querySelector('[data-action="retirer"]');
+		(controle ?? (registre.fichiers.size ? titre : repli()))?.focus();
+		return true;
+	}
+	const preneur = () => visible && reprendre();
+	const quitterAccueil = registre.accueillir(preneur);
 
 	function fermerDialogue() {
 		if (dialogue?.open) dialogue.close();
@@ -141,6 +184,7 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 		if (entree.echec) vue.append(e('p', '', 'La prise a échoué : aucun son n’a été capté.'));
 		else {
 			const lien = e('a', 'bouton', 'Télécharger mon Enregistrement');
+			lien.setAttribute('data-action', 'telecharger');
 			lien.href = entree.url;
 			lien.download = entree.nom;
 			lien.setAttribute('aria-label', `Télécharger mon Enregistrement : ${entree.titre}`);
@@ -149,6 +193,7 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 			ecoute.controls = true;
 			ecoute.preload = 'metadata';
 			ecoute.setAttribute('aria-label', `Écouter ton Enregistrement : ${entree.titre}`);
+			ecoute.setAttribute('data-action', 'ecouter');
 			vue.append(lien, e('p', '', 'Écouter'), ecoute);
 			if (entree.motif === 'interrompu') vue.append(e('p', '', 'Cette prise a été interrompue.'));
 		}
@@ -163,18 +208,24 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 		return vue;
 	}
 
-	// affichee : la liste est à l'écran. Cachée, elle n'annonce rien et ne garde aucun lecteur :
-	// un <audio> retiré du document se met en pause, et le fichier n'est lu qu'à un endroit.
+	// Cachée, la liste n'annonce rien et ne garde aucun lecteur : un <audio> retiré du document se met en pause,
+	// et le fichier n'est lu qu'à un endroit. Se cacher avec le focus le cède à la liste qui prend le relais
+	// (fin ou début d'une Manche de Karaoké).
+	function cacher() {
+		const cible = visible ? cibleDuFocus() : null;
+		visible = false;
+		for (const entree of registre.fichiers.values()) vus.add(entree);
+		vues.clear();
+		liste.replaceChildren();
+		section.hidden = true;
+		fermerDialogue();
+		if (cible) registre.ceder(cible, preneur);
+	}
+
+	// affichee : la liste est à l'écran.
 	function rendre(affichee = true) {
-		visible = affichee;
-		if (!affichee) {
-			for (const entree of registre.fichiers.values()) vus.add(entree);
-			vues.clear();
-			liste.replaceChildren();
-			section.hidden = true;
-			fermerDialogue();
-			return;
-		}
+		if (!affichee) { cacher(); return; }
+		visible = true;
 		// Une entrée retirée, ou remplacée sous le même id (son ancienne URL est révoquée), perd sa vue.
 		for (const [id, { entree, vue }] of vues) {
 			if (registre.fichiers.get(id) !== entree) { vue.remove(); vues.delete(id); }
@@ -193,6 +244,7 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 		section.hidden = registre.fichiers.size === 0;
 		// Un fichier effacé ou remplacé entre-temps (pagehide, nouvelle prise) ferme la confirmation en cours.
 		if (dialogue && registre.fichiers.get(dialogueEntree.id) !== dialogueEntree) fermerDialogue();
+		reprendre();
 	}
 
 	return {
@@ -200,8 +252,12 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 		titre,
 		rendre,
 		detruire() {
+			const cible = visible ? cibleDuFocus() : null;
+			visible = false;
+			quitterAccueil();
 			fermerDialogue();
 			section.remove();
+			if (cible) registre.ceder(cible, preneur);
 		},
 	};
 }
