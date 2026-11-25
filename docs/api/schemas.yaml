@@ -1110,6 +1110,12 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/Manche'
+      delegations:
+        type: array
+        items:
+          $ref: '#/$defs/Delegation'
+        description: Délégations en cours des Joueurs présents (#67), par ordre d’arrivée ; le serveur l’émet
+          toujours, vide sans Délégation.
     required:
     - soiree
     - musiqueAttente
@@ -1178,6 +1184,12 @@ $defs:
         oneOf:
         - $ref: '#/$defs/ResultatPersonnel'
         - type: 'null'
+      delegation:
+        oneOf:
+        - $ref: '#/$defs/DelegationManette'
+        - type: 'null'
+        description: 'Délégation de ce Joueur (#67), null sans Délégation. Le serveur l’émet toujours ; une Manette
+          ne voit jamais la Délégation d’un autre Joueur.'
     required:
     - soiree
     - mancheActive
@@ -1380,6 +1392,7 @@ $defs:
         - lecture-chanson-modifiee
         - calage-chanson-modifie
         - musique-attente-modifiee
+        - delegation-modifiee
       soireeId:
         type: string
         format: uuid
@@ -1438,6 +1451,8 @@ $defs:
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
+        - musique-attente-modifiee
+        - delegation-modifiee
       soireeId:
         type: string
         format: uuid
@@ -3925,3 +3940,123 @@ $defs:
         echeance:
           type: string
           format: date-time
+  Pouvoir:
+    type: string
+    enum: [FILE_ATTENTE, MUSIQUE_ATTENTE, PHOTOS]
+    description: 'Pouvoir délégable, liste fermée (#67). FILE_ATTENTE : placer un Passage, définir la priorité,
+      appeler le Passage en tête et passer le courant (PASSER_ETAPE) d’une Manche de Karaoké. MUSIQUE_ATTENTE :
+      couper ou relancer la Musique d’attente. PHOTOS : accepter ou refuser les photos en attente. Jamais
+      l’Exclusion, l’Avertissement, la fin d’une Manche, le pilotage de la Soirée, le programme, les réglages des
+      photos ni l’invitation d’Animateurs.'
+  PouvoirsDelegues:
+    type: array
+    minItems: 1
+    maxItems: 3
+    uniqueItems: true
+    items:
+      $ref: '#/$defs/Pouvoir'
+    description: Ensemble de pouvoirs, dans l’ordre FILE_ATTENTE, MUSIQUE_ATTENTE, PHOTOS côté serveur.
+  AttributionDelegation:
+    type: object
+    additionalProperties: false
+    required: [pouvoirs]
+    properties:
+      pouvoirs:
+        $ref: '#/$defs/PouvoirsDelegues'
+    description: Remplace l’ensemble des pouvoirs du Joueur ; un ensemble vide se dit par retirerDelegation.
+  Delegation:
+    type: object
+    additionalProperties: false
+    required: [joueurId, pseudo, pouvoirs]
+    properties:
+      joueurId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+        maxLength: 30
+      pouvoirs:
+        $ref: '#/$defs/PouvoirsDelegues'
+    description: Délégation en cours d’un Joueur présent, telle que la Console la voit.
+  FileAttenteDeleguee:
+    allOf:
+    - $ref: '#/$defs/KaraokeCommun'
+    - type: object
+      properties:
+        passagesEnAttente:
+          type: array
+          items:
+            $ref: '#/$defs/PassageEnAttentePublic'
+        peutGererFile:
+          type: boolean
+          description: Placement et priorité possibles, comme sur la Console.
+        peutAppeler:
+          type: boolean
+          description: Même règle que BlocKaraokeConsole.peutAppeler.
+        peutPasser:
+          type: boolean
+          description: Même règle que BlocKaraokeConsole.peutPasser ; courant.etapeId est celui à citer.
+      required: [passagesEnAttente, peutGererFile, peutAppeler, peutPasser]
+    unevaluatedProperties: false
+    description: File d’attente complète du pouvoir FILE_ATTENTE, sans lecture, fichier, paroles ni votes.
+  PhotosDeleguees:
+    type: object
+    additionalProperties: false
+    required: [enAttente]
+    properties:
+      enAttente:
+        type: array
+        maxItems: 30
+        items:
+          $ref: '#/$defs/PhotoEnAttente'
+    description: Photos en attente du pouvoir PHOTOS, sans le réglage d’ouverture des envois.
+  DelegationManette:
+    type: object
+    additionalProperties: false
+    required: [pouvoirs]
+    properties:
+      pouvoirs:
+        $ref: '#/$defs/PouvoirsDelegues'
+      fileAttente:
+        oneOf:
+        - $ref: '#/$defs/FileAttenteDeleguee'
+        - type: 'null'
+        description: Null hors Manche de Karaoké en cours ou en pause.
+      photos:
+        $ref: '#/$defs/PhotosDeleguees'
+      musiqueAttente:
+        $ref: '#/$defs/MusiqueDAttente'
+    allOf:
+    - if:
+        properties:
+          pouvoirs:
+            contains:
+              const: FILE_ATTENTE
+      then:
+        required: [fileAttente]
+      else:
+        not:
+          required: [fileAttente]
+    - if:
+        properties:
+          pouvoirs:
+            contains:
+              const: PHOTOS
+      then:
+        required: [photos]
+      else:
+        not:
+          required: [photos]
+    - if:
+        properties:
+          pouvoirs:
+            contains:
+              const: MUSIQUE_ATTENTE
+      then:
+        required: [musiqueAttente]
+      else:
+        not:
+          required: [musiqueAttente]
+    description: Délégation reçue par ce Joueur et les seules données de ses pouvoirs. Jamais de réponse de Quiz
+      ou de Blind test, de clé d’Écran, de jeton, de lecture, de paroles ni de fichier local.

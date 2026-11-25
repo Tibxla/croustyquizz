@@ -70,7 +70,8 @@ channels:
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait.
       Photos : photos-modifiees à l’arrivée, à la modération, au changement de réglage et à l’oubli
       des photos après douze heures d’inactivité. Le bloc photos indique le réglage et les photos en
-      attente dans l’ordre d’arrivée."
+      attente dans l’ordre d’arrivée. Délégation (#67) : delegation-modifiee après attribution,
+      modification ou retrait ; le champ delegations liste les Délégations en cours."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -97,7 +98,12 @@ channels:
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle, chaque Joueur recevant sa propre vue ; brouillon-depose uniquement à la Manette de l’auteur d’un brouillon retenu ; bloc blindtest (BlocBlindTestManette : main, blocage, champs encore demandés et brouillon de son seul auteur), sans lien d’extrait ni réponse avant la Révélation.
       Photos : photos-modifiees au changement de réglage ; le bloc photos indique
-      seulement si les envois sont ouverts."
+      seulement si les envois sont ouverts. Délégation (#67) : delegation-modifiee après attribution,
+      modification ou retrait de la Délégation de ce seul Joueur. Une Manette déléguée reçoit aussi
+      chaque publication de la Console, avec la même cause (musique-attente-modifiee, photos-modifiees à
+      l’arrivée ou à la modération, etc.), pour garder à jour les données de ses pouvoirs ; le champ
+      delegation porte ses pouvoirs et ces seules données, sans secret de la Console. Les autres Manettes
+      n’en voient rien."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.

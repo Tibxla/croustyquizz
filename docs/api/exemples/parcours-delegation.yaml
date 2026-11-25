@@ -1,0 +1,651 @@
+description: "Toutes les données sont fictives. Contrat seul : aucun serveur exécuté. Délégation (#67) :
+  l’Animateur confie FILE_ATTENTE et PHOTOS à Alizé, qui appelle puis passe un Passage depuis sa Manette ;
+  l’Animateur, resté sur sa vue d’avant, voit sa commande refusée comme périmée. Alizé modère une photo,
+  puis l’Animateur retire la Délégation et la commande suivante d’Alizé est refusée. Deux pilotes :
+  l’Animateur (session) et Alizé (jeton de Joueur). Basile n’en voit rien. Révisions de départ :
+  Console 10, Manette d’Alizé 20, Manette de Basile 30."
+parametresCommuns:
+  soireeId: &soireeId 67000000-0000-4000-8000-000000000001
+  mancheId: &mancheId 67000000-0000-4000-8000-000000000002
+http:
+- nom: L’Animateur confie la File d’attente et les photos à Alizé
+  operationId: attribuerDelegation
+  acteur: animateur:67000000-0000-4000-8000-000000000006
+  parametres: &attributionAlize
+    joueurId: &alize 67000000-0000-4000-8000-000000000003
+    X-CSRF-TOKEN: csrf_session_delegation_fictif_67
+  requete: &pouvoirsAlize
+    pouvoirs: [FILE_ATTENTE, PHOTOS]
+  statut: 200
+  reponse: &delegationAlize
+    joueurId: *alize
+    pseudo: Alizé
+    pouvoirs: [FILE_ATTENTE, PHOTOS]
+- nom: "Même ensemble de pouvoirs : succès sans publication"
+  operationId: attribuerDelegation
+  acteur: animateur:67000000-0000-4000-8000-000000000006
+  parametres: *attributionAlize
+  requete: *pouvoirsAlize
+  statut: 200
+  reponse: *delegationAlize
+- nom: Capture de la Console après l’attribution
+  operationId: retrouverEtatConsole
+  acteur: animateur:67000000-0000-4000-8000-000000000006
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 11
+    heureServeur: 2026-11-25T21:00:01.000Z
+    abonnementId: null
+    vue: &consoleAttribuee
+      soiree: &soiree
+        id: *soireeId
+        titre: Soirée fictive de la Délégation
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: DELEG7
+      mancheActive: &manche
+        id: *mancheId
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: &reglages
+          limitePassagesEnAttente: 2
+      modeEnCours: KARAOKE
+      joueurs: &joueurs
+      - id: *alize
+        pseudo: Alizé
+        connecte: true
+      - id: &basile 67000000-0000-4000-8000-000000000004
+        pseudo: Basile
+        connecte: true
+      classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: null
+      photos:
+        ouvertes: true
+        enAttente: &photosEnAttente
+        - photoId: &photo 67000000-0000-4000-8000-000000000021
+          pseudo: Basile
+      programme:
+      - id: *mancheId
+        ordre: 0
+        mode: KARAOKE
+        etat: EN_COURS
+        reglages: *reglages
+      delegations:
+      - *delegationAlize
+      karaoke:
+        mancheId: *mancheId
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: &configuration
+          longueurRechercheMax: 120
+          delaiConsultationNavigateurMs: 8000
+          delaiConfirmationNavigateurMs: 10000
+          delaiAppelMs: 30000
+          dureeVoteMs: 30000
+          dureeAffichageMoyenneMs: 10000
+        votes: []
+        passagesEnAttente: &fileInitiale
+        - &passageBasile
+          passageId: &passageA 67000000-0000-4000-8000-000000000041
+          numeroModification: 0
+          numero: 1
+          chanson: &chansonA
+            chansonId: ch_quais_1
+            titre: Chanson fictive des quais
+            artiste: Groupe fictif
+            album: null
+            dureeMs: 205000
+            etatParoles: SYNCHRONISEES
+          interpretes: &interpretesBasile
+          - joueurId: *basile
+            pseudo: Basile
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-25T21:00:00.000Z
+            etat: ESTIMEE
+            dureeMs: 0
+        - &passageAlize
+          passageId: 67000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson:
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: *alize
+            pseudo: Alizé
+          position: 2
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-25T21:00:00.000Z
+            etat: ESTIMEE
+            dureeMs: 235000
+        peutGererFile: true
+        peutReglerLimite: true
+        peutRechercher: true
+        lecteurDesigne: false
+        peutAppeler: true
+        peutPasser: false
+        peutReprendre: false
+        peutCaler: false
+        peutReprendreEnParolesSeules: false
+        lecture: null
+        fichierLocal: null
+- nom: Capture de la Manette d’Alizé, déléguée
+  operationId: retrouverEtatManette
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 21
+    heureServeur: 2026-11-25T21:00:01.200Z
+    abonnementId: null
+    vue: &manetteAttribuee
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: KARAOKE
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+      photos: &reglagesPhotos { ouvertes: true }
+      joueurId: *alize
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke: &karaokeAlize
+        mancheId: *mancheId
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *configuration
+        prochainsPassages: *fileInitiale
+        nombreAutresPassages: 0
+        votes: []
+        mesPassagesEnAttente: [*passageAlize]
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+      delegation:
+        pouvoirs: [FILE_ATTENTE, PHOTOS]
+        fileAttente:
+          mancheId: *mancheId
+          etat: EN_COURS
+          limitePassagesEnAttente: 2
+          nombreEnAttente: 2
+          tourOuvert: 1
+          passagePrioritaireId: null
+          courant: null
+          configurationInterface: *configuration
+          passagesEnAttente: *fileInitiale
+          peutGererFile: true
+          peutAppeler: true
+          peutPasser: false
+        photos:
+          enAttente: *photosEnAttente
+- nom: Capture de la Manette de Basile, qui ne voit rien de la Délégation
+  operationId: retrouverEtatManette
+  acteur: joueur:67000000-0000-4000-8000-000000000004
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 30
+    heureServeur: 2026-11-25T21:00:01.400Z
+    abonnementId: null
+    vue:
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: KARAOKE
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+      photos: *reglagesPhotos
+      joueurId: *basile
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: *mancheId
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 2
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: null
+        configurationInterface: *configuration
+        prochainsPassages: *fileInitiale
+        nombreAutresPassages: 0
+        votes: []
+        mesPassagesEnAttente: [*passageBasile]
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+      delegation: null
+- nom: Alizé appelle le Passage de Basile, en tête, avec son jeton de Joueur
+  operationId: appelerPassage
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres:
+    passageId: *passageA
+    Idempotency-Key: &appelAlize 67000000-0000-4000-8000-000000000101
+  requete: { numeroModification: 0 }
+  statut: 200
+  reponse:
+    envoiId: *appelAlize
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageA
+    etapeId: &etapeA 67000000-0000-4000-8000-000000000051
+    numeroModification: 1
+    action: APPELER
+    recueLe: 2026-11-25T21:00:05.000Z
+    etatApres: APPELE
+- nom: Alizé passe le Passage appelé
+  operationId: piloterManche
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: &passerAlize 67000000-0000-4000-8000-000000000102
+  requete:
+    action: PASSER_ETAPE
+    etapeId: *etapeA
+  statut: 200
+  reponse:
+    envoiId: *passerAlize
+    soireeId: *soireeId
+    recueLe: 2026-11-25T21:00:10.000Z
+- nom: "L’Animateur, resté sur sa vue d’avant, appelle le même Passage : commande périmée, sans effet"
+  operationId: appelerPassage
+  acteur: animateur:67000000-0000-4000-8000-000000000006
+  parametres:
+    passageId: *passageA
+    Idempotency-Key: 67000000-0000-4000-8000-000000000103
+    X-CSRF-TOKEN: csrf_session_delegation_fictif_67
+  requete: { numeroModification: 0 }
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: COMMANDE_PERIMEE
+    detail: Ce Passage a changé ; consulte la File actualisée.
+    instance: /api/soirees/67000000-0000-4000-8000-000000000001/manches/67000000-0000-4000-8000-000000000002/passages/67000000-0000-4000-8000-000000000041/appel
+- nom: Alizé ne peut pas terminer la Manche
+  operationId: piloterManche
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 67000000-0000-4000-8000-000000000104
+  requete: { action: TERMINER }
+  statut: 403
+  reponse:
+    type: about:blank
+    title: Accès refusé
+    status: 403
+    code: ACCES_REFUSE
+    detail: Ta Délégation permet seulement de passer le Passage en cours.
+    instance: /api/soirees/67000000-0000-4000-8000-000000000001/manches/67000000-0000-4000-8000-000000000002/commandes
+- nom: Alizé n’a pas reçu la Musique d’attente
+  operationId: reglerMusiqueDAttente
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres: {}
+  requete: { etat: COUPEE }
+  statut: 403
+  reponse:
+    type: about:blank
+    title: Accès refusé
+    status: 403
+    code: ACCES_REFUSE
+    detail: Ta Délégation ne comprend pas ce pouvoir.
+    instance: /api/soirees/67000000-0000-4000-8000-000000000001/musique-attente
+- nom: Alizé voit la photo en attente avant de la juger
+  operationId: consulterPhoto
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres: { photoId: *photo }
+  statut: 200
+  reponse: /9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAgDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAABgf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCyAFKC/9k=
+- nom: Alizé accepte la photo de Basile
+  operationId: modererPhoto
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres:
+    photoId: *photo
+    Idempotency-Key: &moderationAlize 67000000-0000-4000-8000-000000000105
+  requete: { acceptee: true }
+  statut: 200
+  reponse: { envoiId: *moderationAlize, soireeId: *soireeId, photoId: *photo }
+- nom: L’Animateur retire la Délégation d’Alizé
+  operationId: retirerDelegation
+  acteur: animateur:67000000-0000-4000-8000-000000000006
+  parametres: *attributionAlize
+  statut: 204
+- nom: "Retrait déjà appliqué : succès sans publication"
+  operationId: retirerDelegation
+  acteur: animateur:67000000-0000-4000-8000-000000000006
+  parametres: *attributionAlize
+  statut: 204
+- nom: "La commande suivante d’Alizé est refusée : le retrait vaut aussitôt"
+  operationId: definirPrioritePassage
+  acteur: joueur:67000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 67000000-0000-4000-8000-000000000106
+  requete:
+    passage:
+      passageId: 67000000-0000-4000-8000-000000000042
+      numeroModification: 0
+    prioritaire: true
+  statut: 403
+  reponse:
+    type: about:blank
+    title: Accès refusé
+    status: 403
+    code: ACCES_REFUSE
+    detail: Ta Délégation ne comprend pas ce pouvoir.
+    instance: /api/soirees/67000000-0000-4000-8000-000000000001/manches/67000000-0000-4000-8000-000000000002/file-attente/priorite
+evenements:
+- nom: La Console voit la Délégation d’Alizé
+  canal: console
+  message:
+    type: delegation-modifiee
+    soireeId: *soireeId
+    revision: 11
+    emisLe: 2026-11-25T21:00:00.000Z
+    donnees: *consoleAttribuee
+- nom: La Manette d’Alizé reçoit ses pouvoirs et leurs seules données
+  canal: joueur
+  message:
+    type: delegation-modifiee
+    soireeId: *soireeId
+    revision: 21
+    emisLe: 2026-11-25T21:00:00.000Z
+    donnees: *manetteAttribuee
+- nom: La Manette d’Alizé suit le Passage qu’elle vient de passer
+  canal: joueur
+  message:
+    type: passage-saute
+    soireeId: *soireeId
+    revision: 23
+    emisLe: 2026-11-25T21:00:10.000Z
+    donnees:
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: KARAOKE
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+      photos: *reglagesPhotos
+      joueurId: *alize
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: *mancheId
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: &courantSaute
+          passageId: *passageA
+          numeroModification: 2
+          numero: 1
+          chanson: *chansonA
+          interpretes: *interpretesBasile
+          etapeId: *etapeA
+          etat: SAUTE
+          prochainAppelPrevuLe: null
+          appeleLe: 2026-11-25T21:00:05.000Z
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: 2026-11-25T21:00:10.000Z
+          clotureLe: 2026-11-25T21:00:10.000Z
+        configurationInterface: *configuration
+        prochainsPassages: &fileApresSaut
+        - &passageAlizeEnTete
+          passageId: 67000000-0000-4000-8000-000000000042
+          numeroModification: 0
+          numero: 2
+          chanson:
+            chansonId: ch_phare_2
+            titre: Le phare imaginaire
+            artiste: Duo inventé
+            album: Album fictif
+            dureeMs: 180000
+            etatParoles: SYNCHRONISEES
+          interpretes:
+          - joueurId: *alize
+            pseudo: Alizé
+          position: 1
+          tour: 1
+          prioritaire: false
+          attente:
+            calculeeLe: 2026-11-25T21:00:10.000Z
+            etat: ESTIMEE
+            dureeMs: 0
+        nombreAutresPassages: 0
+        votes: []
+        mesPassagesEnAttente: [*passageAlizeEnTete]
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+      delegation:
+        pouvoirs: [FILE_ATTENTE, PHOTOS]
+        fileAttente:
+          mancheId: *mancheId
+          etat: EN_COURS
+          limitePassagesEnAttente: 2
+          nombreEnAttente: 1
+          tourOuvert: 1
+          passagePrioritaireId: null
+          courant: *courantSaute
+          configurationInterface: *configuration
+          passagesEnAttente: *fileApresSaut
+          peutGererFile: true
+          peutAppeler: true
+          peutPasser: false
+        photos:
+          enAttente: *photosEnAttente
+- nom: La modération d’Alizé actualise ses photos en attente
+  canal: joueur
+  message:
+    type: photos-modifiees
+    soireeId: *soireeId
+    revision: 24
+    emisLe: 2026-11-25T21:00:20.000Z
+    donnees: &manetteModeree
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: KARAOKE
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+      photos: *reglagesPhotos
+      joueurId: *alize
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: *mancheId
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantSaute
+        configurationInterface: *configuration
+        prochainsPassages: *fileApresSaut
+        nombreAutresPassages: 0
+        votes: []
+        mesPassagesEnAttente: [*passageAlizeEnTete]
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+      delegation:
+        pouvoirs: [FILE_ATTENTE, PHOTOS]
+        fileAttente:
+          mancheId: *mancheId
+          etat: EN_COURS
+          limitePassagesEnAttente: 2
+          nombreEnAttente: 1
+          tourOuvert: 1
+          passagePrioritaireId: null
+          courant: *courantSaute
+          configurationInterface: *configuration
+          passagesEnAttente: *fileApresSaut
+          peutGererFile: true
+          peutAppeler: true
+          peutPasser: false
+        photos:
+          enAttente: []
+- nom: Après le retrait, la Manette d’Alizé n’a plus de Délégation
+  canal: joueur
+  message: &retraitAlize
+    type: delegation-modifiee
+    soireeId: *soireeId
+    revision: 25
+    emisLe: 2026-11-25T21:00:30.000Z
+    donnees: &manetteRetiree
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: KARAOKE
+      joueurs: *joueurs
+      classement: []
+      dernierBuzz: null
+      photos: *reglagesPhotos
+      joueurId: *alize
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      karaoke:
+        mancheId: *mancheId
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        courant: *courantSaute
+        configurationInterface: *configuration
+        prochainsPassages: *fileApresSaut
+        nombreAutresPassages: 0
+        votes: []
+        mesPassagesEnAttente: [*passageAlizeEnTete]
+        nombrePersonnelEnAttente: 1
+        peutRechercher: true
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: false
+      delegation: null
+resynchronisation:
+  destination: /topic/joueurs/67000000-0000-4000-8000-000000000003
+  routeEtat: /api/soirees/67000000-0000-4000-8000-000000000001/etat/manette
+  typeEvenementFinal: delegation-modifiee
+  etat:
+    abonnementId: 67000000-0000-4000-8000-000000000201
+    revision: 24
+    heureServeur: 2026-11-25T21:00:25.000Z
+    vue: *manetteModeree
+  tampon: [*retraitAlize, *retraitAlize]
+  revisionFinale: 25
+  vueFinale: *manetteRetiree
+cases:
+- nom: "Pouvoir hors liste : l’Exclusion ne se délègue pas"
+  schema: AttributionDelegation
+  valeur: { pouvoirs: [FILE_ATTENTE, EXCLUSION] }
+  valide: false
+  correction: { chemin: [pouvoirs, 1], valeur: PHOTOS }
+- nom: "Ensemble vide : le retrait passe par retirerDelegation"
+  schema: AttributionDelegation
+  valeur: { pouvoirs: [] }
+  valide: false
+  correction: { chemin: [pouvoirs], valeur: [MUSIQUE_ATTENTE] }
+- nom: Pouvoir en double refusé
+  schema: AttributionDelegation
+  valeur: { pouvoirs: [PHOTOS, PHOTOS] }
+  valide: false
+  correction: { chemin: [pouvoirs, 1], valeur: FILE_ATTENTE }
+- nom: "Confidentialité : une Délégation PHOTOS ne porte pas la File d’attente"
+  schema: DelegationManette
+  valeur:
+    pouvoirs: [PHOTOS]
+    photos: { enAttente: [] }
+    fileAttente: null
+  valide: false
+- nom: "Confidentialité : une Délégation FILE_ATTENTE ne porte ni photos ni Musique d’attente"
+  schema: DelegationManette
+  valeur:
+    pouvoirs: [FILE_ATTENTE]
+    fileAttente: null
+    photos: { enAttente: [] }
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+  valide: false
+- nom: "Pouvoir reçu sans ses données : refusé"
+  schema: DelegationManette
+  valeur:
+    pouvoirs: [MUSIQUE_ATTENTE]
+  valide: false
+- nom: "Confidentialité : ni fichier local ni lecture dans la File déléguée"
+  schema: DelegationManette
+  valeur:
+    pouvoirs: [FILE_ATTENTE]
+    fileAttente:
+      mancheId: 67000000-0000-4000-8000-000000000002
+      etat: EN_COURS
+      limitePassagesEnAttente: 2
+      nombreEnAttente: 0
+      tourOuvert: 1
+      passagePrioritaireId: null
+      courant: null
+      configurationInterface:
+        longueurRechercheMax: 120
+        delaiConsultationNavigateurMs: 8000
+        delaiConfirmationNavigateurMs: 10000
+        delaiAppelMs: 30000
+        dureeVoteMs: 30000
+        dureeAffichageMoyenneMs: 10000
+      passagesEnAttente: []
+      peutGererFile: true
+      peutAppeler: false
+      peutPasser: false
+      fichierLocal:
+        nom: Groupe fictif - Chanson fictive des quais.mp3
+        tailleOctets: 4920311
+        dureeMs: 207500
+  valide: false
+- nom: "Confidentialité : aucune clé d’Écran ni jeton dans la Délégation"
+  schema: DelegationManette
+  valeur:
+    pouvoirs: [MUSIQUE_ATTENTE]
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+    cleEcran: cle_fictive_qui_ne_doit_pas_sortir
+  valide: false
+- nom: Musique d’attente seule, valide
+  schema: DelegationManette
+  valeur:
+    pouvoirs: [MUSIQUE_ATTENTE]
+    musiqueAttente: { etat: COUPEE, morceauxDisponibles: true }
+  valide: true

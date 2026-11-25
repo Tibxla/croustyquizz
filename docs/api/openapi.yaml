@@ -20,6 +20,7 @@ tags:
 - name: Socle
 - name: Photos
 - name: Karaoké
+- name: Délégation
 paths:
   /api/csrf:
     get:
@@ -968,7 +969,7 @@ paths:
     post:
       operationId: piloterManche
       summary: Intervenir sur la Manche active
-      description: 'Uniquement la Manche active en Soirée EN_COURS. Une nouvelle commande de Manche hors de cet
+      description: 'Uniquement la Manche active en Soirée EN_COURS. Animateur du Lieu, ou Joueur délégué avec le pouvoir FILE_ATTENTE (#67) pour la seule action PASSER_ETAPE d’une Manche de Karaoké ; toute autre action, tout autre Mode de jeu ou un pouvoir absent donnent 403 ACCES_REFUSE, sans reçu. Une nouvelle commande de Manche hors de cet
         état de Soirée donne 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key. Quiz :
         METTRE_EN_PAUSE gèle une Question ouverte ; REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la
         Question ouverte et révèle la correction, ou passe de CORRECTION à la Question suivante ; après la dernière
@@ -994,6 +995,7 @@ paths:
       - Soirée
       security:
       - sessionAnimateur: []
+      - jetonJoueur: []
       responses:
         '200':
           description: Opération réussie.
@@ -1044,8 +1046,8 @@ paths:
           format: uuid
       - name: X-CSRF-TOKEN
         in: header
-        required: true
-        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        required: false
+        description: Jeton de la session Animateur. Absent avec un jeton de Joueur délégué (#67), qui n’a pas de session ; les jetons de démonstration en dev et recette en sont dispensés.
         schema:
           type: string
           minLength: 16
@@ -1441,8 +1443,9 @@ paths:
       operationId: reglerMusiqueDAttente
       summary: Couper ou relancer la Musique d’attente
       description: >
-        Animateur de la Soirée uniquement. Le choix est conservé après redémarrage, même hors Manche.
-        Un changement publie musique-attente-modifiee sur la Console et l’Écran de salle.
+        Animateur de la Soirée, ou Joueur délégué avec le pouvoir MUSIQUE_ATTENTE (#67), vérifié sous le verrou
+        de la Soirée : sinon 403 ACCES_REFUSE. Le choix est conservé après redémarrage, même hors Manche.
+        Un changement publie musique-attente-modifiee sur la Console, l’Écran de salle et les Manettes déléguées.
         Un choix déjà en vigueur réussit avec 200, sans publication.
         En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
@@ -1450,6 +1453,7 @@ paths:
       - Socle
       security:
       - sessionAnimateur: []
+      - jetonJoueur: []
       parameters:
       - name: soireeId
         in: path
@@ -1459,8 +1463,8 @@ paths:
           format: uuid
       - name: X-CSRF-TOKEN
         in: header
-        required: true
-        description: Jeton de la session Animateur. Les jetons de démonstration en dev et recette en sont dispensés.
+        required: false
+        description: Jeton de la session Animateur. Absent avec un jeton de Joueur délégué (#67), qui n’a pas de session ; les jetons de démonstration en dev et recette en sont dispensés.
         schema:
           type: string
           minLength: 16
@@ -1532,6 +1536,123 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas.yaml#/$defs/DisponibiliteMusiqueDAttente
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/delegations/{joueurId}:
+    put:
+      operationId: attribuerDelegation
+      summary: Attribuer ou modifier la Délégation d’un Joueur
+      description: >
+        Animateur de la Soirée uniquement (#67) ; un Joueur, même délégué, reçoit 403 ACCES_REFUSE. Remplace
+        l’ensemble des pouvoirs du Joueur, au plus une Délégation par Joueur, plusieurs Joueurs pouvant en avoir
+        une. Réglée par valeur, sans Idempotency-Key : le même ensemble réussit avec 200, sans publication. Un
+        changement publie delegation-modifiee sur la Console et la seule Manette de ce Joueur, sous le verrou de
+        la Soirée : la commande suivante du Joueur suit déjà le nouvel ensemble. Pouvoir inconnu, ensemble vide
+        ou doublon : 400 REQUETE_INVALIDE. Soirée inconnue, hors portée ou de démonstration, Joueur absent, exclu
+        ou d’une autre Soirée : 404 RESSOURCE_INTROUVABLE. Soirée terminée : 409 ETAT_INCOMPATIBLE. La Délégation
+        ne crée aucun compte ; elle est conservée avec la Soirée et effacée à sa fin.
+      tags:
+      - Délégation
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: joueurId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton de la session Animateur. Les jetons de démonstration en dev et recette en sont dispensés.
+        schema:
+          type: string
+          minLength: 16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/AttributionDelegation
+      responses:
+        '200':
+          description: Délégation en vigueur. La Vue synchronisée reste la référence pour l’affichage.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/Delegation
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+    delete:
+      operationId: retirerDelegation
+      summary: Retirer la Délégation d’un Joueur
+      description: >
+        Animateur de la Soirée uniquement (#67). Le retrait vaut dès la commande suivante du Joueur, qui reçoit
+        403 ACCES_REFUSE ; il publie delegation-modifiee sur la Console et la Manette de ce Joueur, dont le champ
+        delegation devient null. Sans Délégation, le retrait réussit avec 204, sans publication. Soirée inconnue,
+        hors portée ou de démonstration, Joueur absent ou d’une autre Soirée : 404 RESSOURCE_INTROUVABLE.
+      tags:
+      - Délégation
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: joueurId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton de la session Animateur. Les jetons de démonstration en dev et recette en sont dispensés.
+        schema:
+          type: string
+          minLength: 16
+      responses:
+        '204':
+          description: Aucune Délégation pour ce Joueur, qu’elle vienne d’être retirée ou qu’il n’en ait pas eu.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         '400':
           $ref: '#/components/responses/Erreur400'
         '401':
@@ -2073,7 +2194,7 @@ paths:
     put:
       operationId: deplacerPassage
       summary: Placer un Passage dans son Tour
-      description: 'Animateur du Lieu. avant:null place en fin du Tour. Garde du compteur de la cible et
+      description: 'Animateur du Lieu, ou Joueur délégué avec le pouvoir FILE_ATTENTE (#67), vérifié à chaque commande sous le verrou de la Soirée : sinon 403 ACCES_REFUSE, sans reçu. avant:null place en fin du Tour. Garde du compteur de la cible et
         de l’ancre ; ancre sortie du Tour depuis l’affichage : COMMANDE_PERIMEE. Geste déjà satisfait
         accepté sans incrément ni événement, seulement si la cible attend encore. Reçu et rejeu :
         README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus (groupes N, V, X, D, T, P,
@@ -2087,6 +2208,7 @@ paths:
       - Karaoké
       security:
       - sessionAnimateur: []
+      - jetonJoueur: []
       parameters:
       - name: soireeId
         in: path
@@ -2108,7 +2230,8 @@ paths:
           format: uuid
       - name: X-CSRF-TOKEN
         in: header
-        required: true
+        required: false
+        description: Jeton de la session Animateur. Absent avec un jeton de Joueur délégué (#67), qui n’a pas de session ; les jetons de démonstration en dev et recette en sont dispensés.
         schema:
           type: string
           minLength: 16
@@ -2156,7 +2279,7 @@ paths:
     put:
       operationId: definirPrioritePassage
       summary: Définir la priorité unique de la File d’attente
-      description: 'Animateur du Lieu. true remplace l’unique priorité, placée juste après le courant ;
+      description: 'Animateur du Lieu, ou Joueur délégué avec le pouvoir FILE_ATTENTE (#67), vérifié à chaque commande sous le verrou de la Soirée : sinon 403 ACCES_REFUSE, sans reçu. true remplace l’unique priorité, placée juste après le courant ;
         false retire celle de la cible, sinon reste sans effet. L’ordre normal est conservé sous la
         priorité et rétabli au retrait ou au remplacement. Seuls les Passages affectés incrémentent leur
         compteur. Geste déjà satisfait accepté sans incrément ni événement, seulement pour une cible
@@ -2170,6 +2293,7 @@ paths:
       - Karaoké
       security:
       - sessionAnimateur: []
+      - jetonJoueur: []
       parameters:
       - name: soireeId
         in: path
@@ -2185,7 +2309,8 @@ paths:
           format: uuid
       - name: X-CSRF-TOKEN
         in: header
-        required: true
+        required: false
+        description: Jeton de la session Animateur. Absent avec un jeton de Joueur délégué (#67), qui n’a pas de session ; les jetons de démonstration en dev et recette en sont dispensés.
         schema:
           type: string
           minLength: 16
@@ -2305,7 +2430,7 @@ paths:
     post:
       operationId: appelerPassage
       summary: Appeler le Passage en tête de la File d’attente
-      description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu. Appelle le Passage en position 1 :
+      description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu, ou Joueur délégué avec le pouvoir FILE_ATTENTE (#67), vérifié à chaque commande sous le verrou de la Soirée : sinon 403 ACCES_REFUSE, sans reçu. Appelle le Passage en position 1 :
         EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
         numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
         recalculée sur la salle, la Console et toutes les Manettes. En Pilotage Automatique, le serveur
@@ -2324,6 +2449,7 @@ paths:
       - Karaoké
       security:
       - sessionAnimateur: []
+      - jetonJoueur: []
       parameters:
       - name: soireeId
         in: path
@@ -2345,7 +2471,8 @@ paths:
           format: uuid
       - name: X-CSRF-TOKEN
         in: header
-        required: true
+        required: false
+        description: Jeton de la session Animateur. Absent avec un jeton de Joueur délégué (#67), qui n’a pas de session ; les jetons de démonstration en dev et recette en sont dispensés.
         schema:
           type: string
           minLength: 16
@@ -3160,7 +3287,7 @@ paths:
       operationId: consulterPhoto
       summary: Lire le JPEG validé d’une photo
       description: >-
-        Animateur de la Soirée : toute photo encore conservée. Écran de salle : uniquement la photo à l’affiche hors Manche active et avant son échéance, sinon 404 RESSOURCE_INTROUVABLE. Joueur : 403 ACCES_REFUSE. Photo supprimée ou hors portée : 404. Les identifiants ne donnent aucun droit.
+        Animateur de la Soirée : toute photo encore conservée. Écran de salle : uniquement la photo à l’affiche hors Manche active et avant son échéance, sinon 404 RESSOURCE_INTROUVABLE. Joueur délégué avec le pouvoir PHOTOS (#67) : comme l’Animateur, pour pouvoir juger la photo. Autre Joueur : 403 ACCES_REFUSE. Photo supprimée ou hors portée : 404. Les identifiants ne donnent aucun droit.
       tags: [Photos]
       security:
       - cleEcran: []
@@ -3206,10 +3333,11 @@ paths:
       operationId: modererPhoto
       summary: Accepter ou refuser une photo en attente
       description: >-
-        Animateur de cette Soirée. Refuser efface le JPEG. Accepter l’inscrit dans l’ordre d’acceptation pour l’Écran de salle. Trente photos acceptées au plus attendent l’affiche : au-delà, 409 LIMITE_ATTEINTE et la photo reste en attente. Une photo déjà acceptée renvoie 409 COMMANDE_PERIMEE avec une nouvelle clé ; une photo effacée renvoie 404 RESSOURCE_INTROUVABLE. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
+        Animateur de cette Soirée, ou Joueur délégué avec le pouvoir PHOTOS (#67), vérifié sous le verrou de la Soirée : sinon 403 ACCES_REFUSE, sans reçu. Refuser efface le JPEG. Accepter l’inscrit dans l’ordre d’acceptation pour l’Écran de salle. Trente photos acceptées au plus attendent l’affiche : au-delà, 409 LIMITE_ATTEINTE et la photo reste en attente. Une photo déjà acceptée renvoie 409 COMMANDE_PERIMEE avec une nouvelle clé ; une photo effacée renvoie 404 RESSOURCE_INTROUVABLE. Soirée OUVERTE ou EN_COURS uniquement, sinon 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key ; voir README.md.
       tags: [Photos]
       security:
       - sessionAnimateur: []
+      - jetonJoueur: []
       parameters:
       - name: soireeId
         in: path
@@ -3231,7 +3359,8 @@ paths:
           format: uuid
       - name: X-CSRF-TOKEN
         in: header
-        required: true
+        required: false
+        description: Jeton de la session Animateur. Absent avec un jeton de Joueur délégué (#67), qui n’a pas de session ; les jetons de démonstration en dev et recette en sont dispensés.
         schema:
           type: string
           minLength: 16

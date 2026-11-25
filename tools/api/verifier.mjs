@@ -53,12 +53,12 @@ for (const [nom, validation] of validations) assert.ok(validation, `Schéma intr
 
 // Les schémas de préparation et d'accès ne doivent jamais devenir des
 // dépendances d'une vue publique, même comme propriété optionnelle.
-function dependances(nom, vues = new Set()) {
-  if (vues.has(nom)) return vues;
+function dependances(nom, vues = new Set(), exclus = new Set()) {
+  if (vues.has(nom) || exclus.has(nom)) return vues;
   vues.add(nom);
   function parcourir(value) {
     if (!value || typeof value !== 'object') return;
-    if (value.$ref?.startsWith('#/$defs/')) dependances(value.$ref.split('/').at(-1), vues);
+    if (value.$ref?.startsWith('#/$defs/')) dependances(value.$ref.split('/').at(-1), vues, exclus);
     for (const enfant of Object.values(value)) parcourir(enfant);
   }
   parcourir(schemas.$defs[nom]);
@@ -71,14 +71,25 @@ const interditsParVue = {
   console: ['ParolesDuPassage'],
   joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg'],
 };
+const secretsCommuns = ['QuestionPreparee', 'QuestionSaisie', 'Csrf', 'AccesJoueur', 'AccesEcran', 'ConnexionAnimateur',
+  'InscriptionAnimateur'];
+// Seule la Délégation (#67) apporte à une Manette les photos en attente, sans leur JPEG : le reste de la vue
+// garde la règle commune, et la Délégation n’emprunte aucun bloc ni secret de la Console.
+const delegationManette = 'DelegationManette';
 for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console'], ['VueManette', 'joueur'],
   ['EvenementSalle', 'salle'], ['EvenementConsole', 'console'], ['EvenementJoueur', 'joueur']]) {
-  const utilisees = dependances(vue);
-  for (const prive of ['QuestionPreparee', 'QuestionSaisie', 'Csrf', 'AccesJoueur', 'AccesEcran', 'ConnexionAnimateur',
-    'InscriptionAnimateur', ...interditsParVue[destination]]) {
+  const utilisees = dependances(vue, new Set(), destination === 'joueur' ? new Set([delegationManette]) : new Set());
+  for (const prive of [...secretsCommuns, ...interditsParVue[destination]]) {
     assert.ok(!utilisees.has(prive), `${vue} contient un schéma interdit : ${prive}`);
   }
 }
+const deleguees = dependances(delegationManette);
+for (const prive of [...secretsCommuns, 'LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'ImageJpeg',
+  'BlocKaraokeConsole', 'BlocBlindTestConsole', 'BlocPhotosConsole', 'VueConsole', 'EtatQuiz']) {
+  assert.ok(!deleguees.has(prive), `${delegationManette} contient un schéma interdit : ${prive}`);
+}
+assert.ok(dependances('VueSalle').has(delegationManette) === false
+  && dependances('VueConsole').has(delegationManette) === false, 'La Délégation de Manette ne sort que vers la Manette');
 
 function valider(schema, valeur, contexte) {
   const validation = validations.get(schema);
@@ -107,8 +118,12 @@ for (const [chemin, element] of Object.entries(ouvert.paths)) {
     assert.ok(!operations.has(operation.operationId), `operationId dupliqué : ${operation.operationId}`);
     operations.set(operation.operationId, { ...operation, chemin, methode });
     const session = operation.security.some((securite) => 'sessionAnimateur' in securite);
+    // Une route d’Animateur ouverte au Joueur délégué (#67) garde le jeton CSRF de la session, facultatif
+    // seulement parce que le jeton Bearer du Joueur n’a pas de session à protéger.
+    const delegue = operation.security.some((securite) => 'jetonJoueur' in securite);
     if (session && ['post', 'put', 'patch', 'delete'].includes(methode)) {
-      assert.ok(operation.parameters?.some((p) => p.in === 'header' && p.name === 'X-CSRF-TOKEN' && p.required),
+      const csrf = operation.parameters?.find((p) => p.in === 'header' && p.name === 'X-CSRF-TOKEN');
+      assert.ok(csrf && (csrf.required || (delegue && /session Animateur/.test(csrf.description ?? ''))),
         `${operation.operationId} : protection CSRF manquante`);
     }
   }
@@ -124,7 +139,7 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'delegation'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();
