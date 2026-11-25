@@ -329,20 +329,49 @@ class BlindTestHttpTest {
 	}
 
 	@Test
-	void uneDemandeDeLienInterrompueEstRelanceeALaLectureSuivanteDuMorceauEnPreparation() throws Exception {
+	void unePanneImpreviseeDeLaPreparationEstReessayeeParLHorloge() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
 		rejoindre(soiree, "Léa");
-		String mancheId = ajouterBlindTest(soiree);
+		ajouterBlindTest(soiree);
 		catalogue.pannesImprevues.set(1);
+		int demandes = catalogue.liensDemandes.get();
 
 		lancer(soiree);
 
-		// La demande échoue sans conclure : le Morceau reste attendu, comme après un redémarrage pendant la préparation.
-		await().atMost(Duration.ofSeconds(3)).until(() -> catalogue.pannesImprevues.get() == 0);
-		UUID manche = UUID.fromString(mancheId);
-		await().atMost(Duration.ofSeconds(3)).untilAsserted(() -> assertThat(
-				((InstantaneBlindTest) service.instantane(soiree.id(), manche)).courant().phase())
-				.isEqualTo(PhaseBlindTest.EXTRAIT));
+		// La demande échoue sans conclure ; tant que le temps ne passe pas, la Manche attend son essai suivant.
+		await().atMost(Duration.ofSeconds(3)).until(() -> catalogue.liensDemandes.get() > demandes);
+		await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(2))
+				.until(() -> "PREPARATION".equals(bloc(soiree).path("phase").asString()));
+		// Seule l'Horloge relance : aucune capture ne lit le déroulement (ADR 0004).
+		laisserPasserLesEssais(soiree, 1);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 2);
+	}
+
+	@Test
+	void unMorceauDontLaPreparationEchoueTroisFoisEstSauteSansFigerLaManche() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		rejoindre(soiree, "Léa");
+		ajouterBlindTest(soiree);
+		catalogue.pannesImprevues.set(ServiceBlindTest.ECHECS_AVANT_SAUT);
+		int demandes = catalogue.liensDemandes.get();
+
+		lancer(soiree);
+
+		// Le Morceau 1 est sauté sans nouvelle demande de lien ; le Morceau 2 se prépare normalement.
+		laisserPasserLesEssais(soiree, 2);
+		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + ServiceBlindTest.ECHECS_AVANT_SAUT + 1);
+	}
+
+	/** Fait passer le temps par pas d'un essai, comme une vraie horloge, jusqu'à l'extrait du Morceau attendu. */
+	private void laisserPasserLesEssais(Soiree soiree, int numero) {
+		await().pollInterval(Duration.ofMillis(100)).atMost(Duration.ofSeconds(10)).until(() -> {
+			JsonNode bloc = bloc(soiree);
+			if ("EXTRAIT".equals(bloc.path("phase").asString()) && bloc.path("numero").asInt() == numero) {
+				return true;
+			}
+			horloge.avancer(ServiceBlindTest.DELAI_NOUVEL_ESSAI);
+			return false;
+		});
 	}
 
 	// --- Restauration ---

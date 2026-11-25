@@ -13,7 +13,9 @@ import fr.croustyquizz.manche.ServiceDeManche;
 import fr.croustyquizz.manche.SocleDeManche;
 import fr.croustyquizz.passage.ParticipantsDePassage;
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -35,6 +37,11 @@ import org.slf4j.LoggerFactory;
 public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBlindTestPersiste> {
 
 	private static final Logger JOURNAL = LoggerFactory.getLogger(ServiceBlindTest.class);
+	/** Après ces échecs imprévus, le Morceau est sauté sans redemander son lien (ADR 0009, point 14). */
+	static final int ECHECS_AVANT_SAUT = 3;
+	/** Au-delà, même le saut échoue : la relance par la lecture suivante reste le dernier recours. */
+	static final int ECHECS_MAX = 10;
+	static final Duration DELAI_NOUVEL_ESSAI = Duration.ofSeconds(2);
 
 	private final SocleDeManche socle;
 	private final PersistanceBlindTestJpa persistance;
@@ -44,6 +51,8 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 	private final Executor preparations;
 	/** Morceaux dont le lien est en cours de demande : une seule demande à la fois par Morceau. */
 	private final Set<UUID> enPreparation = ConcurrentHashMap.newKeySet();
+	/** Échecs imprévus consécutifs par Morceau : retirés dès que la préparation aboutit ou est abandonnée. */
+	private final Map<UUID, Integer> echecs = new ConcurrentHashMap<>();
 
 	public ServiceBlindTest(FabriqueBlindTest fabrique, PersistanceBlindTestJpa persistance, SocleDeManche socle,
 			CatalogueMusical catalogue, TirageDeMorceaux tirage, ParticipantsDePassage participants,
@@ -96,11 +105,17 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 	private void lancerPreparation(UUID soireeId, UUID mancheId, InstantaneBlindTest etat) {
 		MorceauEnCours courant = etat.courant();
 		if (etat.etatManche() == EtatManche.TERMINEE || courant == null
-				|| courant.phase() != PhaseBlindTest.PREPARATION || !enPreparation.add(courant.etapeId())) {
+				|| courant.phase() != PhaseBlindTest.PREPARATION) {
 			return;
 		}
 		long idDeezer = etat.etat().selection().get(courant.numero() - 1).idDeezer();
-		UUID etapeId = courant.etapeId();
+		lancerPreparation(soireeId, mancheId, courant.etapeId(), idDeezer);
+	}
+
+	private void lancerPreparation(UUID soireeId, UUID mancheId, UUID etapeId, long idDeezer) {
+		if (!enPreparation.add(etapeId)) {
+			return;
+		}
 		try {
 			// La tâche attend le verrou, donc la fin de la transaction en cours, avant de toucher au déroulement.
 			preparations.execute(() -> preparerMorceau(soireeId, mancheId, etapeId, idDeezer));
@@ -111,16 +126,32 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 		}
 	}
 
+	/**
+	 * Une panne imprévue (base, réseau hors du contrat du catalogue) ne fige pas la Manche : l'Horloge reprogramme un
+	 * essai, puis le Morceau est sauté après {@value #ECHECS_AVANT_SAUT} échecs. Une capture ne relance rien, car elle
+	 * rend la dernière vue publiée (ADR 0004).
+	 */
 	private void preparerMorceau(UUID soireeId, UUID mancheId, UUID etapeId, long idDeezer) {
 		try {
-			Optional<URI> lien = lienExtrait(idDeezer);
+			boolean sauter = echecs.getOrDefault(etapeId, 0) >= ECHECS_AVANT_SAUT;
+			Optional<URI> lien = sauter ? Optional.empty() : lienExtrait(idDeezer);
 			appliquer(soireeId, mancheId, deroulement -> lien
 					.map(extrait -> ((DeroulementBlindTest) deroulement).ouvrirMorceau(etapeId, extrait))
 					.orElseGet(() -> ((DeroulementBlindTest) deroulement).sauterMorceau(etapeId)));
-		} catch (RuntimeException erreur) {
-			JOURNAL.error("Échec de la préparation du Morceau {} de la Manche {}", etapeId, mancheId, erreur);
-		} finally {
+			// Ouvert, sauté, ou refusé parce que ce Morceau n'est plus attendu : rien à réessayer.
+			echecs.remove(etapeId);
 			enPreparation.remove(etapeId);
+		} catch (RuntimeException erreur) {
+			int nombre = echecs.merge(etapeId, 1, Integer::sum);
+			JOURNAL.error("Échec {} de la préparation du Morceau {} de la Manche {}", nombre, etapeId, mancheId, erreur);
+			// Libéré avant de programmer l'essai, que l'Horloge peut lancer aussitôt.
+			enPreparation.remove(etapeId);
+			if (nombre < ECHECS_MAX) {
+				socle.horloge().programmer(DELAI_NOUVEL_ESSAI,
+						() -> lancerPreparation(soireeId, mancheId, etapeId, idDeezer));
+			} else {
+				echecs.remove(etapeId);
+			}
 		}
 	}
 
