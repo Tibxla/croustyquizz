@@ -150,6 +150,11 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 
 	const envoiAccord = id => ui.dernierEnvoi(e => e.commande.type === 'ACCORD_ENREGISTREMENT' && e.commande.passageId === id);
 	const accordDe = id => ui.bloc.mesAccordsEnregistrement?.includes(id) ?? false;
+	// Temps écoulé depuis le départ du Passage, sur l'heure du serveur ; null s'il n'a pas démarré.
+	const retardDepart = passage => {
+		const depart = Date.parse(passage?.demarreLe ?? '');
+		return Number.isNaN(depart) || !contexte.maintenantServeur ? null : contexte.maintenantServeur() - depart;
+	};
 	const microOccupeParUnAutre = id => [...prises].some(([autre, { prise }]) => autre !== id && occupeMicro(prise.lire().etat));
 
 	function publier(passage, { fichier, motif, echec }) {
@@ -318,7 +323,7 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 				const visible = passages.get(id);
 				const phase = visible?.phase ?? 'termine';
 				if (visible) fiche.passage = visible.passage;
-				fiche.prise.suivre({ phase, accord: autorise && accordDe(id) }, origine);
+				fiche.prise.suivre({ phase, accord: autorise && accordDe(id), retardDepartMs: retardDepart(visible?.passage) }, origine);
 				// La prise finit seule : son fichier rejoint le registre, même après liberer().
 				if (phase === 'termine') {
 					liberer(fiche);

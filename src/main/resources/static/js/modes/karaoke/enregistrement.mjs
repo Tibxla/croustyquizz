@@ -2,6 +2,9 @@
 export const FORMATS = ['audio/mp4', 'audio/webm;codecs=opus'];
 // Sans intervalle, un vrai navigateur ne livre rien avant l'arrêt : une erreur perdrait toute la prise.
 export const INTERVALLE_FRAGMENTS_MS = 1000;
+// Retard au-delà duquel une capture ne lance plus une prise préparée : une reconnexion (2 s) puis une
+// capture (10 s au plus) restent dessous. Plus tard, la prise manquerait une trop grande part du Passage.
+export const RETARD_DEPART_MAX_MS = 15000;
 const enPrise = etat => etat === 'enregistrement' || etat === 'pause';
 const conclu = etat => ['finalisation', 'pret', 'echec'].includes(etat);
 const libererPistes = flux => flux?.getTracks().forEach(piste => piste.stop());
@@ -17,7 +20,9 @@ export function diagnostiquer({ securise, demanderMicro, Enregistreur }) {
 
 // Une instance par Passage. Aucune dépendance au DOM ou aux échanges réseau.
 // Le micro ne dépend pas du réseau : une coupure ne touche pas la prise, la vue suivante la réconcilie.
-// Seul l'événement passage-demarre lance la prise ; une capture ne relance jamais une prise arrêtée.
+// L'événement passage-demarre lance la prise préparée. Si la coupure l'a fait manquer, une capture le
+// remplace tant que le Passage a démarré depuis moins de RETARD_DEPART_MAX_MS (retardDepartMs, calculé
+// par l'appelant sur l'heure du serveur). Une capture ne relance jamais une prise arrêtée.
 // surResultat reçoit le fichier final, ou l'échec, même après detruire() : la prise survit au module.
 export function creerEnregistrement({ demanderMicro, Enregistreur, surEtat, surResultat = () => {} }) {
 	let etat = 'inactif', motif, fichier, flux, recorder, fragments, format, generation = 0;
@@ -141,8 +146,9 @@ export function creerEnregistrement({ demanderMicro, Enregistreur, surEtat, surR
 			return;
 		}
 		const evenement = origine?.source === 'evenement' ? origine.type : null;
+		const departRecent = evenement === 'passage-demarre' || (vue.retardDepartMs ?? Infinity) <= RETARD_DEPART_MAX_MS;
 		try {
-			if (phase === 'actif' && etat === 'micro' && evenement === 'passage-demarre') {
+			if (phase === 'actif' && etat === 'micro' && departRecent) {
 				recorder.start(INTERVALLE_FRAGMENTS_MS);
 				changer('enregistrement');
 			} else if (phase === 'pause' && etat === 'enregistrement') {
