@@ -125,6 +125,8 @@ http:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -399,6 +401,8 @@ evenements:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: true
         peutAppeler: false

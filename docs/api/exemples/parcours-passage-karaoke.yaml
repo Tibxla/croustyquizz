@@ -186,6 +186,8 @@ http:
                 dureeMs: 715000
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: false
           peutAppeler: true
@@ -1074,6 +1076,8 @@ http:
                 dureeMs: null
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -1745,6 +1749,8 @@ evenements:
                 dureeMs: 715000
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: true
@@ -1825,6 +1831,8 @@ evenements:
             - *a29
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -1991,6 +1999,8 @@ evenements:
             - *a47
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -2141,6 +2151,8 @@ evenements:
             - *a55
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -2291,6 +2303,8 @@ evenements:
             - *a62
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -2425,6 +2439,8 @@ evenements:
             - *a71
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -2663,6 +2679,8 @@ evenements:
             - *a79
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -2890,6 +2908,8 @@ evenements:
             - *a88
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -3042,6 +3062,8 @@ evenements:
             - *a95
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -3192,6 +3214,8 @@ evenements:
             - *a102
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -3342,6 +3366,8 @@ evenements:
             - *a109
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -3607,6 +3633,8 @@ evenements:
             - *a125
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -3741,6 +3769,8 @@ evenements:
             - *a134
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: true
@@ -3943,6 +3973,8 @@ evenements:
             - *a140
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -4160,6 +4192,8 @@ evenements:
             - *a146
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -4370,6 +4404,8 @@ evenements:
             - *a154
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -4506,6 +4542,8 @@ evenements:
             - *a160
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -4707,6 +4745,8 @@ evenements:
             - *a167
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -4908,6 +4948,8 @@ evenements:
             - *a173
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: true
@@ -5095,6 +5137,8 @@ evenements:
             - *a178
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -5290,6 +5334,8 @@ evenements:
             - *a183
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -5403,6 +5449,8 @@ evenements:
             - *a188
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -5525,6 +5573,8 @@ evenements:
             - *a192
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -5656,6 +5706,8 @@ evenements:
             - *a197
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -5842,6 +5894,8 @@ evenements:
             - *a203
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: true
@@ -6014,6 +6068,8 @@ evenements:
           passagesEnAttente: []
           peutGererFile: true
           peutReglerLimite: true
+          suggestions: []
+          chansonsFavorites: []
           peutRechercher: true
           lecteurDesigne: true
           peutAppeler: false
@@ -6626,6 +6682,8 @@ cases:
         passagesEnAttente: *a214
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: true
         peutAppeler: false
@@ -6660,6 +6718,8 @@ cases:
         passagesEnAttente: *a214
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: true
         peutAppeler: false

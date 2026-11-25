@@ -2529,8 +2529,11 @@ $defs:
     - type: object
       properties:
         suggestions:
-          description: Groupes de suggestions de la Soirée, sans identité de Joueur.
+          description: >-
+            Groupes de suggestions de la Soirée, sans identité de Joueur. La Soirée compte au plus
+            50 groupes ouverts.
           type: array
+          maxItems: 50
           items:
             $ref: '#/$defs/SuggestionChansonConsole'
         chansonsFavorites:
@@ -2597,6 +2600,8 @@ $defs:
       - peutReprendreEnParolesSeules
       - lecture
       - fichierLocal
+      - suggestions
+      - chansonsFavorites
     - if:
         required:
         - lecture

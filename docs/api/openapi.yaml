@@ -1502,13 +1502,20 @@ paths:
       summary: Suggérer une Chanson
       description: >-
         Joueur présent, retardataire compris, pendant une Manche de Karaoké active, pause comprise.
-        Titre et artiste de 1 à 120 points de code bruts ; blancs Unicode regroupés, extrémités supprimées.
-        Un champ vide, une clé normalisée vide ou un caractère de contrôle restant rend REQUETE_INVALIDE.
-        Dans la Soirée, la première graphie nettoyée est conservée ; la casse, les accents et les blancs
-        ne distinguent pas les demandes. Un même Joueur ne compte qu’une fois. Publication
-        suggestions-chansons-modifiees sur la Console lorsque le groupe ou son compteur change.
-        Idempotence selon Idempotency-Key, sans publication au rejeu.
-        Autres refus : REQUETE_INVALIDE, AUTHENTIFICATION_REQUISE, ACCES_REFUSE, RESSOURCE_INTROUVABLE, ETAPE_INACTIVE, ETAT_INCOMPATIBLE, ENVOI_REUTILISE, SERVICE_INDISPONIBLE.
+        Titre et artiste de 1 à 120 points de code, bruts comme après NFC ; blancs Unicode regroupés,
+        extrémités supprimées. REQUETE_INVALIDE pour un champ vide, trop long, qui contient encore un
+        caractère de contrôle ou de format (catégorie Cf, comme U+200B), ou dont la clé normalisée est vide
+        (ponctuation seule, par exemple). Dans la Soirée, la première graphie nettoyée est conservée.
+        La clé de regroupement applique NFKC, ramène les apostrophes et guillemets typographiques
+        (’ ‘ « » “ ”) à leur forme ASCII, supprime la ponctuation Unicode puis regroupe à nouveau les blancs ;
+        la casse, les accents, les blancs et la ponctuation ne distinguent donc pas les demandes.
+        Un même Joueur ne compte qu’une fois. Sous le verrou de la Soirée, un Joueur participe à 5 groupes
+        ouverts au plus et la Soirée compte 50 groupes ouverts au plus : rejoindre un sixième groupe ou en
+        ouvrir un cinquante et unième rend 409 LIMITE_ATTEINTE, sans mutation ni publication. Rejoindre un
+        groupe existant reste possible quand la Soirée en compte 50 ; une demande déjà comptée est acceptée
+        sans effet. Publication suggestions-chansons-modifiees sur la Console lorsque le groupe ou son
+        compteur change. Idempotence selon Idempotency-Key, sans publication au rejeu.
+        Autres refus : REQUETE_INVALIDE, AUTHENTIFICATION_REQUISE, ACCES_REFUSE, RESSOURCE_INTROUVABLE, ETAPE_INACTIVE, ETAT_INCOMPATIBLE, ENVOI_REUTILISE, LIMITE_ATTEINTE, SERVICE_INDISPONIBLE.
       tags:
       - Karaoké
       security:

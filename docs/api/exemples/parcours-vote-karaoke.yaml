@@ -402,6 +402,8 @@ evenements:
             dureeMs: 0
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -664,6 +666,8 @@ evenements:
             dureeMs: 0
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -860,6 +864,8 @@ evenements:
             dureeMs: null
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -1122,6 +1128,8 @@ evenements:
             dureeMs: 0
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -1360,6 +1368,8 @@ evenements:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -1588,6 +1598,8 @@ evenements:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -1822,6 +1834,8 @@ evenements:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -2073,6 +2087,8 @@ evenements:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
