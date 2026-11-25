@@ -123,12 +123,15 @@ public final class CycleDePassage {
         Duration pause = dureePositive(Duration.between(chronologie.pauseDepuis(), maintenant));
         boolean enAppel = courant.etat() == EtatPassage.APPELE;
         Instant echeance = enAppel ? chronologie.echeanceAppelLe().plus(pause) : chronologie.echeanceAppelLe();
-        if (enAppel && sauterALEcheance && echeance.isBefore(maintenant)) { echeance = maintenant; }
         Duration tempsPause = enAppel ? chronologie.tempsPause() : chronologie.tempsPause().plus(pause);
         chronologie = new EtatCyclePassage(chronologie.passageId(), chronologie.etapeId(), chronologie.appeleLe(), echeance,
                 chronologie.demarreLe(), chronologie.dureeReference(), tempsPause, null, null);
-        if (enAppel) { reprogrammerEcheanceAppel(); }
-        else { reprogrammerFin(); }
+        // Une échéance déjà atteinte saute le Passage à la reprise, sans vue d’un appel à 0 ms.
+        if (!enAppel) { reprogrammerFin(); }
+        else if (sauterALEcheance && !echeance.isAfter(maintenant)) {
+            clore(EtatPassage.SAUTE, TraceTerminale.ECHEANCE_APPEL, null, maintenant);
+        }
+        else { reprogrammerEcheanceAppel(); }
     }
 
     /** Réarme l’échéance d’un appel automatique hors pause, notamment après restauration. */
