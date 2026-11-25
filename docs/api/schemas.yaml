@@ -1043,6 +1043,11 @@ $defs:
         description: Classement général complet par rang croissant.
         items:
           $ref: '#/$defs/LigneClassement'
+      transitionManche:
+        description: Transition du Pilotage Automatique ; le serveur émet toujours ce champ, null hors transition.
+        oneOf:
+        - $ref: '#/$defs/TransitionManche'
+        - type: 'null'
       dernierBuzz:
         oneOf:
         - $ref: '#/$defs/Buzz'
@@ -1102,6 +1107,11 @@ $defs:
         description: Classement général complet par rang croissant, y compris après la Soirée.
         items:
           $ref: '#/$defs/LigneClassement'
+      transitionManche:
+        description: Transition du Pilotage Automatique ; le serveur émet toujours ce champ, null hors transition.
+        oneOf:
+        - $ref: '#/$defs/TransitionManche'
+        - type: 'null'
       dernierBuzz:
         oneOf:
         - $ref: '#/$defs/Buzz'
@@ -1158,6 +1168,11 @@ $defs:
         description: Classement général complet par rang croissant. En Solo, le concurrentId du Joueur est son joueurId.
         items:
           $ref: '#/$defs/LigneClassement'
+      transitionManche:
+        description: Transition du Pilotage Automatique ; le serveur émet toujours ce champ, null hors transition.
+        oneOf:
+        - $ref: '#/$defs/TransitionManche'
+        - type: 'null'
       dernierBuzz:
         oneOf:
         - $ref: '#/$defs/Buzz'
@@ -2877,6 +2892,21 @@ $defs:
     - passageId
     - note
     - recueLe
+  TransitionManche:
+    type: object
+    additionalProperties: false
+    description: 'Transition du Pilotage Automatique entre la fin d’une Manche et la suite (#123). finPrevueLe est
+      l’échéance à laquelle le serveur démarre la Manche suivante, ou termine la Soirée quand modeSuivant est nul.'
+    properties:
+      finPrevueLe:
+        type: string
+        format: date-time
+      modeSuivant:
+        oneOf:
+        - $ref: '#/$defs/ModeDeJeu'
+        - type: 'null'
+        description: Mode de jeu de la première Manche encore prête dans l’ordre du programme ; null si aucune ne reste.
+    required: [finPrevueLe, modeSuivant]
   LignePalmaresKaraoke:
     type: object
     additionalProperties: false

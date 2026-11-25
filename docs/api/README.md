@@ -12,7 +12,7 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
 | [exemples/parcours-pilotage-manuel.yaml](exemples/parcours-pilotage-manuel.yaml) | Lancement, enchaînement des Manches et fin de la Soirée sur les trois écrans |
 | [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
-| [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console d’une Soirée en Pilotage Automatique |
+| [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console d’une Soirée en Pilotage Automatique, puis transition entre deux Manches et vers la fin de la Soirée (#123) |
 | [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) | Blind test : extrait, Buzz, brouillon et Proposition de titre, partie trouvée, blocage, Révélation, refus, confidentialité et reconnexion de la salle |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
@@ -54,6 +54,16 @@ La salle suit `/topic/soirees/{soireeId}/salle`, la Console `/topic/soirees/{soi
 L’ordre est garanti **par destination et par Soirée**, avec une révision contiguë croissante pour chaque événement publié sur cette destination. Deux destinations ont des compteurs indépendants : une révision de salle n’est pas comparable à une révision de Manette. Les captures HTTP, mutations et attributions de révision doivent être cohérentes avec la sérialisation d’une même Soirée. Les messages ne constituent pas un journal durable ; un écran resynchronise sa vue après toute coupure, erreur d’application ou rupture dans la suite des révisions. Les heartbeats STOMP détectent les connexions inactives ; le rythme prévu dans le contrat est de dix secondes.
 
 La salle et la Console reçoivent le champ facultatif `palmaresKaraoke` hors du bloc `karaoke`. Le serveur le renseigne dans les captures et les événements lorsque la dernière Manche terminée est de Karaoké et qu’aucune Manche n’est en cours ni en pause. Il émet `null` dans les autres cas. Le Palmarès réunit les Passages aux votes clos des Manches de Karaoké de la Soirée. Il les trie par moyenne exacte décroissante, puis par nombre de votes décroissant et enfin par numéro croissant. Les Passages sans vote viennent à la fin, par numéro, sans rang ni moyenne. La Console reçoit la liste complète, la salle jusqu’à trois Passages classés. La Manette ne reçoit pas ce champ. Le Classement général conserve ses propres données.
+
+## Transition entre Manches en Pilotage Automatique
+
+En Pilotage Automatique, la fin d’une Manche ouvre une transition de quinze secondes (réglage `croustyquizz.manche.dureeTransitionSecondes`). La fin naturelle, un minuteur et `piloterManche` `TERMINER` l’ouvrent de la même façon. La clôture d’une Manche par `piloterSoiree` `TERMINER` n’en ouvre aucune : la Soirée se termine aussitôt.
+
+Pendant la transition, les vues de la salle, de la Console et de chaque Manette portent `transitionManche`, avec `finPrevueLe`, l’échéance, et `modeSuivant`, le Mode de jeu de la première Manche encore prête dans l’ordre du programme. `modeSuivant` vaut `null` après la dernière Manche : la transition annonce alors la fin de la Soirée. Le champ vaut `null` dès qu’une Manche est en cours ou en pause, que la Soirée n’est plus `EN_COURS` ou qu’aucune transition n’est enregistrée. Le serveur ne publie rien pendant le compte à rebours : chaque écran le calcule depuis `finPrevueLe` et l’heure du serveur.
+
+À l’échéance, le serveur fait l’équivalent de `MANCHE_SUIVANTE` : il démarre la Manche suivante (`manche-demarree`), ou termine la Soirée si le programme est épuisé (`soiree-terminee`). Ces deux vues portent `transitionManche` nul. L’Animateur peut abréger la transition par `MANCHE_SUIVANTE` ou terminer la Soirée par `TERMINER` ; l’échéance ne fait alors plus rien. Aucune pause n’existe pendant la transition, faute de Manche active. Si l’enchaînement échoue, le serveur republie les trois vues par `manche-terminee`, `transitionManche` nul, et l’Animateur garde `MANCHE_SUIVANTE`.
+
+La transition est enregistrée : après un redémarrage, le serveur la reprend pour le temps qui restait, ou aussitôt si l’échéance est passée. Une Soirée qui n’est plus en Pilotage Automatique au redémarrage (Soirée de démonstration) perd sa transition. En Pilotage Manuel, rien ne change : `transitionManche` reste `null` et l’Animateur enchaîne les Manches.
 
 ## Vues par blocs
 
