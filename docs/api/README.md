@@ -49,6 +49,8 @@ Pour STOMP 1.2, le sous-protocole est `v12.stomp`. Le navigateur envoie le jeton
 
 Le cookie de session ne suffit pas à faire d’une connexion STOMP celle de l’Animateur : il faut aussi `X-CSRF-TOKEN` dans `CONNECT`. Un jeton présent mais invalide fait refuser la connexion. Sans Bearer ni jeton CSRF, le serveur ignore la session du navigateur : en `dev` et `recette`, la connexion reste anonyme (Écran de salle d’une Soirée fictive, prototype), et en production elle est refusée. Un Écran de salle ouvert dans un navigateur déjà connecté en Animateur se connecte donc comme ailleurs.
 
+La session expire après 30 minutes sans requête HTTP, et le trafic STOMP ne la prolonge pas. La Console connectée consulte donc `GET /api/animateurs/session` toutes les cinq minutes tant qu’elle est ouverte : la session tient toute la Soirée, Pilotage Automatique compris. À la déconnexion ou à l’expiration, le serveur ferme les connexions STOMP de cette session.
+
 ## Vues et événements
 
 Les vues publiques ne contiennent aucune solution pendant `QUESTION_OUVERTE` ou `EN_PAUSE`. Les résultats personnels et les Points visibles sont publiés **après correction**. Les Questions privées de préparation ont leur propre schéma et une route réservée à l’Animateur ; elles ne sont jamais sérialisées directement sur un canal public.
