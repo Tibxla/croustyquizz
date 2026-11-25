@@ -382,13 +382,43 @@ test('Manette : l’accord part en PUT idempotent, puis le micro n’est demand�
 	assert.equal(journal.demandes, 1);
 	assert.match(b.principale.textContent, /Micro prêt/);
 
-	b.module.afficher(vue({ ...attente, enregistrementAutorise: false }), evenement('autorisation-enregistrement-modifiee'));
+	// L'interdiction suspend l'accord : la vue le garde, mais le micro est libéré et ne se propose plus.
+	b.module.afficher(vue({ ...attente, mesAccordsEnregistrement: ['p'], enregistrementAutorise: false }),
+		evenement('autorisation-enregistrement-modifiee'));
 	await terminerMicrotaches();
 	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 0);
-	assert.equal(visibles(b.principale, 'Retirer mon accord').length, 0);
 	assert.equal(visibles(b.principale, 'Autoriser le micro').length, 0);
 	assert.equal(journal.pistes, 1);
 	assert.equal(journal.appareils.every(a => a.appels.length === 0), true);
+});
+
+test('Manette : pendant l’interdiction, l’Interprète peut retirer son accord suspendu', async t => {
+	const document = creerDocument(), { journal, vueFenetre } = fenetre();
+	document.defaultView = vueFenetre;
+	const b = monterManette(document);
+	t.after(() => b.module.demonter());
+	const interdite = { enregistrementAutorise: false, mesAccordsEnregistrement: ['p'], mesPassagesEnAttente: [passage('p')] };
+	b.module.afficher(vue(interdite), capture);
+	assert.equal(visibles(b.principale, 'Autoriser le micro').length, 0);
+	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 0);
+	assert.match(b.principale.textContent, /Ton accord est suspendu/);
+	const [retirer] = visibles(b.principale, 'Retirer mon accord');
+	assert.ok(retirer, 'Le retrait reste proposé pendant l’interdiction.');
+	retirer.click();
+	assert.equal(b.appels.length, 1);
+	assert.deepEqual(b.appels[0].args[2], { accord: false, numeroModification: 2 });
+	b.appels[0].resolve({ statut: 200, corps: { accord: false } });
+	await terminerMicrotaches();
+	b.module.afficher(vue({ ...interdite, mesAccordsEnregistrement: [] }), evenement('accord-enregistrement-modifie'));
+	assert.equal(visibles(b.principale, 'Retirer mon accord').length, 0);
+	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 0, 'Un nouvel accord reste interdit.');
+	// À la réautorisation, l'accord retiré ne revient pas et le micro n'est pas demandé.
+	b.module.afficher(vue({ ...interdite, enregistrementAutorise: true, mesAccordsEnregistrement: [] }),
+		evenement('autorisation-enregistrement-modifiee'));
+	await terminerMicrotaches();
+	assert.equal(visibles(b.principale, 'Enregistrer mon Passage').length, 1);
+	assert.equal(visibles(b.principale, 'Autoriser le micro').length, 0);
+	assert.equal(journal.demandes, 0);
 });
 
 test('Manette : une seule zone de statut annonce le micro, la prise et le fichier prêt', async t => {

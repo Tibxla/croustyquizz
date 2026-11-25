@@ -22,6 +22,7 @@ const messages = {
 	'depart-manque': 'La prise n’a pas pu démarrer avec le Passage. Ton Passage continue sans Enregistrement.',
 	rechargement: 'Le Passage a déjà commencé. Une prise ne redémarre pas après un rechargement.',
 	'capture-impossible': 'La prise a échoué. Ton Passage peut continuer.',
+	suspendu: 'Les Enregistrements sont interdits pour l’instant. Ton accord est suspendu.',
 };
 const impossibilites = {
 	'page-non-securisee': 'Enregistrement impossible : la page n’est pas en HTTPS.',
@@ -193,20 +194,22 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 		return fiche;
 	}
 
+	// accord : celui de la vue, même suspendu ; autorise : l'autorisation de la Soirée.
 	function rendreFiche(fiche, phase, accord, autorise) {
 		const { passage, prise, commandes, choix, micro, reessayer, statut } = fiche;
 		const { etat, motif } = prise.lire();
 		const envoi = envoiAccord(passage.passageId);
 		const rejouable = ui.reessaiPossible(envoi);
 		const occupe = microOccupeParUnAutre(passage.passageId);
-		choix.hidden = phase !== 'avant' || (Boolean(impossible) && !accord);
+		choix.hidden = phase !== 'avant' || ((Boolean(impossible) || !autorise) && !accord);
 		choix.textContent = accord ? 'Retirer mon accord' : 'Enregistrer mon Passage';
 		choix.disabled = !ui.mutationsPermises || envoi?.etat === 'en-cours' || rejouable;
-		micro.hidden = phase !== 'avant' || !accord || Boolean(impossible) || !['accord', 'refus'].includes(etat);
+		micro.hidden = phase !== 'avant' || !accord || !autorise || Boolean(impossible) || !['accord', 'refus'].includes(etat);
 		micro.disabled = !ui.mutationsPermises || occupe;
 		reessayer.hidden = phase !== 'avant' || !rejouable;
 		for (const action of ACTIONS) fiche[action].setAttribute('aria-label', `${fiche[action].textContent} : ${passage.chanson.titre}`);
 		const texte = envoi && envoi.etat !== 'accepte' && phase === 'avant' ? texteEnvoi(envoi)
+			: !autorise && phase === 'avant' ? messages.suspendu
 			: impossible && phase === 'avant' ? impossibilites[impossible]
 				: !micro.hidden && occupe ? 'Le micro est réservé à un autre de tes Passages.'
 					: messages[motif ?? etat] ?? '';
@@ -215,7 +218,8 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 		// Le premier texte d'une fiche s'affiche sans annonce ; chaque changement est annoncé.
 		if (fiche.texte !== undefined && texte && texte !== fiche.texte) annonces.push(texte);
 		fiche.texte = texte;
-		commandes.hidden = !autorise || (choix.hidden && micro.hidden && reessayer.hidden && statut.hidden);
+		commandes.hidden = phase === 'termine' || (!autorise && !accord)
+			|| (choix.hidden && micro.hidden && reessayer.hidden && statut.hidden);
 		if (commandes.hidden) commandes.remove();
 	}
 
@@ -316,8 +320,9 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 				const phase = { APPELE: 'avant', EN_COURS: 'actif', EN_PAUSE: 'pause' }[courant.etat] ?? 'termine';
 				passages.set(courant.passageId, { passage: courant, phase });
 			}
-			if (autorise) for (const [id, { passage, phase }] of passages) {
-				if (phase !== 'termine' && !prises.has(id)) prises.set(id, creerFiche(passage));
+			// Pendant l'interdiction, seule une fiche portant un accord suspendu apparaît, pour son retrait.
+			for (const [id, { passage, phase }] of passages) {
+				if (phase !== 'termine' && !prises.has(id) && (autorise || accordDe(id))) prises.set(id, creerFiche(passage));
 			}
 			for (const [id, fiche] of prises) {
 				const visible = passages.get(id);
@@ -332,7 +337,7 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 			}
 			for (const [id, fiche] of prises) {
 				const phase = passages.get(id)?.phase ?? 'termine';
-				rendreFiche(fiche, phase, autorise && accordDe(id), autorise && phase !== 'termine');
+				rendreFiche(fiche, phase, accordDe(id), autorise);
 			}
 			rendreFichiers();
 			verrou.maintenir([...prises.values()].some(fiche => gardeEcranAllume(fiche.prise.lire().etat)));
