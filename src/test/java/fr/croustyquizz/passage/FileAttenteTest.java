@@ -105,6 +105,10 @@ class FileAttenteTest {
         assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
                 EtatPassage.SAUTE, new TraceTerminale("PASSE_PAR_ANIMATEUR", null, RECU)));
         assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.SAUTE, new TraceTerminale("PASSE_PAR_DELEGUE", null, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.TERMINE, new TraceTerminale("PASSE_PAR_DELEGUE", BORIS, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
                 EtatPassage.ANNULE, new TraceTerminale("MANCHE_TERMINEE", null, RECU)));
         assertThat(file.etat()).isEqualTo(depart);
     }

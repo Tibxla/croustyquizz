@@ -155,6 +155,9 @@ class DelegationTempsReelTest {
 				Map.of("action", "PASSER_ETAPE", "etapeId", etape), UUID.randomUUID()));
 		var apresSaut = evenement(manetteAlize, "passage-saute");
 		assertThat(apresSaut.at("/delegation/fileAttente/courant/etat").asString()).isEqualTo("SAUTE");
+		// L'historique crédite Alizé, pas l'Animateur.
+		assertThat(jdbc.queryForMap("select trace_motif, trace_acteur_id from passage where id = ?::uuid", passageBasile))
+				.containsEntry("trace_motif", "PASSE_PAR_DELEGUE").containsEntry("trace_acteur_id", id(alize));
 		assertThat(evenement(manetteBasile, "passage-appele").path("delegation").isNull()).isTrue();
 		assertThat(evenement(manetteBasile, "passage-saute").path("delegation").isNull()).isTrue();
 		evenement(console, "passage-appele");
