@@ -87,3 +87,15 @@ test('un 429 de la limite de requêtes affiche son detail comme tout refus, sans
 	assert.notEqual(envois[1].corps.envoiId, envois[0].corps.envoiId);
 	buzz.demonter();
 });
+
+test('un téléphone en http:// buzze sans crypto.randomUUID, réservé aux contextes sécurisés', t => {
+	Object.defineProperty(globalThis.crypto, 'randomUUID', { value: undefined, configurable: true });
+	t.after(() => { delete globalThis.crypto.randomUUID; });
+	const { buzz, changerEtat, cliquer, envois } = monter();
+	buzz.afficher(ouverte);
+	changerEtat('synchronisee');
+	cliquer();
+	assert.equal(envois.length, 1);
+	assert.match(envois[0].corps.envoiId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+	buzz.demonter();
+});
