@@ -86,6 +86,12 @@ public class ServiceSoiree {
 		return depotDeSoirees.findById(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
 	}
 
+	/** Soirées du Lieu, passées et à venir, de la plus récemment créée à la plus ancienne. */
+	@Transactional(readOnly = true)
+	public List<Soiree> duLieu(UUID lieuId) {
+		return depotDeSoirees.findByLieuIdOrderByCreeeLeDescIdDesc(lieuId);
+	}
+
 	/** Distingue une Soirée enregistrée d'une Soirée fictive de démonstration. */
 	@Transactional(readOnly = true)
 	public boolean estEnregistree(UUID soireeId) {
