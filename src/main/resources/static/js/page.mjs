@@ -59,6 +59,8 @@ function afficherCommun(vue) {
 	afficherPalmares(description.palmares);
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
+	lister('delegations', description.delegations, 'Aucune Délégation en cours.');
+	texte('nombre-delegations', `Délégations (${description.delegations.length})`);
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }

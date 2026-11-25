@@ -99,3 +99,13 @@ test('le Palmarès du Karaoké prend la place du Classement de salle et du texte
 	assert.equal(decrireClassementDeSalle(terminee).titre, 'Podium final');
 	assert.equal(decrireClassementDeSalle({ ...terminee, palmaresKaraoke: [] }), null);
 });
+
+test('la Console liste en lecture seule les Délégations en cours (#67)', () => {
+	const base = { soiree: { titre: 'S', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
+		modeEnCours: null, mancheActive: null, joueurs: [], classement: [], dernierBuzz: null };
+	assert.deepEqual(decrireVue(base).delegations, []);
+	assert.deepEqual(decrireVue({ ...base, delegations: [
+		{ joueurId: 'a', pseudo: 'Alizé', pouvoirs: ['FILE_ATTENTE', 'PHOTOS'] },
+		{ joueurId: 'b', pseudo: 'Basile', pouvoirs: ['MUSIQUE_ATTENTE'] },
+	] }).delegations, ['Alizé · File d’attente, Photos', 'Basile · Musique d’attente']);
+});
