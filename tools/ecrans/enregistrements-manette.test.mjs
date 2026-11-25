@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { monterEnregistrements } from '../../src/main/resources/static/js/enregistrements.mjs';
+import { monterEnregistrements, registreDe } from '../../src/main/resources/static/js/enregistrements.mjs';
 import { creerGestionnaireDeMode } from '../../src/main/resources/static/js/modules-de-mode.mjs';
 import * as karaoke from '../../src/main/resources/static/js/modes/karaoke/manette.mjs';
 import { creerDocument, terminerMicrotaches, passage, vue } from './karaoke-dom-factice.mjs';
@@ -238,4 +238,19 @@ test('Coquille : aucun son ne part au serveur (ADR 0005)', async t => {
 	assert.deepEqual(corps, { accord: true, numeroModification: 2 });
 	b.enregistrements.demonter();
 	assert.equal(b.zone.childElementCount, 0);
+});
+
+test('Coquille : une prise finie après pagehide ne laisse aucune URL vivante', async t => {
+	const urls = suivreUrls(t);
+	const b = monterManette(t, { livraison: 'differee' });
+	await chanter(b, { terminer: false });
+	// page.mjs vide le registre à pagehide avant de démonter le gestionnaire, qui arrête la prise.
+	b.vueFenetre.dispatchEvent(new Event('pagehide'));
+	await b.afficher(finDeManche, evenement('manche-terminee'));
+	b.appareils[0].livrer('voix');
+	await terminerMicrotaches();
+	assert.deepEqual(urls.creees, ['blob:enregistrement-1']);
+	assert.deepEqual(urls.revoquees, ['blob:enregistrement-1']);
+	assert.equal(registreDe(b.document).fichiers.size, 0);
+	assert.equal(section(b).hidden, true);
 });

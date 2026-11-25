@@ -15,7 +15,7 @@ export function registreDe(page) {
 	const existant = registres.get(page);
 	if (existant) return existant;
 	const fichiers = new Map(), abonnes = new Set();
-	let presentations = 0;
+	let presentations = 0, fermee = false;
 	const prevenir = () => [...abonnes].forEach(rappel => rappel());
 	const revoquer = entree => { if (entree.url) URL.revokeObjectURL(entree.url); };
 	const registre = {
@@ -37,7 +37,10 @@ export function registreDe(page) {
 				prevenir();
 			};
 		},
+		// Une prise finie après pagehide (le démontage arrête le micro) ne survivrait pas à la page : son URL est
+		// révoquée tout de suite, quel que soit l'ordre des écouteurs de pagehide.
 		ajouter(entree) {
+			if (fermee) { revoquer(entree); return; }
 			const ancienne = fichiers.get(entree.id);
 			if (ancienne) { revoquer(ancienne); fichiers.delete(entree.id); }
 			fichiers.set(entree.id, entree);
@@ -54,6 +57,7 @@ export function registreDe(page) {
 	page.defaultView?.addEventListener?.('pagehide', evenement => {
 		// Une page gardée en cache (persisted) peut revenir telle quelle : ses liens restent valides.
 		if (evenement?.persisted) return;
+		fermee = true;
 		for (const entree of fichiers.values()) revoquer(entree);
 		fichiers.clear();
 		prevenir();
