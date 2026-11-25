@@ -408,11 +408,21 @@ Les schémas des Manches restent limités au Quiz jusqu'aux contrats des autres 
 
 Un Joueur envoie un JPEG brut par HTTP. Le serveur vérifie sa signature, sa taille
 (1 500 000 octets maximum) et ses dimensions (2048 pixels maximum de chaque côté).
+Un `Content-Length` supérieur à la borne est refusé (`422 DONNEES_INVALIDES`) sans
+lire le corps. Le serveur lit au plus quatre envois à la fois : au-delà, il répond
+`503 SERVICE_INDISPONIBLE` sans reçu. Avant de lire le corps, il vérifie sous le
+verrou de Soirée l'état de la Soirée, le réglage, l'exclusion du Joueur, les files
+et le budget, puis les revérifie au moment de l'ajout.
 Il conserve les JPEG en mémoire uniquement, dans la limite de 64 000 000 octets
-pour l'ensemble des Soirées. La file de modération est bornée à trois photos par
-Joueur et à trente par Soirée. Un refus ou la fin de l'affichage rend sa place
+pour l'ensemble des Soirées (`503 SERVICE_INDISPONIBLE`) et de 16 000 000 octets par
+Soirée, photos en attente, acceptées et à l'affiche comprises (`409 LIMITE_ATTEINTE`).
+La file de modération est bornée à trois photos par Joueur et à trente par Soirée,
+et la file des photos acceptées à trente (`409 LIMITE_ATTEINTE` à la modération,
+la photo reste en attente). Un refus ou la fin de l'affichage rend sa place
 au JPEG suivant. La fin de Soirée efface toutes ses photos, le réglage et ses
-reçus. Un redémarrage perd ces données et remet les envois ouverts par défaut.
+reçus. Une Soirée sans commande photo ni changement d'affiche pendant douze heures
+perd ses photos et ses reçus ; son réglage reste. Un redémarrage perd ces données
+et remet les envois ouverts par défaut.
 
 Les mutations exigent un `Idempotency-Key` UUID. Pour une Soirée ouverte ou en
 cours, une commande réussie, rejouée par le même Acteur avec la même clé et le

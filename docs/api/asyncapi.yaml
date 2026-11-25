@@ -68,8 +68,9 @@ channels:
       la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
       ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait.
-      Photos : photos-modifiees à l’arrivée, à la modération et au changement de réglage.
-      Le bloc photos indique le réglage et les photos en attente dans l’ordre d’arrivée."
+      Photos : photos-modifiees à l’arrivée, à la modération, au changement de réglage et à l’oubli
+      des photos après douze heures d’inactivité. Le bloc photos indique le réglage et les photos en
+      attente dans l’ordre d’arrivée."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
