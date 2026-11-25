@@ -371,8 +371,9 @@ class BlindTestHttpTest {
 
 		// La demande échoue sans conclure ; tant que le temps ne passe pas, la Manche attend son essai suivant.
 		await().atMost(Duration.ofSeconds(3)).until(() -> isoles.demandes().get() > 0);
-		await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(2))
-				.until(() -> "PREPARATION".equals(bloc(soiree).path("phase").asString()));
+		// Aucun nouvel essai sans l'Horloge : le compteur, lu sans requête, reste à un pendant une demi-seconde.
+		await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(3)).until(() -> isoles.demandes().get() == 1);
+		await().atMost(Duration.ofSeconds(5)).until(() -> "PREPARATION".equals(bloc(soiree).path("phase").asString()));
 		// Seule l'Horloge relance : aucune capture ne lit le déroulement (ADR 0004).
 		laisserPasserLesEssais(soiree, 1);
 		assertThat(isoles.demandes().get()).isEqualTo(2);
