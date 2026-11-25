@@ -157,9 +157,18 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 		return vue;
 	}
 
-	// affichee : la liste est à l'écran. Cachée, elle tient ses fichiers à jour sans rien annoncer.
+	// affichee : la liste est à l'écran. Cachée, elle n'annonce rien et ne garde aucun lecteur :
+	// un <audio> retiré du document se met en pause, et le fichier n'est lu qu'à un endroit.
 	function rendre(affichee = true) {
 		visible = affichee;
+		if (!affichee) {
+			for (const id of registre.fichiers.keys()) vus.add(id);
+			vues.clear();
+			liste.replaceChildren();
+			section.hidden = true;
+			fermerDialogue();
+			return;
+		}
 		for (const [id, vue] of vues) {
 			if (!registre.fichiers.has(id)) { vue.remove(); vues.delete(id); }
 		}
@@ -171,12 +180,12 @@ export function creerListeEnregistrements({ document, registre, annoncer = () =>
 			}
 			if (vus.has(entree.id)) continue;
 			vus.add(entree.id);
-			if (affichee) annoncer(entree.echec ? `La prise de ${entree.titre} a échoué : aucun son n’a été capté.`
+			annoncer(entree.echec ? `La prise de ${entree.titre} a échoué : aucun son n’a été capté.`
 				: `Ton Enregistrement est prêt : ${entree.titre}.`);
 		}
-		section.hidden = !affichee || registre.fichiers.size === 0;
-		// Un fichier effacé entre-temps (pagehide) ou une liste cachée ferme la confirmation en cours.
-		if (dialogue && (section.hidden || !registre.fichiers.has(dialogueId))) fermerDialogue();
+		section.hidden = registre.fichiers.size === 0;
+		// Un fichier effacé entre-temps (pagehide) ferme la confirmation en cours.
+		if (dialogue && !registre.fichiers.has(dialogueId)) fermerDialogue();
 	}
 
 	return {

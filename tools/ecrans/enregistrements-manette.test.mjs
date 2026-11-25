@@ -137,8 +137,8 @@ test('Coquille : pendant une Manche de Quiz, les Enregistrements restent accessi
 	await b.afficher(vue({ mancheId: 'm2', enregistrementAutorise: true }), evenement('manche-demarree'));
 	assert.equal(section(b).hidden, true, 'Une nouvelle Manche de Karaoké reprend la liste.');
 	assert.equal(lien(b.principale).href, 'blob:enregistrement-1');
-	assert.equal(b.document.querySelectorAll('a').filter(a => a.textContent === 'Télécharger mon Enregistrement'
-		&& !a.parentNode.parentNode.parentNode.hidden).length, 1, 'Un seul lien visible à la fois.');
+	assert.equal(b.zone.querySelector('audio'), null, 'Cachée, la coquille ne garde aucun lecteur qui jouerait sans commande.');
+	assert.equal(b.document.querySelectorAll('audio').length, 1, 'Un seul lecteur par fichier.');
 });
 
 test('Coquille : une prise arrêtée par la fin de la Manche arrive après le démontage et s’annonce une fois', async t => {
@@ -222,17 +222,20 @@ test('Coquille : le texte ne promet pas plus que la page, et pagehide libère le
 test('Coquille : aucun son ne part au serveur (ADR 0005)', async t => {
 	suivreUrls(t);
 	const b = monterManette(t);
+	await b.afficher(vue({ enregistrementAutorise: true, mesAccordsEnregistrement: [], mesPassagesEnAttente: [passage('p')] }));
+	boutons(b.principale, 'Enregistrer mon Passage')[0].click();
+	b.appels[0].resolve({ statut: 200, corps: { accord: true } });
 	await chanter(b);
 	await b.afficher(finDeManche, evenement('manche-terminee'));
 	await b.afficher(pendantLeQuiz, evenement('manche-demarree'));
 	boutons(b.zone, 'Retirer')[0].click();
 	boutons(b.zone.querySelector('dialog'), 'Confirmer le retrait')[0].click();
 	await terminerMicrotaches();
-	for (const { args: [, chemin, corps] } of b.appels) {
-		assert.equal(chemin.endsWith('/accord-enregistrement'), true, `Envoi inattendu : ${chemin}`);
-		assert.doesNotThrow(() => JSON.stringify(corps));
-		assert.equal(Object.values(corps ?? {}).some(valeur => valeur instanceof Blob || String(valeur).startsWith('blob:')), false);
-	}
+	assert.equal(b.appels.length, 1, 'Seul l’accord part au serveur ; la coquille n’envoie rien.');
+	const [methode, chemin, corps] = b.appels[0].args;
+	assert.equal(methode, 'PUT');
+	assert.equal(chemin, '/api/soirees/s/manches/m/passages/p/accord-enregistrement');
+	assert.deepEqual(corps, { accord: true, numeroModification: 2 });
 	b.enregistrements.demonter();
 	assert.equal(b.zone.childElementCount, 0);
 });
