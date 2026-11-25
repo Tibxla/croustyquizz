@@ -14,9 +14,11 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,10 +53,11 @@ import tools.jackson.databind.json.JsonMapper;
  * d'adresse privée ou locale). Ce filtre ne lit donc jamais X-Forwarded-For lui-même : un client ne peut pas
  * choisir sa clé. Une adresse IPv6 compte par bloc de 64 bits, qu'un seul abonné reçoit en entier.
  *
- * <p>L'arrivée par code a deux seaux par adresse : toutes les arrivées, et les seuls codes inconnus. Un essai de
- * code est pris avant la requête, pour que des envois simultanés ne passent pas tous, puis rendu si la réponse
- * n'est pas {@code 404} : une salle derrière un seul Wi-Fi arrive d'un coup, un script qui essaie des codes est
- * arrêté.
+ * <p>L'arrivée par code a deux seaux par adresse : toutes les arrivées, et les seuls codes inconnus. Le seau des
+ * codes est seulement consulté avant la requête, puis débité après une réponse {@code 404}, quitte à s'endetter :
+ * une arrivée réussie ne tient jamais d'essai, même en attendant le verrou de la Soirée, si bien qu'une salle
+ * derrière un seul Wi-Fi arrive d'un coup ; des codes faux envoyés en même temps passent, mais la dette les fait
+ * payer ensuite au rythme du seuil.
  *
  * <p>Mémoire bornée sans tâche de fond : à chaque requête limitée, au plus une fois par minute, les seaux
  * redevenus pleins sont oubliés, ce qui ne change rien puisqu'un seau plein vaut un seau neuf. Au plafond de clés,
@@ -71,6 +74,7 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 	private static final long PURGE_AU_PLAFOND = SECONDE;
 	private static final int OCTETS_EMPREINTE = 16;
 	private static final int OCTETS_BLOC_IPV6 = 8;
+	private static final Pattern UUID_SOIREE = Pattern.compile("[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}");
 
 	private final boolean actif;
 	private final int plafondCles;
@@ -96,8 +100,8 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 				new Regle("proposition", POST, manche + "/morceaux/{etapeId}/proposition", Cle.JETON, false,
 						reglages.reponses()),
 				new Regle("vote", POST, manche + "/passages/{passageId}/vote", Cle.JETON, false, reglages.reponses()),
-				new Regle("arrivees", POST, "/api/soirees/rejoindre", Cle.ADRESSE, false, reglages.arrivees()),
 				new Regle("codes-inconnus", POST, "/api/soirees/rejoindre", Cle.ADRESSE, true, reglages.codesInconnus()),
+				new Regle("arrivees", POST, "/api/soirees/rejoindre", Cle.ADRESSE, false, reglages.arrivees()),
 				new Regle("acces-ecran", POST, soiree + "/acces-ecran", Cle.ADRESSE_ET_SOIREE, false, reglages.accesEcran()),
 				new Regle("qr-code", "GET", soiree + "/qrcode", Cle.JETON, false, reglages.qrCode()));
 	}
@@ -113,23 +117,25 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		PathContainer chemin = PathContainer.parsePath(requete.getRequestURI().substring(requete.getContextPath().length()));
 		long maintenant = nanos(horloge.maintenant());
 		List<CleDeSeau> prises = new ArrayList<>();
+		List<CleDeSeau> aDebiterSi404 = new ArrayList<>();
 		for (Regle regle : regles) {
 			PathPattern.PathMatchInfo correspondance = regle.correspondance(requete.getMethod(), chemin);
 			if (correspondance == null) {
 				continue;
 			}
 			CleDeSeau cle = new CleDeSeau(regle, cle(regle.cle, requete, correspondance));
-			long attente = prendre(cle, maintenant);
+			long attente = regle.seulementCodesInconnus ? consulter(cle, maintenant) : prendre(cle, maintenant);
 			if (attente > 0) {
 				prises.forEach(this::rendre);
 				refuser(requete, reponse, attente);
 				return;
 			}
-			prises.add(cle);
+			(regle.seulementCodesInconnus ? aDebiterSi404 : prises).add(cle);
 		}
 		chaine.doFilter(requete, reponse);
-		if (reponse.getStatus() != HttpServletResponse.SC_NOT_FOUND) {
-			prises.stream().filter(cle -> cle.regle().seulementCodesInconnus).forEach(this::rendre);
+		if (reponse.getStatus() == HttpServletResponse.SC_NOT_FOUND && !aDebiterSi404.isEmpty()) {
+			long apres = nanos(horloge.maintenant());
+			aDebiterSi404.forEach(cle -> debiter(cle, apres));
 		}
 	}
 
@@ -150,8 +156,7 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		long[] attente = new long[1];
 		boolean[] signaler = new boolean[1];
 		seaux.compute(cle, (inutile, seau) -> {
-			SeauDeJetons courant = seau == null ? new SeauDeJetons(cle.regle().seuil.rafale(),
-					cle.regle().seuil.intervalle(), maintenant) : seau;
+			SeauDeJetons courant = seau == null ? nouveauSeau(cle, maintenant) : seau;
 			attente[0] = courant.prendre(maintenant);
 			signaler[0] = attente[0] > 0 && courant.premierRefus();
 			return courant;
@@ -160,6 +165,37 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 			JOURNAL.info("Limite de requêtes atteinte : {} pour {}.", cle.regle().nom, cle.valeur());
 		}
 		return attente[0];
+	}
+
+	/** Attente du seau sans rien prendre ; une clé sans seau a son seau plein. */
+	private long consulter(CleDeSeau cle, long maintenant) {
+		long[] attente = new long[1];
+		boolean[] signaler = new boolean[1];
+		seaux.computeIfPresent(cle, (inutile, seau) -> {
+			attente[0] = seau.attente(maintenant);
+			signaler[0] = attente[0] > 0 && seau.premierRefus();
+			return seau;
+		});
+		if (signaler[0] && JOURNAL.isInfoEnabled()) {
+			JOURNAL.info("Limite de requêtes atteinte : {} pour {}.", cle.regle().nom, cle.valeur());
+		}
+		return attente[0];
+	}
+
+	private void debiter(CleDeSeau cle, long maintenant) {
+		if (!seaux.containsKey(cle) && seaux.size() >= plafondCles) {
+			avertirDuPlafond(maintenant);
+			return;
+		}
+		seaux.compute(cle, (inutile, seau) -> {
+			SeauDeJetons courant = seau == null ? nouveauSeau(cle, maintenant) : seau;
+			courant.debiter(maintenant);
+			return courant;
+		});
+	}
+
+	private static SeauDeJetons nouveauSeau(CleDeSeau cle, long maintenant) {
+		return new SeauDeJetons(cle.regle().seuil.rafale(), cle.regle().seuil.intervalle(), maintenant);
 	}
 
 	private void rendre(CleDeSeau cle) {
@@ -207,7 +243,12 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		return switch (type) {
 			case JETON -> autorisation == null || autorisation.isBlank() ? adresse(requete) : "jeton:" + empreinte(autorisation);
 			case ADRESSE -> adresse(requete);
-			case ADRESSE_ET_SOIREE -> adresse(requete) + " soiree:" + correspondance.getUriVariables().get("soireeId");
+			// Le segment vient du client : seul un UUID entre dans la clé, pour que la table reste bornée.
+			case ADRESSE_ET_SOIREE -> {
+				String soiree = correspondance.getUriVariables().get("soireeId");
+				yield UUID_SOIREE.matcher(soiree).matches() ? adresse(requete) + " soiree:" + soiree.toLowerCase(Locale.ROOT)
+						: adresse(requete);
+			}
 		};
 	}
 

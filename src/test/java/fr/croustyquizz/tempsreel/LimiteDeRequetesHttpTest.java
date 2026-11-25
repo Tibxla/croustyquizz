@@ -4,8 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -128,6 +133,22 @@ class LimiteDeRequetesHttpTest {
 				"198.51.100.4");
 		assertThat(verifier("consulterQrCodeSoiree", refusQrCode, 429).path("code").asString()).isEqualTo("TROP_DE_REQUETES");
 		assertThat(refusQrCode.getHeaders().getFirst("Retry-After")).isEqualTo("1");
+	}
+
+	@Test
+	void soixanteArriveesSimultaneesDepuisLeMemeWifiPassentToutes() throws Exception {
+		SoireeOuverte soiree = ouvrirSoiree("198.51.100.5");
+		List<Future<ResponseEntity<String>>> arrivees = new ArrayList<>();
+		try (var executeur = Executors.newVirtualThreadPerTaskExecutor()) {
+			for (int i = 1; i <= 60; i++) {
+				String pseudo = "Manette " + i;
+				arrivees.add(executeur.submit(() -> arriver(soiree.code(), pseudo, "203.0.113.30")));
+			}
+			for (var arrivee : arrivees) {
+				verifier("rejoindreSoiree", arrivee.get(15, TimeUnit.SECONDS), 201);
+			}
+		}
+		verifier("rejoindreSoiree", arriver(codeInconnu(soiree), "Distraite", "203.0.113.30"), 404);
 	}
 
 	private SoireeOuverte ouvrirSoiree(String adresse) throws Exception {

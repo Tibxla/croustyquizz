@@ -188,7 +188,10 @@ Le seuil des codes est plus large que 10 par minute : dans un lieu, tous les té
 sur le Wi-Fi sortent par la même adresse IP, et une salle de 60 se trompe de code plus
 d'une fois. Pour la même raison, une arrivée réussie ou refusée pour son pseudo ne
 consomme aucun essai de code : `BuzzDeSoireeHttpTest` fait arriver puis buzzer 60
-Manettes depuis la même adresse, avec la limite active. Une requête sans jeton compte
+Manettes depuis la même adresse, avec la limite active, et `LimiteDeRequetesHttpTest` en
+fait arriver 60 en même temps. Le seau des codes n'est que consulté avant la requête, puis
+débité après un `404` : des codes faux envoyés en même temps passent tous, mais endettent
+l'adresse, qui attend d'autant plus ensuite. Une requête sans jeton compte
 sur son adresse IP. Une adresse IPv6 compte par bloc de 64 bits, qu'un abonné reçoit en
 entier. Les seaux redevenus pleins sont oubliés une fois par minute ; au-delà de 20 000
 clés, une nouvelle clé passe sans être comptée et le journal l'avertit.
@@ -201,11 +204,13 @@ vient d'un relais d'adresse locale ou privée (`127.0.0.0/8`, `10.0.0.0/8`,
 gauche et s'arrête à la première adresse publique : un client qui envoie son propre
 `X-Forwarded-For` ne choisit donc pas sa clé, puisque le relais ajoute l'adresse réelle
 à droite. Sur le serveur de Tibxla, Funnel relaie vers `127.0.0.1:8080` et le conteneur
-voit la passerelle Docker (`172.x`), toutes deux de confiance ; chez Render, le relais
-est sur le réseau privé de l'hébergeur. Si un relais public s'intercale (un CDN), ajouter
-ses plages dans `server.tomcat.remoteip.trusted-proxies`.
+voit la passerelle Docker (`172.x`), toutes deux de confiance. Chez Render, rien ne montre
+encore que le relais arrive par une adresse privée ni qu'il n'y a qu'un saut : à vérifier
+sur la recette comme ci-dessous. Si un relais public s'intercale (un CDN), ajouter ses
+plages dans `server.tomcat.remoteip.trusted-proxies`.
 
-À vérifier avant la première démo publique, et sur la recette : si le relais
+À vérifier sur la recette, publique elle aussi, dès la fusion dans `develop`, puis avant
+la première démo publique : si le relais
 n'envoyait pas `X-Forwarded-For`, tous les téléphones auraient la même clé, et 20 codes
 faux par minute suffiraient à bloquer toutes les arrivées. Depuis un téléphone en 4G,
 taper 21 fois un code faux : le 21ᵉ essai doit répondre « Trop de requêtes en peu de

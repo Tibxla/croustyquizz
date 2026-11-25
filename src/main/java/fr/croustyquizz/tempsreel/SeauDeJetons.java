@@ -40,7 +40,20 @@ final class SeauDeJetons {
 		return premier;
 	}
 
-	/** Rend le dernier jeton pris, quand la requête n'a finalement rien coûté. */
+	/** Attente avant le prochain jeton, sans rien prendre : 0 s'il en reste un. */
+	long attente(long maintenant) {
+		return Math.max(0, Math.max(pleinA, maintenant) - maintenant - tolerance);
+	}
+
+	/**
+	 * Débite un jeton après coup, même si le seau est vide : il s'endette, et sa prochaine attente compte cette
+	 * dette. Des requêtes simultanées passent donc toutes, mais le rythme moyen reste celui du seuil.
+	 */
+	void debiter(long maintenant) {
+		pleinA = Math.max(pleinA, maintenant) + intervalle;
+	}
+
+	/** Rend le dernier jeton pris, quand une autre limite refuse la même requête. */
 	void rendre() {
 		pleinA -= intervalle;
 	}

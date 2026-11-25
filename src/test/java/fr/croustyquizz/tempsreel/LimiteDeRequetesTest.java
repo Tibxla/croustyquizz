@@ -2,7 +2,10 @@ package fr.croustyquizz.tempsreel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -12,6 +15,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import fr.croustyquizz.manche.HorlogeFactice;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletResponse;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -228,6 +232,51 @@ class LimiteDeRequetesTest {
 		}
 		assertThat(limite.nombreDeSeaux()).isEqualTo(2);
 		assertThat(envoyer("POST", BUZZ, "jeton-lea", null).getStatus()).isEqualTo(429);
+	}
+
+	@Test
+	void desArriveesSimultaneesAvecLeBonCodeNeConsommentAucunEssaiDeCode() throws Exception {
+		limite = new LimiteDeRequetes(reglages(true, 1_000, new ReglagesDesLimites.Seuil(100, Duration.ofSeconds(1))), horloge, JSON);
+		// Chaque arrivée attend le verrou de Soirée pendant que les suivantes entrent : on les imbrique.
+		List<Integer> statuts = new ArrayList<>();
+		arriverEnMemeTemps(30, 201, statuts);
+
+		assertThat(statuts).hasSize(30).containsOnly(201);
+	}
+
+	@Test
+	void desCodesInconnusSimultanesEndettentLAdresseAuMemeRythme() throws Exception {
+		limite = new LimiteDeRequetes(reglages(true, 1_000, new ReglagesDesLimites.Seuil(100, Duration.ofSeconds(1))), horloge, JSON);
+		List<Integer> statuts = new ArrayList<>();
+		arriverEnMemeTemps(4, 404, statuts);
+		assertThat(statuts).containsOnly(404);
+
+		MockHttpServletResponse refus = envoyer("POST", REJOINDRE, null, 404);
+		assertThat(refus.getStatus()).isEqualTo(429);
+		// Quatre essais au rythme d'un toutes les 3 s, rafale de 2 : 4 × 3 s − 3 s.
+		assertThat(refus.getHeader("Retry-After")).isEqualTo("9");
+		horloge.avancer(Duration.ofSeconds(9));
+		assertThat(envoyer("POST", REJOINDRE, null, 404).getStatus()).isEqualTo(404);
+	}
+
+	@Test
+	void unSegmentDeSoireeQuiNEstPasUnUuidCompteSurLAdresseSeule() throws Exception {
+		envoyer("POST", "/api/soirees/aaa/acces-ecran", null, 404);
+		envoyer("POST", "/api/soirees/" + "b".repeat(500) + "/acces-ecran", null, 404);
+
+		assertThat(envoyer("POST", "/api/soirees/ccc/acces-ecran", null, 404).getStatus()).isEqualTo(429);
+		assertThat(envoyer("POST", SOIREE + "/acces-ecran", null, null).getStatus()).isEqualTo(200);
+	}
+
+	private void arriverEnMemeTemps(int nombre, int statut, List<Integer> statuts) throws IOException, ServletException {
+		var reponse = new MockHttpServletResponse();
+		limite.doFilter(requete("POST", REJOINDRE, null, "192.0.2.10"), reponse, (requete, suite) -> {
+			if (nombre > 1) {
+				arriverEnMemeTemps(nombre - 1, statut, statuts);
+			}
+			((HttpServletResponse) suite).setStatus(statut);
+		});
+		statuts.add(reponse.getStatus());
 	}
 
 	private MockHttpServletResponse envoyer(String methode, String chemin, String jeton, Integer statut) throws Exception {
