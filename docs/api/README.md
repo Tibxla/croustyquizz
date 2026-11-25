@@ -1,6 +1,6 @@
-# Contrats du Quiz et du Karaoké
+# Contrats du Quiz, du Blind test et du Karaoké
 
-Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34), [#82](https://github.com/Tibxla/croustyquizz/issues/82), tranche de contrat de [#21](https://github.com/Tibxla/croustyquizz/issues/21), et [#98](https://github.com/Tibxla/croustyquizz/issues/98), tranche de contrat de [#22](https://github.com/Tibxla/croustyquizz/issues/22). Ces fichiers décrivent une **cible à relire par les propriétaires**, pas des contrôleurs déjà déployés. L’application Spring Boot et les pages HTML/JavaScript restent dans le même projet.
+Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34), [#82](https://github.com/Tibxla/croustyquizz/issues/82), tranche de contrat de [#21](https://github.com/Tibxla/croustyquizz/issues/21), [#98](https://github.com/Tibxla/croustyquizz/issues/98), tranche de contrat de [#22](https://github.com/Tibxla/croustyquizz/issues/22), et [#174](https://github.com/Tibxla/croustyquizz/issues/174), tranche de contrat de [#17](https://github.com/Tibxla/croustyquizz/issues/17). Ces fichiers décrivent une **cible à relire par les propriétaires**, pas des contrôleurs déjà déployés. L’application Spring Boot et les pages HTML/JavaScript restent dans le même projet.
 
 | Fichier | Contenu |
 |---|---|
@@ -10,8 +10,10 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-quiz.yaml](exemples/parcours-quiz.yaml) | Échanges fictifs, événements, refus de données sensibles et exemple de reconnexion |
 | [exemples/parcours-karaoke.yaml](exemples/parcours-karaoke.yaml) | Recherche, inscription, File d’attente, refus, reçus et reconnexion du Karaoké |
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
+| [exemples/parcours-pilotage-manuel.yaml](exemples/parcours-pilotage-manuel.yaml) | Lancement, enchaînement des Manches et fin de la Soirée sur les trois écrans |
 | [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
 | [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console d’une Soirée en Pilotage Automatique |
+| [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) | Blind test : extrait, Buzz, brouillon et Proposition de titre, partie trouvée, blocage, Révélation, refus, confidentialité et reconnexion de la salle |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
 
@@ -21,7 +23,9 @@ Le premier parcours est : inscription du premier Animateur d’un Lieu, connexio
 
 Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions : `preparerQuestions` sur une telle Manche répond `409 ETAT_INCOMPATIBLE`, sans modification. Chaque Question a quatre propositions distinctes et une seule solution.
 
-La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut être créée en Format `EQUIPE` et en Pilotage `AUTOMATIQUE` (#6), qui sont enregistrés et restitués tels quels : le déroulement en Équipe relève de #26 et l’enchaînement automatique de #25. Le Blind test, le Freestyle, les invitations d’Animateurs, la modération et le serveur MCP étendront ce contrat. Le Buzz est inclus uniquement pour le scénario du socle #7/#8, avant le lancement d’une Manche ; il est refusé pendant le Quiz. Son arbitrage en Blind test relève de #17. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
+Le [parcours de pilotage manuel](exemples/parcours-pilotage-manuel.yaml) illustre le refus d’un programme vide, la répétition d’un envoi, l’enchaînement de deux Manches dans l’ordre du programme et la fin de la Soirée. La fin publie `soiree-terminee` aux trois types d’écran. La vue finale ne porte aucune Manche active.
+
+La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut être créée en Format `EQUIPE` et en Pilotage `AUTOMATIQUE` (#6), qui sont enregistrés et restitués tels quels : le déroulement en Équipe relève de #26 et l’enchaînement automatique de #25. Le Blind test étend aussi ce parcours ci-dessous. Le Freestyle, les invitations d’Animateurs, la modération et le serveur MCP étendront ce contrat. Le Buzz sert au scénario du socle #7/#8, avant le lancement d’une Manche, et au Blind test ; il est refusé pendant le Quiz. Les contrats n’imposent aucune formule de points : les règles de dégressivité et de départage du PRD restent à implémenter dans `quiz` et `classement`.
 
 ## Accès aux vues
 
@@ -33,7 +37,7 @@ La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut 
 
 Les jetons sont opaques. Le serveur en déduit l’identité et la portée ; une route ou un corps contenant un UUID ne confère aucun droit. Un Joueur ne peut agir pour un autre, un Animateur ne peut accéder à un autre Lieu et une clé d’Écran n’envoie que les commandes de son lecteur (désignation, déclaration, fin, erreur et relevé de position), sans aucune action de jeu. Les ressources hors de la portée autorisée répondent `404`, les identités absentes ou expirées `401`.
 
-Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée ; sa durée de conservation après la fin sera précisée avec l’implémentation des accès. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès créé depuis la Console. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. Le transfert initial d’une clé d’Écran peut utiliser un fragment URL, retiré par la page après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
+Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée. La page d’arrivée conserve le jeton et l’UUID du Joueur renvoyés par le serveur pour la Soirée concernée. La Manette utilise le jeton pour ses requêtes HTTP et le CONNECT STOMP, et l’UUID pour choisir son canal. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès depuis la préparation. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. La préparation ouvre `ecran.html?soiree=<UUID>#cle=<clé>` ; l’Écran de salle conserve sa clé dans le stockage de l’onglet et retire le fragment après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
 
 Pour la session Animateur, obtenir un jeton par `GET /api/csrf`, puis envoyer `X-CSRF-TOKEN` avec les opérations mutantes. L’inscription et la connexion sont également protégées contre les requêtes intersites. Après connexion/déconnexion, récupérer un nouveau jeton. Le cookie de session est `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS.
 
@@ -57,9 +61,9 @@ Selon l’[ADR 0006](../adr/0006-commandes-de-manche-et-vues-par-blocs.md), les 
 
 La Manche en cours remplit le seul bloc de son Mode de jeu (`quiz`, `blindtest`, `karaoke` ou `freestyle`). Ce bloc peut rester `null` sans fournisseur ou après la fin. Les autres blocs valent `null` ou sont absents. Hors Manche, `modeEnCours` vaut `null` et tous les blocs sont nuls ou absents ; les anciens exemples `quiz: {phase: ATTENTE}` hors Manche deviennent donc `quiz: null`. Une vue porte au plus un bloc non nul, correspondant à `modeEnCours` : cette règle est validée par le schéma partagé `BlocsDeMode` sur les trois destinations. Le serveur compose une vue dont `modeEnCours` correspond à la Manche active.
 
-`quiz` est facultatif, de type `EtatQuiz` ou `null`. `karaoke` est facultatif, de type `BlocKaraokeSalle`, `BlocKaraokeConsole` ou `BlocKaraokeManette` selon la destination, ou `null`. Un bloc Karaoké non nul exige une Manche active de Karaoké en `EN_COURS` ou `EN_PAUSE`. Les blocs facultatifs `blindtest` et `freestyle` n’acceptent encore que `null`. La création et la description des Manches acceptent `QUIZ` et `KARAOKE`, avec les réglages propres à chaque mode. La confidentialité du Quiz reste inchangée : si le bloc `quiz` est présent et non nul, aucun résultat personnel n’est révélé en `ATTENTE`, `QUESTION_OUVERTE` ou `EN_PAUSE`. En `KARAOKE`, `derniereReponse` et `resultatPersonnel` restent obligatoires et nuls, même sans bloc fourni.
+`quiz` est facultatif, de type `EtatQuiz` ou `null`. `blindtest` est facultatif, de type `BlocBlindTestSalle`, `BlocBlindTestConsole` ou `BlocBlindTestManette` selon la destination, ou `null`. `karaoke` est facultatif, de type `BlocKaraokeSalle`, `BlocKaraokeConsole` ou `BlocKaraokeManette` selon la destination, ou `null`. Un bloc Karaoké non nul exige une Manche active de Karaoké en `EN_COURS` ou `EN_PAUSE`, et un bloc Blind test une Manche active de Blind test dans les mêmes états. Le bloc facultatif `freestyle` n’accepte encore que `null`. La création et la description des Manches acceptent `QUIZ`, `BLIND_TEST` et `KARAOKE`, avec les réglages propres à chaque mode (section Blind test pour `ReglagesBlindTest`). La confidentialité du Quiz reste inchangée : si le bloc `quiz` est présent et non nul, aucun résultat personnel n’est révélé en `ATTENTE`, `QUESTION_OUVERTE` ou `EN_PAUSE`. En `KARAOKE`, `derniereReponse` et `resultatPersonnel` restent obligatoires et nuls, même sans bloc fourni.
 
-Dans la partie commune de la Manette, `eligiblePourMancheActive` dit si le Joueur prend part à la Manche active. Pour un Joueur arrivé pendant une Manche, le serveur le met à `true` quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Karaoké ; Freestyle), à `false` sinon. Le Blind test tranchera dans #17. Les pages n’en déduisent rien d’autre : le message « Tu participeras à la prochaine Manche » s’appuie sur ce seul champ, sans regarder `modeEnCours`. La règle de jeu reste au serveur, et un futur Mode de jeu n’a rien à ajouter côté navigateur.
+Dans la partie commune de la Manette, `eligiblePourMancheActive` dit si le Joueur prend part à la Manche active. Pour un Joueur arrivé pendant une Manche, le serveur le met à `true` quand le Mode de jeu admet les arrivées en cours (Quiz, décision de #14 ; Blind test, ADR 0009 ; Karaoké ; Freestyle), à `false` sinon. Au Blind test, le retardataire peut buzzer dès le Morceau en cours. Les pages n’en déduisent rien d’autre : le message « Tu participeras à la prochaine Manche » s’appuie sur ce seul champ, sans regarder `modeEnCours`. La règle de jeu reste au serveur, et un futur Mode de jeu n’a rien à ajouter côté navigateur.
 
 Les captures HTTP et les messages STOMP utilisent les mêmes schémas de vue. Les trois canaux restent inchangés et chaque message remplace toujours la vue complète, partie commune et blocs compris.
 
@@ -101,7 +105,29 @@ Une base ou une transaction indisponible produit `503 SERVICE_INDISPONIBLE` au f
 
 Un accusé HTTP retrouvé après répétition est un reçu de l’opération initiale : il ne doit pas remplacer une projection temps réel plus récente. Les écrans prennent leur état courant dans les captures cohérentes et événements révisés, même lorsqu’une ancienne réponse HTTP finit par arriver.
 
+Le Buzz du socle est disponible dans une Soirée ouverte ou en cours hors Manche active. Son UUID peut être envoyé comme `envoiId` JSON ou comme `Idempotency-Key` ; les deux formes désignent le même envoi. Un Buzz accepté reçoit un rang croissant à partir de 1 dans la Soirée. Le reçu est conservé, et `buzz-recu` transporte ce Buzz dans `dernierBuzz` des vues complètes de la salle, de la Console et des Manettes. Les captures et événements ultérieurs conservent le dernier Buzz accepté.
+
 La pause gèle le temps restant ; la reprise crée une nouvelle échéance serveur. En Manuel, `PASSER_ETAPE` clôt d’abord une Question ouverte et montre sa correction ; un nouvel appel, avec un nouvel identifiant d’envoi, passe à la Question suivante. Après la dernière correction, la Manche est terminée. L’Animateur demande ensuite `MANCHE_SUIVANTE`, qui clôt la Soirée si le programme est épuisé. L’arrêt explicite d’une Manche abandonne l’étape non corrigée sans lui attribuer de points.
+
+## Blind test
+
+Les règles sont celles de l’[ADR 0009](../adr/0009-deroulement-du-blind-test.md). Ce qui suit les décrit vues du réseau ; [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) les illustre.
+
+**Préparation.** `ajouterManche` accepte `BLIND_TEST` avec `ReglagesBlindTest` : une source (`PLAYLIST` ou `GENRE` Deezer, par son identifiant) et un nombre de Morceaux de 1 à 50. Le serveur tire les Morceaux qui ont un extrait, hors du verrou de la Soirée. Ces réglages sont publics : la partie commune les publie tels quels à toutes les destinations (`mancheActive.reglages`). La sélection tirée reste donc dans l’état privé du mode et n’y figure jamais. Deezer indisponible, ou une source sans assez de Morceaux jouables : `503 SOURCE_MUSICALE_INDISPONIBLE`, sans Manche ajoutée.
+
+**Phases d’un Morceau.** `PREPARATION` (le serveur demande le lien d’extrait hors du verrou), `EXTRAIT`, `PROPOSITION` (un Joueur a la main), `REVELATION`. `etapeId` identifie le Morceau courant ; il est attribué par le serveur et n’est jamais l’identifiant Deezer. `lecture` décrit les 30 s d’extrait menées par l’Horloge du serveur : en lecture depuis `positionMs` à l’instant `depuisLe`, ou en pause à `positionMs`. Les 30 s partent de la mise en lecture et s’arrêtent pendant la saisie et les pauses de la Manche. L’Écran de salle s’aligne sur `lecture` sans rien signaler ; un Écran rechargé reprend à la bonne position.
+
+**Confidentialité.** La vue salle est lisible par un Joueur : elle ne porte jamais l’identifiant Deezer, ni le titre, ni l’artiste avant leur Révélation, hors partie déjà trouvée. Elle porte `lienExtrait`, le lien signé rendu par Deezer, en phases `EXTRAIT` et `PROPOSITION` seulement. `revelation` (titre, artiste, pochette) n’est non nul qu’en phase `REVELATION`, sur les trois destinations. La Console porte en plus `reponse`, la réponse attendue à tout moment, et `joueursBloques`. La Manette porte en plus `peutBuzzer`, `bloque`, `aLaMain` (jamais en même temps que `bloque`), `champsDemandes`, et `monBrouillon`, visible de son seul auteur quand il a la main.
+
+**Buzz.** Pendant une Manche de Blind test, `envoyerBuzz` exige `mancheId` et l’`etapeId` du Morceau visé (`400 REQUETE_INVALIDE` sinon) et transmet le Buzz au déroulement de la Manche. Le premier Buzz accepté d’un Joueur non bloqué, en phase `EXTRAIT`, lui donne la main : l’extrait se met en pause, `main` porte son échéance de saisie (20 s), puis `buzz-recu`. `rang` est l’ordre du Buzz parmi les Buzz acceptés du Morceau, et `dernierBuzz` reprend le Buzz qui a pris la main. Une cible qui n’est plus la Manche ou le Morceau courant reçoit `409 COMMANDE_PERIMEE`, distinct des refus de jeu : Joueur bloqué, main déjà prise ou phase autre que `EXTRAIT` donnent `409 BUZZ_NON_AUTORISE`. Le même envoi rend son reçu initial, même après la fin du Morceau.
+
+**Proposition de titre.** Le Joueur qui a la main dépose son brouillon par `deposerBrouillonProposition` au fil de la saisie : chaque envoi porte un `numero` croissant, à partir de 1 pour chaque main, et remplace le brouillon retenu (`204`, sans reçu). La vue est alors republiée à sa seule Manette (`brouillon-depose`) : après un rechargement, la capture rend `monBrouillon`, et la Manette reprend la numérotation depuis son `numero`. Un brouillon dont le `numero` ne dépasse pas celui du brouillon retenu est ignoré sans publication, si bien qu’un envoi rejoué en retard n’écrase jamais un plus récent ; c’est l’idempotence du brouillon, sans `Idempotency-Key`. `validerProposition` est dédupliquée par l’`envoiId` du corps, comme le Buzz. `validerProposition` fait juger aussitôt ; à l’échéance comptée par le serveur, le dernier brouillon reçu est jugé de la même façon. Seuls les champs encore demandés sont jugés ; une partie déjà trouvée vaut `NON_DEMANDE`. Un champ est juste s’il égale le titre court Deezer ou le nom de l’artiste, sans tenir compte de la casse, des accents ni des blancs répétés ; la tolérance aux articles et aux fautes de frappe viendra avec #18. Le titre rapporte 70 points, l’artiste 30, au premier qui trouve chaque partie, sans point négatif. Une partie trouvée apparaît aussitôt dans `partiesTrouvees` ; un champ demandé faux ou vide bloque le Joueur jusqu’au Morceau suivant, l’extrait reprend et le Buzz se rouvre. L’accusé porte le verdict de chaque champ et les points gagnés. Chaque jugement publie une seule vue : `proposition-jugee`, ou `morceau-revele` quand il termine le Morceau. Les refus d’un dépôt ou d’une validation suivent cet ordre : un Morceau qui n’est plus le Morceau affiché reçoit `409 COMMANDE_PERIMEE` (un Morceau révélé reste affiché jusqu’au suivant) ; un Joueur déjà jugé sur ce Morceau, ou dont l’échéance est atteinte même si le serveur ne l’a pas encore jugé, `409 HORS_DELAI` ; un Joueur sans la main `409 ETAT_INCOMPATIBLE`. Un Buzz reçu quand l’extrait a atteint 30 s reçoit `409 BUZZ_NON_AUTORISE`, même avant la Révélation.
+
+**Fin et suite.** La Révélation arrive quand les deux parties sont trouvées, quand les 30 s sont écoulées ou quand plus aucun Joueur ne peut buzzer (`morceau-revele`). En Pilotage Automatique, le Morceau suivant est préparé 8 s après (`morceau-en-preparation`), puis lu (`morceau-ouvert`). En Manuel, un premier `PASSER_ETAPE` sur un Morceau en cours, en préparation compris, le termine et le révèle ; seul un `PASSER_ETAPE` pendant la Révélation passe au suivant, ou termine la Manche après le dernier Morceau. Il nomme toujours l’`etapeId` du Morceau affiché (`409 ETAPE_INACTIVE` sinon), si bien qu’un envoi destiné au Morceau 1 ne révèle jamais le Morceau 2.
+
+**Pause.** `METTRE_EN_PAUSE` gèle la lecture et, pendant une saisie, le temps restant du Joueur qui a la main : `main.echeanceLe` devient `null` et `main.tempsRestantMs` porte le reste. `REPRENDRE` relance l’extrait et la saisie d’où ils étaient. Pendant la pause, le Joueur garde la main et peut encore déposer son brouillon ; valider sa Proposition ou `PASSER_ETAPE` reçoit `409 ETAT_INCOMPATIBLE`, et un Buzz `409 BUZZ_NON_AUTORISE`. Un Morceau dont le lien d’extrait ne peut être obtenu est sauté sans points (`morceau-saute`) ; après le dernier Morceau, la Manche se termine. Si le dernier Morceau est sauté, seul `manche-terminee` est publié : la salle n’annonce pas ce saut, le bloc `blindtest` passant aussitôt à `null`.
+
+**Joueurs et points.** Un Joueur arrivé pendant la Manche peut buzzer aussitôt : `eligiblePourMancheActive` vaut `true`. Un Morceau donne au plus une `AttributionDePoints` par Joueur : `points` est la somme de ses parties trouvées, `bonneReponse` vaut `true`, et `tempsMs` est la position de l’extrait à son Buzz gagnant, donc le temps d’extrait écoulé hors pauses de la Manche et hors saisies des autres Joueurs. Un doublé titre et artiste donne une seule attribution de 100 points.
 
 ## Karaoké
 
@@ -351,19 +377,21 @@ pour le rang 1, et de `croustyquizz:demo:joueur:<soireeId>:<rang>` pour les rang
 `joueurId(soireeId)` renvoie toujours le rang 1. Sur la page d’identité de démonstration,
 le Joueur choisit son rang. La page lit l’UUID correspondant dans la projection et
 l’utilise comme `acteurId` dans le jeton `demo:JOUEUR:soireeId:acteurId`.
-Ces identités fictives ne sont pas
-une authentification ; en production le résolveur refuse systématiquement avec `401`.
-Elles ne visent que des Soirées fictives : un jeton `demo:JOUEUR` ou `demo:ECRAN` dont la Soirée
-est enregistrée est refusé : en HTTP par `401 AUTHENTIFICATION_REQUISE`, au CONNECT STOMP par une
-trame `ERROR` suivie de la fermeture de la connexion, sans statut HTTP. Le canal
-d'une Manette et sa dernière vue ne dépendant que de l'UUID du Joueur, un jeton `demo:JOUEUR` qui
-porte l'UUID d'un vrai Joueur est refusé de même, quelle que soit la Soirée déclarée. Seuls
-le jeton de reconnexion du Joueur et la clé de l'Écran de salle donnent accès à une Soirée enregistrée.
-`demo:ANIMATEUR`
-reste accepté sur une Soirée enregistrée jusqu'à la connexion du Lieu (#5) : les routes de test
-des Manches en dépendent. Reste ouvert en `dev` et `recette` : un abonnement STOMP anonyme au canal
-de salle n'est contrôlé que sur la forme de sa destination, pour le [prototype #7](prototype/README.md) :
-il ne protège pas encore la salle d'une Soirée enregistrée et reste à réserver aux canaux du prototype (#181).
+
+En production, le résolveur refuse les jetons de démonstration avec `401`. En `dev` et `recette`,
+`demo:JOUEUR` et `demo:ECRAN` sont réservés aux Soirées fictives. Sur une Soirée enregistrée, ces jetons
+reçoivent `401 AUTHENTIFICATION_REQUISE` en HTTP et une trame `ERROR` suivie de la fermeture de la
+connexion au CONNECT STOMP. Le canal de la Manette et sa dernière vue dépendent de l’UUID du Joueur.
+Un jeton `demo:JOUEUR` qui porte l’UUID d’un vrai Joueur reçoit le même refus, quelle que soit la Soirée
+déclarée. Pour une Soirée enregistrée, la Manette utilise son jeton de reconnexion et l’Écran de salle sa clé.
+L’Animateur de démonstration vérifie son jeton par la capture de la Console. `demo:ANIMATEUR` reste accepté
+sur une Soirée enregistrée jusqu’à la connexion du Lieu (#5), pour les routes de test des Manches et le pilotage.
+Le [prototype #7](prototype/README.md) peut s’abonner anonymement au canal de salle uniquement en `dev`
+et `recette`, pour un UUID de Soirée absent de la base (#181). Le serveur vérifie cette absence à chaque
+`SUBSCRIBE` anonyme. Si la Soirée est enregistrée, le broker n’installe aucun abonnement pour ce `SUBSCRIBE`.
+La coquille STOMP `/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la
+clé dans le stockage de l’onglet, pour cette seule Soirée.
+
 Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
 Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
@@ -377,3 +405,42 @@ reste celui choisi à sa création. Le Buzz de test et son format historique res
 Voir [le contrat du prototype](prototype/openapi.yaml).
 Le cycle interne `PRETE` apparaît sous le nom HTTP existant `EN_ATTENTE` dans le programme.
 Les schémas des Manches restent limités au Quiz jusqu'aux contrats des autres modes.
+
+## Photos de la salle (#72)
+
+Un Joueur envoie un JPEG brut par HTTP. Le serveur vérifie sa signature, sa taille
+(1 500 000 octets maximum) et ses dimensions (2048 pixels maximum de chaque côté).
+Un `Content-Length` supérieur à la borne est refusé (`422 DONNEES_INVALIDES`) sans
+lire le corps. Le serveur lit au plus quatre envois à la fois : au-delà, il répond
+`503 SERVICE_INDISPONIBLE` sans reçu. Avant de lire le corps, il vérifie sous le
+verrou de Soirée l'état de la Soirée, le réglage, l'exclusion du Joueur, les files
+et le budget, puis les revérifie au moment de l'ajout.
+Il conserve les JPEG en mémoire uniquement, dans la limite de 64 000 000 octets
+pour l'ensemble des Soirées (`503 SERVICE_INDISPONIBLE`) et de 16 000 000 octets par
+Soirée, photos en attente, acceptées et à l'affiche comprises (`409 LIMITE_ATTEINTE`).
+La file de modération est bornée à trois photos par Joueur et à trente par Soirée,
+et la file des photos acceptées à trente (`409 LIMITE_ATTEINTE` à la modération,
+la photo reste en attente). Un refus ou la fin de l'affichage rend sa place
+au JPEG suivant. La fin de Soirée efface toutes ses photos, le réglage et ses
+reçus. Une Soirée sans commande photo ni changement d'affiche pendant douze heures
+perd ses photos et ses reçus ; son réglage reste. Un redémarrage perd ces données
+et remet les envois ouverts par défaut.
+
+Les mutations exigent un `Idempotency-Key` UUID. Pour une Soirée ouverte ou en
+cours, une commande réussie, rejouée par le même Acteur avec la même clé et le
+même contenu, rend le même reçu. Si la publication a échoué, le rejeu peut
+achever la première publication. Réutiliser la clé pour une
+autre commande ou un autre contenu donne `409 ENVOI_REUTILISE`. Un refus
+ne crée pas de reçu. Les opérations de l'Animateur utilisent l'identité de
+démonstration en dev et recette tant que la session du Lieu (#5) est en attente.
+
+Le bloc `photos` contient le réglage sur la Manette, et sur la Console le
+réglage et la file d'attente avec le pseudo des auteurs. La salle ne reçoit
+que l'UUID et l'échéance de la photo à l'affiche, ou `null`. Si une Manche
+démarre avant la fin des huit secondes, la photo retourne en tête de file
+et aura huit secondes consécutives au prochain créneau. Une Manche en pause
+occupe toujours la scène. Couper les envois laisse les deux files intactes.
+Un Écran de salle ne peut télécharger que le JPEG à l'affiche. Aucun Joueur
+n'a accès au téléchargement. Les octets ne figurent dans aucune vue.
+
+Voir [le parcours complet](exemples/parcours-photos.yaml).

@@ -39,7 +39,7 @@ Docker doit tourner pour lancer l'application et pour les tests.
 | `./mvnw verify` | build, tests (PostgreSQL jetable par Testcontainers), couverture JaCoCo et alertes PMD bloquantes |
 | `./mvnw test -Dtest=NomDuTest` | un seul test |
 | `npm ci --prefix tools/api` puis `npm test --prefix tools/api` | valide les contrats, les exemples et les cas de confidentialité de `docs/api/` (Node 24) |
-| `python3 tools/generer-dossier.py [rendu-2]` | régénère le PDF d'un dossier de rendu depuis `doc/rendu-1/` (par défaut, quatre pages à vérifier) ou `doc/rendu-2/` (Pandoc et Chrome) |
+| `python3 tools/generer-dossier.py [rendu-2\|rendu-3]` | régénère le PDF d'un dossier de rendu depuis `doc/rendu-1/` (par défaut, quatre pages à vérifier), `doc/rendu-2/` ou `doc/rendu-3/` (Pandoc et Chrome) |
 | `tools/demo.sh demarrer` / `arreter` | démo sur le serveur, le temps d'une séance : jamais en développement, procédure dans `docs/deploiement.md` |
 | `docker compose down -v` | efface la base locale pour repartir de zéro |
 | `git config core.hooksPath .githooks` | une fois par clone : refuse les messages de commit hors format |
@@ -58,7 +58,9 @@ L'instantané se compare par valeur avec `Objects.equals`.
 
 Le temps passe exclusivement par l'`Horloge` du `ContexteDeManche` (jamais `Instant.now()` ni de thread). Ses callbacks repassent par le service ; la fabrique précise `typeEvenementMinuteur` pour ses phases. `reglagesCommuns` extrait les réglages du contexte depuis les réglages typés du mode. Les fournisseurs produisent des projections sans secrets pour chaque destination sous le même verrou ; seul le socle compose et publie la vue complète. La classe de test du mode étend `ContratDeroulementDeManche` (modèle : `DeroulementFacticeTest`), notamment pour les refus sans mutation et après la fin.
 
-Côté navigateur, ne pas créer de page par mode : les coquilles `manette.html`, `console.html` et `ecran.html` chargent `static/js/modes/<mode>/<ecran>.mjs`. Dossiers : `quiz`, `blindtest` (pour `BLIND_TEST`), `karaoke`, `freestyle`. Chaque module exporte `monter(zones, contexte)`, qui rend `{ afficher(vue, origine), demonter() }` :
+Côté navigateur, les coquilles `manette.html`, `console.html` et `ecran.html` chargent `static/js/modes/<mode>/<ecran>.mjs`. Dossiers : `quiz`, `blindtest` (pour `BLIND_TEST`), `karaoke`, `freestyle`. La coquille de la Console porte les trois commandes de Soirée. Chaque module de mode pilote sa Manche et cible l’étape courante. Voir `docs/ecrans.md` pour la recette.
+
+Chaque module exporte `monter(zones, contexte)`, qui rend `{ afficher(vue, origine), demonter() }` :
 
 - `zones.principale` sur les trois écrans ; `zones.laterale` aussi sur la Console et l'Écran de salle. Sur la salle, la principale est à gauche et la latérale en haut à droite : la coquille garde `.salle__scene`, le pied, le talon et les informations communes. Ne modifier que ses zones. Seule exception : un module peut ajouter dans `head` un unique `<link rel="stylesheet" data-mode="<mode>">` au montage et le retirer au démontage (`data-mode="karaoke"` pour le Karaoké).
 - `afficher` reçoit la vue complète et `origine: { source: 'capture' | 'evenement', type }`. Une capture restaure sans rejouer d'animation ; seul un événement peut la déclencher. Les pages ne contiennent aucune règle de jeu. Un module ne reçoit jamais de bloc absent ou nul : quand le bloc de son mode manque ou vaut `null` (fin de Manche, pas de fournisseur), le gestionnaire le démonte, puis en remonte un neuf à la prochaine vue qui porte un bloc, même si le mode n'a pas changé.
@@ -76,7 +78,7 @@ Chaque package a un propriétaire, qui écrit et relit en premier ce qui s'y pas
 
 | Package | Propriétaire |
 |---|---|
-| `manche` (contrat commun), `tempsreel`, `karaoke`, `freestyle`, pilotage automatique | Tibxla |
+| `manche` (contrat commun), `tempsreel`, `photos`, `karaoke`, `freestyle`, pilotage automatique | Tibxla |
 | `quiz`, `animateur`, classement général | Piyakabib |
 | `soiree`, `blindtest`, déroulement manuel des Manches, format Équipe, `assistant` (serveur MCP) | nRayen |
 

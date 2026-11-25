@@ -4,10 +4,11 @@
 Usage, depuis la racine du dépôt :
     python3 tools/generer-dossier.py            # Rendu 1, quatre pages fixes
     python3 tools/generer-dossier.py rendu-2    # Rendu 2, sans limite de pages
+    python3 tools/generer-dossier.py rendu-3    # Rendu 3, sans limite de pages
 
 Le Rendu 1 garde sa mise en page d'origine : quatre feuilles séparées par
 <!-- page -->, chacune avec son en-tête et son pied de page. Le Rendu 2 s'écoule
-sur autant de pages qu'il faut ; <!-- page --> y force seulement un saut de page,
+sur autant de pages qu'il faut, comme le Rendu 3 ; <!-- page --> y force seulement un saut de page,
 et l'en-tête, le pied et la numérotation viennent des marges de @page
 (tools/dossier-continu.css), que Chrome répète sur chaque page imprimée.
 """
@@ -37,6 +38,15 @@ DOSSIERS = {
         "titre": "CroustyQuizz · Version v0.1.0",
         "en_tete": "Rendu 2 · Version intermédiaire v0.1.0",
         "date": "18 novembre 2026",
+        "pages": None,
+    },
+    "rendu-3": {
+        "source": "doc/rendu-3/dossier-v0.2.0.md",
+        "pdf": "doc/rendu-3/dossier-v0.2.0.pdf",
+        "sortie": "target/dossier-v0.2.0",
+        "titre": "CroustyQuizz · Version v0.2.0",
+        "en_tete": "Rendu 3 · Version intermédiaire v0.2.0",
+        "date": "25 novembre 2026",
         "pages": None,
     },
 }
