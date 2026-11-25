@@ -570,7 +570,7 @@ class KaraokeTempsReelTest {
 
         // L'inscripteur exclu transmet le Passage au premier accepté ; l'Invitation qu'il avait émise expire.
         modes.retirerJoueurParti(soiree, inscrivant.identifiant());
-        var vues = lireTous(List.of(console, salle, manetteInvite, manetteSilencieux), "file-attente-modifiee");
+        var vues = lireTous(flux, "file-attente-modifiee");
         assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isEqualTo(2);
         assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/passageId").asString()).isEqualTo(passage);
         assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/interpretes").size()).isEqualTo(1);
@@ -590,26 +590,25 @@ class KaraokeTempsReelTest {
 
         // Seul Interprète de son Passage, le Joueur exclu le perd ; un départ sans effet ne publie rien.
         modes.retirerJoueurParti(soiree, silencieux.identifiant());
-        vues = lireTous(List.of(console, salle, manetteInvite), "file-attente-modifiee");
+        vues = lireTous(flux, "file-attente-modifiee");
         assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isEqualTo(1);
         assertThat(vues.get(console).at("/karaoke/passagesEnAttente/0/passageId").asString()).isEqualTo(passage);
-        Thread.sleep(300);
-        flux.forEach(abonne -> abonne.messages().clear());
         // Un départ sans effet ne réécrit pas la Manche et ne publie rien.
+        var revisions = revisions(flux);
         clearInvocations(persistance);
         modes.retirerJoueurParti(soiree, silencieux.identifiant());
         modes.retirerJoueurParti(soiree, UUID.randomUUID());
         verify(persistance, never()).enregistrer(eq(manche), any());
-        for (var abonne : flux) { assertThat(abonne.messages().poll(300, TimeUnit.MILLISECONDS)).isNull(); }
+        aucunePublicationDepuis(revisions);
 
         // Sans Manche active, le départ ne touche plus la File.
         service.terminerPourSoiree(manche, new EnvoiDeCommande(animateur, "/terminer", UUID.randomUUID(), Map.of()));
-        Thread.sleep(300);
+        lireTous(flux, "manche-terminee");
         var terminee = service.instantane(soiree, manche);
-        flux.forEach(abonne -> abonne.messages().clear());
+        revisions = revisions(flux);
         modes.retirerJoueurParti(soiree, invite.identifiant());
         assertThat(service.instantane(soiree, manche)).isEqualTo(terminee);
-        for (var abonne : flux) { assertThat(abonne.messages().poll(300, TimeUnit.MILLISECONDS)).isNull(); }
+        aucunePublicationDepuis(revisions);
     }
 
     /** Le Vote du public reste fermé à chacun des Interprètes d'un Passage à deux (#115, #138). */
@@ -653,6 +652,23 @@ class KaraokeTempsReelTest {
 
     private static Map<String, Object> reponse(String reponse, long numeroModification) {
         return Map.of("envoiId", UUID.randomUUID(), "numeroModification", numeroModification, "reponse", reponse);
+    }
+
+    private Map<Abonnement, Long> revisions(List<Abonnement> flux) throws Exception {
+        Map<Abonnement, Long> revisions = new HashMap<>();
+        for (var abonne : flux) { revisions.put(abonne, capturer(abonne).path("revision").asLong()); }
+        return revisions;
+    }
+
+    /**
+     * Le service publie sous le verrou, avant de rendre la main : une Révision inchangée et une file de messages vide
+     * prouvent, sans attendre, que rien n'est parti depuis le relevé.
+     */
+    private void aucunePublicationDepuis(Map<Abonnement, Long> revisions) throws Exception {
+        for (var releve : revisions.entrySet()) {
+            assertThat(capturer(releve.getKey()).path("revision").asLong()).isEqualTo(releve.getValue());
+            assertThat(releve.getKey().messages()).isEmpty();
+        }
     }
 
     private Map<Abonnement, JsonNode> lireTous(List<Abonnement> flux, String cause) throws Exception {
