@@ -642,6 +642,36 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
                 .isInstanceOf(Accepte.class);
     }
 
+    /** Départ d’un Interprète (#205) : sans reçu, même en pause, et jamais sur le Passage déjà appelé. */
+    @Test
+    void leDepartDeLInscripteurTransmetLePassageAttenduEtEpargneLePassageAppele() {
+        deroulement.demarrer();
+        UUID invite = new UUID(0, 50);
+        UUID silencieux = new UUID(0, 51);
+        accepter201(deroulement.recevoir(inscriptionAvecInvites(PASSAGE.toString(), List.of(invite, silencieux), true)));
+        accepter(repondre(invite, true), "file-attente-modifiee", true);
+        accepter(deroulement.mettreEnPause(pilotage()), "manche-en-pause", true);
+
+        Accepte depart = accepter(karaoke().retirerJoueurParti(JOUEUR, horloge.maintenant()), "file-attente-modifiee", true);
+
+        assertThat(depart.accuse()).isNull();
+        assertThat(passage(PASSAGE).inscripteurId()).isEqualTo(invite);
+        assertThat(passage(PASSAGE).interpretes()).containsExactly(invite);
+        assertThat(karaoke().instantane().file().invitations()).extracting(InvitationPassage::etat)
+                .containsExactly(InvitationPassage.Etat.ACCEPTEE, InvitationPassage.Etat.EXPIREE);
+        var avant = karaoke().instantane();
+        accepter(karaoke().retirerJoueurParti(INCONNU, horloge.maintenant()), "file-attente-modifiee", false);
+        assertThat(karaoke().instantane()).isEqualTo(avant);
+
+        accepter(deroulement.reprendre(pilotage()), "manche-reprise", true);
+        accepter(appeler(cible(PASSAGE)), "passage-appele", true);
+        var appele = karaoke().instantane();
+        accepter(karaoke().retirerJoueurParti(invite, horloge.maintenant()), "file-attente-modifiee", false);
+        assertThat(karaoke().instantane()).isEqualTo(appele);
+        deroulement.terminer(pilotage());
+        refuserSansMutation(() -> karaoke().retirerJoueurParti(invite, horloge.maintenant()), 409, "ETAT_INCOMPATIBLE", null);
+    }
+
     private InscrirePassage inscriptionAvecInvites(String chansonId, List<UUID> invites, boolean presents) {
         UUID id = chansonId.equals(PASSAGE.toString()) ? PASSAGE : UUID.randomUUID();
         var contenu = new ContenuKaraoke(new Chanson(chansonId, 42, "Titre", "Artiste", null, 180_000L,

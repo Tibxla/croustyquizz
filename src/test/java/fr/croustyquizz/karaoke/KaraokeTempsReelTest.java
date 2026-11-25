@@ -44,6 +44,7 @@ class KaraokeTempsReelTest {
     @Autowired ServiceKaraoke service;
     @Autowired Horloge horloge;
     @Autowired SocleDeManche socle;
+    @Autowired RegistreServicesDeManche modes;
     @Autowired PilotageDeSoireeDemonstration pilotage;
     @Autowired MemoireDeCalageJpa calages;
     @MockitoSpyBean PersistanceKaraokeJpa persistance;
@@ -532,6 +533,80 @@ class KaraokeTempsReelTest {
         assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isZero();
         KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/" + autreId + "/invitation",
                 silencieux, reponse("ACCEPTER", 1), null), 409);
+    }
+
+    /**
+     * Départ d'un Interprète en attente (#205), par le point d'entrée que l'Exclusion appellera : verrou, transaction
+     * PostgreSQL, puis file-attente-modifiee sur les trois destinations et restauration identique après éviction.
+     */
+    @Test
+    @org.springframework.test.annotation.DirtiesContext(methodMode = org.springframework.test.annotation.DirtiesContext.MethodMode.AFTER_METHOD)
+    void leDepartDUnInterpreteLeRetireDuPassageQuiContinueAvecLesAutres() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        List<UUID> joueurs = joueursDe(soiree);
+        var inscrivant = new Acteur(Acteur.Type.JOUEUR, joueurs.get(0), soiree);
+        var invite = new Acteur(Acteur.Type.JOUEUR, joueurs.get(1), soiree);
+        var silencieux = new Acteur(Acteur.Type.JOUEUR, joueurs.get(2), soiree);
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var salle = abonner(new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree), Canaux.salle(soiree), "salle");
+        var manetteInscrivant = abonner(inscrivant, Canaux.joueur(inscrivant.identifiant()), "manette");
+        var manetteInvite = abonner(invite, Canaux.joueur(invite.identifiant()), "manette");
+        var manetteSilencieux = abonner(silencieux, Canaux.joueur(silencieux.identifiant()), "manette");
+        var flux = List.of(console, salle, manetteInscrivant, manetteInvite, manetteSilencieux);
+
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", inscrivant, Map.of("envoiId", UUID.randomUUID(),
+                "chansonId", IdentifiantsChanson.encoder(1), "invitesIds", List.of(invite.identifiant(), silencieux.identifiant())), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String passage = json.readTree(inscription.getBody()).path("passageId").asString();
+        lireTous(flux, "file-attente-modifiee");
+        KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/invitation",
+                invite, reponse("ACCEPTER", 0), null), 200);
+        lireTous(flux, "file-attente-modifiee");
+        KaraokeHttpTest.verifier("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", silencieux,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(2)), null), 201);
+        lireTous(flux, "file-attente-modifiee");
+
+        // L'inscripteur exclu transmet le Passage au premier accepté ; l'Invitation qu'il avait émise expire.
+        modes.retirerJoueurParti(soiree, inscrivant.identifiant());
+        var vues = lireTous(List.of(console, salle, manetteInvite, manetteSilencieux), "file-attente-modifiee");
+        assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isEqualTo(2);
+        assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/passageId").asString()).isEqualTo(passage);
+        assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/interpretes").size()).isEqualTo(1);
+        assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/interpretes/0/joueurId").asString())
+                .isEqualTo(invite.identifiant().toString());
+        assertThat(vues.get(console).at("/karaoke/invitationsEnAttente").isEmpty()).isTrue();
+        assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues").isEmpty()).isTrue();
+        assertThat(vues.get(manetteInvite).at("/karaoke/mesPassagesEnAttente/0/passageId").asString()).isEqualTo(passage);
+        // Le nouvel inscripteur suit les Invitations du Passage, sauf la sienne : celle du troisième Joueur a expiré.
+        assertThat(vues.get(manetteInvite).at("/karaoke/invitationsEmises").size()).isEqualTo(1);
+        assertThat(vues.get(manetteInvite).at("/karaoke/invitationsEmises/0/invite/joueurId").asString())
+                .isEqualTo(silencieux.identifiant().toString());
+        assertThat(vues.get(manetteInvite).at("/karaoke/invitationsEmises/0/etat").asString()).isEqualTo("EXPIREE");
+        var transmis = service.instantane(soiree, manche);
+        socle.registre().retirer(manche);
+        assertThat(service.instantane(soiree, manche)).isEqualTo(transmis);
+
+        // Seul Interprète de son Passage, le Joueur exclu le perd ; un départ sans effet ne publie rien.
+        modes.retirerJoueurParti(soiree, silencieux.identifiant());
+        vues = lireTous(List.of(console, salle, manetteInvite), "file-attente-modifiee");
+        assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isEqualTo(1);
+        assertThat(vues.get(console).at("/karaoke/passagesEnAttente/0/passageId").asString()).isEqualTo(passage);
+        Thread.sleep(300);
+        flux.forEach(abonne -> abonne.messages().clear());
+        modes.retirerJoueurParti(soiree, silencieux.identifiant());
+        modes.retirerJoueurParti(soiree, UUID.randomUUID());
+        for (var abonne : flux) { assertThat(abonne.messages().poll(300, TimeUnit.MILLISECONDS)).isNull(); }
+
+        // Sans Manche active, le départ ne touche plus la File.
+        service.terminerPourSoiree(manche, new EnvoiDeCommande(animateur, "/terminer", UUID.randomUUID(), Map.of()));
+        Thread.sleep(300);
+        var terminee = service.instantane(soiree, manche);
+        flux.forEach(abonne -> abonne.messages().clear());
+        modes.retirerJoueurParti(soiree, invite.identifiant());
+        assertThat(service.instantane(soiree, manche)).isEqualTo(terminee);
+        for (var abonne : flux) { assertThat(abonne.messages().poll(300, TimeUnit.MILLISECONDS)).isNull(); }
     }
 
     /** Le Vote du public reste fermé à chacun des Interprètes d'un Passage à deux (#115, #138). */
