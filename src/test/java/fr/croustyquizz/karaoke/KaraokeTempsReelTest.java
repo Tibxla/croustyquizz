@@ -179,10 +179,19 @@ class KaraokeTempsReelTest {
                 .at("/karaoke/mesAccordsEnregistrement/0").asString()).isEqualTo(passage);
         lireEvenement(autreManette, "autorisation-enregistrement-modifiee");
         lireEvenement(console, "autorisation-enregistrement-modifiee");
-        KaraokeHttpTest.verifier("definirAccordEnregistrement", envoyer(HttpMethod.PUT, accord, joueur,
-                Map.of("accord", false, "numeroModification", 0), UUID.randomUUID()), 200);
-        assertThat(lireEvenement(manette, "accord-enregistrement-modifie")
+        // Pendant l'interdiction, le retrait est accepté sans publication : l'accord suspendu ne revient plus.
+        KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
+                envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", false), UUID.randomUUID()), 200);
+        for (var abonne : List.of(manette, autreManette, console)) { lireEvenement(abonne, "autorisation-enregistrement-modifiee"); }
+        var retrait = envoyer(HttpMethod.PUT, accord, joueur, Map.of("accord", false, "numeroModification", 0), UUID.randomUUID());
+        KaraokeHttpTest.verifier("definirAccordEnregistrement", retrait, 200);
+        assertThat(json.readTree(retrait.getBody()).path("accord").asBoolean()).isFalse();
+        KaraokeHttpTest.verifier("reglerAutorisationEnregistrement",
+                envoyer(HttpMethod.PUT, autorisation, animateur, Map.of("autorise", true), UUID.randomUUID()), 200);
+        assertThat(lireEvenement(manette, "autorisation-enregistrement-modifiee")
                 .at("/karaoke/mesAccordsEnregistrement").size()).isZero();
+        lireEvenement(autreManette, "autorisation-enregistrement-modifiee");
+        lireEvenement(console, "autorisation-enregistrement-modifiee");
         var appel = envoyer(HttpMethod.POST, route + "/appel", animateur, Map.of("numeroModification", 0), UUID.randomUUID());
         KaraokeHttpTest.verifier("appelerPassage", appel, 200);
         for (var abonne : flux) { lireEvenement(abonne, "passage-appele"); }

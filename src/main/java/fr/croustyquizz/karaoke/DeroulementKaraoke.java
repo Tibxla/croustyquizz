@@ -212,7 +212,8 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (!passage.interpretes().contains(choix.joueurId())) {
             return new Refuse(403, "ACCES_REFUSE", "Seul un Interprète de ce Passage peut donner son accord.");
         }
-        if (!choix.autorise()) {
+        // L'interdiction bloque seulement un nouvel accord : l'Interprète peut toujours retirer le sien.
+        if (!choix.autorise() && choix.accord()) {
             return new Refuse(409, "ENREGISTREMENT_INTERDIT", "Les Enregistrements sont interdits pour cette Soirée.");
         }
         if (passage.numeroModification() != cible.numeroModification()
@@ -221,7 +222,8 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         }
         var accuse = new AccuseAccordEnregistrement(choix.envoiId(), contexte.soireeId(), contexte.mancheId(),
                 passage.id(), choix.accord(), choix.recueLe());
-        Set<Destination> destinations = choix.accord() == choix.accordPrecedent()
+        // Pendant l'interdiction, la vue ne montre aucun accord : un retrait n'y change rien.
+        Set<Destination> destinations = !choix.autorise() || choix.accord() == choix.accordPrecedent()
                 ? Set.of() : Set.of(Destination.joueur(choix.joueurId()));
         return new Accepte(accuse, destinations, "accord-enregistrement-modifie");
     }

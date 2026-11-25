@@ -304,10 +304,12 @@ L’Interprète donne ou retire son accord par `PUT M/passages/{passageId}/accor
 avec `Idempotency-Key`, `accord` et le compteur du Passage. L’accord est désactivé par défaut et
 vaut pour lui seul, même dans un Passage à plusieurs. Il se change en `EN_ATTENTE` et en `APPELE`,
 jusqu’au départ du Passage. Après les gardes communes, le serveur refuse dans l’ordre un Passage
-inconnu (`RESSOURCE_INTROUVABLE`), un Joueur qui n’en est pas Interprète (`ACCES_REFUSE`),
-l’interdiction de la Soirée (`ENREGISTREMENT_INTERDIT`), puis un compteur périmé ou un Passage déjà
-parti (`COMMANDE_PERIMEE`). Un choix qui change publie `accord-enregistrement-modifie` vers la seule
-Manette de cet Interprète.
+inconnu (`RESSOURCE_INTROUVABLE`), un Joueur qui n’en est pas Interprète (`ACCES_REFUSE`), un
+nouvel accord pendant l’interdiction de la Soirée (`ENREGISTREMENT_INTERDIT`), puis un compteur
+périmé ou un Passage déjà parti (`COMMANDE_PERIMEE`). Un choix qui change publie
+`accord-enregistrement-modifie` vers la seule Manette de cet Interprète. Pendant l’interdiction, le
+retrait (`accord: false`) reste accepté : il efface l’accord suspendu, qui ne reviendra pas avec
+l’autorisation, et ne publie rien, puisque la vue ne montre alors aucun accord.
 
 `BlocKaraokeConsole` et `BlocKaraokeManette` portent `enregistrementAutorise`. Seul
 `BlocKaraokeManette` porte `mesAccordsEnregistrement`, la liste des Passages en attente ou actifs

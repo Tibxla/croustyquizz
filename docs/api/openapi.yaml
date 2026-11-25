@@ -1713,7 +1713,8 @@ paths:
         si son choix change. Un rejeu identique rend le reçu initial sans publication.
         Refus : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE,
         404 RESSOURCE_INTROUVABLE, 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE,
-        409 ETAT_INCOMPATIBLE (Manche terminée), 409 ENREGISTREMENT_INTERDIT (réglage de Soirée),
+        409 ETAT_INCOMPATIBLE (Manche terminée), 409 ENREGISTREMENT_INTERDIT (nouvel accord pendant
+        l’interdiction de la Soirée ; le retrait reste accepté, sans publication),
         409 COMMANDE_PERIMEE (Passage démarré, sorti de la File ou compteur dépassé),
         503 SERVICE_INDISPONIBLE.
       tags: [Karaoké]

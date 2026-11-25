@@ -120,7 +120,8 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         var cible = new CiblePassage(passageId, corps.numeroModification());
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
             boolean autorise = persistance.enregistrementAutorise(soireeId);
-            boolean precedent = autorise && persistance.accordEnregistrement(passageId, joueurId);
+            // L'accord stocké, même suspendu par une interdiction : un retrait doit l'effacer.
+            boolean precedent = persistance.accordEnregistrement(passageId, joueurId);
             var resultat = d.recevoir(new DefinirAccordEnregistrement(joueurId, recueLe, envoi.envoiId(),
                     cible, corps.accord(), precedent, autorise));
             if (resultat instanceof Accepte && precedent != corps.accord()) {

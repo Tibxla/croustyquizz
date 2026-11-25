@@ -1,4 +1,4 @@
-description: Un Interprète donne son accord, puis l’Animateur interdit les Enregistrements pour la Soirée.
+description: Un Interprète donne son accord, puis l’Animateur interdit les Enregistrements pour la Soirée ; l’Interprète peut encore retirer son accord.
 evenementsComplets: true
 parametresCommuns:
   soireeId: 98000000-0000-4000-8000-000000000001
@@ -57,6 +57,22 @@ http:
     code: ENREGISTREMENT_INTERDIT
     detail: Les Enregistrements sont interdits pour cette Soirée.
     instance: /api/soirees/98000000-0000-4000-8000-000000000001/manches/98000000-0000-4000-8000-000000000002/passages/98000000-0000-4000-8000-000000000041/accord-enregistrement
+- nom: Retrait de l’accord pendant l’interdiction, sans publication
+  operationId: definirAccordEnregistrement
+  acteur: joueur:98000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 71000000-0000-4000-8000-000000000006
+  requete:
+    accord: false
+    numeroModification: 0
+  statut: 200
+  reponse:
+    envoiId: 71000000-0000-4000-8000-000000000006
+    soireeId: 98000000-0000-4000-8000-000000000001
+    mancheId: 98000000-0000-4000-8000-000000000002
+    passageId: 98000000-0000-4000-8000-000000000041
+    accord: false
+    recueLe: '2026-11-17T21:00:03.000Z'
 - nom: Accord envoyé après le départ, dans une Soirée qui autorise l’Enregistrement
   operationId: definirAccordEnregistrement
   acteur: joueur:98000000-0000-4000-8000-000000000003
