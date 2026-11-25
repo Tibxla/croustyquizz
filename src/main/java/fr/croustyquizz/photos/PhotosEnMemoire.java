@@ -4,19 +4,32 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Semaphore;
 
 import org.springframework.stereotype.Component;
 
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.Refuse;
 
-/** Budget commun à toutes les Soirées et projections sans octets. */
+/** Budget commun à toutes les Soirées, envois simultanés et projections sans octets. */
 @Component
 public final class PhotosEnMemoire {
 
 	static final long OCTETS_MAX_SERVEUR = 64_000_000;
+	/** Corps lus en même temps : 4 × 1,5 Mo au plus, hors files. */
+	static final int ENVOIS_SIMULTANES_MAX = 4;
 	private final ConcurrentMap<UUID, FileDePhotos> files = new ConcurrentHashMap<>();
-	private long octetsConserves;
+	private final Semaphore envoisEnCours = new Semaphore(ENVOIS_SIMULTANES_MAX);
+	private long octetsReserves;
+
+	/** Sans attente : un envoi de trop est refusé avant la lecture de son corps. */
+	boolean entamerEnvoi() {
+		return envoisEnCours.tryAcquire();
+	}
+
+	void terminerEnvoi() {
+		envoisEnCours.release();
+	}
 
 	FileDePhotos file(UUID soireeId) {
 		return files.computeIfAbsent(soireeId, id -> new FileDePhotos());
@@ -26,22 +39,40 @@ public final class PhotosEnMemoire {
 		return files.get(soireeId);
 	}
 
-	synchronized void reserver(int taille) {
-		if (octetsConserves + taille > OCTETS_MAX_SERVEUR) {
+	synchronized void verifierBudget(long taille) {
+		if (octetsReserves + taille > OCTETS_MAX_SERVEUR) {
 			throw new Refuse(503, "SERVICE_INDISPONIBLE", "La mémoire des photos est pleine. Réessaie plus tard.").exception();
 		}
-		octetsConserves += taille;
+	}
+
+	synchronized void reserver(int taille) {
+		verifierBudget(taille);
+		octetsReserves += taille;
+	}
+
+	synchronized long octetsConserves() {
+		return octetsReserves;
 	}
 
 	synchronized void liberer(long taille) {
-		octetsConserves -= taille;
+		octetsReserves -= taille;
 	}
 
 	void purger(UUID soireeId) {
 		FileDePhotos file = files.remove(soireeId);
 		if (file != null) {
-			file.interrompre();
-			liberer(file.octetsConserves());
+			liberer(file.vider());
+		}
+	}
+
+	/** Soirée inactive : ses photos et ses reçus disparaissent, un réglage coupé reste. */
+	void oublier(UUID soireeId) {
+		FileDePhotos file = files.get(soireeId);
+		if (file != null) {
+			liberer(file.vider());
+			if (file.ouvertes()) {
+				files.remove(soireeId);
+			}
 		}
 	}
 

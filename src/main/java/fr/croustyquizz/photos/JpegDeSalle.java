@@ -21,7 +21,7 @@ record JpegDeSalle(byte[] octets, String empreinte) {
 	static JpegDeSalle lire(InputStream entree) throws IOException {
 		byte[] octets = entree.readNBytes(OCTETS_MAX + 1);
 		if (octets.length > OCTETS_MAX) {
-			throw invalide("La photo dépasse 1,5 Mo.").exception();
+			throw tropLourde().exception();
 		}
 		if (!signatureJpeg(octets)) {
 			throw invalide("La photo doit être un JPEG lisible.").exception();
@@ -56,6 +56,10 @@ record JpegDeSalle(byte[] octets, String empreinte) {
 		} catch (NoSuchAlgorithmException erreur) {
 			throw new IllegalStateException("SHA-256 indisponible.", erreur);
 		}
+	}
+
+	static Refuse tropLourde() {
+		return invalide("La photo dépasse 1,5 Mo.");
 	}
 
 	static Refuse invalide(String detail) {

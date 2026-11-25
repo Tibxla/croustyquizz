@@ -41,8 +41,13 @@ class PhotosControleur {
 		if (!estJpeg(requete.getContentType())) {
 			throw JpegDeSalle.invalide("Seules les photos JPEG sont acceptées.").exception();
 		}
-		var jpeg = JpegDeSalle.lire(requete.getInputStream());
-		return ReponsesDeCommande.http(service.envoyer(acteur, cle, jpeg), requete.getRequestURI());
+		long annoncee = requete.getContentLengthLong();
+		if (annoncee > JpegDeSalle.OCTETS_MAX) {
+			throw JpegDeSalle.tropLourde().exception();
+		}
+		// Sans Content-Length (envoi par morceaux), la lecture reste bornée par JpegDeSalle.
+		var recu = service.envoyer(acteur, cle, Math.max(annoncee, 0), () -> JpegDeSalle.lire(requete.getInputStream()));
+		return ReponsesDeCommande.http(recu, requete.getRequestURI());
 	}
 
 	@GetMapping("/{photoId}")

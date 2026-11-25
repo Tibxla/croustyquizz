@@ -77,6 +77,7 @@ class PhotosHttpTest {
 	@Autowired PublicationDeVues vues;
 	@Autowired VerrousSoiree verrous;
 	@Autowired RegistreAbonnements abonnements;
+	@Autowired PhotosEnMemoire memoire;
 
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("photos-stomp-");
@@ -233,6 +234,29 @@ class PhotosHttpTest {
 		assertThat(refusSoiree.path("detail").asString()).contains("trente photos");
 		modere(soiree, photo, animateur, false, UUID.randomUUID());
 		assertThat(deposer(soiree, dernierJoueur, petite)).isNotEmpty();
+	}
+
+	@Test
+	void auDelaDeQuatreEnvoisEnCoursLeServeurRepondIndisponibleSansRecu() throws IOException {
+		var soiree = ouvrirSoiree();
+		var joueur = rejoindre(soiree);
+		byte[] jpeg = jpeg(8, 8);
+		UUID cle = UUID.randomUUID();
+		int tenus = 0;
+		try {
+			while (memoire.entamerEnvoi()) {
+				tenus++;
+			}
+			assertThat(tenus).isEqualTo(PhotosEnMemoire.ENVOIS_SIMULTANES_MAX);
+			var refus = verifier(ENVOYER, 503, envoyer(HttpMethod.POST, photos(soiree), joueur, cle, jpeg));
+			assertThat(refus.path("code").asString()).isEqualTo("SERVICE_INDISPONIBLE");
+		} finally {
+			for (; tenus > 0; tenus--) {
+				memoire.terminerEnvoi();
+			}
+		}
+		assertThat(verifier(ENVOYER, 201, envoyer(HttpMethod.POST, photos(soiree), joueur, cle, jpeg))
+				.path("envoiId").asString()).isEqualTo(cle.toString());
 	}
 
 	private String deposer(JsonNode soiree, String joueur, byte[] jpeg) throws IOException {
