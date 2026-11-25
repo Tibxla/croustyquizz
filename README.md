@@ -1,6 +1,6 @@
 # CroustyQuizz
 
-[![Version : 0.1.0](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/Tibxla/croustyquizz/releases/tag/v0.1.0)
+[![Version : 0.2.0](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/Tibxla/croustyquizz/releases/tag/v0.2.0)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
 [![Couverture des lignes — JaCoCo](https://raw.githubusercontent.com/Tibxla/croustyquizz/mesures-qualite/develop/couverture.svg)](https://github.com/Tibxla/croustyquizz/actions/workflows/ci.yml?query=branch%3Adevelop)
 [![Alertes de qualité — PMD](https://raw.githubusercontent.com/Tibxla/croustyquizz/mesures-qualite/develop/qualite.svg)](https://github.com/Tibxla/croustyquizz/actions/workflows/ci.yml?query=branch%3Adevelop)
