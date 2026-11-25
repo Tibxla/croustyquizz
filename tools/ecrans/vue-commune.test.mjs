@@ -87,6 +87,16 @@ test('le Palmarès affiche le rang éventuel, le numéro, les Interprètes et le
 	]);
 });
 
+test('le Palmarès énumère trois Interprètes ou plus à la française', () => {
+	const vue = { soiree: {}, joueurs: [], classement: [], palmaresKaraoke: [
+		{ numero: 4, rang: 1, chanson: { titre: 'Le trio' }, interpretes: [{ pseudo: 'Alizé' }, { pseudo: 'Basile' }, { pseudo: 'Chloé' }],
+			nombreVotes: 2, moyenneDixiemes: 50 },
+	] };
+	const [ligne] = decrireVue(vue).palmares;
+	assert.equal(ligne.interpretes, 'Alizé, Basile et Chloé');
+	assert.equal(ligne.texte, '1. n° 4 · Le trio · Alizé, Basile et Chloé · 5,0 sur 5 (2 votes)');
+});
+
 test('le Palmarès du Karaoké prend la place du Classement de salle et du texte d’attente', () => {
 	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
 	const vue = { soiree: { etat: 'EN_COURS' }, modeEnCours: null, mancheActive: null, joueurs: [], classement };

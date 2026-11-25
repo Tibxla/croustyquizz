@@ -12,9 +12,11 @@ export const formaterNote = note => `${note} sur 5`;
 export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
 export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
 
+const listeInterpretes = new Intl.ListFormat('fr', { type: 'conjunction' });
+
 function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes, moyenneDixiemes }) {
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
-	const pseudos = interpretes.map(interprete => interprete.pseudo).join(' et ');
+	const pseudos = listeInterpretes.format(interpretes.map(interprete => interprete.pseudo));
 	const votes = formaterNombreVotes(nombreVotes);
 	const note = moyenneDixiemes === null ? null : formaterMoyenne(moyenneDixiemes);
 	const resultat = note === null ? votes : `${note} (${votes})`;
