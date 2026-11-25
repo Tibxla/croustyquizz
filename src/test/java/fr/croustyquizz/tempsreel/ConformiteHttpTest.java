@@ -18,9 +18,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.soiree.ServiceSoiree;
 
 /** Routes et sérialisation Spring réelles, sans PostgreSQL ni Docker. */
 @WebMvcTest({ HeureControleur.class, CanauxDeTestControleur.class, BuzzControleur.class })
@@ -33,6 +35,9 @@ class ConformiteHttpTest {
 
 	@Autowired
 	private MockMvc http;
+
+	@MockitoBean
+	private ServiceSoiree soirees;
 
 	@Test
 	void consulterHeureRespecteLeContratMetier() throws Exception {

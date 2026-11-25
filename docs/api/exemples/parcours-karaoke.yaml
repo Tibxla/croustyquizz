@@ -105,6 +105,7 @@ http:
           pseudo: Basile
           connecte: true
       classement: &a5 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -142,6 +143,7 @@ http:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a5
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -977,6 +979,7 @@ http:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a27 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -1047,6 +1050,7 @@ http:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a27
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -1239,6 +1243,7 @@ http:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a157 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -1327,6 +1332,7 @@ http:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a163 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -1375,6 +1381,7 @@ http:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a39 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke: null
 - nom: Coquille après fin — console
@@ -1392,6 +1399,7 @@ http:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a39
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -1689,6 +1697,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: &a47 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -1731,6 +1740,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a47
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -1824,6 +1834,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: &a52 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -1879,6 +1890,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a52
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -1973,6 +1985,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: &a57 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -2041,6 +2054,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a4
       classement: *a57
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -2137,6 +2151,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a63 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -2205,6 +2220,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a63
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -2301,6 +2317,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a69 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -2369,6 +2386,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a69
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -2478,6 +2496,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a76 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -2546,6 +2565,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a76
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -2650,6 +2670,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a83
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke: &a169
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -2679,6 +2700,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a83
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: &a171
         - id: 82000000-0000-4000-8000-000000000002
@@ -2746,6 +2768,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a90 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -2814,6 +2837,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a90
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -2922,6 +2946,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a96 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -2990,6 +3015,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a96
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -3099,6 +3125,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a103 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -3167,6 +3194,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a103
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -3276,6 +3304,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a110 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -3344,6 +3373,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a110
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -3453,6 +3483,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a117 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -3521,6 +3552,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a117
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -3630,6 +3662,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a124 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -3698,6 +3731,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a124
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -3794,6 +3828,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a130 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -3864,6 +3899,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a130
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -3973,6 +4009,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a137 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -4041,6 +4078,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a137
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -4161,6 +4199,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a146 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -4229,6 +4268,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a146
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -4325,6 +4365,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: &a152 []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -4380,6 +4421,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a152
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -4469,6 +4511,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a157
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000002
@@ -4552,6 +4595,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a163
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 82000000-0000-4000-8000-000000000002
@@ -4668,6 +4712,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a5
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000020
@@ -4697,6 +4742,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a5
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: &programmeSuivant
       - id: 82000000-0000-4000-8000-000000000002
@@ -4784,6 +4830,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a5
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       karaoke:
         mancheId: 82000000-0000-4000-8000-000000000020
@@ -4827,6 +4874,7 @@ evenements:
       modeEnCours: KARAOKE
       joueurs: *a22
       classement: *a5
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme: *programmeSuivant
       karaoke:
@@ -5098,6 +5146,7 @@ cases:
     modeEnCours: QUIZ
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke: *a169
   valide: false
@@ -5109,6 +5158,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke: *a169
     quiz:
@@ -5127,6 +5177,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke: *a169
   valide: false
@@ -5138,6 +5189,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke: *a169
   valide: false
@@ -5153,6 +5205,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke: null
   valide: true
@@ -5164,6 +5217,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke:
       mancheId: 82000000-0000-4000-8000-000000000002
@@ -5203,6 +5257,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke:
       mancheId: 82000000-0000-4000-8000-000000000002
@@ -5229,6 +5284,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     karaoke:
       mancheId: 82000000-0000-4000-8000-000000000002
@@ -5259,6 +5315,7 @@ cases:
     modeEnCours: QUIZ
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke: *a172
@@ -5271,6 +5328,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke: *a172
@@ -5290,6 +5348,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke: *a172
@@ -5302,6 +5361,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke: *a172
@@ -5318,6 +5378,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke: null
@@ -5330,6 +5391,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke:
@@ -5366,6 +5428,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke:
@@ -5402,6 +5465,7 @@ cases:
     modeEnCours: KARAOKE
     joueurs: *a22
     classement: *a83
+    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
     dernierBuzz: null
     programme: *a171
     karaoke:

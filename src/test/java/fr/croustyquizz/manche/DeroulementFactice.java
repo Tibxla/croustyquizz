@@ -44,7 +44,8 @@ final class DeroulementFactice implements DeroulementDeManche {
 			return refus();
 		}
 		etapeRemportee = true;
-		points.add(new AttributionDePoints(action.joueurId(), 1, "première action de l'étape " + etape));
+		long tempsMs = contexte.reglages().tempsParEtape().minus(Duration.between(action.recueLe(), finEtapeLe)).toMillis();
+		points.add(new AttributionDePoints(action.joueurId(), 1, "première action de l'étape " + etape, true, tempsMs));
 		return new Accepte(null, Set.of(Destination.CONSOLE), "classement-modifie");
 	}
 

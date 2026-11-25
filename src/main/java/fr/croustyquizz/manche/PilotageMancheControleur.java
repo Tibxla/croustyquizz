@@ -14,14 +14,27 @@ import fr.croustyquizz.tempsreel.AccesAuxVues;
 @RestController
 public class PilotageMancheControleur {
 	private final RegistreServicesDeManche services;
-	public PilotageMancheControleur(RegistreServicesDeManche services) { this.services = services; }
+	private final EtatDeSoiree soirees;
+	private final SocleDeManche socle;
+
+	public PilotageMancheControleur(RegistreServicesDeManche services, EtatDeSoiree soirees, SocleDeManche socle) {
+		this.services = services;
+		this.soirees = soirees;
+		this.socle = socle;
+	}
 	@PostMapping("/api/soirees/{soireeId}/manches/{mancheId}/commandes")
 	public ResponseEntity<?> piloter(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
 			@RequestHeader("Idempotency-Key") UUID envoiId, @Valid @RequestBody InterventionDeManche intervention, Acteur acteur) {
 		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
 		String route = "/api/soirees/" + soireeId + "/manches/" + mancheId + "/commandes";
-		ResultatDeCommande resultat = services.pourManche(soireeId, mancheId)
-				.piloter(mancheId, new EnvoiDeCommande(acteur, route, envoiId, intervention), intervention);
+		var envoi = new EnvoiDeCommande(acteur, route, envoiId, intervention);
+		ResultatDeCommande resultat = socle.verrous().executer(soireeId, () -> {
+			var service = services.pourManche(soireeId, mancheId);
+			if (soirees.estEnCours(soireeId)) {
+				return service.piloter(mancheId, envoi, intervention);
+			}
+			return service.refuserPilotage(mancheId, envoi, new Refuse(409, "ETAT_INCOMPATIBLE", "La Soirée doit être en cours."));
+		});
 		return ReponsesDeCommande.http(resultat, route);
 	}
 }
