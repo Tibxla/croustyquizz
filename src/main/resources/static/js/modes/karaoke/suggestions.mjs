@@ -20,8 +20,8 @@ export function erreurChampSuggestion(texte) {
 	if (longueur(texte) > LONGUEUR_MAX) return `Utilise au plus ${LONGUEUR_MAX} caractères.`;
 	const nettoye = sansExtremites(texte.normalize('NFC').replace(/\p{White_Space}+/gu, ' '));
 	if (!nettoye) return 'Renseigne ce champ.';
-	// Sous la limite à la saisie, au-delà une fois nettoyé : seul NFC allonge un texte (U+0958 devient deux points de code).
-	if (longueur(nettoye) > LONGUEUR_MAX) return `Certains caractères comptent double : raccourcis ce texte à ${LONGUEUR_MAX} caractères au plus.`;
+	// Sous la limite à la saisie, au-delà une fois nettoyé : seul NFC allonge un texte (U+0958 donne deux points de code, U+FB2C trois).
+	if (longueur(nettoye) > LONGUEUR_MAX) return `Certains caractères comptent pour plusieurs : raccourcis ce texte à ${LONGUEUR_MAX} caractères au plus.`;
 	if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(nettoye)) return 'Retire les caractères invisibles ou de contrôle.';
 	// Clé de regroupement du serveur (normaliserSuggestion) : sans marques, ponctuation ni blancs, il ne reste rien.
 	const cle = nettoye.normalize('NFKC').normalize('NFD').replace(/[\p{M}\p{P}\p{White_Space}]+/gu, '');

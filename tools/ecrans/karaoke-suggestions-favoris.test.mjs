@@ -117,7 +117,10 @@ test('Manette : les règles du serveur sont vérifiées avant l’envoi, avec l�
 	refuser('Éclat du soir', '  \t ', artiste, 'Renseigne ce champ.');
 	// U+0958 tient en un point de code, mais NFC le décompose en deux : 61 deviennent 122 une fois nettoyés.
 	refuser('\u0958'.repeat(61), 'Les Accords', titre,
-		'Certains caractères comptent double : raccourcis ce texte à 120 caractères au plus.');
+		'Certains caractères comptent pour plusieurs : raccourcis ce texte à 120 caractères au plus.');
+	// U+FB2C en donne trois : 41 deviennent 123.
+	refuser('\uFB2C'.repeat(41), 'Les Accords', titre,
+		'Certains caractères comptent pour plusieurs : raccourcis ce texte à 120 caractères au plus.');
 	refuser('É'.repeat(121), 'Les Accords', titre, 'Utilise au plus 120 caractères.');
 
 	titre.dispatchEvent({ type: 'input' });
