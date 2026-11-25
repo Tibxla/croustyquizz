@@ -18,6 +18,11 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		sonDebloque = false;
 		actualiserCandidature();
 		notifier();
+	}, surMorceauxEpuises() {
+		// Tous les morceaux d'Attente sont illisibles : comme un dossier sans Attente, jusqu'au prochain choix.
+		morceauxDisponibles = false;
+		actualiserCandidature();
+		notifier();
 	} });
 	function actualiserMusique() { musique.autoriserLecture(musiqueAutorisee && attenteAutorisee); }
 	const coordination = coordonner(autorisee => {

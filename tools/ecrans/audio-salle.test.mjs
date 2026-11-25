@@ -51,12 +51,17 @@ async function candidaturesDe(id) {
 // les échanges du BroadcastChannel et des Web Locks déjà lancés. La requête des verrous reste le témoin déterministe.
 const laisserPasser = () => new Promise(resolve => setTimeout(resolve, 20));
 
-function fenetreDeSalle(t, ouverteA, id) {
+function fenetreDeSalle(t, ouverteA, id, { illisibles = [] } = {}) {
 	let fichier, debut = Promise.withResolvers();
-	const fenetre = { audible: undefined };
+	const fenetre = { audible: undefined, essais: [] };
 	const lecteur = {
 		async debloquer() {},
-		async charger(source) { fichier = source; },
+		// Comme `lecteur-local.mjs`, un fichier que le navigateur ne décode pas rejette le chargement.
+		async charger(source) {
+			fenetre.essais.push(source);
+			if (illisibles.includes(source)) throw new Error('Fichier audio illisible.');
+			fichier = source;
+		},
 		async lire() { fenetre.audible = fichier; debut.resolve(fichier); },
 		position: () => 0,
 		positionner() {},
@@ -114,6 +119,38 @@ test('une fenêtre de salle sans dossier active le son sans prendre la Musique d
 	nouvelle.audio.choisirDossier([]);
 	assert.equal(await retour, morceau);
 	assert.equal(nouvelle.audible, undefined);
+});
+
+test('une fenêtre de salle dont tous les morceaux d’Attente sont illisibles rend la main à l’autre', { timeout: 3000 }, async t => {
+	const ancienne = fenetreDeSalle(t, 100, 'ancienne');
+	const morceau = morceauAttente('Ambiance');
+	const premiere = ancienne.attendreLecture();
+	ancienne.audio.choisirDossier([morceau]);
+	await ancienne.audio.activerSon();
+	assert.equal(await premiere, morceau);
+
+	const abime = morceauAttente('Abîmé'), inconnu = morceauAttente('Format inconnu');
+	const nouvelle = fenetreDeSalle(t, 200, 'nouvelle', { illisibles: [abime, inconnu] });
+	const signaux = [];
+	nouvelle.audio.surChangement(({ morceauxDisponibles }) => signaux.push(morceauxDisponibles));
+	await nouvelle.audio.activerSon();
+	const reprise = ancienne.attendreLecture();
+	nouvelle.audio.choisirDossier([abime, inconnu]);
+	assert.equal(await reprise, morceau, 'l’ancienne reprend la Musique d’attente');
+	assert.deepEqual(new Set(nouvelle.essais), new Set([abime, inconnu]), 'les deux morceaux ont été essayés');
+	assert.equal(nouvelle.audible, undefined);
+	assert.deepEqual(await candidaturesDe('nouvelle'), [], 'sans morceau lisible, pas de candidature');
+	assert.equal(nouvelle.audio.etat().morceauxDisponibles, false);
+	assert.equal(signaux.at(-1), false, 'l’absence de morceaux est annoncée');
+	assert.equal(nouvelle.audio.etat().sonDebloque, true, 'le son reste activé pour le son de Manche');
+
+	// Un nouveau choix de dossier remet la fenêtre en lice.
+	const autre = morceauAttente('Autre');
+	const relais = nouvelle.attendreLecture();
+	nouvelle.audio.choisirDossier([autre]);
+	assert.equal(await relais, autre);
+	assert.equal(nouvelle.audio.etat().morceauxDisponibles, true);
+	assert.equal(ancienne.audible, undefined);
 });
 
 // Une page `ecran.html` réduite à sa zone audio, avec de faux éléments média et les vrais Web Locks de Node.

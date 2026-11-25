@@ -1,4 +1,4 @@
-export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {} }) {
+export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {}, surMorceauxEpuises = () => {} }) {
 	let fichiers = [], index = 0, position = 0, autorisee = false, lecture;
 
 	function liberer() {
@@ -17,7 +17,8 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 		fichiers.splice(index, 1);
 		if (index === fichiers.length) index = 0;
 		position = 0;
-		void jouer();
+		if (fichiers.length) void jouer();
+		else surMorceauxEpuises();
 	}
 
 	async function jouer() {

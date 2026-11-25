@@ -3,19 +3,24 @@ import assert from 'node:assert/strict';
 import { terminerMicrotaches } from './karaoke-dom-factice.mjs';
 import { creerMusiqueDAttente } from '../../src/main/resources/static/js/musique-attente.mjs';
 
-function banc() {
-	let fichier, position, fin;
+function banc({ illisibles = [], surMorceauxEpuises } = {}) {
+	let fichier, position, fin, erreur;
 	const lectures = [];
-	const musique = creerMusiqueDAttente({ hasard: () => 0, lecteur: {
-		async charger(candidat) { fichier = candidat; position = 0; },
+	const musique = creerMusiqueDAttente({ hasard: () => 0, surMorceauxEpuises, lecteur: {
+		async charger(candidat) {
+			if (illisibles.includes(candidat)) throw new Error('Fichier audio illisible.');
+			fichier = candidat;
+			position = 0;
+		},
 		async lire() { lectures.push([fichier, position]); },
 		position: () => position,
 		positionner: valeur => { position = valeur; },
 		detruire() { fichier = undefined; },
 		surFin(rappel) { fin = rappel; return () => { fin = undefined; }; },
-		surErreur() { return () => {}; },
+		surErreur(rappel) { erreur = rappel; return () => { erreur = undefined; }; },
 	} });
-	return { musique, lectures, fichier: () => fichier, avancer: ms => { position += ms; }, finir: () => fin() };
+	return { musique, lectures, fichier: () => fichier, avancer: ms => { position += ms; }, finir: () => fin(),
+		echouer: () => erreur?.(new Error('Lecture interrompue.')) };
 }
 
 test('la Musique d’attente se tait pendant un son de Manche et reprend le même morceau', async () => {
@@ -44,4 +49,44 @@ test('la liste mélange une fois les morceaux et revient au premier après le de
 		await terminerMicrotaches();
 	}
 	assert.deepEqual(b.lectures.map(([fichier]) => fichier), ['B', 'C', 'A', 'B']);
+});
+
+test('la Musique d’attente prévient une seule fois quand elle a écarté tous ses morceaux illisibles', async () => {
+	let epuisements = 0;
+	const b = banc({ illisibles: ['A', 'B'], surMorceauxEpuises: () => { epuisements++; } });
+	b.musique.autoriserLecture(true);
+	b.musique.choisirFichiers(['A', 'B']);
+	await terminerMicrotaches();
+	assert.deepEqual(b.lectures, []);
+	assert.equal(epuisements, 1);
+	b.musique.autoriserLecture(false);
+	b.musique.autoriserLecture(true);
+	await terminerMicrotaches();
+	assert.equal(epuisements, 1, 'une liste déjà vide ne prévient plus');
+});
+
+test('un morceau illisible parmi des lisibles est écarté sans tarir la Musique d’attente', async () => {
+	let epuisements = 0;
+	const b = banc({ illisibles: ['A'], surMorceauxEpuises: () => { epuisements++; } });
+	b.musique.autoriserLecture(true);
+	b.musique.choisirFichiers(['A', 'B']);
+	await terminerMicrotaches();
+	assert.deepEqual(b.lectures, [['B', 0]]);
+	b.finir();
+	await terminerMicrotaches();
+	assert.deepEqual(b.lectures, [['B', 0], ['B', 0]]);
+	assert.equal(epuisements, 0);
+});
+
+test('un morceau qui échoue en cours de lecture compte aussi parmi les morceaux écartés', async () => {
+	let epuisements = 0;
+	const b = banc({ illisibles: ['A'], surMorceauxEpuises: () => { epuisements++; } });
+	b.musique.autoriserLecture(true);
+	b.musique.choisirFichiers(['A', 'B']);
+	await terminerMicrotaches();
+	assert.deepEqual(b.lectures, [['B', 0]]);
+	b.echouer();
+	await terminerMicrotaches();
+	assert.equal(b.fichier(), undefined);
+	assert.equal(epuisements, 1);
 });
