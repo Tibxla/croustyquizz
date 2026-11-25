@@ -18,6 +18,13 @@ const styles = new WeakMap();
 const paroles = { SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',
 	ABSENTES: 'Sans paroles', SANS_VOIX: 'Sans voix', INCONNU: 'Paroles à vérifier' };
 
+// Un bouton inactif reste focalisable : aria-disabled plutôt que disabled, et une garde dans son gestionnaire.
+export function marquerInactif(bouton, inactif) {
+	if (inactif) bouton.setAttribute('aria-disabled', 'true');
+	else bouton.removeAttribute('aria-disabled');
+}
+export const estInactif = bouton => bouton.getAttribute('aria-disabled') === 'true';
+
 export function texteEnvoi(e) {
 	if (!e) return '';
 	if (e.etat === 'en-cours') return 'Envoi en cours…';
@@ -148,7 +155,13 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 			function terminer() {
 				if (!dialogues.delete(d)) return;
 				fermer(); dialog.remove();
-				if (!declencheur?.isConnected) (principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
+				// Déclencheur connecté : ouvrirDialogue lui rend le focus. Sinon, son équivalent redessiné.
+				if (declencheur?.isConnected) return;
+				const id = declencheur?.getAttribute('data-chanson-id');
+				const equivalent = id == null ? null : [principale, laterale].filter(Boolean)
+					.flatMap(zone => Array.from(zone.querySelectorAll('[data-chanson-id]')))
+					.find(e => e.getAttribute('data-chanson-id') === id);
+				(equivalent ?? principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
 			}
 			dialog.append(titreElement, contenu, annuler); principale.append(dialog);
 			dialogues.add(d); ecouter(dialog, 'close', terminer); ouvrirDialogue(dialog, declencheur); return d;
@@ -254,7 +267,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	const resultats = e(inscrire ? 'ul' : 'table', `karaoke__resultats${inscrire ? '' : ' resultats'}`);
 	parent.append(titre, formulaire, etatLecture, resultats);
 	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur;
-	let boutonFavori, statutFavori, reessaiFavori, favorisVus;
+	let boutonFavori, statutFavori, reessaiFavori, favorisVus, lignesResultats = new Map();
 	const estFavorite = chansonId => ui.bloc.chansonsFavorites?.includes(chansonId) ?? false;
 	const envoiFavori = () => ui.dernierEnvoi(e => e.commande.type === 'DEFINIR_FAVORI_CHANSON'
 		&& e.commande.chansonId === fiche?.chansonId);
@@ -279,6 +292,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		etatLecture.textContent = !recherche ? '' : recherche.etat === 'chargement' ? 'Recherche en cours…' :
 			recherche.etat === 'vide' ? 'Aucune Chanson trouvée.' : recherche.etat === 'erreur' && erreur.hidden ? (recherche.detail ?? 'La recherche est indisponible.') : '';
 		const lignes = [];
+		lignesResultats = new Map();
 		for (const chanson of recherche?.donnees?.chansons ?? []) {
 			const ligne = e(inscrire ? 'li' : 'tr');
 			const cellule = inscrire ? ligne : e('td');
@@ -287,7 +301,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			cellule.append(ouvrir, e('p', 'artiste', chanson.artiste));
 			if (chanson.album) cellule.append(e('p', '', chanson.album));
 			cellule.append(e('p', 'duree', formaterDuree(chanson.dureeMs)), e('p', '', paroles[chanson.etatParoles]));
-			if (!inscrire) ligne.append(cellule); lignes.push(ligne);
+			if (!inscrire) ligne.append(cellule); lignes.push(ligne); lignesResultats.set(chanson.chansonId, ligne);
 		}
 		if (recherche?.origineErreur === 'delai') {
 			const ligne = e(inscrire ? 'li' : 'tr'), cellule = inscrire ? ligne : e('td');
@@ -295,6 +309,18 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			if (!inscrire) ligne.append(cellule); lignes.push(ligne);
 		}
 		ui.remplacerListe(resultats, lignes, titre);
+	}
+	// Comme le serveur : favoris d'abord, ordre conservé sinon. Les lignes existantes sont déplacées, pas recréées,
+	// pour que le déclencheur de la fiche reste connecté.
+	function trierResultatsAffiches() {
+		const chansons = recherche?.donnees?.chansons;
+		if (!chansons?.length) return;
+		const triees = [...chansons.filter(c => estFavorite(c.chansonId)), ...chansons.filter(c => !estFavorite(c.chansonId))];
+		if (triees.every((c, i) => c === chansons[i])) return;
+		recherche = { ...recherche, donnees: { ...recherche.donnees, chansons: triees } };
+		const deplacees = new Set(lignesResultats.values());
+		const autres = Array.from(resultats.children).filter(ligne => !deplacees.has(ligne));
+		ui.remplacerListe(resultats, [...triees.map(c => lignesResultats.get(c.chansonId)).filter(Boolean), ...autres], titre);
 	}
 	function ouvrirFiche() {
 		const courante = fiche;
@@ -330,6 +356,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			contenu.append(boutonInscription, etatAction, reessai);
 		} else {
 			boutonFavori = bouton('', () => {
+				if (estInactif(boutonFavori)) return;
 				const id = fiche.chansonId;
 				ui.commande({ type: 'DEFINIR_FAVORI_CHANSON', methode: 'PUT', acteurType: 'ANIMATEUR',
 					chemin: `${ui.racine()}/chansons/${encodeURIComponent(id)}/favori`,
@@ -346,9 +373,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		if (!inscrire) {
 			const precedents = favorisVus;
 			favorisVus = JSON.stringify(ui.bloc?.chansonsFavorites ?? []);
-			if (precedents != null && favorisVus !== precedents && recherche?.donnees?.recherche && fiche?.etat !== 'chargement') {
-				void machine.chercher(recherche.donnees.recherche, contexteLecture());
-			}
+			if (precedents != null && favorisVus !== precedents) trierResultatsAffiches();
 		}
 		if (!dialogue || !fiche?.donnees) return;
 		const etat = etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises);
@@ -362,8 +387,8 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			const recu = envoiFavori();
 			const libelle = estFavorite(fiche.chansonId) ? 'Retirer des favoris' : 'Ajouter aux favoris';
 			if (boutonFavori.textContent !== libelle) boutonFavori.textContent = libelle;
-			boutonFavori.disabled = !ui.mutationsPermises || !ui.bloc.peutRechercher
-				|| recu?.etat === 'en-cours' || Boolean(peutReessayer(recu));
+			marquerInactif(boutonFavori, !ui.mutationsPermises || !ui.bloc.peutRechercher
+				|| recu?.etat === 'en-cours' || Boolean(peutReessayer(recu)));
 			const texte = texteEnvoi(recu);
 			if (statutFavori.textContent !== texte) statutFavori.textContent = texte;
 			reessaiFavori.hidden = !ui.reessaiPossible(recu);
