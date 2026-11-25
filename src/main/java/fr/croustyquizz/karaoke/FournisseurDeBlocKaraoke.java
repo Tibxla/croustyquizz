@@ -1,6 +1,7 @@
 package fr.croustyquizz.karaoke;
 
 import fr.croustyquizz.manche.*;
+import fr.croustyquizz.passage.ManchesDePassage;
 import fr.croustyquizz.passage.ParticipantsDePassage;
 import fr.croustyquizz.tempsreel.FournisseurDeBloc;
 import java.util.UUID;
@@ -24,8 +25,7 @@ public final class FournisseurDeBlocKaraoke implements FournisseurDeBloc {
         return preparer(soireeId).apply(destination);
     }
     @Override public Function<Destination, Object> preparer(UUID soireeId) {
-        var active = depot.deLaSoiree(soireeId).stream().filter(m -> m.getMode() == mode()
-                && (m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE)).findFirst();
+        var active = ManchesDePassage.active(depot.deLaSoiree(soireeId), mode());
         if (active.isEmpty()) { return destination -> null; }
         var instantane = (InstantaneKaraoke) service.getObject().instantane(soireeId, active.get().getMancheId());
         var pseudos = participants.pseudos(soireeId);

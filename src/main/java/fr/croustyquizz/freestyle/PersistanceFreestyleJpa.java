@@ -52,7 +52,13 @@ public class PersistanceFreestyleJpa implements PersistanceDuMode<EtatFreestyle>
         return catalogue == null ? List.of() : json.readValue(catalogue.getFiches(), new TypeReference<List<Instrumentale>>() { });
     }
 
-    public void remplacerInstrumentales(UUID soireeId, List<Instrumentale> fiches) {
-        entites.merge(new CatalogueFreestylePersistant(soireeId, json.writeValueAsString(fiches)));
+    /** Fenêtre d’Écran de salle qui a déclaré les fiches en dernier, ou null avant toute déclaration. */
+    public UUID lecteurDesigne(UUID soireeId) {
+        var catalogue = entites.find(CatalogueFreestylePersistant.class, soireeId);
+        return catalogue == null ? null : catalogue.getLecteurId();
+    }
+
+    public void declarer(UUID soireeId, List<Instrumentale> fiches, UUID lecteurId) {
+        entites.merge(new CatalogueFreestylePersistant(soireeId, json.writeValueAsString(fiches), lecteurId));
     }
 }

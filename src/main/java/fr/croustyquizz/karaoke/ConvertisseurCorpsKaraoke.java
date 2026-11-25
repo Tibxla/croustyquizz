@@ -36,19 +36,9 @@ public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverte
             return new CorpsPassage.Inscription(corps.envoiId(), corps.chansonId(), null);
         }
         if (!arbre.has("instrumentaleId")) { CorpsPassage.invalide(); }
-        var envoi = uuid(arbre.path("envoiId"));
+        var envoi = CorpsPassage.uuid(arbre.path("envoiId"));
         var choix = arbre.get("instrumentaleId");
-        return new CorpsPassage.Inscription(envoi, null, choix.isNull() ? null : uuid(choix));
-    }
-    private static UUID uuid(JsonNode valeur) {
-        String texte = valeur.asString("");
-        try {
-            if (valeur.isString()) {
-                UUID id = UUID.fromString(texte);
-                if (id.toString().equalsIgnoreCase(texte)) { return id; }
-            }
-        } catch (IllegalArgumentException erreur) { CorpsPassage.invalide(); }
-        throw new fr.croustyquizz.manche.Refuse(400, "REQUETE_INVALIDE", "Identifiant invalide.").exception();
+        return new CorpsPassage.Inscription(envoi, null, choix.isNull() ? null : CorpsPassage.uuid(choix));
     }
     private void verifier(JsonNode arbre, Class<?> type) {
         if (arbre == null || !arbre.isObject()) { CorpsKaraoke.invalide(); }
@@ -69,7 +59,7 @@ public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverte
             } else {
                 if (!valeur.isString() || valeur.asString().isEmpty()) { CorpsKaraoke.invalide(); }
                 if (champ.getType() == UUID.class) {
-                    uuid(valeur);
+                    CorpsPassage.uuid(valeur);
                 }
             }
         }

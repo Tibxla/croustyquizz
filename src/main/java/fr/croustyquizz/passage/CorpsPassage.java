@@ -3,6 +3,7 @@ package fr.croustyquizz.passage;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import fr.croustyquizz.manche.Refuse;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 /** Corps des routes partagées par les Modes à Passages. */
 public class CorpsPassage {
@@ -13,6 +14,17 @@ public class CorpsPassage {
         if (valeur == null || valeur < (zero ? 0 : 1) || valeur > 9007199254740991L) { invalide(); }
     }
     protected static void obligatoire(Object valeur) { if (valeur == null) { invalide(); } }
+    /** Lit un UUID JSON sous sa forme canonique, en minuscules ou en majuscules. */
+    public static UUID uuid(JsonNode valeur) {
+        String texte = valeur.asString("");
+        try {
+            if (valeur.isString()) {
+                UUID id = UUID.fromString(texte);
+                if (id.toString().equalsIgnoreCase(texte)) { return id; }
+            }
+        } catch (IllegalArgumentException erreur) { invalide(); }
+        throw new Refuse(400, "REQUETE_INVALIDE", "Identifiant invalide.").exception();
+    }
     public static void limite(Long valeur) {
         entier(valeur, false);
         if (valeur > EtatFileAttente.LIMITE_PASSAGES_MAX) { invalide(); }
