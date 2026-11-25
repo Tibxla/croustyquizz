@@ -413,6 +413,29 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
     }
 
     @Test
+    void laRepriseQuiSauteLeDernierPassageAttendLaClotureDuVoteDuPrecedent() {
+        // La pause arrive à l’échéance du suivant, qui est aussi celle du vote du premier Passage.
+        horloge.programmer(Duration.ofSeconds(210), () -> deroulement.mettreEnPause(pilotage()));
+        ouvrirPremierPassage(true);
+        confirmerCourant();
+        inscrire(SUIVANT);
+        horloge.avancer(Duration.ofSeconds(210));
+        assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.APPELE);
+        assertThat(karaoke().instantane().voteDuPublic().votes()).isNotEmpty();
+        horloge.avancer(Duration.ofSeconds(10));
+
+        accepter(deroulement.reprendre(pilotage()), "manche-reprise", true);
+
+        assertThat(passage(SUIVANT).etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(projection().etat()).isEqualTo("SAUTE");
+        assertThat(deroulement.estTerminee()).isFalse();
+        assertThat(finsSignalees).isZero();
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(deroulement.estTerminee()).isTrue();
+        assertThat(finsSignalees).isEqualTo(1);
+    }
+
+    @Test
     void laFinDeMancheNeLaissePasserNiDesignationNiDeclarationEnAutomatique() {
         ouvrirPremierPassage(true);
         designer(LECTEUR);
