@@ -202,6 +202,7 @@ http:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive:
         id: 66000000-0000-4000-8000-000000000002
         ordre: 0
@@ -302,6 +303,7 @@ http:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: &id001
         id: 66000000-0000-4000-8000-000000000002
         ordre: 0
@@ -749,6 +751,7 @@ evenements:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: &id010
         id: 66000000-0000-4000-8000-000000000002
         ordre: 0
@@ -912,6 +915,7 @@ evenements:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive:
         id: 66000000-0000-4000-8000-000000000002
         ordre: 0
@@ -1093,6 +1097,7 @@ evenements:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive:
         id: 66000000-0000-4000-8000-000000000002
         ordre: 0
@@ -1367,6 +1372,7 @@ evenements:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive:
         id: 66000000-0000-4000-8000-000000000002
         ordre: 0
@@ -1450,6 +1456,7 @@ evenements:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: PASSE9
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: &id018
         id: 66000000-0000-4000-8000-000000000002
         ordre: 0

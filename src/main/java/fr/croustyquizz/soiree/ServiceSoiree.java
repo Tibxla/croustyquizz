@@ -34,7 +34,9 @@ public class ServiceSoiree {
 
 	/** Index qui garantit qu'un code ne désigne qu'une Soirée qu'on peut rejoindre. */
 	static final String INDEX_CODE_ACTIF = "soiree_code_acces_actif";
-	private static final Accepte SOIREE_OUVERTE = new Accepte(null, Set.of(Destination.CONSOLE), "soiree-ouverte");
+	private static final Accepte SOIREE_OUVERTE = new Accepte(null, Set.of(Destination.CONSOLE, Destination.SALLE), "soiree-ouverte");
+	private static final Accepte JOUEURS_MODIFIES = new Accepte(null,
+			Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES), "joueurs-modifies");
 
 	/** Index qui garantit qu'un pseudo ne désigne qu'un Joueur dans une Soirée. */
 	static final String INDEX_PSEUDO = "joueur_pseudo_par_soiree";
@@ -79,6 +81,12 @@ public class ServiceSoiree {
 		return depotDeSoirees.findById(soireeId).orElseThrow(() -> new SoireeIntrouvable(soireeId));
 	}
 
+	/** Distingue une Soirée enregistrée d'une Soirée fictive de démonstration. */
+	@Transactional(readOnly = true)
+	public boolean estEnregistree(UUID soireeId) {
+		return depotDeSoirees.existsById(soireeId);
+	}
+
 	/**
 	 * Ouvre la Soirée avec un code d'accès libre. Répéter l'ouverture d'une Soirée
 	 * déjà ouverte la renvoie telle quelle, avec le même code.
@@ -95,7 +103,7 @@ public class ServiceSoiree {
 	public Soiree ouvrir(UUID soireeId) {
 		Ouverture ouverture = enregistrerOuverture(soireeId);
 		if (ouverture.nouvelle()) {
-			// L'ouverture est déjà validée. Capture la Console sous le verrou du programme.
+			// L'ouverture est déjà validée. Capture la Console et la salle sous le verrou de la Soirée.
 			verrous.executer(soireeId, () -> {
 				vues.publier(soireeId, SOIREE_OUVERTE);
 				return null;
@@ -114,7 +122,7 @@ public class ServiceSoiree {
 				}
 			}
 		}
-		throw new IllegalStateException("Aucun code d'accès libre après " + ESSAIS_DE_CODE + " essais");
+		throw new AucunCodeLibre(ESSAIS_DE_CODE);
 	}
 
 	private Ouverture ouvrirAvecUnTirage(UUID soireeId) {
@@ -168,12 +176,24 @@ public class ServiceSoiree {
 	 * @throws PseudoRefuse      si le filtre de pseudos l'écarte
 	 * @throws PseudoDejaPris    si un Joueur de la Soirée le porte déjà, même parti ou exclu
 	 */
-	@Transactional
 	public ArriveeDeJoueur rejoindre(String saisieDuCode, String pseudo) {
 		String code = CodeAcces.normaliser(saisieDuCode).orElseThrow(CodeAccesInvalide::new);
-		Soiree soiree = depotDeSoirees.findByCodeAccesAndEtatIn(code, EtatSoiree.AVEC_CODE_ACTIF)
-				.filter(Soiree::accepteLesArrivees)
+		UUID soireeId = depotDeSoirees.findByCodeAccesAndEtatIn(code, EtatSoiree.AVEC_CODE_ACTIF)
+				.map(Soiree::getId)
 				.orElseThrow(CodeAccesInvalide::new);
+		return verrous.executer(soireeId, () -> nouvelleTransaction.execute(statut -> {
+			// La Soirée a pu se terminer pendant l'attente du verrou.
+			Soiree soiree = depotDeSoirees.verrouiller(soireeId)
+					.filter(Soiree::accepteLesArrivees)
+					.filter(active -> code.equals(active.getCodeAcces()))
+					.orElseThrow(CodeAccesInvalide::new);
+			ArriveeDeJoueur arrivee = enregistrerArrivee(soiree, pseudo);
+			vues.publier(soireeId, JOUEURS_MODIFIES);
+			return arrivee;
+		}));
+	}
+
+	private ArriveeDeJoueur enregistrerArrivee(Soiree soiree, String pseudo) {
 		JetonDeReconnexion jeton = JetonDeReconnexion.generer(hasard);
 		Joueur joueur = new Joueur(soiree.getId(), pseudo, jeton, horloge.instant());
 		if (!filtre.estAcceptable(joueur.getPseudo())) {
@@ -184,8 +204,7 @@ public class ServiceSoiree {
 		}
 		try {
 			depotDeJoueurs.saveAndFlush(joueur);
-		}
-		catch (DataIntegrityViolationException refus) {
+		} catch (DataIntegrityViolationException refus) {
 			if (violeIndex(refus, INDEX_PSEUDO)) {
 				throw new PseudoDejaPris(refus);
 			}

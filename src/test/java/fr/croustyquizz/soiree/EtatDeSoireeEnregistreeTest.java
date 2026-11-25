@@ -38,6 +38,7 @@ class EtatDeSoireeEnregistreeTest {
 	void suitLEtatEnregistreDeLaSoiree() {
 		UUID id = soirees.saveAndFlush(new Soiree("Karaoké du vendredi", Format.SOLO, Pilotage.MANUEL,
 				Instant.parse("2026-11-19T19:30:00Z"))).getId();
+		assertThat(etat.existe(id)).isTrue();
 		assertThat(etat.estEnCours(id)).isFalse();
 		assertThat(etat.estTerminee(id)).isFalse();
 
@@ -53,8 +54,9 @@ class EtatDeSoireeEnregistreeTest {
 	}
 
 	@Test
-	void uneSoireeAbsenteSansRepliNEstNiEnCoursNiTerminee() {
+	void uneSoireeAbsenteSansRepliEstInconnue() {
 		UUID inconnue = UUID.randomUUID();
+		assertThat(etat.existe(inconnue)).isFalse();
 		assertThat(etat.estEnCours(inconnue)).isFalse();
 		assertThat(etat.estTerminee(inconnue)).isFalse();
 	}
