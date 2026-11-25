@@ -107,6 +107,8 @@ export function monterAudioSalle(zone) {
 		const nombre = fichiers?.length;
 		aide.textContent = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
 	});
+	// Le Blind test joue sans dossier de musique : le geste qui active le son doit être proposé dès le chargement.
+	activer.hidden = audio.etat().sonDebloque;
 	zone.hidden = false;
 	return audio;
 }
