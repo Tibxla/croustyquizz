@@ -22,6 +22,8 @@ function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes,
 		texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}` };
 }
 
+const decrirePalmares = vue => vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null;
+
 function decrireRangPersonnel(vue) {
 	if (vue.soiree.format !== 'SOLO') return '';
 	const ligne = vue.classement.find(ligne => ligne.concurrentId === vue.joueurId);
@@ -32,7 +34,7 @@ function decrireRangPersonnel(vue) {
 export function decrireVue(vue) {
 	const joueur = vue.joueurs.find(j => j.id === vue.joueurId);
 	const terminee = vue.soiree.etat === 'TERMINEE';
-	const palmares = vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null;
+	const palmares = decrirePalmares(vue);
 	return {
 		titre: vue.soiree.titre,
 		resume: [etats[vue.soiree.etat] ?? vue.soiree.etat, vue.soiree.format === 'EQUIPE' ? 'Équipe' : 'Solo',
@@ -52,12 +54,16 @@ export function decrireVue(vue) {
 	};
 }
 
-// Le Palmarès du Karaoké, quand il est présent, prend la place du Classement de salle (Q24, #123).
+// Sur la salle, le Podium final de la Soirée terminée passe avant le Palmarès (#224) ; la Console garde le Palmarès.
+const podiumFinal = vue => vue.soiree.etat === 'TERMINEE';
+export const decrirePalmaresDeSalle = vue => podiumFinal(vue) ? null : decrirePalmares(vue);
+
+// Le Palmarès du Karaoké, quand il est présent, prend la place du Classement de salle (Q24, #123), sauf devant le Podium final.
 export function decrireClassementDeSalle(vue) {
-	if (vue.palmaresKaraoke != null) return null;
-	if (vue.soiree.etat === 'TERMINEE') {
+	if (podiumFinal(vue)) {
 		return { titre: 'Podium final', podium: true, lignes: vue.classement.filter(ligne => ligne.rang <= 3).map(decrireLigne) };
 	}
+	if (vue.palmaresKaraoke != null) return null;
 	if (vue.mancheActive || (vue.soiree.etat !== 'EN_COURS' && vue.classement.length === 0)) return null;
 	return { titre: 'Classement général · Top 10', podium: false, lignes: vue.classement.slice(0, 10).map(decrireLigne) };
 }

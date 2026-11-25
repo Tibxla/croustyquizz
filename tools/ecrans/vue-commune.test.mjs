@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireClassementDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { decrireClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
 	const description = decrireVue({ soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
@@ -94,8 +94,21 @@ test('le Palmarès du Karaoké prend la place du Classement de salle et du texte
 	assert.equal(decrireVue({ ...vue, palmaresKaraoke: [] }).attente, '');
 	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: [] }), null);
 	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: null }).titre, 'Classement général · Top 10');
-	const terminee = { ...vue, soiree: { etat: 'TERMINEE' } };
+	assert.deepEqual(decrirePalmaresDeSalle({ ...vue, palmaresKaraoke: [] }), []);
+	assert.equal(decrirePalmaresDeSalle({ ...vue, palmaresKaraoke: null }), null);
+});
+
+test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, et la Console garde le Palmarès', () => {
+	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
+	const palmaresKaraoke = [{ numero: 2, rang: 1, chanson: { titre: 'Les quais' }, interpretes: [{ pseudo: 'Lou' }],
+		nombreVotes: 1, moyenneDixiemes: 50 }];
+	const terminee = { soiree: { etat: 'TERMINEE' }, modeEnCours: null, mancheActive: null, joueurs: [], classement };
 	assert.equal(decrireVue(terminee).attente, '');
 	assert.equal(decrireClassementDeSalle(terminee).titre, 'Podium final');
-	assert.equal(decrireClassementDeSalle({ ...terminee, palmaresKaraoke: [] }), null);
+	const avecPalmares = { ...terminee, palmaresKaraoke };
+	assert.deepEqual(decrireClassementDeSalle(avecPalmares),
+		{ titre: 'Podium final', podium: true, lignes: ['1. Lou · 10 points'] });
+	assert.equal(decrirePalmaresDeSalle(avecPalmares), null);
+	assert.deepEqual(decrireVue(avecPalmares).palmares,
+		[{ texte: '1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)', numero: 2 }]);
 });
