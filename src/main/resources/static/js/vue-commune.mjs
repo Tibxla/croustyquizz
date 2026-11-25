@@ -15,17 +15,18 @@ export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${no
 
 const listeInterpretes = new Intl.ListFormat('fr', { type: 'conjunction' });
 
-function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes, moyenneDixiemes }) {
+function decrireLignePalmares({ numero, rang, chanson, instrumentale, interpretes, interprete, nombreVotes, moyenneDixiemes }) {
+	const titre = (chanson ?? instrumentale).titre;
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
-	const pseudos = listeInterpretes.format(interpretes.map(interprete => interprete.pseudo));
+	const pseudos = listeInterpretes.format((interpretes ?? [interprete]).map(i => i.pseudo));
 	const votes = formaterNombreVotes(nombreVotes);
 	const moyenne = moyenneDixiemes === null ? null : formaterValeurMoyenne(moyenneDixiemes);
 	const resultat = moyenne === null ? votes : `${formaterNote(moyenne)} (${votes})`;
-	return { numero, rang, titre: chanson.titre, interpretes: pseudos, moyenne, votes,
-		texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}` };
+	return { numero, rang, titre, interpretes: pseudos, moyenne, votes,
+		texte: `${position} · ${titre} · ${pseudos} · ${resultat}` };
 }
 
-const decrirePalmares = vue => vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null;
+const decrirePalmares = vue => (vue.palmaresFreestyle ?? vue.palmaresKaraoke)?.map(decrireLignePalmares) ?? null;
 
 function decrireRangPersonnel(vue) {
 	if (vue.soiree.format !== 'SOLO') return '';
@@ -61,12 +62,13 @@ export function decrireVue(vue) {
 const podiumFinal = vue => vue.soiree.etat === 'TERMINEE';
 export const decrirePalmaresDeSalle = vue => podiumFinal(vue) ? null : decrirePalmares(vue);
 
-// Le Palmarès du Karaoké, quand il est présent, prend la place du Classement de salle (Q24, #123), sauf devant le Podium final.
+// Le Palmarès du Karaoké ou du Freestyle, quand il est présent, prend la place du Classement de salle (Q24, #123),
+// sauf devant le Podium final.
 export function decrireClassementDeSalle(vue) {
 	if (podiumFinal(vue)) {
 		return { titre: 'Podium final', podium: true, lignes: vue.classement.filter(ligne => ligne.rang <= 3).map(decrireLigne) };
 	}
-	if (vue.palmaresKaraoke != null) return null;
+	if (vue.palmaresKaraoke != null || vue.palmaresFreestyle != null) return null;
 	if (vue.mancheActive || (vue.soiree.etat !== 'EN_COURS' && vue.classement.length === 0)) return null;
 	return { titre: 'Classement général · Top 10', podium: false, lignes: vue.classement.slice(0, 10).map(decrireLigne) };
 }

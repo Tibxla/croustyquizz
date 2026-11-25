@@ -1,6 +1,7 @@
+import { appelerSuivant, piloter, prochainPassage } from '../passage/pilotage.mjs';
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
 import { preparerPlacement } from './placement.mjs';
-import { formaterDecalage, formaterTempsRestant, passageActif } from './presentation.mjs';
+import { formaterDecalage, formaterTempsRestant } from './presentation.mjs';
 import { delaiAppelRestant, tempsAvantFinPrevue } from './paroles.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes } from './vote.mjs';
 
@@ -40,12 +41,8 @@ function installerPassage(ui, commande) {
 	ui.principale.append(barre, fiche, votes);
 	let delaisVote = [];
 
-	const prochain = () => ui.bloc.passagesEnAttente.find(p => p.position === 1);
-	function pilotageDe(action) {
-		const courant = passageActif(ui.bloc.courant);
-		return commande('POST', '/commandes', { action, ...(courant ? { etapeId: courant.etapeId } : {}) }, { type: 'PILOTER' });
-	}
-	function envoyerPilotage(action) { ui.commande(pilotageDe(action)); }
+	const prochain = () => prochainPassage(ui.bloc);
+	const envoyerPilotage = action => piloter(ui, commande, action);
 	const basculer = bouton('Pause', () => envoyerPilotage(ui.bloc.etat === 'EN_PAUSE' ? 'REPRENDRE' : 'METTRE_EN_PAUSE'));
 	const passer = bouton('Passer', () => envoyerPilotage('PASSER_ETAPE'));
 	const terminer = bouton('Terminer la Manche', () => {
@@ -55,11 +52,7 @@ function installerPassage(ui, commande) {
 		d.annuler.textContent = 'Annuler';
 		d.contenu.append(e('p', '', 'Terminer cette Manche de Karaoké ?'), d.confirmer);
 	});
-	const appeler = bouton('Appeler le suivant', () => {
-		const p = prochain();
-		if (p) ui.commande(commande('POST', `/passages/${encodeURIComponent(p.passageId)}/appel`,
-			{ numeroModification: p.numeroModification }, { type: 'APPELER', passageId: p.passageId }));
-	}, 'bouton bouton--action');
+	const appeler = bouton('Appeler le suivant', () => appelerSuivant(ui, commande), 'bouton bouton--action');
 	const appelAutomatique = e('span', 'console__note', 'Appel automatique');
 	const boutonsPilotage = [basculer, passer, terminer, appeler];
 	pilotage.append(...boutonsPilotage);

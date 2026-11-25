@@ -1,4 +1,5 @@
 import { decrireManche } from './vue-commune.mjs';
+import { monterReglagesFreestyle } from './modes/freestyle/reglages-console.mjs';
 
 function decrireReglages({ reglages }) {
 	if (reglages.nombreEtapes !== undefined) {
@@ -9,6 +10,7 @@ function decrireReglages({ reglages }) {
 		const limite = reglages.limitePassagesEnAttente;
 		return `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`;
 	}
+	if (reglages.nombreMesures !== undefined) return `${reglages.nombreMesures} mesures · ${reglages.schemaDeRimes}`;
 	return '';
 }
 
@@ -21,6 +23,8 @@ export function monterProgramme(panneau, contexte) {
 	const communs = element('reglages-communs');
 	const ajout = element('soumettre-manche');
 	const liste = element('programme');
+	const zoneFreestyle = element('reglages-freestyle');
+	const freestyle = zoneFreestyle ? monterReglagesFreestyle(zoneFreestyle, contexte, actualiserCommandes) : null;
 	const route = `/api/soirees/${contexte.soireeId}`;
 	let modifiable = false;
 	let synchronisee = false;
@@ -30,6 +34,7 @@ export function monterProgramme(panneau, contexte) {
 	const commandes = () => [...liste.querySelectorAll('[data-action-programme]')];
 	const peutEnvoyer = () => modifiable && synchronisee && !envoi;
 	function actualiserCommandes() {
+		ajout.disabled = mode.value === 'FREESTYLE' && !freestyle?.peutAjouter();
 		for (const bouton of [ajout, ...commandes()]) {
 			bouton.setAttribute('aria-disabled', String(!peutEnvoyer() || bouton.disabled));
 		}
@@ -55,12 +60,14 @@ export function monterProgramme(panneau, contexte) {
 	function actualiserReglages() {
 		communs.hidden = mode.value !== 'QUIZ';
 		communs.disabled = communs.hidden;
+		freestyle?.afficher(mode.value === 'FREESTYLE' && modifiable, synchronisee);
+		actualiserCommandes();
 	}
 
 	function ajouter(evenement) {
 		evenement.preventDefault();
-		// Les réglages propres au mode se complètent ici. Le Karaoké utilise la limite du serveur.
-		const reglages = mode.value === 'QUIZ' ? {
+		if (ajout.disabled) return;
+		const reglages = mode.value === 'FREESTYLE' ? freestyle.valeurs() : mode.value === 'QUIZ' ? {
 			nombreEtapes: Number(element('nombre-etapes').value),
 			tempsParEtapeSecondes: Number(element('temps-par-etape').value),
 		} : {};
@@ -112,7 +119,7 @@ export function monterProgramme(panneau, contexte) {
 
 	const desabonner = contexte.surEtatConnexion(etat => {
 		synchronisee = etat === 'synchronisee';
-		actualiserCommandes();
+		actualiserReglages();
 	});
 	formulaire.addEventListener('submit', ajouter);
 	mode.addEventListener('change', actualiserReglages);
@@ -130,6 +137,7 @@ export function monterProgramme(panneau, contexte) {
 			const focusListe = liste.contains(focus);
 			const focusFormulaire = formulaire.contains(focus);
 			formulaire.hidden = !modifiable;
+			actualiserReglages();
 			element('programme-fige').hidden = modifiable;
 			element('programme-vide').hidden = programme.length > 0;
 			liste.replaceChildren(...programme.map((manche, index) => ligne(manche, index, programme)));
@@ -147,6 +155,7 @@ export function monterProgramme(panneau, contexte) {
 		},
 		demonter() {
 			envoi?.abort();
+			freestyle?.demonter();
 			desabonner();
 			formulaire.removeEventListener('submit', ajouter);
 			mode.removeEventListener('change', actualiserReglages);

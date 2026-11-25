@@ -97,7 +97,7 @@ test('le Palmarès énumère trois Interprètes ou plus à la française', () =>
 	assert.equal(ligne.texte, '1. n° 4 · Le trio · Alizé, Basile et Chloé · 5,0 sur 5 (2 votes)');
 });
 
-test('le Palmarès du Karaoké prend la place du Classement de salle et du texte d’attente', () => {
+test('le Palmarès du Karaoké ou du Freestyle prend la place du Classement de salle et du texte d’attente', () => {
 	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
 	const vue = { soiree: { etat: 'EN_COURS' }, modeEnCours: null, mancheActive: null, joueurs: [], classement };
 	assert.equal(decrireVue(vue).attente, 'La prochaine Manche s’affichera ici.');
@@ -106,6 +106,8 @@ test('le Palmarès du Karaoké prend la place du Classement de salle et du texte
 	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: null }).titre, 'Classement général · Top 10');
 	assert.deepEqual(decrirePalmaresDeSalle({ ...vue, palmaresKaraoke: [] }), []);
 	assert.equal(decrirePalmaresDeSalle({ ...vue, palmaresKaraoke: null }), null);
+	assert.equal(decrireVue({ ...vue, palmaresFreestyle: [] }).attente, '');
+	assert.equal(decrireClassementDeSalle({ ...vue, palmaresFreestyle: [] }), null);
 });
 
 test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, et la Console garde le Palmarès', () => {
@@ -121,4 +123,20 @@ test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, 
 	assert.equal(decrirePalmaresDeSalle(avecPalmares), null);
 	assert.deepEqual(decrireVue(avecPalmares).palmares.map(ligne => ligne.texte),
 		['1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)']);
+});
+
+test('en fin de Soirée, le Podium final passe aussi avant le Palmarès du Freestyle sur la salle (#224)', () => {
+	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
+	const palmaresFreestyle = [{ passageId: 'p1', numero: 3, rang: 1, instrumentale: { titre: 'Boom bap' },
+		interprete: { pseudo: 'Lou' }, nombreVotes: 2, moyenneDixiemes: 45 }];
+	const terminee = { soiree: { etat: 'TERMINEE' }, modeEnCours: null, mancheActive: null, joueurs: [], classement,
+		palmaresFreestyle };
+	assert.deepEqual(decrireClassementDeSalle(terminee),
+		{ titre: 'Podium final', podium: true, lignes: ['1. Lou · 10 points'] });
+	assert.equal(decrirePalmaresDeSalle(terminee), null);
+	assert.deepEqual(decrireVue(terminee).palmares.map(ligne => ligne.texte),
+		['1. n° 3 · Boom bap · Lou · 4,5 sur 5 (2 votes)']);
+	const enCours = { ...terminee, soiree: { etat: 'EN_COURS' } };
+	assert.equal(decrireClassementDeSalle(enCours), null);
+	assert.deepEqual(decrirePalmaresDeSalle(enCours).map(ligne => ligne.texte), ['1. n° 3 · Boom bap · Lou · 4,5 sur 5 (2 votes)']);
 });

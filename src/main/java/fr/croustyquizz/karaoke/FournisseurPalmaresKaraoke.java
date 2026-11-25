@@ -2,11 +2,9 @@ package fr.croustyquizz.karaoke;
 
 import fr.croustyquizz.manche.DepotDeManches;
 import fr.croustyquizz.manche.Destination;
-import fr.croustyquizz.manche.EtatManche;
-import fr.croustyquizz.manche.ManchePersistante;
 import fr.croustyquizz.manche.ModeDeJeu;
+import fr.croustyquizz.passage.ManchesDePassage;
 import fr.croustyquizz.tempsreel.FournisseurDeChampCommun;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,8 +12,6 @@ import org.springframework.beans.factory.ObjectProvider;
 
 /** Affiche le Palmarès entre la fin d'une Manche de Karaoké et le démarrage de la suivante. */
 public final class FournisseurPalmaresKaraoke implements FournisseurDeChampCommun {
-    private static final Comparator<ManchePersistante> ORDRE_DES_FINS = Comparator
-            .comparing(ManchePersistante::getModifieLe).thenComparing(ManchePersistante::getMancheId);
     private final DepotDeManches depot;
     private final ObjectProvider<ServiceKaraoke> service;
 
@@ -54,7 +50,8 @@ public final class FournisseurPalmaresKaraoke implements FournisseurDeChampCommu
                 var karaoke = service.getObject();
                 palmares = karaoke.lecture(soireeId, () -> {
                     var manches = depot.deLaSoiree(soireeId);
-                    return visible(manches) ? karaoke.composerPalmares(soireeId, manches) : null;
+                    return ManchesDePassage.palmaresAAfficher(manches, ModeDeJeu.KARAOKE).isPresent()
+                            ? karaoke.composerPalmares(soireeId, manches) : null;
                 });
                 fait = true;
             }
@@ -62,13 +59,5 @@ public final class FournisseurPalmaresKaraoke implements FournisseurDeChampCommu
             return Destination.CONSOLE.equals(destination) ? palmares
                     : palmares.stream().filter(ligne -> ligne.rang() != null).limit(3).toList();
         }
-    }
-
-    private static boolean visible(List<ManchePersistante> manches) {
-        if (manches.stream().anyMatch(m -> m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE)) {
-            return false;
-        }
-        return manches.stream().filter(m -> m.getEtat() == EtatManche.TERMINEE).max(ORDRE_DES_FINS)
-                .map(m -> m.getMode() == ModeDeJeu.KARAOKE).orElse(false);
     }
 }

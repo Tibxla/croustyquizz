@@ -197,6 +197,109 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 5. Rejouer avec une pause pendant un Passage alors que le Joueur 2 attend. Cliquer sur « Passer » et vérifier que le Joueur 2 reste en attente jusqu’à « Reprendre ».
 6. Rejouer dans une Soirée neuve en Manuel. Vérifier que « Appeler le suivant » est disponible quand la File d’attente est libre et que l’Animateur doit l’utiliser après la première inscription et après la fin du Passage.
 
+## Freestyle (#70)
+
+La Console prépare la Manche dans **Programme**. L’Écran de salle déclare les
+Instrumentales dès qu’il a un dossier choisi et une connexion synchronisée.
+La lecture utilise le même lecteur local et le même déblocage du son que le
+Karaoké. La déclaration et les vues ne transportent que les fiches décrites
+dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
+
+1. Dans le dossier de musique, crée le sous-dossier direct `Instrumentales`
+   et place deux fichiers audio. Le nom du sous-dossier est reconnu sans
+   tenir compte de la casse ou des accents. Nomme le premier
+   `À la lueur [120 bpm].mp3`. Pour le second, tu peux placer à côté des
+   fichiers un `instrumentales.json` indexé par leur nom exact.
+
+   ```json
+   {
+     "Rythme de nuit.mp3": {
+       "titre": "Rythme de nuit",
+       "tempoBpm": 92,
+       "departBeatMs": 250
+     }
+   }
+   ```
+
+   La fiche JSON complète ou remplace les champs déduits du nom. Sans
+   renseignement, le départ du beat vaut 0 ms. L’Écran de salle mesure la
+   durée de chaque fichier et écarte celui dont la durée reste inconnue.
+   Ajoute un fichier plus court que la Grille retenue, introduction
+   comprise : la Console doit refuser une Manche qui le sélectionne
+   (`INSTRUMENTALE_TROP_COURTE`), et le tirage « Au hasard » ne le propose
+   jamais.
+
+2. Ouvre l’Écran de salle, clique **Choisir le dossier de musique** et
+   sélectionne le dossier parent. Vérifie le nombre d’Instrumentales
+   déclarées. Essaie un troisième fichier sans tempo exploitable et vérifie
+   que sa fiche est écartée. Après une confirmation inconnue ou une erreur
+   5xx, le bouton de réessai renvoie la même déclaration avec la même clé.
+   Un refus 4xx est définitif : choisis à nouveau le dossier. Ouvre un
+   second Écran de salle et choisis-y le même dossier : il devient le
+   lecteur désigné et joue seul l’Instrumentale, tandis que le premier
+   affiche la Grille sans son et l’indique.
+
+3. Dans la Console, sélectionne **Freestyle**, puis règle le thème, le
+   schéma, la difficulté, le nombre de mesures (8, 16 ou 32) et les
+   Instrumentales proposées. Utilise **Actualiser le catalogue** si le
+   dossier a changé depuis l’ouverture du formulaire. Ajoute la Manche.
+   Deux parcours sont possibles :
+
+   - Avec les identités de démonstration décrites en haut de cette page,
+     crée la Manche par `POST /api/test/soirees/{soireeId}/manches` avec
+     le même corps que `ajouterManche`, après la déclaration du dossier,
+     puis démarre-la par `POST /api/test/soirees/{soireeId}/manches/{mancheId}/demarrer`
+     avec l’identité Animateur et un `Idempotency-Key`.
+   - Pour vérifier le Programme de la Console, utilise une Soirée enregistrée
+     et la clé de son Écran de salle. Après avoir préparé la Manche, ouvre
+     la Soirée, fais rejoindre deux Joueurs, puis lance-la depuis la Console
+     avec « Lancer la Soirée » (#12).
+
+4. Inscris un Passage depuis une Manette en choisissant un titre, puis
+   essaie **Au hasard** depuis une autre. En Pilotage manuel, l’Animateur
+   appelle le premier Passage de la File. Depuis la Manette appelée,
+   appuie sur **Je suis prêt**. Vérifie à 5 m que les temps, le mot et
+   l’Interprète sont lisibles. Avec un départ à 250 ms et un tempo à
+   120 BPM, le premier mot tombe au troisième temps, à 1 250 ms du fichier.
+   Les mots masqués gardent leur place. Active la réduction des animations
+   du système pour vérifier le repère fixe sur le temps courant.
+
+5. Mets en pause puis reprends la Manche. Vérifie que la balle et la
+   Grille se figent, que la Musique d’attente reste suspendue, et que la
+   reprise recale la lecture. Coupe puis rétablis la connexion pendant un
+   Passage : l’Instrumentale continue de jouer pendant la coupure, puis la
+   capture la recale sur la position du serveur sans pause et sans rejouer
+   l’animation d’appel. Si le fichier s’arrête avant la fin prévue, la
+   dernière mesure reste affichée et la Musique d’attente ne reprend
+   qu’à la fin du Passage. Vérifie aussi **Passer** avec un fichier devenu
+   indisponible, le retour de la Musique d’attente après l’arrêt et le
+   bouton **Retirer** d’un Passage en attente sur la Console.
+
+6. Laisse un Passage arriver à sa fin prévue. Vote d’une autre Manette
+   avec une note de 1 à 5. Termine la Manche depuis la Console. Vérifie
+   l’ordre du Palmarès sur la Console et sur l’Écran de salle, puis
+   compare le Classement général avant et après.
+
+7. Termine la Soirée juste après une Manche de Freestyle notée. Vérifie
+   que la salle affiche le « Podium final » sans le Palmarès, et que la
+   Console affiche toujours le Palmarès du Freestyle (#224).
+
+Sur l'Écran de salle, le mot de chaque mesure reste affiché toute la mesure, pour qu'il
+se lise à 5 m. Il s'allume sur son temps, et le mot de la mesure suivante est annoncé
+dessous (« Ensuite : … »). Un mot masqué par la difficulté devient « À toi de trouver »,
+et son annonce devient « … ».
+
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans
+interface, avec trois fichiers WAV synthétiques. Deux Instrumentales sont déclarées, dont
+l'une par `instrumentales.json`, et le fichier sans tempo est écarté. Le parcours passe par
+les deux inscriptions, dont une au hasard, l'appel, « Je suis prêt », la Grille en AABB, la
+pause et la reprise, la fin prévue et le Vote. Aucun des quatre écrans ne déborde. Restent
+à vérifier à l'oreille, sur le matériel du Lieu : le calage du son sur la balle et la
+lisibilité à 5 m.
+
+Les amorces thématiques et les familles de rimes de cette branche sont écrites
+pour la recette. Le dictionnaire issu de Lexique relève de #69.
+
 ## Photos de la salle (#72)
 
 La Manette propose « Envoyer une photo » tant que les envois sont ouverts.

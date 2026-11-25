@@ -27,7 +27,7 @@ public final class FabriqueFreestyle implements FabriqueDeDeroulement<ReglagesFr
     FabriqueFreestyle(DictionnaireDeRimes dictionnaire, long limiteInitiale, Duration delaiAppel, Duration dureeVote,
             Supplier<UUID> identifiants, RandomGenerator hasard) {
         EtatFileAttente.verifierLimite(limiteInitiale);
-        this.compositeur = new CompositeurDeGrille(dictionnaire);
+        this.compositeur = new CompositeurDeGrille(dictionnaire, hasard);
         this.limiteInitiale = limiteInitiale;
         this.delaiAppel = delaiAppel;
         this.dureeVote = dureeVote;

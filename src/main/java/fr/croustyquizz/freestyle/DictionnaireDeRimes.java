@@ -13,4 +13,7 @@ public interface DictionnaireDeRimes {
 
     /** Applique le même classement aux seules suggestions du thème demandé. */
     List<String> rimesDe(String mot, ThemeDeRimes theme);
+
+    /** Mots de départ du thème, sans doublon. Le compositeur les mélange avant d’y chercher des familles. */
+    List<String> amorces(ThemeDeRimes theme);
 }

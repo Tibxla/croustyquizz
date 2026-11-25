@@ -11,6 +11,7 @@ import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
+import { monterCatalogueInstrumentales } from './modes/freestyle/catalogue-salle.mjs';
 import { creerLignePalmaresSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -55,6 +56,7 @@ function afficherCommun(vue) {
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
+	texte('titre-palmares', vue.palmaresFreestyle != null ? 'Palmarès du Freestyle' : 'Palmarès du Karaoké');
 	afficherPalmares(ecran === 'ecran' ? decrirePalmaresDeSalle(vue) : description.palmares);
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
@@ -107,7 +109,9 @@ async function demarrer() {
 			envoi.textContent = detail;
 		},
 	});
-	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	const catalogueInstrumentales = audioSalle ? monterCatalogueInstrumentales(audioSalle, contexte,
+		element('etat-instrumentales'), element('redeclarer-instrumentales')) : null;
+	if (audioSalle) Object.assign(contexte, { audioSalle, catalogueInstrumentales, signalerSonDeManche: audioSalle.signalerSonDeManche });
 	const boutonMusique = element('musique-attente');
 	const musiqueConsole = boutonMusique
 		? monterMusiqueDAttenteConsole(boutonMusique, element('musique-attente-statut'), contexte) : null;
@@ -152,7 +156,7 @@ async function demarrer() {
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
 		pilotage?.demonter();
-		musiqueConsole?.demonter(); musiqueSalle?.demonter();
+		musiqueConsole?.demonter(); musiqueSalle?.demonter(); catalogueInstrumentales?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {

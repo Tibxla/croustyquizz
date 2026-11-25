@@ -27,7 +27,7 @@ export function texteEnvoi(e) {
 }
 
 // Adaptateur commun aux trois modules : cycle de vie, connexion, reçus et DOM sûr.
-export function creerInterface(zones, contexte, { annoncerConnexion = true } = {}) {
+export function creerInterface(zones, contexte, { annoncerConnexion = true, mode = 'karaoke' } = {}) {
 	const document = zones.principale.ownerDocument;
 	const ecouteurs = [], dialogues = new Set();
 	let detruite = false, machine, quitter, bloc, rendue = false, etatConnexion = 'synchronisation';
@@ -42,13 +42,21 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 	function bouton(texte, rappel, classe = 'bouton') {
 		const b = e('button', classe, texte); b.type = 'button'; ecouter(b, 'click', rappel); return b;
 	}
-	let feuille = styles.get(document);
+	const feuilles = styles.get(document) ?? new Map();
+	styles.set(document, feuilles);
+	let feuille = feuilles.get(mode);
 	if (!feuille) {
-		const lien = e('link'); lien.setAttribute('rel', 'stylesheet'); lien.setAttribute('href', '/css/karaoke.css'); lien.setAttribute('data-mode', 'karaoke');
-		document.head.append(lien); feuille = { lien, nombre: 0 }; styles.set(document, feuille);
+		const lien = e('link');
+		lien.setAttribute('rel', 'stylesheet');
+		lien.setAttribute('href', `/css/${mode}.css`);
+		lien.setAttribute('data-mode', mode);
+		document.head.append(lien);
+		feuille = { lien, nombre: 0 };
+		feuilles.set(mode, feuille);
 	}
 	feuille.nombre++;
-	const principale = e('section', 'karaoke'), laterale = zones.laterale ? e('section', 'karaoke') : null;
+	const classe = mode === 'karaoke' ? mode : `karaoke ${mode}`;
+	const principale = e('section', classe), laterale = zones.laterale ? e('section', classe) : null;
 	zones.principale.replaceChildren(principale); if (laterale) zones.laterale.replaceChildren(laterale);
 	const connexion = e('p', 'coupure');
 	if (annoncerConnexion) connexion.setAttribute('role', 'status');
@@ -72,7 +80,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 		return creerMachineEnvoi({ envoyer: (methode, chemin, corps, options) =>
 			contexte.envoyer(methode, chemin, corps, { ...options, annoncer: false }), creerUuid,
 			programmerDelai: (f, ms) => setTimeout(f, ms), annulerDelai: clearTimeout,
-			delaiConfirmationMs: bloc.configurationInterface.delaiConfirmationNavigateurMs,
+			delaiConfirmationMs: bloc.configurationInterface?.delaiConfirmationNavigateurMs ?? 10000,
 			resynchroniser: () => contexte.resynchroniser(),
 			surEtat(etat) {
 				const precedent = envois.get(etat.cle);
@@ -107,7 +115,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 				case 'PILOTER':
 					switch (commande.corps.action) {
 						case 'METTRE_EN_PAUSE': return bloc.etat === 'EN_COURS';
-						case 'REPRENDRE': return bloc.peutReprendre;
+						case 'REPRENDRE': return bloc.peutReprendre ?? (mode === 'freestyle' && bloc.etat === 'EN_PAUSE');
 						case 'PASSER_ETAPE': return bloc.peutPasser;
 						case 'TERMINER': return true;
 						default: return false;
@@ -163,14 +171,14 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 			if (detruite) return;
 			suspendre = true;
 			try {
-				if (vue.karaoke.mancheId !== bloc?.mancheId) {
+				if (vue[mode].mancheId !== bloc?.mancheId) {
 					const confirmationInvalidee = [...dialogues].some(d => d.valide);
 					machine?.detruire(); envois.clear(); attendCapture = false;
 					for (const d of [...dialogues]) d.fermer();
 					const blocPrecedent = bloc;
-					bloc = vue.karaoke; machine = creerMachine(); ui.surManche(blocPrecedent);
+					bloc = vue[mode]; machine = creerMachine(); ui.surManche(blocPrecedent);
 					if (confirmationInvalidee) ui.messageInvalidation();
-				} else bloc = vue.karaoke;
+				} else bloc = vue[mode];
 				rendue = true;
 				if (origine?.source === 'capture') { captures++; attendCapture = false; }
 				const personnels = bloc.mesPassagesEnAttente ?? [];
@@ -194,7 +202,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 			for (const d of [...dialogues]) d.fermer();
 			for (const [element, type, rappel] of ecouteurs) element.removeEventListener(type, rappel);
 			ecouteurs.length = 0; envois.clear();
-			if (--feuille.nombre === 0) { feuille.lien.remove(); styles.delete(document); }
+			if (--feuille.nombre === 0) { feuille.lien.remove(); feuilles.delete(mode); }
 			for (const zone of Object.values(zones)) zone.replaceChildren();
 		},
 	};
@@ -211,20 +219,23 @@ function voteAttendUnRecu(bloc, passageId, etatEnvoi) {
 export function creerTicket(ui, passage, { personnel = false, courant = false, selectionner, estimation = false, details = false } = {}) {
 	const { e } = ui;
 	const teinte = teintePassage(passage.numero);
+	const pseudos = (passage.interpretes ?? [passage.interprete]).map(i => i.pseudo).join(', ');
+	const contenu = passage.chanson ?? passage.instrumentale;
+	const artiste = passage.chanson?.artiste;
 	const ticket = e(selectionner ? 'button' : 'article', personnel ? 'mon-ticket' : `ticket ticket--${teinte}`);
 	ticket.style.setProperty('--teinte', `var(--${teinte})`);
 	ticket.setAttribute('data-passage-id', passage.passageId);
-	ticket.setAttribute('aria-label', `Passage ${passage.numero} · ${passage.interpretes.map(i => i.pseudo).join(', ')} · ${passage.chanson.titre} · ${passage.chanson.artiste}${passage.prioritaire ? ' · Prioritaire' : ''}`);
+	ticket.setAttribute('aria-label', `Passage ${passage.numero} · ${pseudos} · ${contenu.titre}${artiste ? ` · ${artiste}` : ''}${passage.prioritaire ? ' · Prioritaire' : ''}`);
 	const haut = e(personnel ? 'div' : 'span', personnel ? 'mon-ticket__haut' : 'ticket__numero', personnel ? undefined : passage.numero);
 	if (personnel) haut.append(e('span', 'mon-ticket__numero', passage.numero));
 	if (personnel) haut.append(e('span', 'mon-ticket__etiquette', passage.prioritaire ? 'Prioritaire' : 'En attente'));
 	const bas = e('div', personnel ? 'mon-ticket__bas' : 'ticket__corps');
-	bas.append(e('p', personnel ? 'mon-ticket__quoi' : 'ticket__qui', passage.interpretes.map(i => i.pseudo).join(', ')),
-		e('p', personnel ? 'mon-ticket__quoi' : 'ticket__quoi', passage.chanson.titre),
-		e('p', 'ticket__quoi', passage.chanson.artiste));
-	if ((personnel && !courant) || details) bas.append(e('p', 'karaoke__position', `Position ${passage.position} · Tour ${passage.tour}`));
-	if (details) bas.append(e('p', 'chiffres', formaterDuree(passage.chanson.dureeMs)));
-	if (estimation) bas.append(e('p', personnel ? 'mon-ticket__place' : 'karaoke__attente', formaterAttente(passage.attente, personnel)));
+	bas.append(e('p', personnel ? 'mon-ticket__quoi' : 'ticket__qui', pseudos),
+		e('p', personnel ? 'mon-ticket__quoi' : 'ticket__quoi', contenu.titre));
+	if (artiste) bas.append(e('p', 'ticket__quoi', artiste));
+	if ((personnel && !courant) || details) bas.append(e('p', 'karaoke__position', `Position ${passage.position}${passage.tour ? ` · Tour ${passage.tour}` : ''}`));
+	if (details && passage.chanson) bas.append(e('p', 'chiffres', formaterDuree(passage.chanson.dureeMs)));
+	if (estimation && passage.attente) bas.append(e('p', personnel ? 'mon-ticket__place' : 'karaoke__attente', formaterAttente(passage.attente, personnel)));
 	if (passage.prioritaire && !personnel) bas.append(e('p', 'karaoke__priorite', 'Prioritaire'));
 	if (courant && !personnel) bas.append(e('p', 'karaoke__etat-ticket', libelleEtatTicketPublic(passage)));
 	ticket.append(haut, bas);

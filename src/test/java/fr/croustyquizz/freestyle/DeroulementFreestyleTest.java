@@ -20,8 +20,9 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
     private static final UUID PUBLIC = UUID.fromString("70000000-0000-4000-8000-000000000006");
     private static final UUID PASSAGE = UUID.fromString("70000000-0000-4000-8000-000000000003");
     private static final UUID ETAPE = UUID.fromString("70000000-0000-4000-8000-000000000007");
+    private static final UUID LECTEUR = UUID.fromString("70000000-0000-4000-8000-000000000030");
     private static final Instrumentale INSTRUMENTALE = new Instrumentale(
-            UUID.fromString("70000000-0000-4000-8000-000000000004"), "À la lueur", 120, 250);
+            UUID.fromString("70000000-0000-4000-8000-000000000004"), "À la lueur", 120, 250, 95_000);
     private static final ReglagesFreestyle REGLAGES = new ReglagesFreestyle(ThemeDeRimes.VILLE, SchemaDeRimes.ABAB,
             DifficulteFreestyle.PREMIER, 8, List.of(INSTRUMENTALE.instrumentaleId()));
     private static final Set<Destination> ECRANS = Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
@@ -81,11 +82,12 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
         var manette = vue(Destination.joueur(PUBLIC));
         var console = vue(Destination.CONSOLE);
 
-        assertThat(salle).containsEntry("difficulte", DifficulteFreestyle.PREMIER);
-        assertThat(manette).containsEntry("grille", salle.get("grille"));
-        assertThat(motsDe(salle)).containsExactly("lumière", "nuit", null, null, null, null, null, null);
-        assertThat(motsDe(console)).containsExactly("lumière", "nuit", "pierre", "bruit",
-                "rivière", "luit", "poussière", "minuit");
+        assertThat(salle).containsEntry("difficulte", DifficulteFreestyle.PREMIER).containsEntry("lecteurDesigneId", LECTEUR);
+        assertThat(console).containsEntry("peutGererFile", true).doesNotContainKey("lecteurDesigneId");
+        assertThat(manette).containsEntry("grille", salle.get("grille")).doesNotContainKey("lecteurDesigneId");
+        assertThat(motsDe(console)).doesNotContainNull().doesNotHaveDuplicates();
+        assertThat(motsDe(salle)).containsExactly(motsDe(console).get(0), motsDe(console).get(1),
+                null, null, null, null, null, null);
         verifierContratDesCaptures(salle, console, manette);
 
         deroulement.mettreEnPause(pilotage());
@@ -120,7 +122,7 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
         deroulement = creer(contexte(true));
         deroulement.demarrer();
         UUID suivant = UUID.randomUUID();
-        var horsSelection = new Instrumentale(UUID.randomUUID(), "Hors sélection", 100, 0);
+        var horsSelection = new Instrumentale(UUID.randomUUID(), "Hors sélection", 100, 0, 95_000);
 
         var inscription = (Accepte) deroulement.recevoir(inscrire(JOUEUR, horloge.maintenant(), PASSAGE, 1,
                 null, List.of(horsSelection, INSTRUMENTALE)));
@@ -156,6 +158,60 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
         assertThat(deroulement.recevoir(uneAction(JOUEUR, horloge.maintenant()))).isInstanceOfSatisfying(Refuse.class,
                 refus -> assertThat(refus.code()).isEqualTo("GRILLE_INDISPONIBLE"));
         assertThat(instantane()).isEqualTo(avant);
+    }
+
+    @Test
+    void refuseUneInstrumentaleTropCourteEtNeLaTireJamaisAuHasard() {
+        var juste = new Instrumentale(UUID.fromString("70000000-0000-4000-8000-000000000008"), "Juste", 120, 250, 16_250);
+        var courte = new Instrumentale(UUID.fromString("70000000-0000-4000-8000-000000000009"), "Courte", 120, 250, 16_249);
+        var reglages = new ReglagesFreestyle(ThemeDeRimes.VILLE, SchemaDeRimes.ABAB, DifficulteFreestyle.PREMIER, 8,
+                List.of(juste.instrumentaleId(), courte.instrumentaleId()));
+        deroulement = fabrique.creer(contexte(false), reglages);
+        deroulement.demarrer();
+        var avant = instantane();
+
+        assertThat(deroulement.recevoir(inscrire(JOUEUR, horloge.maintenant(), PASSAGE, 1, courte.instrumentaleId(),
+                List.of(juste, courte)))).isInstanceOfSatisfying(Refuse.class, refus -> {
+                    assertThat(refus.statutHttp()).isEqualTo(422);
+                    assertThat(refus.code()).isEqualTo("INSTRUMENTALE_TROP_COURTE");
+                });
+        assertThat(deroulement.recevoir(inscrire(JOUEUR, horloge.maintenant(), PASSAGE, 1, null, List.of(courte))))
+                .isInstanceOfSatisfying(Refuse.class, refus -> assertThat(refus.code()).isEqualTo("INSTRUMENTALE_TROP_COURTE"));
+        assertThat(instantane()).isEqualTo(avant);
+
+        for (int numero = 1; numero <= 6; numero++) {
+            assertThat(deroulement.recevoir(inscrire(UUID.randomUUID(), horloge.maintenant(), UUID.randomUUID(), numero,
+                    null, List.of(courte, juste)))).isInstanceOf(Accepte.class);
+        }
+        assertThat(instantane().etat().contenus().values()).hasSize(6)
+                .allSatisfy(contenu -> assertThat(contenu.instrumentale()).isEqualTo(juste));
+    }
+
+    @Test
+    void deuxPassagesDeLaMemeMancheRecoiventDesGrillesDifferentes() {
+        deroulement.demarrer();
+        UUID second = UUID.randomUUID();
+
+        assertThat(deroulement.recevoir(uneAction(JOUEUR, horloge.maintenant()))).isInstanceOf(Accepte.class);
+        assertThat(deroulement.recevoir(inscrire(PUBLIC, horloge.maintenant(), second, 2,
+                INSTRUMENTALE.instrumentaleId(), List.of(INSTRUMENTALE)))).isInstanceOf(Accepte.class);
+
+        var contenus = instantane().etat().contenus();
+        assertThat(contenus.get(second).grille().mots()).extracting(GrilleDeRimes.Mot::mot)
+                .isNotEqualTo(contenus.get(PASSAGE).grille().mots().stream().map(GrilleDeRimes.Mot::mot).toList());
+    }
+
+    @Test
+    void retireUnPassageEnAttenteDepuisLaConsole() {
+        deroulement.demarrer();
+        assertThat(deroulement.recevoir(uneAction(JOUEUR, horloge.maintenant()))).isInstanceOf(Accepte.class);
+
+        var retrait = deroulement.commander(new RetirerPassage(pilotage().acteur(), horloge.maintenant(),
+                UUID.randomUUID(), cible(0)));
+
+        assertThat(retrait).isInstanceOfSatisfying(Accepte.class,
+                accepte -> assertThat(accepte.typeEvenement()).isEqualTo("file-attente-modifiee"));
+        assertThat(vue(Destination.CONSOLE)).containsEntry("passagesEnAttente", List.of()).containsEntry("nombreEnAttente", 0);
     }
 
     private ContexteDeManche contexte(boolean automatique) {
@@ -203,7 +259,7 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
 
     private Map<String, Object> vue(Destination destination) {
         return VuesFreestyle.projeter(instantane(), destination, Map.of(JOUEUR, "Inès", PUBLIC, "Maël"),
-                List.of(INSTRUMENTALE), horloge.maintenant()).orElse(null);
+                new VuesFreestyle.Catalogue(List.of(INSTRUMENTALE), LECTEUR), horloge.maintenant()).orElse(null);
     }
 
     private static List<String> motsDe(Map<String, Object> vue) {

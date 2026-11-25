@@ -10,7 +10,7 @@ public record Accepte(Object accuse, Set<Destination> aRepublier, String typeEve
 			"passage-appele", "passage-demarre", "passage-termine", "vote-enregistre", "vote-clos", "passage-saute",
 			"lecture-chanson-modifiee", "calage-chanson-modifie", "morceau-en-preparation", "morceau-ouvert",
 			"proposition-jugee", "morceau-revele", "morceau-saute", "brouillon-depose",
-			"photos-modifiees");
+			"photos-modifiees", "instrumentales-modifiees");
 	public Accepte(Object accuse, Set<Destination> aRepublier, String typeEvenement) {
 		this(accuse, aRepublier, typeEvenement, accuse == null ? 204 : 200);
 	}

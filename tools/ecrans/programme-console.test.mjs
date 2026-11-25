@@ -3,7 +3,7 @@ import test from 'node:test';
 import { monterProgramme } from '../../src/main/resources/static/js/programme-console.mjs';
 import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
-function banc() {
+function banc(avecFreestyle = false) {
 	const document = creerDocument();
 	const panneau = document.createElement('section');
 	document.body.append(panneau);
@@ -22,6 +22,18 @@ function banc() {
 	const liste = creer('programme', 'ol');
 	const programmeFige = creer('programme-fige', 'p');
 	creer('programme-vide', 'p');
+	const zone = avecFreestyle ? creer('reglages-freestyle', 'fieldset') : null;
+	if (zone) {
+		for (const [nom, balise, valeur] of [
+			['instrumentales', 'div', ''], ['catalogue-etat', 'p', ''], ['catalogue-actualiser', 'button', ''],
+			['theme-rimes', 'select', 'VILLE'], ['schema-rimes', 'select', 'ABAB'],
+			['difficulte-rimes', 'select', 'PREMIER'], ['nombre-mesures', 'select', '16'],
+		]) {
+			const element = creer(nom, balise);
+			element.value = valeur;
+			zone.append(element);
+		}
+	}
 	const appels = [];
 	let rappel, captures = 0;
 	const programme = monterProgramme(panneau, {
@@ -31,7 +43,7 @@ function banc() {
 		surEtatConnexion: f => { rappel = f; f('synchronisation'); return () => { rappel = null; }; },
 	});
 	return {
-		ajout, appels, communs, formulaire, liste, mode, nombre, programmeFige, temps, programme,
+		ajout, appels, communs, formulaire, liste, mode, nombre, programmeFige, temps, programme, zone,
 		captures: () => captures, connecter: etat => rappel?.(etat),
 		afficher: (manches, etat = 'PREPARATION') => programme.afficher({ soiree: { etat }, programme: manches }),
 	};
@@ -105,4 +117,29 @@ test('déplace avec une permutation complète, retire avec DELETE et affiche le 
 	assert.equal(b.formulaire.hidden, true);
 	assert.equal(b.programmeFige.hidden, false);
 	assert.equal(b.liste.querySelectorAll('button').length, 0);
+});
+
+test('le programme ajoute une Manche de Freestyle avec les fiches cochées après synchronisation', async () => {
+	const b = banc(true);
+	b.afficher([]);
+	b.mode.value = 'FREESTYLE';
+	b.mode.dispatchEvent({ type: 'change' });
+	assert.equal(b.appels.length, 0);
+	b.connecter('synchronisee');
+	assert.equal(b.appels[0].args[1], '/api/soirees/s/freestyle/instrumentales');
+	assert.equal(b.ajout.disabled, true);
+	b.appels[0].resoudre({ statut: 200, corps: { instrumentales: [{ instrumentaleId: 'i', titre: 'À la lueur', tempoBpm: 120 }] } });
+	await terminerMicrotaches();
+	const choix = b.zone.querySelector('input');
+	choix.checked = true;
+	b.zone.querySelector('[data-instrumentales]').dispatchEvent({ type: 'change' });
+	assert.equal(b.ajout.disabled, false);
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.deepEqual(b.appels[1].args.slice(0, 3), [
+		'POST', '/api/soirees/s/manches', {
+			mode: 'FREESTYLE',
+			reglages: { theme: 'VILLE', schemaDeRimes: 'ABAB', difficulte: 'PREMIER', nombreMesures: 16, instrumentaleIds: ['i'] },
+		},
+	]);
+	b.programme.demonter();
 });

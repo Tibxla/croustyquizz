@@ -16,8 +16,13 @@ import java.util.UUID;
 public final class VuesFreestyle {
     private VuesFreestyle() { }
 
+    /** Fiches déclarées pour la Soirée et fenêtre d’Écran de salle désignée pour les jouer. */
+    public record Catalogue(List<Instrumentale> disponibles, UUID lecteurDesigneId) {
+        public Catalogue { disponibles = List.copyOf(disponibles); }
+    }
+
     public static Optional<Map<String, Object>> projeter(InstantaneFreestyle instantane, Destination destination,
-            Map<UUID, String> pseudos, List<Instrumentale> disponibles, Instant maintenant) {
+            Map<UUID, String> pseudos, Catalogue catalogue, Instant maintenant) {
         EtatManche etatManche = instantane.etatManche();
         if (etatManche == EtatManche.PRETE || etatManche == EtatManche.TERMINEE) { return Optional.empty(); }
         if (destination.type() == Destination.Type.TOUTES_LES_MANETTES) {
@@ -29,8 +34,22 @@ public final class VuesFreestyle {
         }
 
         var projection = new Projection(instantane, pseudos, maintenant);
-        return Optional.of(projection.bloc(destination, disponibles));
+        return Optional.of(projection.bloc(destination, catalogue));
     }
+
+    static LignePalmares lignePalmares(RangPassage ligne, Map<UUID, EtatFreestyle.Contenu> contenus, Map<UUID, String> pseudos) {
+        var resultat = ligne.resultat();
+        return new LignePalmares(resultat.passageId(), resultat.numero(), ligne.rang(),
+                contenus.get(resultat.passageId()).instrumentale(), interprete(resultat.interpretes().getFirst(), pseudos),
+                resultat.nombreVotes(), resultat.moyenneDixiemes());
+    }
+
+    private static Map<String, Object> interprete(UUID joueur, Map<UUID, String> pseudos) {
+        return Map.of("joueurId", joueur, "pseudo", pseudos.getOrDefault(joueur, ParticipantsDePassage.JOUEUR_PARTI));
+    }
+
+    record LignePalmares(UUID passageId, long numero, Long rang, Instrumentale instrumentale,
+            Map<String, Object> interprete, long nombreVotes, Integer moyenneDixiemes) { }
 
     private static final class Projection {
         private final InstantaneFreestyle instantane;
@@ -49,7 +68,8 @@ public final class VuesFreestyle {
             this.cycle = CycleDePassage.projeter(instantane.etat().file(), instantane.etat().cycle(), enPause, maintenant);
         }
 
-        private Map<String, Object> bloc(Destination destination, List<Instrumentale> disponibles) {
+        private Map<String, Object> bloc(Destination destination, Catalogue catalogue) {
+            var disponibles = catalogue.disponibles();
             var etat = instantane.etat().file();
             var difficulte = instantane.reglages().difficulte();
             var ordre = file.ordreEffectif();
@@ -70,11 +90,14 @@ public final class VuesFreestyle {
             bloc.put("votes", VoteDuPublic.visibles(instantane.etat().voteDuPublic(), file).stream()
                     .map(vote -> vote(vote, destination.joueurId())).toList());
             if (pourConsole) {
-                bloc.put("instrumentales", List.copyOf(disponibles));
+                bloc.put("instrumentales", disponibles);
+                bloc.put("peutGererFile", true);
                 bloc.put("peutAppeler", !enPause && !instantane.pilotageAutomatique() && !cycle.actif() && !ordre.isEmpty());
                 bloc.put("peutPasser", cycle.actif());
             } else if (destination.type() == Destination.Type.JOUEUR) {
                 completerManette(bloc, destination.joueurId(), disponibles, ordre, positions);
+            } else {
+                bloc.put("lecteurDesigneId", catalogue.lecteurDesigneId());
             }
             return Collections.unmodifiableMap(bloc);
         }
@@ -140,9 +163,7 @@ public final class VuesFreestyle {
             donnees.put("numeroModification", passage.numeroModification());
             donnees.put("numero", passage.numero());
             donnees.put("instrumentale", instantane.etat().contenus().get(passage.id()).instrumentale());
-            UUID interprete = passage.interpretes().getFirst();
-            donnees.put("interprete", Map.of("joueurId", interprete,
-                    "pseudo", pseudos.getOrDefault(interprete, ParticipantsDePassage.JOUEUR_PARTI)));
+            donnees.put("interprete", interprete(passage.interpretes().getFirst(), pseudos));
             return donnees;
         }
     }

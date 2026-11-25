@@ -5,10 +5,11 @@ import { creerUuid } from './modes/karaoke/commun.mjs';
 import { estFichierAudio, fichiersDeMusiqueDAttente } from './modes/karaoke/fichiers.mjs';
 import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 
-export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
+export function creerAudioSalle({ lecteur, sonde, mesureur, coordonner, lecteurId }) {
 	const abonnes = new Set();
-	let fichiers = null, morceauxDisponibles = null, sonDebloque = false, suspendu = false, detruit = false;
+	let selectionLocale = null, fichiers = null, morceauxDisponibles = null, sonDebloque = false, suspendu = false, detruit = false;
 	let musiqueAutorisee = false, attenteAutorisee = false;
+	let mesures = Promise.resolve(null);
 	const etat = () => ({ fichiers, sonDebloque, morceauxDisponibles });
 	function notifier() { for (const rappel of abonnes) rappel(etat()); }
 	const musique = creerMusiqueDAttente({ lecteur, surSonBloque() {
@@ -25,8 +26,21 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		lecteurId,
 		lecteur: creerLecteurDePassage({ lecteur, sonde, attendreSonDeManche: coordination.attendreSonDeManche }),
 		etat,
+		selection: () => selectionLocale,
+		// Une mesure à la fois : un nouveau chargement libérerait le précédent sans durée.
+		mesurerDuree(fichier) {
+			const mesure = mesures.then(async () => {
+				if (detruit || !mesureur) return null;
+				try { return (await mesureur.charger(fichier)).dureeMs ?? null; }
+				catch { return null; }
+				finally { mesureur.detruire(); }
+			});
+			mesures = mesure;
+			return mesure;
+		},
 		surChangement(rappel) { abonnes.add(rappel); return () => abonnes.delete(rappel); },
 		choisirDossier(selection) {
+			selectionLocale = selection;
 			fichiers = selection.filter(estFichierAudio);
 			const morceaux = fichiersDeMusiqueDAttente(fichiers);
 			morceauxDisponibles = morceaux.length > 0;
@@ -58,6 +72,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 			detruit = true;
 			musique.detruire();
 			lecteur.detruire();
+			mesureur?.detruire();
 			abonnes.clear();
 			return coordination.detruire();
 		},
@@ -82,6 +97,8 @@ export function monterAudioSalle(zone) {
 	const audio = creerAudioSalle({ lecteurId, lecteur: creerLecteurLocal(ressources),
 		// Un élément séparé lit seulement les métadonnées pendant l’appel. Seul l’élément audio joue.
 		sonde: creerLecteurLocal({ ...ressources, type: 'video' }),
+		// Le catalogue du Freestyle mesure ses fichiers sur un élément à part, sans gêner la préparation d’un Passage.
+		mesureur: creerLecteurLocal({ ...ressources, type: 'video' }),
 		coordonner: surAttente => coordonnerDans(navigateur, lecteurId, surAttente) });
 	const choisir = zone.querySelector('[data-choisir-dossier]');
 	const choix = zone.querySelector('input');

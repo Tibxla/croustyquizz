@@ -5,6 +5,14 @@ import java.util.List;
 final class DictionnaireDeRimesFactice implements DictionnaireDeRimes {
     static final List<String> MOTS_DE_VILLE = List.of("lumière", "nuit");
 
+    @Override public List<String> amorces(ThemeDeRimes theme) {
+        return switch (theme) {
+            case VILLE -> MOTS_DE_VILLE;
+            case SOIREE -> List.of("voyage");
+            case SPORT -> List.of();
+        };
+    }
+
     @Override public List<String> rimesDe(String mot, ThemeDeRimes theme) {
         return theme == ThemeDeRimes.VILLE ? rimesDe(mot) : List.of();
     }

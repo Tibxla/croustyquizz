@@ -48,6 +48,7 @@ class ProgrammeSoireeControleur {
 			case "QUIZ" -> ModeDeJeu.QUIZ;
 			case "KARAOKE" -> ModeDeJeu.KARAOKE;
 			case "BLIND_TEST" -> ModeDeJeu.BLIND_TEST;
+			case "FREESTYLE" -> ModeDeJeu.FREESTYLE;
 			default -> throw reglagesInvalides();
 		};
 		if (mode == ModeDeJeu.QUIZ && (reglages.size() != 2 || !entierPositif(reglages.path("nombreEtapes"), 100)
