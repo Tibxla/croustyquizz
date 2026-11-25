@@ -225,6 +225,8 @@ $defs:
         minLength: 1
       connecte:
         type: boolean
+        description: Vrai dès l’arrivée ; faux une fois fermée la dernière connexion STOMP de la Manette, jusqu’à son
+          retour (README, « Vues par blocs »).
     required:
     - id
     - pseudo
