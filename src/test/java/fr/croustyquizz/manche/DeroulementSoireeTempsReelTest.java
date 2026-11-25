@@ -1,5 +1,7 @@
 package fr.croustyquizz.manche;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -238,7 +240,7 @@ class DeroulementSoireeTempsReelTest {
 		var connexion = new StompHeaders();
 		connexion.set("Authorization", "Bearer " + jeton);
 		var session = client.connectAsync("ws://localhost:" + port + "/ws",
-				new WebSocketHttpHeaders(), connexion, new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+				new WebSocketHttpHeaders(), connexion, new StompSessionHandlerAdapter() { }).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		UUID id = UUID.randomUUID();
 		var entetes = new StompHeaders();
@@ -249,7 +251,7 @@ class DeroulementSoireeTempsReelTest {
 			@Override public Type getPayloadType(StompHeaders entetes) { return Map.class; }
 			@Override public void handleFrame(StompHeaders entetes, Object corps) { messages.add(json.valueToTree(corps)); }
 		});
-		await().atMost(Duration.ofSeconds(3)).until(() -> abonnements.estInstalle(id, canal));
+		await().atMost(PLAFOND).until(() -> abonnements.estInstalle(id, canal));
 		return new Abonnement(jeton, ecran, operation, id, session, messages);
 	}
 
@@ -259,7 +261,7 @@ class DeroulementSoireeTempsReelTest {
 	}
 
 	private static JsonNode lire(Abonnement abonne, String type) throws InterruptedException {
-		var evenement = abonne.messages().poll(3, TimeUnit.SECONDS);
+		var evenement = abonne.messages().poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		assertThat(evenement).as("%s sur %s", type, abonne.ecran()).isNotNull();
 		assertThat(evenement.path("type").asString()).isEqualTo(type);
 		return evenement;

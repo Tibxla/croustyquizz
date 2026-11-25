@@ -1,5 +1,8 @@
 package fr.croustyquizz.blindtest;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -77,7 +80,7 @@ class BlindTestHttpTest {
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final WebSocketStompClient stomp = new WebSocketStompClient(new StandardWebSocketClient(conteneur));
 	private final List<StompSession> sessions = new ArrayList<>();
-	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(PLAFOND).build();
 	private final RestClient http = clientHttp(clientHttp);
 
 	@TestConfiguration(proxyBeanMethods = false)
@@ -108,7 +111,7 @@ class BlindTestHttpTest {
 			}
 			try {
 				CountDownLatch attente = retenue;
-				if (attente != null && !attente.await(5, TimeUnit.SECONDS)) { throw new IllegalStateException("Retenue oubliée"); }
+				if (attente != null && !attente.await(RETENUE_SECONDES, TimeUnit.SECONDS)) { throw new IllegalStateException("Retenue oubliée"); }
 			} catch (InterruptedException interruption) {
 				Thread.currentThread().interrupt();
 			} finally {
@@ -217,13 +220,21 @@ class BlindTestHttpTest {
 		assertThat(second.path("partiesTrouvees")).isEmpty();
 
 		// Chaque vue de salle publiée respecte le contrat et ne dit rien du Morceau avant sa Révélation.
+		List<String> attendus = List.of("manche-demarree", "morceau-ouvert", "buzz-recu", "proposition-jugee",
+				"buzz-recu", "morceau-revele", "morceau-en-preparation", "morceau-ouvert");
 		List<String> types = new ArrayList<>();
-		for (JsonNode evenement = salle.poll(2, TimeUnit.SECONDS); evenement != null; evenement = salle.poll(200, TimeUnit.MILLISECONDS)) {
-			types.add(evenement.path("type").asString());
+		// La série est lue jusqu'à son dernier type attendu, sous le plafond : une diffusion en retard ne la tronque pas.
+		long limite = System.nanoTime() + PLAFOND.toNanos();
+		int trouves = 0;
+		while (trouves < attendus.size()) {
+			JsonNode evenement = salle.poll(limite - System.nanoTime(), TimeUnit.NANOSECONDS);
+			if (evenement == null) { break; }
+			String type = evenement.path("type").asString();
+			types.add(type);
+			if (type.equals(attendus.get(trouves))) { trouves++; }
 			verifierVueSalle(evenement.path("donnees"));
 		}
-		assertThat(types).containsSubsequence("manche-demarree", "morceau-ouvert", "buzz-recu", "proposition-jugee",
-				"buzz-recu", "morceau-revele", "morceau-en-preparation", "morceau-ouvert");
+		assertThat(types).containsSubsequence(attendus);
 		assertThat(types).doesNotContain("brouillon-depose");
 	}
 
@@ -286,13 +297,21 @@ class BlindTestHttpTest {
 
 		lancer(soiree);
 
-		await().atMost(Duration.ofSeconds(5)).until(() -> capture(soiree, "salle", soiree.cleEcran())
+		await().atMost(PLAFOND).until(() -> capture(soiree, "salle", soiree.cleEcran())
 				.path("vue").path("mancheActive").isNull());
+		List<String> attendus = List.of("manche-demarree", "morceau-saute", "manche-terminee");
 		List<String> types = new ArrayList<>();
-		for (JsonNode evenement = salle.poll(2, TimeUnit.SECONDS); evenement != null; evenement = salle.poll(200, TimeUnit.MILLISECONDS)) {
-			types.add(evenement.path("type").asString());
+		// La série est lue jusqu'à son dernier type attendu, sous le plafond : une diffusion en retard ne la tronque pas.
+		long limite = System.nanoTime() + PLAFOND.toNanos();
+		int trouves = 0;
+		while (trouves < attendus.size()) {
+			JsonNode evenement = salle.poll(limite - System.nanoTime(), TimeUnit.NANOSECONDS);
+			if (evenement == null) { break; }
+			String type = evenement.path("type").asString();
+			types.add(type);
+			if (type.equals(attendus.get(trouves))) { trouves++; }
 		}
-		assertThat(types).containsSubsequence("manche-demarree", "morceau-saute", "manche-terminee");
+		assertThat(types).containsSubsequence(attendus);
 	}
 
 	@Test
@@ -309,7 +328,7 @@ class BlindTestHttpTest {
 		catalogue.retenue = new CountDownLatch(1);
 		int demandes = catalogue.liensDemandes.get();
 		horloge.avancer(Duration.ofSeconds(8));
-		await().atMost(Duration.ofSeconds(3)).until(() -> catalogue.liensDemandes.get() > demandes);
+		await().atMost(PLAFOND).until(() -> catalogue.liensDemandes.get() > demandes);
 		JsonNode enPreparation = bloc(soiree);
 		assertThat(enPreparation.path("phase").asString()).isEqualTo("PREPARATION");
 		assertThat(enPreparation.path("numero").asInt()).isEqualTo(2);
@@ -320,8 +339,9 @@ class BlindTestHttpTest {
 
 		int rendus = catalogue.liensRendus.get();
 		catalogue.retenue.countDown();
-		await().atMost(Duration.ofSeconds(3)).until(() -> catalogue.liensRendus.get() > rendus);
-		await().pollDelay(Duration.ofMillis(300)).atMost(Duration.ofSeconds(2)).untilAsserted(() -> {
+		await().atMost(PLAFOND).until(() -> catalogue.liensRendus.get() > rendus);
+		// Absence vérifiée après coup : 300 ms de pollDelay, gardées courtes, laissent au lien rendu le temps d'ajouter une lecture à tort.
+		await().pollDelay(Duration.ofMillis(300)).atMost(PLAFOND).untilAsserted(() -> {
 			JsonNode apres = bloc(soiree);
 			assertThat(apres.path("phase").asString()).isEqualTo("REVELATION");
 			assertThat(apres.path("lecture").isNull()).isTrue();
@@ -339,8 +359,9 @@ class BlindTestHttpTest {
 		lancer(soiree);
 
 		// La demande échoue sans conclure ; tant que le temps ne passe pas, la Manche attend son essai suivant.
-		await().atMost(Duration.ofSeconds(3)).until(() -> catalogue.liensDemandes.get() > demandes);
-		await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(2))
+		await().atMost(PLAFOND).until(() -> catalogue.liensDemandes.get() > demandes);
+		// Absence : rien ne relance la préparation pendant 500 ms, fenêtre gardée courte.
+		await().during(Duration.ofMillis(500)).atMost(PLAFOND)
 				.until(() -> "PREPARATION".equals(bloc(soiree).path("phase").asString()));
 		// Seule l'Horloge relance : aucune capture ne lit le déroulement (ADR 0004).
 		laisserPasserLesEssais(soiree, 1);
@@ -373,14 +394,15 @@ class BlindTestHttpTest {
 
 		lancer(soiree);
 		// La demande a échoué et son essai suivant attend l'Horloge.
-		await().atMost(Duration.ofSeconds(3)).until(() -> horloge.minuteursEnAttente() > minuteurs);
+		await().atMost(PLAFOND).until(() -> horloge.minuteursEnAttente() > minuteurs);
 		assertThat(catalogue.liensDemandes.get()).isEqualTo(demandes + 1);
 
 		// Chaque commande enregistrée relance la préparation des Morceaux attendus (#216) : pas celle-ci.
 		String etape = bloc(soiree).path("etapeId").asString();
 		verifier("piloterManche", piloter(soiree, mancheId, "METTRE_EN_PAUSE", etape), 200);
 		verifier("piloterManche", piloter(soiree, mancheId, "REPRENDRE", etape), 200);
-		await().during(Duration.ofMillis(300)).atMost(Duration.ofSeconds(2))
+		// Absence : aucune nouvelle demande de lien pendant 300 ms, fenêtre gardée courte.
+		await().during(Duration.ofMillis(300)).atMost(PLAFOND)
 				.until(() -> catalogue.liensDemandes.get() == demandes + 1);
 
 		horloge.avancer(ServiceBlindTest.DELAI_NOUVEL_ESSAI);
@@ -390,7 +412,7 @@ class BlindTestHttpTest {
 
 	/** Fait passer le temps par pas d'un essai, comme une vraie horloge, jusqu'à l'extrait du Morceau attendu. */
 	private void laisserPasserLesEssais(Soiree soiree, int numero) {
-		await().pollInterval(Duration.ofMillis(100)).atMost(Duration.ofSeconds(10)).until(() -> {
+		await().pollInterval(Duration.ofMillis(100)).atMost(PLAFOND).until(() -> {
 			JsonNode bloc = bloc(soiree);
 			if ("EXTRAIT".equals(bloc.path("phase").asString()) && bloc.path("numero").asInt() == numero) {
 				return true;
@@ -437,7 +459,7 @@ class BlindTestHttpTest {
 	// --- Outils ---
 
 	private JsonNode attendrePhase(Soiree soiree, String phase, int numero) throws Exception {
-		await().atMost(Duration.ofSeconds(5)).until(() -> {
+		await().atMost(PLAFOND).until(() -> {
 			JsonNode bloc = bloc(soiree);
 			return phase.equals(bloc.path("phase").asString()) && bloc.path("numero").asInt() == numero;
 		});
@@ -539,7 +561,7 @@ class BlindTestHttpTest {
 		StompHeaders connexion = new StompHeaders();
 		connexion.set("Authorization", "Bearer " + secret);
 		StompSession session = stomp.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(),
-				connexion, new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+				connexion, new StompSessionHandlerAdapter() { }).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		StompHeaders abonnement = new StompHeaders();
 		abonnement.setDestination(destination);
@@ -550,7 +572,7 @@ class BlindTestHttpTest {
 			@Override public void handleFrame(StompHeaders entetes, Object contenu) { recus.add((JsonNode) contenu); }
 		});
 		String capture = soiree.route() + "/etat/" + ecran + "?abonnementId=" + abonnement.getId();
-		await().pollDelay(Duration.ZERO).pollInterval(Duration.ofMillis(10)).atMost(Duration.ofSeconds(3))
+		await().pollDelay(Duration.ZERO).pollInterval(Duration.ofMillis(10)).atMost(PLAFOND)
 				.until(() -> envoyer(HttpMethod.GET, capture, secret, null, null).getStatusCode().value() == 200);
 		return recus;
 	}

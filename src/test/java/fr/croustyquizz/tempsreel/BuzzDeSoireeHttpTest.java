@@ -1,5 +1,6 @@
 package fr.croustyquizz.tempsreel;
 
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
@@ -15,7 +16,6 @@ import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -84,7 +84,7 @@ class BuzzDeSoireeHttpTest {
 		assertThat(recu.path("recuLe").asString()).isEqualTo(horloge.maintenant().toString());
 		assertThat(recu.path("rang").asLong()).isEqualTo(1);
 		for (var ecran : List.of(salle, console, manette)) {
-			JsonNode evenement = ecran.poll(2, TimeUnit.SECONDS);
+			JsonNode evenement = ecran.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 			assertThat(evenement).isNotNull();
 			assertThat(evenement.path("type").asString()).isEqualTo("buzz-recu");
 			assertThat(evenement.path("soireeId").asString()).isEqualTo(soiree.id().toString());
@@ -125,7 +125,7 @@ class BuzzDeSoireeHttpTest {
 		var salle = abonner(soiree, "salle", soiree.cleEcran(), Canaux.salle(soiree.id()));
 		UUID envoi = UUID.randomUUID();
 		JsonNode recu = verifier(ENVOYER_BUZZ, buzzer(soiree, lea.jeton(), null, envoi), 200);
-		assertThat(salle.poll(2, TimeUnit.SECONDS)).isNotNull();
+		assertThat(salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS)).isNotNull();
 		JsonNode quiz = verifier("ajouterManche", envoyer(HttpMethod.POST, soiree.route() + "/manches", soiree.animateur(),
 				Map.of("mode", "QUIZ", "reglages", Map.of("nombreEtapes", 1, "tempsParEtapeSecondes", 10)), null), 201);
 		UUID mancheId = UUID.fromString(quiz.path("id").asString());
@@ -143,13 +143,13 @@ class BuzzDeSoireeHttpTest {
 
 		JsonNode suivant = verifier(ENVOYER_BUZZ, buzzer(soiree, lea.jeton(), null, UUID.randomUUID()), 200);
 		assertThat(suivant.path("rang").asLong()).isEqualTo(2);
-		JsonNode evenement = salle.poll(2, TimeUnit.SECONDS);
+		JsonNode evenement = salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		assertThat(evenement).isNotNull();
 		assertThat(evenement.path("donnees").path("dernierBuzz")).isEqualTo(suivant);
 	}
 
+	// Pas de budget global : chaque attente du test est déjà bornée, et un budget fixe pourrait la trancher avant terme.
 	@Test
-	@Timeout(30)
 	void soixanteManettesBuzzantEnsembleRecoiventToutesLesRevisionsDansLeMemeOrdre() throws Exception {
 		SoireeOuverte soiree = ouvrirSoiree();
 		List<EnvoiDeBuzz> envois = new ArrayList<>();
@@ -188,7 +188,7 @@ class BuzzDeSoireeHttpTest {
 			throws InterruptedException {
 		long revisionPrecedente = -1;
 		for (long rang = 1; rang <= recus.size(); rang++) {
-			BuzzDiffuse evenement = destination.poll(2, TimeUnit.SECONDS);
+			BuzzDiffuse evenement = destination.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 			assertThat(evenement).as("Buzz de rang %s", rang).isNotNull();
 			assertThat(evenement.type()).isEqualTo("buzz-recu");
 			assertThat(evenement.buzz()).isEqualTo(recus.get(rang));

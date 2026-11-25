@@ -1,5 +1,6 @@
 package fr.croustyquizz.blindtest;
 
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -241,12 +242,13 @@ class AdaptateurDeezerTest {
 				echange.sendResponseHeaders(200, 0);
 				echange.getResponseBody().write('{');
 				echange.getResponseBody().flush();
-				liberer.await(5, TimeUnit.SECONDS);
+				liberer.await(RETENUE_SECONDES, TimeUnit.SECONDS);
 			} catch (InterruptedException interruption) {
 				Thread.currentThread().interrupt();
 			}
 		});
 		try {
+			// Les 3 s sont l'exigence du test, pas un plafond d'attente : elles restent fixes, sous la retenue du serveur.
 			assertTimeoutPreemptively(Duration.ofSeconds(3), () ->
 					assertThatExceptionOfType(SourceMusicaleIndisponible.class)
 							.isThrownBy(() -> adaptateur(250, 2_097_152).lienExtrait(3135556))
