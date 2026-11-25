@@ -75,12 +75,20 @@ export function verdictPersonnel(bloc, joueurId) {
 }
 
 /**
- * Envoi du brouillon au fil de la saisie : espacé par un délai, une seule requête à la fois, jamais réessayé. La
- * saisie la plus récente part après la requête en cours ; un échec attend simplement la frappe suivante.
+ * Envoi du brouillon au fil de la saisie : espacé par un délai, une seule requête à la fois, jamais réessayé tout
+ * seul. La saisie la plus récente part après la requête en cours. Un échec est signalé (surEchec(true)) tant qu'aucun
+ * envoi plus récent n'a réussi : le Joueur renvoie à la main, avec un numéro supérieur, ce que le serveur accepte sans
+ * risque puisqu'il ignore tout numéro qui n'augmente pas.
  */
-export function creerEnvoiBrouillon({ envoyer, programmer, annuler, delaiMs = 500 }) {
-	let numero = 0, minuterie, enVol = false, enAttente = null, detruit = false;
+export function creerEnvoiBrouillon({ envoyer, programmer, annuler, delaiMs = 500, surEchec = () => {} }) {
+	let numero = 0, minuterie, enVol = false, enAttente = null, detruit = false, echec = false;
+	function signaler(valeur) {
+		if (detruit || valeur === echec) return;
+		echec = valeur;
+		surEchec(valeur);
+	}
 	function partir() {
+		if (minuterie !== undefined) annuler(minuterie);
 		minuterie = undefined;
 		if (enVol || !enAttente || detruit) return;
 		const saisie = enAttente;
@@ -88,7 +96,8 @@ export function creerEnvoiBrouillon({ envoyer, programmer, annuler, delaiMs = 50
 		enVol = true;
 		numero++;
 		Promise.resolve().then(() => envoyer({ numero, titre: saisie.titre, artiste: saisie.artiste }))
-			.catch(() => {})
+			.then(reponse => signaler(!(reponse?.statut >= 200 && reponse.statut < 300)),
+				erreur => { if (erreur?.name !== 'AbortError') signaler(true); })
 			.finally(() => {
 				enVol = false;
 				if (enAttente && minuterie === undefined && !detruit) partir();
@@ -103,7 +112,14 @@ export function creerEnvoiBrouillon({ envoyer, programmer, annuler, delaiMs = 50
 			if (minuterie !== undefined) annuler(minuterie);
 			minuterie = programmer(partir, delaiMs);
 		},
+		/** Geste du Joueur après un échec : la saisie courante part sans attendre le délai. */
+		renvoyer(saisie) {
+			if (detruit) return;
+			enAttente = saisie;
+			partir();
+		},
 		get numero() { return numero; },
+		get echec() { return echec; },
 		detruire() {
 			detruit = true;
 			if (minuterie !== undefined) annuler(minuterie);

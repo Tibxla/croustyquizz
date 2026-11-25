@@ -66,6 +66,9 @@
   background: var(--fond-2);
 }
 .blindtest__verdict--accepte { background: var(--eau); color: var(--encre); }
+/* Brouillon non enregistré : dit près des champs, avec le geste qui le renvoie. */
+.blindtest__brouillon { display: grid; gap: var(--espace-2); padding: var(--espace-2) var(--espace-3);
+  border-radius: var(--rayon); background: var(--refus-fond); color: var(--refus); }
 .blindtest__verdict--refuse { background: var(--refus-fond); color: var(--refus); }
 
 /* Console : le pilotage de la Manche en tête, action citron en dernier, puis la réponse attendue pour l'arbitrage. */

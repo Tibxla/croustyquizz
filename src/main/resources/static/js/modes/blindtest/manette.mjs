@@ -18,6 +18,8 @@ export function monter(zones, contexte, dependances = {}) {
 
 	const numero = e('p', 'blindtest__numero chiffres');
 	const titre = e('h2', 'blindtest__titre');
+	// Reçoit le focus quand le formulaire ou le Buzz qui l'avait disparaît.
+	titre.setAttribute('tabindex', '-1');
 	const parties = e('ul', 'blindtest__parties');
 	parties.hidden = true;
 	const verdict = e('p', 'blindtest__verdict');
@@ -32,7 +34,14 @@ export function monter(zones, contexte, dependances = {}) {
 	const champs = { TITRE: champ('Titre', 'blindtest-titre'), ARTISTE: champ('Artiste', 'blindtest-artiste') };
 	const valider = e('button', 'bouton bouton--action bouton--grand', 'Valider');
 	valider.type = 'submit';
-	formulaire.append(temps, champs.TITRE.conteneur, champs.ARTISTE.conteneur, valider);
+	// Le serveur juge le dernier brouillon reçu à l'échéance : un échec se dit près des champs.
+	const brouillon = e('div', 'blindtest__brouillon');
+	brouillon.hidden = true;
+	const brouillonTexte = e('p', '', 'Ta saisie n’est pas enregistrée : valide-la, ou enregistre-la avant la fin du temps.');
+	const renvoyer = e('button', 'bouton', 'Enregistrer ma saisie');
+	renvoyer.type = 'button';
+	brouillon.append(brouillonTexte, renvoyer);
+	formulaire.append(temps, champs.TITRE.conteneur, champs.ARTISTE.conteneur, brouillon, valider);
 
 	const statut = e('p', 'blindtest__statut');
 	statut.setAttribute('role', 'status');
@@ -68,6 +77,9 @@ export function monter(zones, contexte, dependances = {}) {
 	});
 	// Même règle que la coquille : un 503, ou un 5xx sans code du contrat, peut suivre une commande appliquée.
 	const inconnu = (code, corps) => code === 503 || (code >= 500 && !corps?.code);
+	// Un reçu arrivé après la vue suivante ne s'affiche plus : cette vue a déjà dit la suite.
+	const instant = () => `${bloc.etapeId}:${bloc.phase}`;
+	const recu = (depuis, texte) => ecrire(statut, depuis === instant() ? texte : '');
 
 	/** Une main par Morceau : à sa première vue, la saisie repart du brouillon retenu par le serveur. */
 	function suivreMain(origine) {
@@ -79,10 +91,11 @@ export function monter(zones, contexte, dependances = {}) {
 		validation = undefined;
 		if (!cle) return;
 		const requetes = new AbortController();
+		const url = racine();
 		const envoi = creerEnvoiBrouillon({ programmer: programmerDelai, annuler: annulerDelai,
-			envoyer: corps => contexte.envoyer('PUT', `${racine()}/brouillon`, corps,
-				{ signal: requetes.signal, annoncer: false }) });
-		main = { cle, envoi, requetes, url: racine() };
+			envoyer: corps => contexte.envoyer('PUT', `${url}/brouillon`, corps, { signal: requetes.signal, annoncer: false }),
+			surEchec: () => rendre() });
+		main = { cle, envoi, requetes, url, differe: false };
 		const retenu = bloc.monBrouillon;
 		envoi.reprendre(retenu?.numero);
 		champs.TITRE.entree.value = retenu?.titre ?? '';
@@ -96,13 +109,30 @@ export function monter(zones, contexte, dependances = {}) {
 	}
 
 	function surSaisie() {
-		if (main && !validation?.enVol && !validation?.acceptee) main.envoi.saisir(saisie());
+		if (!main || validation) return;
+		// Pendant une coupure, rien ne part : la saisie courante partira au retour de la synchronisation.
+		if (!socle.synchronisee) { main.differe = true; return; }
+		main.envoi.saisir(saisie());
+	}
+
+	function surConnexion() {
+		if (main?.differe && socle.synchronisee && !validation) {
+			main.differe = false;
+			main.envoi.saisir(saisie());
+		}
+		rendre();
+	}
+
+	function renvoyerBrouillon() {
+		if (renvoyer.disabled || !main || validation) return;
+		main.differe = false;
+		main.envoi.renvoyer(saisie());
 	}
 
 	async function proposer(evenement) {
 		evenement.preventDefault();
 		if (valider.disabled || !main) return;
-		const courante = main;
+		const courante = main, depuis = instant();
 		validation = { envoiId: validation?.envoiId ?? creerId(), enVol: true };
 		const tentative = validation;
 		ecrire(statut, 'Envoi en cours…');
@@ -115,36 +145,48 @@ export function monter(zones, contexte, dependances = {}) {
 				// Jugée : la saisie s'arrête là, la vue publiée apportera le verdict.
 				tentative.acceptee = true;
 				courante.envoi.detruire();
-				ecrire(statut, 'Proposition envoyée.');
+				recu(depuis, 'Proposition envoyée.');
 			} else if (inconnu(code, corps)) {
-				ecrire(statut, INCONNU);
-				contexte.resynchroniser();
+				douter();
 			} else {
 				validation = undefined;
 				ecrire(statut, corps?.detail ?? `Proposition refusée (HTTP ${code}).`);
 			}
 		} catch (erreur) {
 			if (validation !== tentative || erreur.name === 'AbortError') return;
-			ecrire(statut, INCONNU);
-			contexte.resynchroniser();
+			douter();
 		} finally {
 			if (validation === tentative) tentative.enVol = false;
 			if (!detruit) rendre();
 		}
 	}
 
+	/**
+	 * Confirmation inconnue : la saisie se fige, pour qu'un nouvel essai reparte avec le même envoiId et le même contenu
+	 * (le serveur refuserait le même envoiId avec un autre contenu).
+	 */
+	function douter() {
+		ecrire(statut, `${INCONNU} Ta réponse reste celle envoyée.`);
+		contexte.resynchroniser();
+	}
+
 	async function buzzer() {
 		if (buzz.disabled) return;
 		buzzEnvoiId ??= creerId();
+		const depuis = instant();
 		const requete = buzzEnVol = new AbortController();
 		const corps = { envoiId: buzzEnvoiId, mancheId: bloc.mancheId, etapeId: bloc.etapeId };
-		ecrire(statut, '');
+		// annoncer: false : la coquille se tait, le module annonce lui-même l'envoi puis le reçu, près du Buzz.
+		ecrire(statut, 'Envoi du Buzz…');
 		rendre();
 		try {
 			const reponse = await contexte.envoyer('POST', `/api/soirees/${encodeURIComponent(contexte.soireeId)}/buzz`,
 				corps, { signal: requete.signal, annoncer: false });
-			if (reponse.statut >= 200 && reponse.statut < 300) buzzEnvoiId = undefined;
-			else if (inconnu(reponse.statut, reponse.corps)) {
+			if (reponse.statut >= 200 && reponse.statut < 300) {
+				buzzEnvoiId = undefined;
+				// Le reçu ne dit pas qui a la main : la vue publiée le dira.
+				recu(depuis, 'Buzz reçu.');
+			} else if (inconnu(reponse.statut, reponse.corps)) {
 				ecrire(statut, INCONNU);
 				contexte.resynchroniser();
 			} else {
@@ -177,6 +219,13 @@ export function monter(zones, contexte, dependances = {}) {
 		}
 	}
 
+	/** Un élément qui disparaît avec le focus le rend au titre, pas au corps de la page. */
+	function masquer(element, cache) {
+		const avaitFocus = element.contains(socle.document.activeElement);
+		element.hidden = cache;
+		if (cache && avaitFocus) titre.focus();
+	}
+
 	function rendre() {
 		if (!bloc || detruit) return;
 		ecrire(numero, texteNumero(bloc));
@@ -190,15 +239,22 @@ export function monter(zones, contexte, dependances = {}) {
 		ecrire(revelationTitre, bloc.revelation?.titre ?? '');
 		ecrire(revelationArtiste, bloc.revelation?.artiste ?? '');
 
-		formulaire.hidden = !main;
-		for (const [partie, { conteneur }] of Object.entries(champs)) conteneur.hidden = !main || !demandes().includes(partie);
+		masquer(formulaire, !main);
+		// Une Proposition envoyée fige la saisie : jugée, ou à confirmation inconnue, elle ne change plus.
+		const figee = Boolean(validation);
+		for (const [partie, { conteneur, entree }] of Object.entries(champs)) {
+			conteneur.hidden = !main || !demandes().includes(partie);
+			entree.readOnly = figee;
+		}
 		valider.disabled = !main || !socle.synchronisee || bloc.etat !== 'EN_COURS'
 			|| Boolean(validation?.enVol || validation?.acceptee);
+		masquer(brouillon, !main?.envoi.echec || figee);
+		renvoyer.disabled = !socle.synchronisee;
 		rafraichirTemps();
 		temps.hidden = !main;
 
 		if (buzzEtape !== bloc.etapeId) { buzzEtape = bloc.etapeId; buzzEnvoiId = undefined; }
-		buzz.hidden = bloc.phase !== 'EXTRAIT' || bloc.bloque;
+		masquer(buzz, bloc.phase !== 'EXTRAIT' || bloc.bloque);
 		buzz.disabled = !bloc.peutBuzzer || !socle.synchronisee || Boolean(buzzEnVol);
 		ecrire(buzz, buzzEnvoiId && !buzzEnVol ? 'Réessayer le Buzz' : 'Buzzer');
 		socle.animer(Boolean(main) && bloc.etat === 'EN_COURS', rafraichirTemps);
@@ -208,7 +264,8 @@ export function monter(zones, contexte, dependances = {}) {
 	socle.ecouter(formulaire, 'submit', proposer);
 	socle.ecouter(champs.TITRE.entree, 'input', surSaisie);
 	socle.ecouter(champs.ARTISTE.entree, 'input', surSaisie);
-	socle.surConnexion = () => rendre();
+	socle.ecouter(renvoyer, 'click', renvoyerBrouillon);
+	socle.surConnexion = surConnexion;
 
 	return {
 		afficher(nouvelle, origine) {
@@ -216,7 +273,8 @@ export function monter(zones, contexte, dependances = {}) {
 			const precedent = bloc;
 			vue = nouvelle;
 			bloc = nouvelle.blindtest;
-			if (precedent && precedent.etapeId !== bloc.etapeId) ecrire(statut, '');
+			// Un reçu ou un doute ne vaut que pour la phase où il a été écrit : la vue suivante dit la suite.
+			if (precedent && (precedent.etapeId !== bloc.etapeId || precedent.phase !== bloc.phase)) ecrire(statut, '');
 			suivreMain(origine);
 			rendre();
 		},
