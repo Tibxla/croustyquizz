@@ -149,6 +149,26 @@ test('un refus HTTP 400 tardif ne ramène pas le focus dans le formulaire', asyn
 	assert.equal(b.document.activeElement === b.ailleurs, true);
 });
 
+test('une saisie refusée avant l’envoi efface le bandeau laissé par l’envoi précédent', async () => {
+	const b = banc();
+	const a = manche('a', 0);
+	const c = manche('c', 1);
+	b.afficher([a, c]);
+	b.connecter('synchronisee');
+	b.liste.querySelectorAll('[data-action-programme="monter"]')[1].click();
+	b.appels[0].resoudre({ statut: 409, corps: { code: 'ETAT_INCOMPATIBLE', detail: 'Envoi refusé.' } });
+	await terminerMicrotaches();
+	assert.deepEqual(b.annonces, ['en-cours', 'refuse']);
+
+	b.mode.value = 'QUIZ';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.nombre.value = '0';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
+	assert.equal(b.erreurs['nombre-etapes'].hidden, false);
+	assert.deepEqual(b.annonces, ['en-cours', 'refuse', null]);
+});
+
 test('ajoute les réglages communs du Quiz, puis laisse la vue synchronisée afficher la Manche', async () => {
 	const b = banc();
 	b.afficher([]);

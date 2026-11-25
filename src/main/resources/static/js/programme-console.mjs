@@ -95,6 +95,8 @@ export function monterProgramme(panneau, contexte) {
 		const max = Number(champ.getAttribute('max'));
 		if (Number.isInteger(valeur) && valeur >= min && valeur <= max) return valeur;
 		signalerChamp(saisie, consigne(min, max));
+		// Rien ne part : le bandeau d'un envoi précédent ne doit pas rester à côté de cette erreur.
+		contexte.effacerAnnonce();
 	}
 
 	function ajouter(evenement) {
