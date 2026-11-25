@@ -1,7 +1,7 @@
 import { transportStomp } from './transport.mjs';
 export { creerTransport, transportStomp } from './transport.mjs';
 
-export const motifRefusParDefaut = 'La connexion en temps réel a été refusée. Recharge la page.';
+export const motifRefusParDefaut = 'Le serveur a refusé la connexion en temps réel.';
 
 // Module ES sans dépendance. Le client STOMP réel est chargé par la page.
 // Les pages ne manipulent que des vues complètes, jamais les Révisions.
@@ -134,7 +134,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {}, 
 				surMessage: (message) => recevoir(suivi, message),
 				surDeconnexion: () => recommencer(suivi),
 				surErreur: () => recommencer(suivi),
-				surRefus: (motif) => refuser(suivi, motif),
+				surTrameErreur: (motif) => refuser(suivi, motif),
 			});
 		} catch {
 			recommencer(suivi);

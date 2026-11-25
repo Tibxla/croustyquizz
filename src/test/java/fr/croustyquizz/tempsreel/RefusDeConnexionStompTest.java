@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -21,7 +20,9 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
-/** Un CONNECT refusé reçoit une trame ERROR lisible ; les autres refus restent des exceptions (#241). */
+import fr.croustyquizz.manche.Refuse;
+
+/** Un CONNECT refusé reçoit une trame ERROR lisible ; pannes et autres refus restent des exceptions (#241). */
 class RefusDeConnexionStompTest {
 
 	@Test
@@ -53,23 +54,22 @@ class RefusDeConnexionStompTest {
 	}
 
 	@Test
-	void unePanneTechniqueDonneUnMotifGeneriqueSansDetailInterne() {
+	void unePanneTechniqueAuConnectResteUneExceptionPourQueLeClientReessaie() {
 		var publies = new ArrayList<Message<?>>();
-		var garde = new RefusDeConnexionStomp(echoue(new IllegalStateException("Invalid CSRF Token")), canal(publies));
+		var panne = new IllegalStateException("Base indisponible");
+		var garde = new RefusDeConnexionStomp(echoue(panne), canal(publies));
 
-		assertThat(garde.preSend(trame(StompCommand.CONNECT, "connexion"), null)).isNull();
-
-		assertThat(StompHeaderAccessor.wrap(publies.getFirst()).getMessage()).isEqualTo(RefusDeConnexionStomp.MOTIF_PAR_DEFAUT);
+		assertThatThrownBy(() -> garde.preSend(trame(StompCommand.CONNECT, "connexion"), null)).isSameAs(panne);
+		assertThat(publies).isEmpty();
 	}
 
 	@Test
 	void unAbonnementRefuseResteUneExceptionSansTrameError() {
 		var publies = new ArrayList<Message<?>>();
-		var garde = new RefusDeConnexionStomp(echoue(new MessageDeliveryException("Destination non autorisée pour cet acteur.")),
-				canal(publies));
+		var refus = new Refuse(403, "ACCES_REFUSE", "Destination non autorisée pour cet acteur.").exception();
+		var garde = new RefusDeConnexionStomp(echoue(refus), canal(publies));
 
-		assertThatThrownBy(() -> garde.preSend(trame(StompCommand.SUBSCRIBE, "connexion"), null))
-				.isInstanceOf(MessageDeliveryException.class);
+		assertThatThrownBy(() -> garde.preSend(trame(StompCommand.SUBSCRIBE, "connexion"), null)).isSameAs(refus);
 		assertThat(publies).isEmpty();
 	}
 

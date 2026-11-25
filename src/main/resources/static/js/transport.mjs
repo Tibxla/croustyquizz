@@ -12,6 +12,11 @@ export async function lireCorps(reponse) {
 	try { return { lisible: true, corps: JSON.parse(texte) }; } catch { return { lisible: false }; }
 }
 
+// Retire l'échappement STOMP 1.2 d'une valeur d'en-tête : \r, \n, \c (deux-points) et \\.
+export function desechapper(valeur) {
+	return valeur.replace(/\\([rnc\\])/g, (_, code) => ({ r: '\r', n: '\n', c: ':', '\\': '\\' })[code]);
+}
+
 export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 	const adresse = adaptations.adresse ?? globalThis.location?.href;
 	const requete = adaptations.requete ?? ((...args) => fetch(...args));
@@ -58,16 +63,23 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 			}
 			return { blob: await reponse.blob(), adresseManette };
 		},
-		// surRefus reçoit le motif de la trame ERROR du serveur ; surErreur, une panne sans motif.
-		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur, surRefus }) {
+		// surTrameErreur reçoit le motif d'une trame ERROR du serveur ; surErreur, une panne sans motif.
+		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur, surTrameErreur }) {
 			const url = new URL('/ws', adresse);
 			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
 			const Client = adaptations.Client ?? globalThis.StompJs.Client;
+			// stompjs ne déséchappe les en-têtes qu'après CONNECTED : le motif d'un refus arrive avant.
+			let connecte = false;
 			const client = new Client({
 				brokerURL: url.href, connectHeaders: entetesIdentite(), reconnectDelay: 0,
 				connectionTimeout: 10000, heartbeatIncoming: 10000, heartbeatOutgoing: 10000,
-				onConnect: surConnexion, onWebSocketClose: surDeconnexion,
-				onStompError: trame => surRefus(trame.headers?.message), onWebSocketError: () => surErreur(),
+				onConnect: (...args) => { connecte = true; surConnexion(...args); },
+				onWebSocketClose: (...args) => { connecte = false; surDeconnexion(...args); },
+				onStompError: trame => {
+					const message = trame.headers?.message;
+					surTrameErreur(connecte || message === undefined ? message : desechapper(message));
+				},
+				onWebSocketError: () => surErreur(),
 			});
 			client.activate();
 			return {

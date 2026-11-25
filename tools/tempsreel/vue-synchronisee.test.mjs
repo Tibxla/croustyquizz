@@ -234,7 +234,7 @@ function demarrerSansConnexion() {
 
 test('un CONNECT refusé affiche son motif et ne se reconnecte pas, même après la fermeture', async () => {
 	const p = demarrerSansConnexion();
-	p.connexions[0].surRefus('Cette Soirée n’accepte pas d’Écran de démonstration.');
+	p.connexions[0].surTrameErreur('Cette Soirée n’accepte pas d’Écran de démonstration.');
 	p.connexions[0].surDeconnexion();
 	await p.avancer(60000);
 	assert.deepEqual(p.refus, ['Cette Soirée n’accepte pas d’Écran de démonstration.']);
@@ -251,15 +251,15 @@ test('un CONNECT refusé affiche son motif et ne se reconnecte pas, même après
 
 test('un refus sans motif affiche un motif générique', () => {
 	const p = demarrerSansConnexion();
-	p.connexions[0].surRefus(undefined);
-	assert.deepEqual(p.refus, ['La connexion en temps réel a été refusée. Recharge la page.']);
+	p.connexions[0].surTrameErreur(undefined);
+	assert.deepEqual(p.refus, ['Le serveur a refusé la connexion en temps réel.']);
 	p.suivi.arreter();
 });
 
 test('une trame ERROR après CONNECTED reste une coupure suivie de la reconnexion', async () => {
 	const p = demarrerSansConnexion();
 	p.connexions[0].surConnexion();
-	p.connexions[0].surRefus('Trame illisible.');
+	p.connexions[0].surTrameErreur('Trame illisible.');
 	assert.deepEqual(p.refus, []);
 	assert.equal(p.etats.at(-1), 'coupure');
 	await p.avancer(2000);

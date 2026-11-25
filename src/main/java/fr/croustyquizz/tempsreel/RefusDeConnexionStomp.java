@@ -21,12 +21,13 @@ import fr.croustyquizz.manche.RefusDeCommande;
  * trame ERROR sur le canal sortant (le gestionnaire STOMP ferme la session après
  * l'avoir écrite) et retire le CONNECT.
  *
- * <p>Les refus de SUBSCRIBE et de SEND restent des exceptions : la connexion survit
+ * <p>Seul un refus métier ({@link RefusDeCommande}) est définitif : le client affiche
+ * son détail et ne se reconnecte pas. Une panne technique (base indisponible, par
+ * exemple) reste une exception, pour que le client réessaie comme après une coupure.
+ * Les refus de SUBSCRIBE et de SEND restent aussi des exceptions : la connexion survit
  * à un abonnement refusé.
  */
 final class RefusDeConnexionStomp implements ChannelInterceptor {
-
-	static final String MOTIF_PAR_DEFAUT = "La connexion en temps réel a été refusée. Recharge la page.";
 
 	private final ChannelInterceptor controle;
 	private final MessageChannel sortant;
@@ -38,27 +39,18 @@ final class RefusDeConnexionStomp implements ChannelInterceptor {
 
 	@Override
 	public Message<?> preSend(Message<?> message, MessageChannel canal) {
-		if (SimpMessageHeaderAccessor.getMessageType(message.getHeaders()) != SimpMessageType.CONNECT) {
-			return controle.preSend(message, canal);
-		}
 		try {
 			return controle.preSend(message, canal);
-		} catch (RuntimeException refus) {
+		} catch (RefusDeCommande refus) {
+			if (SimpMessageHeaderAccessor.getMessageType(message.getHeaders()) != SimpMessageType.CONNECT) {
+				throw refus;
+			}
+			// Le détail d'un refus métier est déjà rédigé pour l'écran.
 			var erreur = StompHeaderAccessor.create(StompCommand.ERROR);
 			erreur.setSessionId(SimpMessageHeaderAccessor.getSessionId(message.getHeaders()));
-			erreur.setMessage(motif(refus));
+			erreur.setMessage(refus.refus().detail());
 			sortant.send(MessageBuilder.createMessage(new byte[0], erreur.getMessageHeaders()));
 			return null;
 		}
-	}
-
-	/** Le détail d'un refus métier est déjà rédigé pour l'écran ; une autre panne n'expose rien de technique. */
-	static String motif(Throwable refus) {
-		for (Throwable cause = refus; cause != null; cause = cause.getCause()) {
-			if (cause instanceof RefusDeCommande metier) {
-				return metier.refus().detail();
-			}
-		}
-		return MOTIF_PAR_DEFAUT;
 	}
 }
