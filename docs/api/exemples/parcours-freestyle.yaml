@@ -125,6 +125,7 @@ http:
         pilotage: MANUEL
         etat: EN_COURS
         codeAcces: RIMES7
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: &manche
         id: *mancheId
         ordre: 0
@@ -210,6 +211,7 @@ evenements:
     emisLe: *depart
     donnees:
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *manche
       modeEnCours: FREESTYLE
       joueurs: *joueurs
@@ -284,6 +286,7 @@ evenements:
     emisLe: *fin
     donnees: &vueFinie
       soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       mancheActive: *manche
       modeEnCours: FREESTYLE
       joueurs: *joueurs

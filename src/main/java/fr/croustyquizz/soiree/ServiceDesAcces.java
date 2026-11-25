@@ -2,6 +2,7 @@ package fr.croustyquizz.soiree;
 
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +35,8 @@ public class ServiceDesAcces {
 	/**
 	 * Crée l'accès d'un Écran de salle à cette Soirée. Chaque appel donne une
 	 * nouvelle clé ; les précédentes restent valides jusqu'à leur expiration.
+	 * Les accès expirés de toutes les Soirées sont purgés au passage : ils ne
+	 * reconnaissent plus personne, et la table ne grossit pas sans fin.
 	 *
 	 * @throws SoireeIntrouvable si aucune Soirée ne porte cet identifiant
 	 * @throws SoireeDejaLancee  si la Soirée est terminée
@@ -44,8 +47,10 @@ public class ServiceDesAcces {
 		if (soiree.getEtat() == EtatSoiree.TERMINEE) {
 			throw new SoireeDejaLancee(soiree.getEtat());
 		}
+		Instant maintenant = horloge.instant();
+		depotDAccesEcran.purgerExpiresA(maintenant);
 		String cle = Secrets.tirer(hasard);
-		AccesEcran acces = depotDAccesEcran.save(new AccesEcran(soireeId, cle, horloge.instant()));
+		AccesEcran acces = depotDAccesEcran.save(new AccesEcran(soireeId, cle, maintenant));
 		return new OuvertureEcran(acces, cle);
 	}
 

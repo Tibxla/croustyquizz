@@ -29,7 +29,7 @@ class AccesActeurTest {
 	void unAbonnementPriveExigeUneIdentiteDansChaqueProfil(String profil, String vue) {
 		var environnement = new MockEnvironment();
 		environnement.setActiveProfiles(profil);
-		var controle = new ControleAccesStomp(new ResolveurDActeurDemonstration(), environnement);
+		var controle = new ControleAccesStomp(new ResolveurDActeurDemonstration(), environnement, new EtatDeSoireeDemonstration());
 		if (!profil.equals("prod")) {
 			assertThat(controle.preSend(anonyme(StompCommand.CONNECT, null), null)).isNotNull();
 		}
@@ -43,7 +43,7 @@ class AccesActeurTest {
 	void seulLeCanalSalleDuPrototypeResteOuvertSansIdentite(String profil, boolean ouvert) {
 		var environnement = new MockEnvironment();
 		environnement.setActiveProfiles(profil);
-		var controle = new ControleAccesStomp(new ResolveurDActeurDemonstration(), environnement);
+		var controle = new ControleAccesStomp(new ResolveurDActeurDemonstration(), environnement, new EtatDeSoireeDemonstration());
 		var salle = anonyme(StompCommand.SUBSCRIBE, Canaux.salle(UUID.randomUUID()));
 		if (ouvert) { assertThat(controle.preSend(salle, null)).isNotNull(); }
 		else { assertThatThrownBy(() -> controle.preSend(salle, null)).isInstanceOf(MessageDeliveryException.class); }
@@ -65,7 +65,7 @@ class AccesActeurTest {
 	void uneIdentiteAutoriseeResteLimiteeASonRoleEtSaPortee(String profil) {
 		var environnement = new MockEnvironment();
 		environnement.setActiveProfiles(profil);
-		var controle = new ControleAccesStomp(new ResolveurDActeurDemonstration(), environnement);
+		var controle = new ControleAccesStomp(new ResolveurDActeurDemonstration(), environnement, new EtatDeSoireeDemonstration());
 		UUID soiree = UUID.randomUUID();
 		for (Acteur.Type type : Acteur.Type.values()) {
 			var acteur = new Acteur(type, FournisseurCommunDemonstration.joueurId(soiree), soiree);
@@ -100,7 +100,7 @@ class AccesActeurTest {
 			contexte.setServletContext(new MockServletContext());
 			contexte.getEnvironment().setActiveProfiles("recette");
 			contexte.register(ConfigurationTempsReel.class, RegistreAbonnements.class,
-					ControleAccesStomp.class, ResolveurDActeurDemonstration.class);
+					ControleAccesStomp.class, ResolveurDActeurDemonstration.class, EtatDeSoireeDemonstration.class);
 			contexte.refresh();
 			var entrant = contexte.getBean("clientInboundChannel", MessageChannel.class);
 			var registre = contexte.getBean(RegistreAbonnements.class);

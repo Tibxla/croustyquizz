@@ -175,7 +175,12 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
                 Map.of("id", PUBLIC, "pseudo", "Maël", "connecte", true)));
         commune.put("classement", List.of());
         commune.put("dernierBuzz", null);
-        var vueConsole = new LinkedHashMap<>(commune);
+        var musiqueAttente = new LinkedHashMap<String, Object>();
+        musiqueAttente.put("etat", "JOUE");
+        musiqueAttente.put("morceauxDisponibles", null);
+        var vueSalle = new LinkedHashMap<>(commune);
+        vueSalle.put("musiqueAttente", musiqueAttente);
+        var vueConsole = new LinkedHashMap<>(vueSalle);
         vueConsole.put("programme", List.of(manche));
         var vueManette = new LinkedHashMap<>(commune);
         vueManette.put("joueurId", PUBLIC);
@@ -183,7 +188,7 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
         vueManette.put("derniereReponse", null);
         vueManette.put("resultatPersonnel", null);
 
-        verifierCapture("retrouverEtatSalle", commune, salle);
+        verifierCapture("retrouverEtatSalle", vueSalle, salle);
         verifierCapture("retrouverEtatConsole", vueConsole, console);
         verifierCapture("retrouverEtatManette", vueManette, manette);
     }
