@@ -1,0 +1,173 @@
+/* Composition des zones du mode. Le pied, le talon et le pilotage commun restent aux coquilles. */
+.karaoke {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-4);
+  min-width: 0;
+}
+.karaoke [hidden] { display: none; }
+.karaoke h2 { font-size: 1.375rem; }
+.karaoke h2:focus { outline-offset: 4px; }
+.karaoke__votes, .karaoke__liste-votes { display: grid; gap: var(--espace-3); }
+.karaoke__liste-votes { margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
+.karaoke__ticket-vote .mon-ticket__bas { display: grid; gap: var(--espace-2); }
+.karaoke__ticket-vote .karaoke__etat-vote { font-weight: 700; }
+.karaoke__ticket-vote p:empty { margin: 0; padding: 0; }
+.karaoke__notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--espace-1); }
+.karaoke .karaoke__notes .bouton { padding-inline: 0; font-variant-numeric: tabular-nums; }
+.karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"] {
+  background: var(--encre);
+  color: var(--teinte);
+}
+.karaoke .karaoke__ticket-vote .bouton:focus-visible { outline-color: var(--encre); }
+.karaoke .karaoke__ticket-vote .bouton--action:hover:not(:disabled) { background: var(--citron-appuye); }
+.karaoke .karaoke__ticket-vote .bouton--action:disabled { background: var(--teinte); }
+.karaoke__personnels { display: grid; gap: var(--espace-5); }
+.karaoke__resultats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+.karaoke__resultats > li { padding-block: var(--espace-3); border-bottom: 1px solid var(--fond-3); }
+.karaoke__resultats .titre { text-align: left; }
+.karaoke__resultats td:last-child { width: auto; }
+.karaoke__commandes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+  align-items: center;
+}
+.karaoke__commandes > p { flex-basis: 100%; }
+.karaoke__limite { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--espace-2); }
+.karaoke__limite label, .karaoke__limite p { grid-column: 1 / -1; }
+.karaoke__limite input { width: 100%; min-width: 0; }
+.karaoke .recherche {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--espace-2);
+  height: auto;
+  padding: var(--espace-3);
+}
+.karaoke .recherche label, .karaoke .recherche p { grid-column: 1 / -1; }
+.karaoke .recherche input { min-width: 0; width: 100%; }
+.karaoke .champ input { width: 100%; }
+.karaoke__fiche { display: grid; gap: var(--espace-3); margin-block: var(--espace-4); }
+.karaoke .dialogue { overflow-wrap: anywhere; }
+.karaoke .a-venir > li { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.karaoke button.ticket {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.karaoke button.ticket[aria-pressed="true"] {
+  outline: 4px solid var(--teinte);
+  outline-offset: -4px;
+  z-index: 1;
+}
+.karaoke button.ticket[aria-pressed="true"] > .ticket__numero,
+.karaoke button.ticket[aria-pressed="true"] > .ticket__corps {
+  background: color-mix(in srgb, var(--teinte) 85%, var(--texte));
+}
+/* Le focus commun reste citron ; la sélection conserve la teinte du Passage. */
+.karaoke button.ticket:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }
+.karaoke .ticket p, .karaoke .mon-ticket p { overflow-wrap: anywhere; }
+.karaoke__position, .karaoke__attente { color: var(--encre-2); font-size: 0.9375rem; }
+.karaoke__priorite { font-weight: 700; }
+.karaoke .mon-ticket .bouton--lien { color: var(--encre); }
+.karaoke .mon-ticket .bouton { border-color: var(--encre-2); color: var(--encre); }
+.karaoke .mon-ticket .bouton:hover { background: var(--teinte); }
+.karaoke .mon-ticket .bouton:disabled { opacity: 0.65; }
+.karaoke__scene-manette { display: grid; gap: var(--espace-3); }
+.karaoke__scene-manette .mon-ticket--appele { margin-bottom: var(--espace-5); }
+.karaoke__scene-manette .mon-ticket__etiquette { max-width: 24ch; line-height: 1.15; text-align: right; }
+.karaoke__scene-manette .mon-ticket__etiquette--texte {
+  font: 700 0.95rem/1.15 var(--police-texte);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.karaoke .mon-ticket--appele .bouton--action {
+  align-self: start;
+  margin-block: var(--espace-2);
+  border-color: var(--encre);
+  background: var(--citron);
+  color: var(--encre);
+}
+.karaoke .mon-ticket--appele .bouton--action:hover:not(:disabled) { background: var(--citron-appuye); }
+.karaoke .mon-ticket--appele .bouton--action:disabled { background: var(--teinte); }
+.karaoke .mon-ticket--appele .bouton--action:focus-visible { outline-color: var(--encre); }
+.karaoke__barre-passage, .karaoke__passage-courant { display: grid; gap: var(--espace-2); }
+.karaoke__passage-courant { overflow-wrap: anywhere; }
+.karaoke__passage-courant p:empty:not([role]) { display: none; }
+.karaoke__barre-passage .bouton { justify-self: start; }
+.karaoke .ticket--immobile .ticket__corps { animation: none; }
+.salle .karaoke { gap: 1vw; }
+.salle .karaoke h2 { font-size: 1.5vw; }
+.salle .karaoke .karaoke__invitation { font: 700 2.6vw/1.2 var(--police-texte); text-transform: none; letter-spacing: normal; }
+.salle .karaoke__prochain { --fond-encoche: var(--fond-0); }
+.salle .karaoke__prochain .ticket { --perforation: 9vw; min-height: 12vw; }
+.salle .karaoke__prochain .ticket__numero { font-size: 6vw; }
+.salle .karaoke__prochain .ticket__qui { font-size: 2.8vw; }
+.salle .karaoke__prochain .ticket__quoi { font-size: 2.2vw; }
+.salle .karaoke__priorite { font-size: 1.5vw; }
+.salle .karaoke__delai { font-size: 5vw; }
+.salle .karaoke__paroles { display: grid; gap: 0.4vw; overflow-wrap: anywhere; }
+/* Le courant et trois prochains Passages laissent au talon sa place à 1080 px. */
+.salle__cote .karaoke { gap: 0.5vw; }
+.salle__cote .karaoke .ticket { min-height: 4.1vw; }
+.salle__cote .karaoke .ticket__corps { gap: 0; padding: 0.3vw 0.7vw; }
+.salle__cote .karaoke .ticket p { line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.salle__cote .karaoke .ticket__numero { font-size: 2.8vw; }
+.salle__cote .karaoke .ticket__qui { font-size: 1.32vw; }
+.salle__cote .karaoke .ticket__quoi { font-size: 1.07vw; }
+.salle__cote .karaoke .karaoke__priorite { font-size: 1.1vw; }
+.salle__cote .karaoke__courant-salle { margin: 0 0.8vw 0.4vw 0; }
+.salle__cote .karaoke__etat-ticket { font-size: 1.1vw; font-weight: 700; }
+.karaoke__bandeaux-vote { display: grid; gap: 0.5vw; }
+.bandeau-vote {
+  display: grid;
+  grid-template-columns: 4.6vw minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--fond-3);
+  border-radius: var(--rayon);
+  background: var(--fond-2);
+  color: var(--texte);
+  font: 400 1.15vw/1.12 var(--police-texte);
+}
+.bandeau-vote__numero {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--teinte);
+  color: var(--encre);
+  font: 800 2.8vw/1 var(--police-chiffres);
+}
+.bandeau-vote__corps { display: grid; gap: 0.1vw; padding: 0.45vw 0.65vw; }
+.bandeau-vote__corps p { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bandeau-vote__chanson { font-weight: 700; }
+.bandeau-vote__donnees {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6vw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.bandeau-vote__donnees > :last-child { margin-left: auto; }
+.bandeau-vote__moyenne {
+  flex: none;
+  font: 800 2.5vw/1 var(--police-chiffres);
+}
+@media (max-width: 860px) {
+  .karaoke__commandes .bouton { flex-grow: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .karaoke *, .karaoke *::before, .karaoke *::after { animation: none; transition: none; }
+  .karaoke .ticket--detache .ticket__corps,
+  .karaoke .mon-ticket--detachement .mon-ticket__bas { animation: none; }
+}

@@ -1,9 +1,11 @@
 asyncapi: 3.1.0
 info:
-  title: CroustyQuizz — événements Quiz et File d’attente du Karaoké
+  title: CroustyQuizz — événements du Quiz, du Blind test et du Karaoké
   version: 0.1.0
-  description: 'Application décrite : serveur CroustyQuizz. Contrat cible à relire (#34). STOMP 1.2
-    sur WebSocket ; authentification et barrière d’abonnement décrites dans README.md.'
+  description: 'Application décrite : serveur CroustyQuizz. Contrat cible à relire (#34, #82, #98).
+    STOMP 1.2 sur WebSocket, du serveur vers les écrans seulement : toute commande passe par HTTP, celles
+    du lecteur de l’Écran de salle comprises. Authentification et barrière d’abonnement décrites dans
+    README.md.'
 defaultContentType: application/json
 servers:
   local:
@@ -19,14 +21,28 @@ servers:
 channels:
   salle:
     address: /topic/soirees/{soireeId}/salle
-    description: "Écran avec capacité pour cette Soirée, Joueur de la Soirée ou Animateur du Lieu.
-      Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
-      propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
-      inscription, désinscription, retrait, placement, priorité ou future extraction ;
-      limite-passages-modifiee après changement utile de limite. Vue complète avec bloc karaoke
-      (BlocKaraokeSalle : courant, trois prochains Passages et nombre des autres), sans paroles ni
-      secrets ; cycle par les causes existantes. Recherche, refus, rejeu, geste sans effet et
-      rollback sans publication. Aucun événement par seconde."
+    description: "Écran avec la clé de cette Soirée, Joueur de la Soirée ou Animateur de son Lieu.
+      Un abonnement anonyme est permis uniquement en dev et recette pour un UUID de Soirée
+      absent de la base. Sur une Soirée enregistrée, le serveur écarte le SUBSCRIBE anonyme
+      avant son installation par le broker.
+      Messages serveur → écran exclusivement ; aucun SEND de commande métier, les commandes du lecteur
+      de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
+      Soirée. musique-attente-modifiee après changement du réglage de l’Animateur ou de la disponibilité
+      signalée par l’Écran de salle, y compris hors Manche. Karaoké : file-attente-modifiee après inscription, désinscription, retrait, placement ou
+      priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
+      passage-demarre, passage-termine et passage-saute pour le cycle du Passage.
+      En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une
+      fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le
+      suivant ; la vue montre le nouveau courant APPELE à la place du Passage précédent clos ;
+      vote-enregistre actualise le nombre de votes de la salle, vote-clos apporte la moyenne à la clôture ;
+      lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
+      calage-chanson-modifie après geste, demande, relevé ou correction. Vue complète avec bloc karaoke
+      (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
+      et paroles du Passage démarré, votes), sans fichier local ni secret ; pause, reprise et fin de Manche par
+      les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
+      Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele et morceau-saute ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon publié.
+      Photos : photos-modifiees au changement d’affiche ; le bloc photos est nul sans affiche,
+      sinon limité à l’UUID de la photo et à son échéance."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -36,12 +52,25 @@ channels:
   console:
     address: /topic/soirees/{soireeId}/console
     description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND
-      de commande métier. Une révision est propre à cette destination et à cette Soirée. Karaoké :
-      file-attente-modifiee après inscription, désinscription, retrait, placement, priorité ou
-      future extraction ; limite-passages-modifiee après changement utile de limite. Vue complète
-      avec bloc karaoke (BlocKaraokeConsole : toute la File d’attente et les droits de gestion),
-      sans paroles ni secrets ; cycle par les causes existantes. Recherche, refus, rejeu, geste sans
-      effet et rollback sans publication. Aucun événement par seconde."
+      de commande métier. Une révision est propre à cette destination et à cette Soirée.
+      musique-attente-modifiee transporte la vue complète après changement du réglage de l’Animateur
+      ou de la disponibilité signalée par l’Écran de salle, y compris hors Manche. Karaoké :
+      file-attente-modifiee après inscription, désinscription, retrait, placement ou priorité ;
+      limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre,
+      passage-termine et passage-saute pour le cycle du Passage.
+      En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une fin
+      de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le suivant ;
+      la vue montre le nouveau courant APPELE à la place du Passage précédent clos ;
+      vote-enregistre actualise le nombre de votes sur la Console et la salle, vote-clos apporte la moyenne
+      à la clôture ; lecture-chanson-modifiee après
+      désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
+      geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
+      la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
+      ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
+      effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait.
+      Photos : photos-modifiees à l’arrivée, à la modération, au changement de réglage et à l’oubli
+      des photos après douze heures d’inactivité. Le bloc photos indique le réglage et les photos en
+      attente dans l’ordre d’arrivée."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -53,12 +82,22 @@ channels:
     description: "Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
       propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
-      inscription, désinscription, retrait, placement, priorité ou future extraction ;
-      limite-passages-modifiee après changement utile de limite. Pour ces deux causes, chaque Joueur
-      de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
-      Passages. Vue complète avec bloc karaoke (BlocKaraokeManette : trois prochains Passages et ses
-      Passages en attente), sans paroles ni secrets ; cycle par les causes existantes. Recherche,
-      refus, rejeu, geste sans effet et rollback sans publication. Aucun événement par seconde."
+      inscription, désinscription, retrait, placement ou priorité ; limite-passages-modifiee après
+      changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
+      pour le cycle du Passage. En Pilotage Automatique, passage-appele est aussi l’unique cause si
+      une inscription, une fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une
+      reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la place du Passage
+      précédent clos. lecture-chanson-modifiee après erreur ou reprise en paroles seules,
+      jamais après désignation ou déclaration ; aucun calage-chanson-modifie. Pour ces causes, chaque
+      Joueur de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
+      Passages. vote-clos apporte la moyenne à la salle, à la Console et à toutes les Manettes ;
+      vote-enregistre atteint la salle, la Console et la Manette du votant. Vue complète avec bloc karaoke
+      (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »
+      et ses votes), sans lecture, paroles, fichier local ni secret ;
+      pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
+      effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle, chaque Joueur recevant sa propre vue ; brouillon-depose uniquement à la Manette de l’auteur d’un brouillon retenu ; bloc blindtest (BlocBlindTestManette : main, blocage, champs encore demandés et brouillon de son seul auteur), sans lien d’extrait ni réponse avant la Révélation.
+      Photos : photos-modifiees au changement de réglage ; le bloc photos indique
+      seulement si les envois sont ouverts."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -113,5 +152,6 @@ x-stomp:
   subscribe:
     id: UUID neuf ; utilisé comme abonnementId pour la capture HTTP cohérente
     destination: Adresse autorisée du canal
+    anonyme: Canal de salle d’une Soirée absente de la base, uniquement en dev et recette
   sendMetier: interdit
   heartbeatMs: 10000

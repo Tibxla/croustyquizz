@@ -2,6 +2,7 @@ package fr.croustyquizz.karaoke;
 
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.passage.CiblePassage;
+import fr.croustyquizz.passage.VoteRecu;
 import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 
@@ -40,6 +41,15 @@ public final class CorpsKaraoke {
         public DesinscriptionPassage { obligatoire(envoiId); entier(numeroModification, true); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
+    public record VotePassage(UUID envoiId, Long numeroModification, Long note) {
+        public VotePassage {
+            obligatoire(envoiId);
+            entier(numeroModification, true);
+            entier(note, false);
+            if (note > VoteRecu.NOTE_MAXIMALE) { invalide(); }
+        }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
     public record RetraitPassage(Long numeroModification) {
         public RetraitPassage { entier(numeroModification, true); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
@@ -55,5 +65,48 @@ public final class CorpsKaraoke {
     public record LimitePassages(Long limitePassagesEnAttente) {
         public LimitePassages { limite(limitePassagesEnAttente); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
+
+    public record AppelPassage(Long numeroModification) { }
+    public record ConfirmationPresencePassage(UUID envoiId, UUID etapeId, Long numeroModification) { }
+    public record DesignationLecteur(UUID lecteurId) { }
+    public record Fichier(String nom, Long tailleOctets, Long dureeMs) {
+        public Fichier {
+            obligatoire(nom);
+            if (nom.isEmpty() || nom.indexOf('/') >= 0 || nom.indexOf('\\') >= 0) { invalide(); }
+        }
+        FichierAudioLocal metadonnees() {
+            return new FichierAudioLocal(nom, tailleOctets, dureeMs == null || dureeMs == 0 ? null : dureeMs);
+        }
+    }
+    public record DeclarationLectureChanson(UUID lecteurId, UUID etapeId, Long numeroModification, String source,
+            Fichier fichier, String motifParolesSeules) {
+        public DeclarationLectureChanson {
+            switch (source) {
+                case "FICHIER_LOCAL" -> {
+                    if (fichier == null || motifParolesSeules != null) { invalide(); }
+                }
+                case "PAROLES_SEULES" -> {
+                    if (fichier != null || !motifDeclarable(motifParolesSeules)) { invalide(); }
+                }
+                case null, default -> invalide();
+            }
+        }
+        private static boolean motifDeclarable(String motif) {
+            return switch (motif) {
+                case "FICHIER_ABSENT", "FICHIER_AMBIGU", "FICHIER_ILLISIBLE" -> true;
+                case null, default -> false;
+            };
+        }
+    }
+    public record SignalFinLectureChanson(UUID lecteurId, UUID etapeId, UUID lectureId, Long positionMs) { }
+    public record SignalErreurLectureChanson(UUID lecteurId, UUID etapeId, UUID lectureId) { }
+    public record RelevePositionLecture(UUID lecteurId, UUID etapeId, UUID lectureId, UUID demandeId, Long positionMs) { }
+    public record RepriseParolesSeules(UUID etapeId, UUID lectureId) { }
+    public record MarqueDebutParoles(UUID etapeId, UUID lectureId) { }
+    public record CorrectionCalage(UUID etapeId, UUID lectureId, Long numeroModificationCalage, String sens) {
+        public CorrectionCalage {
+            if (!"AVANCER".equals(sens) && !"RETARDER".equals(sens)) { invalide(); }
+        }
     }
 }

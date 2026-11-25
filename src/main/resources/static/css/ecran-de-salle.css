@@ -1,5 +1,5 @@
 /*
- * Écran de salle : vu à 5 m, dans une salle sombre, sans aucune commande.
+ * Écran de salle : vu à 5 m, dans une salle sombre. Seules les commandes du lecteur sont disponibles.
  * Les tailles suivent la largeur de l'écran (vw) pour rester lisibles quelle
  * que soit la télé ; une seule échelle porte la hiérarchie.
  */
@@ -93,7 +93,7 @@
   padding: 1vw;
 }
 .salle .talon__qr {
-  width: 7vw;
+  width: 11vw;
   padding: 0.4vw;
 }
 .salle .talon__code {
@@ -107,7 +107,7 @@
   font-size: 1.5vw;
   font-weight: 700;
 }
-/* L'adresse ne se coupe jamais sur son trait d'union : seulement avant un point. */
+/* Chaque segment reste insécable. La page place les coupures avec <wbr>. */
 .talon__adresse > span {
   white-space: nowrap;
 }
@@ -139,7 +139,7 @@
   line-height: 1.15;
   text-wrap: balance;
 }
-/* La partie déjà chantée de la ligne en cours. */
+/* Sans minutage par mot, toute la ligne en cours reçoit la teinte du Passage. */
 .paroles__chante {
   color: var(--teinte-passage, var(--orange));
 }
@@ -257,6 +257,8 @@
 }
 
 /* La coquille garde le pied et le talon hors des zones confiées au mode. */
+.salle--coquille .talon { row-gap: 0.6vw; }
+.salle--coquille .talon__adresse { grid-column: 1 / -1; }
 .salle--coquille .salle__principal { justify-content: flex-start; gap: 1.2vw; padding-bottom: 6vw; }
 .salle--coquille .coquille__commun h1 { font-size: 2.4vw; }
 .salle--coquille .commun__resume { font-size: 1.5vw; }
@@ -267,3 +269,27 @@
 .salle--coquille .mode__contenu { font-size: 1.5vw; max-height: 48vh; overflow: auto; }
 .salle--coquille .coquille__note { font-size: 1.2vw; }
 .salle--coquille .salle__pied { gap: 1vw; }
+.accueil__joueurs { display: grid; gap: 2.2vw; }
+.salle__classement h2 {
+  margin: 0 0 0.8vw;
+  font: 800 2.6vw/1.1 var(--police-chiffres);
+}
+.salle__classement .commun__liste {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 2vw;
+  max-block-size: 36vh;
+  overflow: auto;
+}
+.salle__classement li {
+  padding-block: 0.45vw;
+  border-top: 1px solid var(--fond-4);
+  font-size: 1.65vw;
+  font-variant-numeric: tabular-nums;
+}
+.salle__classement--podium .commun__liste { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.salle__classement--podium li { font-weight: 700; }
+.salle__classement p { font-size: 1.65vw; color: var(--texte-2); }
+.salle__audio:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
+.salle__audio .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
+.salle__audio p:empty { display: none; }

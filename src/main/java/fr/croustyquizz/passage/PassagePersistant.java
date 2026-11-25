@@ -1,5 +1,7 @@
 package fr.croustyquizz.passage;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import jakarta.persistence.*;
 import java.time.*;
 import java.util.*;
@@ -13,6 +15,7 @@ public class PassagePersistant {
     private UUID mancheId;
     private UUID inscripteurId;
     private String contenuId;
+    // La durée d’inscription provient du contenu et se mesure en millisecondes.
     private long dureeMs;
     private long numero;
     private long numeroModification;
@@ -29,10 +32,10 @@ public class PassagePersistant {
     public PassagePersistant(Passage p) {
         id = p.id(); soireeId = p.soireeId(); mancheId = p.mancheId(); inscripteurId = p.inscripteurId();
         contenuId = p.contenuId(); dureeMs = p.duree().toMillis(); numero = p.numero(); numeroModification = p.numeroModification();
-        etat = p.etat(); inscriptionLe = p.inscriptionLe(); ordreInscription = p.ordreInscription();
+        etat = p.etat(); inscriptionLe = p.inscriptionLe().truncatedTo(MICROS); ordreInscription = p.ordreInscription();
         tourNormal = p.tourNormal(); cleOrdre = p.cleOrdre(); tourConsomme = p.tourConsomme();
         if (p.traceTerminale() != null) {
-            traceMotif = p.traceTerminale().motif(); traceActeurId = p.traceTerminale().acteurId(); traceInstant = p.traceTerminale().instant();
+            traceMotif = p.traceTerminale().motif(); traceActeurId = p.traceTerminale().acteurId(); traceInstant = p.traceTerminale().instant().truncatedTo(MICROS);
         }
     }
     public UUID getId() { return id; }

@@ -340,6 +340,7 @@ http:
       quiz: null
       joueurs: []
       classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
       programme:
       - id: 00000002-0000-4000-8000-000000000000
@@ -370,6 +371,11 @@ http:
     soireeId: 00000001-0000-4000-8000-000000000000
     cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
     expireLe: '2026-11-11T02:00:00Z'
+- nom: Afficher le QR code de la Soirée sur l’Écran de salle
+  operationId: consulterQrCodeSoiree
+  acteur: ecran
+  statut: 200
+  reponse: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33"><path d="M0 0h7v7h-7z"/></svg>
 - nom: Rejoindre avec le pseudo Alpha
   operationId: rejoindreSoiree
   acteur: public
@@ -398,6 +404,34 @@ http:
       pseudo: Bravo
       connecte: false
     jetonReconnexion: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+- nom: Refuser un pseudo déjà porté dans la Soirée
+  operationId: rejoindreSoiree
+  acteur: public
+  statut: 409
+  requete:
+    codeAcces: QUIZ42
+    pseudo: bravo
+  reponse:
+    type: about:blank
+    title: PSEUDO_DEJA_PRIS
+    status: 409
+    code: PSEUDO_DEJA_PRIS
+    detail: Ce pseudo est déjà pris dans la Soirée.
+    instance: /api/soirees/rejoindre
+- nom: Refuser un pseudo injurieux
+  operationId: rejoindreSoiree
+  acteur: public
+  statut: 422
+  requete:
+    codeAcces: QUIZ42
+    pseudo: C0nnard
+  reponse:
+    type: about:blank
+    title: PSEUDO_REFUSE
+    status: 422
+    code: PSEUDO_REFUSE
+    detail: Ce pseudo n’est pas accepté. Choisis-en un autre.
+    instance: /api/soirees/rejoindre
 - nom: Afficher la salle après abonnement STOMP
   operationId: retrouverEtatSalle
   acteur: ecran
@@ -437,6 +471,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
@@ -446,7 +481,7 @@ http:
   statut: 200
   requete:
     envoiId: 00000258-0000-4000-8000-000000000000
-  reponse:
+  reponse: &buzzDuSocle
     envoiId: 00000258-0000-4000-8000-000000000000
     joueurId: 00000003-0000-4000-8000-000000000000
     pseudo: Alpha
@@ -545,7 +580,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -741,7 +776,7 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -846,7 +881,8 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
 - nom: Passer à la Question 2
@@ -955,7 +991,8 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
 - nom: Passer à la Question 3
@@ -1064,7 +1101,8 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
   parametres:
     abonnementId: 000002bc-0000-4000-8000-000000000000
 - nom: Terminer la Manche après la dernière correction
@@ -1128,17 +1166,8 @@ http:
         pilotage: MANUEL
         etat: TERMINEE
         codeAcces: QUIZ42
-      mancheActive:
-        id: 00000002-0000-4000-8000-000000000000
-        ordre: 0
-        mode: QUIZ
-        etat: TERMINEE
-        reglages:
-          nombreEtapes: 3
-          tempsParEtapeSecondes: 20
-      modeEnCours: QUIZ
-      quiz:
-        phase: TERMINEE
+      mancheActive: null
+      modeEnCours: null
       joueurs:
       - id: 00000003-0000-4000-8000-000000000000
         pseudo: Alpha
@@ -1159,7 +1188,8 @@ http:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
       programme:
       - id: 00000002-0000-4000-8000-000000000000
         ordre: 0
@@ -1213,6 +1243,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
 - nom: Buzz du socle diffusé à la salle
   canal: salle
@@ -1252,12 +1283,8 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz:
-        envoiId: 00000258-0000-4000-8000-000000000000
-        joueurId: 00000003-0000-4000-8000-000000000000
-        pseudo: Alpha
-        recuLe: '2026-11-10T20:00:05Z'
-        rang: 1
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
 - nom: Ouverture de la Question
   canal: salle
   message:
@@ -1325,7 +1352,8 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
 - nom: Projection privée de la Console
   canal: console
   message:
@@ -1393,7 +1421,8 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
       programme:
       - id: 00000002-0000-4000-8000-000000000000
         ordre: 0
@@ -1469,7 +1498,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -1540,7 +1569,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -1612,7 +1641,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -1684,7 +1713,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -1770,7 +1799,8 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
 - nom: Résultat personnel après révélation
   canal: joueur
   message:
@@ -1847,7 +1877,7 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -1927,7 +1957,8 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
 - nom: Question suivante 3
   canal: salle
   message:
@@ -1995,7 +2026,8 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
 - nom: Fin de Soirée et Classement général
   canal: salle
   message:
@@ -2042,7 +2074,8 @@ evenements:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      dernierBuzz: *buzzDuSocle
 cases:
 - nom: Une commande périmée utilise le corps Probleme commun
   schema: Probleme
@@ -2096,7 +2129,7 @@ cases:
     eligiblePourMancheActive: false
     derniereReponse: null
     resultatPersonnel: null
-- nom: Un Joueur arrivé en retard peut attendre la Manche suivante
+- nom: Un Joueur arrivé pendant une Question de Quiz y prend part aussitôt
   schema: VueManette
   valide: true
   valeur:
@@ -2161,7 +2194,7 @@ cases:
       tempsCumuleMs: 0
     dernierBuzz: null
     joueurId: 00000003-0000-4000-8000-000000000000
-    eligiblePourMancheActive: false
+    eligiblePourMancheActive: true
     derniereReponse: null
     resultatPersonnel: null
 - nom: L’accusé initial ne révèle pas la justesse
@@ -2555,6 +2588,7 @@ cases:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
       dernierBuzz: null
     cleEcran: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 resynchronisation:
@@ -2637,7 +2671,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -2715,7 +2749,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -2798,7 +2832,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse:
@@ -2875,7 +2909,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -2944,7 +2978,7 @@ resynchronisation:
         points: 0
         bonnesReponses: 0
         tempsCumuleMs: 0
-      dernierBuzz: null
+      dernierBuzz: *buzzDuSocle
       joueurId: 00000003-0000-4000-8000-000000000000
       eligiblePourMancheActive: true
       derniereReponse: null
@@ -3010,7 +3044,7 @@ resynchronisation:
       points: 0
       bonnesReponses: 0
       tempsCumuleMs: 0
-    dernierBuzz: null
+    dernierBuzz: *buzzDuSocle
     joueurId: 00000003-0000-4000-8000-000000000000
     eligiblePourMancheActive: true
     derniereReponse: null

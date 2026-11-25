@@ -95,6 +95,7 @@ paths:
         extrémités, puis limite à 30 points de code Unicode sans couper un caractère.
         Horodatage et diffusion sérialisés par Soirée dans cette instance du serveur.
         Pas de déduplication ni de classement métier.
+        La route est réservée aux Soirées fictives ; une Soirée enregistrée donne 404.
       requestBody:
         required: true
         content:
@@ -113,6 +114,8 @@ paths:
                 $ref: '#/components/schemas/BuzzRecu'
         '400':
           $ref: '#/components/responses/Erreur400'
+        '404':
+          $ref: '#/components/responses/Erreur404'
   /api/test/soirees/{soireeId}/manches:
     parameters:
       - $ref: '#/components/parameters/SoireeId'
@@ -176,6 +179,52 @@ paths:
         '404': {$ref: '#/components/responses/Erreur404'}
         '409': {$ref: '#/components/responses/Erreur409'}
         '503': {$ref: '#/components/responses/Erreur503'}
+
+  /api/test/soirees/{soireeId}/pilotage:
+    parameters:
+      - $ref: '#/components/parameters/SoireeId'
+    put:
+      operationId: choisirPilotageDeTest
+      description: >-
+        Réservé à l'Animateur de démonstration dans les profils dev et recette.
+        Le choix est possible pour une Soirée de démonstration tant qu'aucune de ses Manches
+        n'a démarré. Il est gardé en mémoire et perdu au redémarrage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pilotage]
+              properties:
+                pilotage: {type: string, enum: [MANUEL, AUTOMATIQUE]}
+      responses:
+        '200':
+          description: Choix enregistré pour la démonstration, sans publication.
+          headers:
+            Cache-Control:
+              schema: {type: string, const: no-store}
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [soireeId, pilotage]
+                properties:
+                  soireeId: {type: string, format: uuid}
+                  pilotage: {type: string, enum: [MANUEL, AUTOMATIQUE]}
+        '400': {$ref: '#/components/responses/Erreur400'}
+        '401': {$ref: '#/components/responses/Erreur401'}
+        '403': {$ref: '#/components/responses/Erreur403'}
+        '404': {$ref: '#/components/responses/Erreur404'}
+        '409':
+          description: >-
+            ETAT_INCOMPATIBLE si la Soirée est enregistrée ou si une Manche a déjà démarré.
+            Pour une Soirée enregistrée, le détail est « Le Pilotage d'une Soirée enregistrée est celui choisi à sa création. »
+          content:
+            application/problem+json:
+              schema: {$ref: '../schemas.yaml#/$defs/Probleme'}
 
 components:
   responses:

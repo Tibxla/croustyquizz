@@ -7,8 +7,10 @@ import org.springframework.http.converter.AbstractHttpMessageConverter;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Liaison stricte : ni coercition textuelle ni décimale, et avant doit être présent même nul. */
+/** Liaison des objets fermés, y compris leurs composants nullables obligatoires. */
 public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverter<Object> {
+    private static final Set<String> CHAMPS_NULLABLES = Set.of("avant", "fichier", "motifParolesSeules", "dureeMs");
+    private static final Set<String> ENTIERS_AVEC_ZERO = Set.of("numeroModification", "numeroModificationCalage", "positionMs", "dureeMs");
     private final JsonMapper json;
     public ConvertisseurCorpsKaraoke(JsonMapper json) { super(MediaType.APPLICATION_JSON, new MediaType("application", "*+json")); this.json = json; }
     @Override protected boolean supports(Class<?> type) {
@@ -31,14 +33,14 @@ public final class ConvertisseurCorpsKaraoke extends AbstractHttpMessageConverte
             autorises.add(champ.getName());
             JsonNode valeur = arbre.get(champ.getName());
             if (valeur == null) { CorpsKaraoke.invalide(); }
-            if ("avant".equals(champ.getName()) && valeur.isNull()) { continue; }
+            if (valeur.isNull() && CHAMPS_NULLABLES.contains(champ.getName())) { continue; }
             if (champ.getType() == Long.class) {
                 if (!valeur.isIntegralNumber() || !valeur.canConvertToLong()) { CorpsKaraoke.invalide(); }
-                CorpsKaraoke.entier(valeur.longValue(), "numeroModification".equals(champ.getName()));
+                CorpsKaraoke.entier(valeur.longValue(), ENTIERS_AVEC_ZERO.contains(champ.getName()));
             } else if (champ.getType() == Boolean.class) {
                 if (!valeur.isBoolean()) { CorpsKaraoke.invalide(); }
-            } else if (champ.getType() == CorpsKaraoke.Cible.class) {
-                verifier(valeur, CorpsKaraoke.Cible.class);
+            } else if (champ.getType().isRecord()) {
+                verifier(valeur, champ.getType());
             } else {
                 if (!valeur.isString() || valeur.asString().isEmpty()) { CorpsKaraoke.invalide(); }
                 if (champ.getType() == UUID.class) {

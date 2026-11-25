@@ -49,6 +49,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Acteur;
+import fr.croustyquizz.soiree.Format;
+import fr.croustyquizz.soiree.Pilotage;
+import fr.croustyquizz.soiree.ServiceDesAcces;
+import fr.croustyquizz.soiree.ServiceSoiree;
 
 /** De bout en bout : de vrais clients STOMP contre l'application démarrée. */
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -76,6 +80,12 @@ class CanalTempsReelTest {
 	@Autowired
 	private RegistreAbonnements abonnements;
 
+	@Autowired
+	private ServiceSoiree soirees;
+
+	@Autowired
+	private ServiceDesAcces acces;
+
 	@MockitoBean
 	private CaptureVuePrototype repli;
 
@@ -102,7 +112,40 @@ class CanalTempsReelTest {
 	}
 
 	@Test
-	void unBuzzDeLaManetteArriveSurLEcranDeSalleEnMoinsDUneSeconde() throws Exception {
+	void uneSoireeEnregistreeRefuseLAbonnementAnonymeAuCanalDeSalle() throws Exception {
+		UUID soiree = soirees.creer("Soirée enregistrée", Format.SOLO, Pilotage.MANUEL).getId();
+		String destination = Canaux.salle(soiree);
+		UUID abonnement = UUID.randomUUID();
+		var session = connecter();
+		var recus = new ArrayBlockingQueue<Map<String, Object>>(2);
+		var entetes = new StompHeaders();
+		entetes.setId(abonnement.toString());
+		entetes.setDestination(destination);
+		session.subscribe(entetes, collecteur(recus));
+
+		// Le broker traite les abonnements d'une même connexion dans l'ordre.
+		UUID demonstration = UUID.randomUUID();
+		var temoin = abonner(session, Canaux.salle(demonstration));
+		assertThat(abonnements.estInstalle(abonnement, destination)).isFalse();
+		diffuseur.diffuserSalle(soiree, new EvenementDeTest("Vue de la Soirée enregistrée"));
+		diffuseur.diffuserSalle(demonstration, new EvenementDeTest("Vue de démonstration"));
+		assertThat(temoin.poll(2, TimeUnit.SECONDS)).isNotNull();
+		assertThat(recus).isEmpty();
+	}
+
+	@Test
+	void laCleDEcranPermetDeRecevoirLesEvenementsDeLaSoireeEnregistree() throws Exception {
+		UUID soiree = soirees.creer("Soirée avec Écran", Format.SOLO, Pilotage.MANUEL).getId();
+		String cle = acces.ouvrirEcran(soiree).cle();
+		var ecran = abonner(connecterAvecJeton(cle), Canaux.salle(soiree));
+
+		diffuseur.diffuserSalle(soiree, new EvenementDeTest("Vue de la Soirée enregistrée"));
+
+		assertThat(ecran.poll(2, TimeUnit.SECONDS)).isNotNull().containsEntry("soireeId", soiree.toString());
+	}
+
+	@Test
+	void unEcranAnonymeDeDemonstrationRecoitLeBuzzEnMoinsDUneSeconde() throws Exception {
 		BlockingQueue<Map<String, Object>> ecran = abonner(connecter(), Canaux.salle(SOIREE));
 
 		BlockingQueue<Map<String, Object>> autreEcran = abonner(connecter(), Canaux.salle(SOIREE));
@@ -162,6 +205,30 @@ class CanalTempsReelTest {
 	}
 
 	@Test
+	void deuxManettesDeDemonstrationDeLaMemeSoireeOntChacuneLeurCanalEtLeursRevisions() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		UUID joueur2 = FournisseurCommunDemonstration.joueurId(soiree, 2);
+		UUID joueur3 = FournisseurCommunDemonstration.joueurId(soiree, 3);
+		var manette2 = abonner(connecter(new Acteur(Acteur.Type.JOUEUR, joueur2, soiree)), "/topic/joueurs/" + joueur2);
+		var manette3 = abonner(connecter(new Acteur(Acteur.Type.JOUEUR, joueur3, soiree)), "/topic/joueurs/" + joueur3);
+
+		diffuseur.envoyerJoueur(soiree, joueur2, new EvenementDeTest("pour le Joueur 2"));
+		var premier = manette2.poll(1, TimeUnit.SECONDS);
+		assertThat(premier).isNotNull().containsEntry("revision", 1);
+		assertThat(donnees(premier)).containsEntry("texte", "pour le Joueur 2");
+
+		diffuseur.envoyerJoueur(soiree, joueur3, new EvenementDeTest("pour le Joueur 3"));
+		var autre = manette3.poll(1, TimeUnit.SECONDS);
+		assertThat(autre).isNotNull().containsEntry("revision", 1);
+		assertThat(donnees(autre)).containsEntry("texte", "pour le Joueur 3");
+
+		diffuseur.envoyerJoueur(soiree, joueur2, new EvenementDeTest("encore pour le Joueur 2"));
+		var suivant = manette2.poll(1, TimeUnit.SECONDS);
+		assertThat(suivant).isNotNull().containsEntry("revision", 2);
+		assertThat(donnees(suivant)).containsEntry("texte", "encore pour le Joueur 2");
+	}
+
+	@Test
 	void leDiffuseurJointLaConsoleSansPasserParLaSalle() throws Exception {
 		StompSession session = connecter(new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), SOIREE));
 		BlockingQueue<Map<String, Object>> console = abonner(session, Canaux.console(SOIREE));
@@ -186,18 +253,21 @@ class CanalTempsReelTest {
 	}
 
 	private StompSession connecter(Acteur acteur) throws Exception {
+		String jeton = acteur == null ? null : "demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant();
+		return connecterAvecJeton(jeton);
+	}
+
+	private StompSession connecterAvecJeton(String jeton) throws Exception {
 		WebSocketStompClient client = new WebSocketStompClient(clientWebSocket());
 		clients.add(client);
 		client.setMessageConverter(new JacksonJsonMessageConverter());
 		StompHeaders entetes = new StompHeaders();
-		if (acteur != null) {
-			entetes.set("Authorization", "Bearer demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant());
+		if (jeton != null) {
+			entetes.set("Authorization", "Bearer " + jeton);
 		}
 		StompSession session = client
 				.connectAsync("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION,
-						new WebSocketHttpHeaders(), entetes,
-						new StompSessionHandlerAdapter() {
-						})
+						new WebSocketHttpHeaders(), entetes, new StompSessionHandlerAdapter() { })
 				.get(5, TimeUnit.SECONDS);
 		sessions.add(session);
 		return session;

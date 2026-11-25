@@ -18,6 +18,104 @@ class FileAttenteTest {
 			SOIREE, MANCHE, 10, 1, 1, 1, null, List.of(), Map.of()));
 	private long numero;
 
+    @Test
+    void appelleSeulementLaPremiereAttenteAuBonCompteur() {
+        inscrireDeuxTours();
+        EtatFileAttente avant = file.etat();
+        verifierRefus(file.appelerPassage(new CiblePassage(new UUID(0, 99), 0)), 404, "RESSOURCE_INTROUVABLE");
+        verifierRefus(file.appelerPassage(cible("Boris-1")), 409, "COMMANDE_PERIMEE");
+        verifierRefus(file.appelerPassage(new CiblePassage(cible("Ana-1").passageId(), 1)), 409, "COMMANDE_PERIMEE");
+        assertThat(file.etat()).isEqualTo(avant);
+        assertThat(file.appelerPassage(cible("Ana-1"))).isInstanceOf(ResultatFile.Modifiee.class);
+        assertThat(passage("Ana-1").etat()).isEqualTo(EtatPassage.APPELE);
+        assertThat(passage("Ana-1").numeroModification()).isEqualTo(1);
+        verifierRefus(file.appelerPassage(cible("Ana-1")), 409, "COMMANDE_PERIMEE");
+    }
+
+    @Test
+    void demarreSeulementUnPassageAppeleAuBonCompteur() {
+        inscrire(ANA, "Ana-1");
+        var attente = cible("Ana-1");
+        var avant = file.etat();
+        verifierRefus(file.demarrerPassage(new CiblePassage(new UUID(0, 99), 0)), 404, "RESSOURCE_INTROUVABLE");
+        verifierRefus(file.demarrerPassage(attente), 409, "COMMANDE_PERIMEE");
+        assertThat(file.etat()).isEqualTo(avant);
+        file.appelerPassage(attente);
+        avant = file.etat();
+        verifierRefus(file.demarrerPassage(attente), 409, "COMMANDE_PERIMEE");
+        assertThat(file.etat()).isEqualTo(avant);
+        assertThat(file.demarrerPassage(cible("Ana-1"))).isInstanceOf(ResultatFile.Modifiee.class);
+        assertThat(passage("Ana-1").etat()).isEqualTo(EtatPassage.EN_COURS);
+        assertThat(passage("Ana-1").numeroModification()).isEqualTo(2);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "TERMINE, EN_COURS", "SAUTE, APPELE", "SAUTE, EN_COURS", "ANNULE, APPELE", "ANNULE, EN_COURS"
+    })
+    void clotureAvecLeTourConsommeEtSansReplacerLesAutresAttentes(EtatPassage terminal, EtatPassage depart) {
+        inscrireDeuxTours();
+        file.definirPriorite(cible("Ana-2"), true);
+        var attente = cible("Ana-2");
+        var trace = switch (terminal) {
+            case TERMINE -> new TraceTerminale("FIN_PREVUE", null, RECU);
+            case SAUTE -> new TraceTerminale("PASSE_PAR_ANIMATEUR", BORIS, RECU);
+            default -> new TraceTerminale("MANCHE_TERMINEE", BORIS, RECU);
+        };
+        var avant = file.etat();
+        verifierRefus(file.clorePassage(attente, terminal, trace), 409, "COMMANDE_PERIMEE");
+        assertThat(file.etat()).isEqualTo(avant);
+        file.appelerPassage(attente);
+        if (terminal == EtatPassage.TERMINE) {
+            avant = file.etat();
+            verifierRefus(file.clorePassage(cible("Ana-2"), terminal, trace), 409, "COMMANDE_PERIMEE");
+            assertThat(file.etat()).isEqualTo(avant);
+        }
+        if (depart == EtatPassage.EN_COURS) { file.demarrerPassage(cible("Ana-2")); }
+        var courant = cible("Ana-2");
+        var autres = file.ordreEffectif();
+        var tours = file.etat().derniersToursConsommes();
+        avant = file.etat();
+        verifierRefus(file.clorePassage(attente, terminal, trace), 409, "COMMANDE_PERIMEE");
+        assertThat(file.etat()).isEqualTo(avant);
+        assertThat(file.clorePassage(courant, terminal, trace)).isInstanceOf(ResultatFile.Modifiee.class);
+        Passage clos = passage("Ana-2");
+        assertThat(clos.etat()).isEqualTo(terminal);
+        assertThat(clos.numeroModification()).isEqualTo(courant.numeroModification() + 1);
+        assertThat(clos.tourConsomme()).isEqualTo(1L);
+        assertThat(clos.traceTerminale()).isEqualTo(trace);
+        assertThat(file.ordreEffectif()).isEqualTo(autres);
+        assertThat(file.etat().derniersToursConsommes()).isEqualTo(tours);
+        avant = file.etat();
+        verifierRefus(file.clorePassage(cible("Ana-2"), terminal, trace), 409, "COMMANDE_PERIMEE");
+        assertThat(file.etat()).isEqualTo(avant);
+    }
+
+    @Test
+    void uneClotureExigeLeMotifEtLActeurCorrespondants() {
+        inscrire(ANA, "Ana-1");
+        file.appelerPassage(cible("Ana-1"));
+        file.demarrerPassage(cible("Ana-1"));
+        var depart = file.etat();
+        var courant = cible("Ana-1");
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.TERMINE, new TraceTerminale("FIN_LECTURE", BORIS, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.TERMINE, new TraceTerminale("PASSE_PAR_ANIMATEUR", BORIS, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.SAUTE, new TraceTerminale("PASSE_PAR_ANIMATEUR", null, RECU)));
+        assertThatIllegalArgumentException().isThrownBy(() -> file.clorePassage(courant,
+                EtatPassage.ANNULE, new TraceTerminale("MANCHE_TERMINEE", null, RECU)));
+        assertThat(file.etat()).isEqualTo(depart);
+    }
+
+    private static void verifierRefus(ResultatFile resultat, int statut, String code) {
+        assertThat(resultat).isInstanceOfSatisfying(ResultatFile.Refus.class, r -> {
+            assertThat(r.refus().statutHttp()).isEqualTo(statut);
+            assertThat(r.refus().code()).isEqualTo(code);
+        });
+    }
+
 	@Test
 	void reserveUnTourParInterpreteDansLOrdreDInscription() {
 		inscrire(ANA, "Ana-1"); inscrire(ANA, "Ana-2");
@@ -270,14 +368,8 @@ class FileAttenteTest {
     }
 
     @Test
-    void refuseLeCollectifDansCetteTrancheEtCopieLesLectures() {
-        assertThatThrownBy(() -> new NouveauPassage(UUID.randomUUID(), SOIREE, MANCHE, ANA, List.of(ANA, BORIS),
-                "1", Duration.ofSeconds(1), 1, RECU)).isInstanceOf(IllegalArgumentException.class);
+    void copieLesLectures() {
         Passage p = inscrire(ANA, "1");
-        Passage collectif = new Passage(p.id(), SOIREE, MANCHE, ANA, List.of(ANA, BORIS), "1", p.duree(), 1, 0,
-                p.etat(), RECU, 1, 1, 1, null, null);
-        assertThatThrownBy(() -> FileAttente.depuis(new EtatFileAttente(SOIREE, MANCHE, 1, 1, 1, 1, null,
-                List.of(collectif), Map.of()))).isInstanceOf(IllegalArgumentException.class);
         var capture = file.etat(); var copie = FileAttente.depuis(capture);
         copie.retirer(BORIS, cible("1"), RECU);
         assertThat(file.etat()).isEqualTo(capture);

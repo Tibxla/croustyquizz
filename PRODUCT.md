@@ -29,7 +29,7 @@ Projet de groupe du M1 MIAGE (Université Paris Nanterre), noté individuellemen
 
 ## Operating Context
 
-- Trois interfaces au travail distinct, ouvertes en même temps : Console d'animation (piloter), Manette (agir), Écran de salle (regarder). L'Écran de salle n'a aucune commande.
+- Trois interfaces au travail distinct, ouvertes en même temps : Console d'animation (piloter), Manette (agir), Écran de salle (regarder). L'Écran de salle envoie les seules commandes de son lecteur audio. Les actions de jeu passent par la Console et la Manette.
 - Lieux sombres, bruyants, télé à plusieurs mètres, réseau Wi-Fi ou 4G instable ; téléphones de toutes marques, souvent à luminosité basse.
 - Soirées de plusieurs heures, jusqu'à 60 Joueurs connectés.
 - Le serveur fait autorité sur l'identité, le temps, l'ordre des actions et les points ; chaque écran affiche la Vue synchronisée qu'il reçoit (ADR 0003, 0004).
@@ -41,7 +41,7 @@ Projet de groupe du M1 MIAGE (Université Paris Nanterre), noté individuellemen
 - Le Karaoké et le Freestyle ne font marquer de points à personne ; ils ont leur palmarès, séparé du Classement général.
 - L'Enregistrement d'un Passage reste sur la Manette (ADR 0005).
 - Interface et contenus en français uniquement.
-- Décision ouverte : la source audio du Karaoké (#20).
+- L’Écran de salle joue la musique du Karaoké depuis un dossier local (ADR 0007). Les fichiers restent sur son ordinateur.
 
 ## Brand Commitments
 

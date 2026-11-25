@@ -24,9 +24,6 @@ public final class FileAttente {
         prioritaire = etat.passagePrioritaireId();
         passages = new ArrayList<>(etat.passages());
         consommations = new HashMap<>(etat.derniersToursConsommes());
-        if (passages.stream().anyMatch(p -> p.interpretes().size() != 1)) {
-            throw new IllegalArgumentException("Cette tranche exige exactement un Interprète.");
-        }
     }
 
     public static FileAttente depuis(EtatFileAttente etat) { return new FileAttente(etat); }
@@ -49,12 +46,14 @@ public final class FileAttente {
     }
 
     public ResultatFile inscrire(NouveauPassage nouveau) {
-        UUID interprete = nouveau.interpretes().getFirst();
-        Optional<Refuse> refus = verifierInscription(interprete, nouveau.contenuId());
-        if (refus.isPresent()) { return new ResultatFile.Refus(refus.get()); }
-        long tour = Math.max(tourOuvert, consommations.getOrDefault(interprete, 0L) + 1);
-        tour += passages.stream().filter(p -> p.etat() == EtatPassage.EN_ATTENTE
-                && p.interpretes().contains(interprete)).count();
+        long tour = tourOuvert;
+        for (UUID interprete : nouveau.interpretes()) {
+            Optional<Refuse> refus = verifierInscription(interprete, nouveau.contenuId());
+            if (refus.isPresent()) { return new ResultatFile.Refus(refus.get()); }
+            long dernierTourReserve = passages.stream().filter(p -> p.etat() == EtatPassage.EN_ATTENTE
+                    && p.interpretes().contains(interprete)).mapToLong(Passage::tourNormal).max().orElse(0L);
+            tour = Math.max(tour, Math.max(premierTourDisponible(interprete), dernierTourReserve + 1));
+        }
         passages.add(new Passage(nouveau.id(), nouveau.soireeId(), nouveau.mancheId(),
                 nouveau.inscripteurId(), nouveau.interpretes(), nouveau.contenuId(), nouveau.duree(),
                 nouveau.numero(), 0, EtatPassage.EN_ATTENTE, nouveau.recueLe(), prochainOrdre,
@@ -62,6 +61,70 @@ public final class FileAttente {
         prochainOrdre++;
         prochaineCle++;
         return new ResultatFile.Modifiee();
+    }
+
+    private long premierTourDisponible(UUID interprete) {
+        return Math.max(tourOuvert, consommations.getOrDefault(interprete, 0L) + 1);
+    }
+
+    public ResultatFile ajouterInterprete(CiblePassage cible, UUID interpreteId) {
+        Passage passage = trouver(cible.passageId());
+        Refuse refusCible = verifierCible(cible, passage, Set.of(EtatPassage.EN_ATTENTE));
+        if (refusCible != null) { return new ResultatFile.Refus(refusCible); }
+        if (passage.interpretes().contains(interpreteId)) { return new ResultatFile.SansEffet(); }
+        if (passage.interpretes().size() >= Passage.NOMBRE_MAX_INTERPRETES) {
+            return new ResultatFile.Refus(new Refuse(422, "DONNEES_INVALIDES", "Ce Passage réunit déjà quatre Interprètes."));
+        }
+        Optional<Refuse> refus = verifierInscription(interpreteId, passage.contenuId());
+        if (refus.isPresent()) { return new ResultatFile.Refus(refus.get()); }
+
+        List<UUID> interpretes = new ArrayList<>(passage.interpretes());
+        interpretes.add(interpreteId);
+        remplacer(avecInterpretes(passage, passage.inscripteurId(), interpretes));
+        recalculerReservations(Set.of(passage.id()));
+        return new ResultatFile.Modifiee();
+    }
+
+    /** Retire un Interprète du Passage visé avant son appel. */
+    public ResultatFile retirerInterprete(CiblePassage cible, UUID interpreteId, Instant recueLe) {
+        Passage passage = trouver(cible.passageId());
+        if (passage == null || !passage.interpretes().contains(interpreteId)) {
+            return new ResultatFile.Refus(introuvable());
+        }
+        Refuse refus = verifierCible(cible, passage, Set.of(EtatPassage.EN_ATTENTE));
+        if (refus != null) { return new ResultatFile.Refus(refus); }
+        retirerInterpreteDesAttentes(interpreteId, recueLe, List.of(passage));
+        return new ResultatFile.Modifiee();
+    }
+
+    /** Applique le départ ou l’Exclusion du Joueur à tous ses Passages encore en attente. */
+    public ResultatFile retirerJoueurParti(UUID joueurId, Instant recueLe) {
+        List<Passage> attentes = passages.stream().filter(p -> p.etat() == EtatPassage.EN_ATTENTE
+                && p.interpretes().contains(joueurId)).toList();
+        if (attentes.isEmpty()) { return new ResultatFile.SansEffet(); }
+        retirerInterpreteDesAttentes(joueurId, recueLe, attentes);
+        return new ResultatFile.Modifiee();
+    }
+
+    private void retirerInterpreteDesAttentes(UUID joueurId, Instant recueLe, List<Passage> attentes) {
+        Set<UUID> passagesModifies = new HashSet<>();
+        for (Passage passage : attentes) {
+            List<UUID> restants = passage.interpretes().stream().filter(id -> !id.equals(joueurId)).toList();
+            if (restants.isEmpty()) {
+                retirerPassage(passage, new TraceTerminale("DEPART_INTERPRETE", joueurId, recueLe));
+            } else {
+                UUID inscripteur = passage.inscripteurId().equals(joueurId) ? restants.getFirst() : passage.inscripteurId();
+                remplacer(avecInterpretes(passage, inscripteur, restants));
+                passagesModifies.add(passage.id());
+            }
+        }
+        recalculerReservations(passagesModifies);
+    }
+
+    private static Passage avecInterpretes(Passage p, UUID inscripteurId, List<UUID> interpretes) {
+        return new Passage(p.id(), p.soireeId(), p.mancheId(), inscripteurId, interpretes,
+                p.contenuId(), p.duree(), p.numero(), p.numeroModification(), p.etat(), p.inscriptionLe(),
+                p.ordreInscription(), p.tourNormal(), p.cleOrdre(), p.tourConsomme(), p.traceTerminale());
     }
 
     private List<Passage> ordreNormal() {
@@ -88,17 +151,26 @@ public final class FileAttente {
         return Collections.unmodifiableMap(positions);
     }
 
-    private Passage trouver(UUID id) {
+    public Passage trouver(UUID id) {
         return passages.stream().filter(p -> p.id().equals(id)).findFirst().orElse(null);
     }
 
     private Refuse verifierCible(CiblePassage cible) {
-        Passage passage = trouver(cible.passageId());
-        if (passage == null) { return new Refuse(404, "RESSOURCE_INTROUVABLE", "Ce Passage est introuvable."); }
-        if (passage.etat() != EtatPassage.EN_ATTENTE || passage.numeroModification() != cible.numeroModification()) {
-            return new Refuse(409, "COMMANDE_PERIMEE", "Ce Passage a changé ; consulte la File actualisée.");
-        }
+        return verifierCible(cible, trouver(cible.passageId()), Set.of(EtatPassage.EN_ATTENTE));
+    }
+
+    private static Refuse verifierCible(CiblePassage cible, Passage passage, Set<EtatPassage> etats) {
+        if (passage == null) { return introuvable(); }
+        if (!etats.contains(passage.etat()) || passage.numeroModification() != cible.numeroModification()) { return perimee(); }
         return null;
+    }
+
+    private static Refuse introuvable() {
+        return new Refuse(404, "RESSOURCE_INTROUVABLE", "Ce Passage est introuvable.");
+    }
+
+    static Refuse perimee() {
+        return new Refuse(409, "COMMANDE_PERIMEE", "Ce Passage a changé ; consulte la File actualisée.");
     }
 
     private void remplacer(Passage passage) {
@@ -120,18 +192,24 @@ public final class FileAttente {
     }
 
     /** Réserve par ordre d’inscription ; seules les attentes changeant de Tour rejoignent sa fin. */
-    private void recalculerReservations() {
+    private void recalculerReservations(Set<UUID> passagesModifies) {
         Map<UUID, Long> prochainsTours = new HashMap<>();
-        for (Passage passage : List.copyOf(passages)) {
+        for (int index = 0; index < passages.size(); index++) {
+            Passage passage = passages.get(index);
             if (passage.etat() != EtatPassage.EN_ATTENTE) { continue; }
-            UUID interprete = passage.interpretes().getFirst();
-            long tour = prochainsTours.getOrDefault(interprete,
-                    Math.max(tourOuvert, consommations.getOrDefault(interprete, 0L) + 1));
-            prochainsTours.put(interprete, tour + 1);
-            if (passage.tourNormal() != tour) {
-                remplacer(modifier(passage, tour, prochaineCle, passage.etat(),
+            long tour = tourOuvert;
+            for (UUID interprete : passage.interpretes()) {
+                tour = Math.max(tour, prochainsTours.getOrDefault(interprete, premierTourDisponible(interprete)));
+            }
+            for (UUID interprete : passage.interpretes()) {
+                prochainsTours.put(interprete, tour + 1);
+            }
+            boolean tourModifie = passage.tourNormal() != tour;
+            if (tourModifie || passagesModifies.contains(passage.id())) {
+                long cle = tourModifie ? prochaineCle : passage.cleOrdre();
+                if (tourModifie) { prochaineCle++; }
+                passages.set(index, modifier(passage, tour, cle, passage.etat(),
                         passage.tourConsomme(), passage.traceTerminale(), true));
-                prochaineCle++;
             }
         }
     }
@@ -151,12 +229,15 @@ public final class FileAttente {
     private ResultatFile retirerAvecTrace(UUID acteurId, CiblePassage cible, Instant recueLe, String motif) {
         Refuse refus = verifierCible(cible);
         if (refus != null) { return new ResultatFile.Refus(refus); }
-        Passage passage = trouver(cible.passageId());
-        remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.RETIRE,
-                null, new TraceTerminale(motif, acteurId, recueLe), true));
-        if (passage.id().equals(prioritaire)) { leverPriorite(); }
-        recalculerReservations();
+        retirerPassage(trouver(cible.passageId()), new TraceTerminale(motif, acteurId, recueLe));
+        recalculerReservations(Set.of());
         return new ResultatFile.Modifiee();
+    }
+
+    private void retirerPassage(Passage passage, TraceTerminale trace) {
+        remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.RETIRE,
+                null, trace, true));
+        if (passage.id().equals(prioritaire)) { leverPriorite(); }
     }
 
     /** Le contrat persiste explicitement null quand aucune priorité n’est définie. */
@@ -215,16 +296,58 @@ public final class FileAttente {
         List<Passage> ordre = ordreEffectif();
         if (ordre.isEmpty()) { return Optional.empty(); }
         Passage passage = ordre.getFirst();
-        UUID interprete = passage.interpretes().getFirst();
         boolean estPrioritaire = passage.id().equals(prioritaire);
-        long tour = estPrioritaire ? Math.max(tourOuvert, consommations.getOrDefault(interprete, 0L) + 1) : passage.tourNormal();
+        long tour = estPrioritaire ? tourOuvert : passage.tourNormal();
         if (!estPrioritaire) { tourOuvert = tour; }
-        consommations.put(interprete, tour);
+        // En priorité, la File mémorise le Tour de chacun et le Passage conserve le plus tardif.
+        for (UUID interprete : passage.interpretes()) {
+            long tourInterprete = estPrioritaire ? premierTourDisponible(interprete) : passage.tourNormal();
+            consommations.put(interprete, tourInterprete);
+            tour = Math.max(tour, tourInterprete);
+        }
         Passage appele = modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.APPELE, tour, null, true);
         remplacer(appele);
         if (estPrioritaire) { leverPriorite(); }
-        recalculerReservations();
+        recalculerReservations(Set.of());
         return Optional.of(appele);
+    }
+
+    public ResultatFile appelerPassage(CiblePassage cible) {
+        return appelerPassage(cible, () -> { });
+    }
+
+    /** Prépare la chronologie du cycle après les gardes et avant de consommer le Tour. */
+    ResultatFile appelerPassage(CiblePassage cible, Runnable preparerAppel) {
+        Refuse refus = verifierCible(cible);
+        if (refus != null) { return new ResultatFile.Refus(refus); }
+        if (!ordreEffectif().getFirst().id().equals(cible.passageId())) { return new ResultatFile.Refus(perimee()); }
+        preparerAppel.run();
+        extraireProchainPassage(false);
+        return new ResultatFile.Modifiee();
+    }
+
+    public ResultatFile demarrerPassage(CiblePassage cible) {
+        return transiter(cible, EtatPassage.EN_COURS, null, Set.of(EtatPassage.APPELE));
+    }
+
+    public ResultatFile clorePassage(CiblePassage cible, EtatPassage etatTerminal, TraceTerminale trace) {
+        Set<EtatPassage> departs = switch (etatTerminal) {
+            case TERMINE -> Set.of(EtatPassage.EN_COURS);
+            case SAUTE, ANNULE -> Set.of(EtatPassage.APPELE, EtatPassage.EN_COURS);
+            default -> Set.of();
+        };
+        return transiter(cible, etatTerminal, trace, departs);
+    }
+
+    private ResultatFile transiter(CiblePassage cible, EtatPassage etat, TraceTerminale trace, Set<EtatPassage> departs) {
+        Passage passage = trouver(cible.passageId());
+        Refuse refus = verifierCible(cible, passage, departs);
+        if (refus != null) { return new ResultatFile.Refus(refus); }
+        if (etat != EtatPassage.EN_COURS && (trace == null || !trace.correspondA(etat))) {
+            throw new IllegalArgumentException("La clôture exige un motif, un instant et l’acteur correspondant.");
+        }
+        remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), etat, passage.tourConsomme(), trace, true));
+        return new ResultatFile.Modifiee();
     }
 
     public ResultatFile reglerLimite(long limitePassagesEnAttente) {
@@ -239,7 +362,7 @@ public final class FileAttente {
         for (Passage passage : List.copyOf(passages)) {
             if (passage.etat() == EtatPassage.EN_ATTENTE) {
                 remplacer(modifier(passage, passage.tourNormal(), passage.cleOrdre(), EtatPassage.ANNULE,
-                        null, new TraceTerminale("MANCHE_TERMINEE", acteurId, recueLe), true));
+                        null, new TraceTerminale(TraceTerminale.MANCHE_TERMINEE, acteurId, recueLe), true));
                 modifiee = true;
             }
         }

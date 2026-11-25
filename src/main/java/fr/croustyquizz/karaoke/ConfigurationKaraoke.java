@@ -12,15 +12,21 @@ import org.springframework.context.annotation.*;
 @EnableConfigurationProperties(ProprietesKaraoke.class)
 public class ConfigurationKaraoke {
     @Bean FabriqueKaraoke fabriqueKaraoke(ProprietesKaraoke proprietes) {
-        return new FabriqueKaraoke(Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()));
+        return new FabriqueKaraoke(Duration.ofSeconds(proprietes.passage().delaiAppelSecondes()),
+                Duration.ofSeconds(proprietes.passage().dureeVoteSecondes()));
     }
     @Bean ServiceKaraoke serviceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance, SocleDeManche socle,
             PorteeDePassage portee, ParticipantsDePassage participants, PersistancePassageJpa passages,
-            SourceDeParoles source, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource) {
-        return new ServiceKaraoke(fabrique, persistance, socle, portee, participants, passages, source, proprietes, proprietesSource);
+            SourceDeParoles source, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource,
+            ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
+        return new ServiceKaraoke(fabrique, persistance, socle, portee, participants, passages, source, proprietes,
+                proprietesSource, choixParoles, calages);
+    }
+    @Bean ChoixDeVersionParoles choixDeVersionParoles(SourceDeParoles source, ProprietesSourceKaraoke proprietes) {
+        return new ChoixDeVersionParoles(source, proprietes);
     }
     @Bean FournisseurDeBlocKaraoke fournisseurDeBlocKaraoke(DepotDeManches depot, ObjectProvider<ServiceKaraoke> service,
-            ParticipantsDePassage participants, Horloge horloge, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource) {
-        return new FournisseurDeBlocKaraoke(depot, service, participants, horloge, proprietes, proprietesSource);
+            ParticipantsDePassage participants, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource) {
+        return new FournisseurDeBlocKaraoke(depot, service, participants, proprietes, proprietesSource);
     }
 }

@@ -68,7 +68,7 @@ public final class ContratApi {
 		for (var representation : contenu.properties()) {
 			if (MediaType.parseMediaType(representation.getKey()).isCompatibleWith(MediaType.parseMediaType(type))) {
 				String schema = reponse + "/content/" + echapper(representation.getKey()) + "/schema";
-				validerSchema(fichier, schema, corps, contexte);
+				validerSchema(fichier, schema, corps, estJson(type), contexte);
 				return;
 			}
 		}
@@ -102,14 +102,20 @@ public final class ContratApi {
 		return courant;
 	}
 
-	private static void validerSchema(Path fichier, String pointeur, String corps, String contexte) {
+	/** JSON et ses dérivés (problem+json) ; un autre type, comme image/svg+xml, est validé comme une chaîne. */
+	private static boolean estJson(String type) {
+		MediaType media = MediaType.parseMediaType(type);
+		return MediaType.APPLICATION_JSON.isCompatibleWith(media) || media.getSubtype().endsWith("+json");
+	}
+
+	private static void validerSchema(Path fichier, String pointeur, String corps, boolean json, String contexte) {
 		var configuration = SchemaRegistryConfig.builder().formatAssertionsEnabled(true)
 				.locale(Locale.FRENCH).pathType(PathType.JSON_PATH).build();
 		var registre = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12,
 				constructeur -> constructeur.schemaRegistryConfig(configuration).schemas(ContratApi::lireSchema));
 		var schema = registre.getSchema(SchemaLocation.of(fichier.toUri() + "#" + pointeur));
 		try {
-			JsonNode valeur = JSON.readTree(corps);
+			JsonNode valeur = json ? JSON.readTree(corps) : JSON.getNodeFactory().stringNode(corps);
 			if (valeur == null || valeur.isMissingNode()) {
 				throw new AssertionError(contexte + " : corps JSON attendu");
 			}

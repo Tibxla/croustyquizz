@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>fr.croustyquizz</groupId>
 	<artifactId>croustyquizz</artifactId>
-	<version>0.1.0</version>
+	<version>0.2.0</version>
 	<name>CroustyQuizz</name>
 	<description>Plateforme de soirées Quiz, Blind test et Karaoké</description>
 	<url>https://github.com/Tibxla/croustyquizz</url>
@@ -51,6 +51,12 @@
 			<groupId>org.webjars.npm</groupId>
 			<artifactId>stomp__stompjs</artifactId>
 			<version>7.1.1</version>
+		</dependency>
+		<dependency>
+			<!-- QR code de la Soirée, généré en SVG par le serveur (ADR 0001) -->
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.3</version>
 		</dependency>
 
 		<dependency>
@@ -140,6 +146,8 @@
 				<configuration>
 					<targetJdk>${java.version}</targetJdk>
 					<linkXRef>false</linkXRef>
+					<!-- Rapport écrit sans le site Maven : aucun descripteur de site à télécharger, donc plus d'échec 429 de Maven Central en CI (#160). pmd:check lit target/pmd.xml. -->
+					<outputFormat>xhtml</outputFormat>
 					<rulesets>
 						<ruleset>category/java/errorprone.xml</ruleset>
 						<ruleset>category/java/bestpractices.xml</ruleset>

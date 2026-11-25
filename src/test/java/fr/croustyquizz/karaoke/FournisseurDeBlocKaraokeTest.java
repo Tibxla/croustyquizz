@@ -1,8 +1,14 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.mockingDetails;
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.manche.*;
+import fr.croustyquizz.passage.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
@@ -12,6 +18,22 @@ class FournisseurDeBlocKaraokeTest {
     final ServiceKaraokeTest parcours = new ServiceKaraokeTest();
     final ServiceKaraokeTest.BancKaraoke banc = parcours.banc;
 
+    @Test void unePublicationLitLesParticipantsUneFoisPourTousLesPassagesEtToutesLesManettes() {
+        UUID manche = parcours.demarrer();
+        var limite = new CorpsKaraoke.LimitePassages(4L);
+        banc.service.reglerLimitePassages(manche, parcours.envoi(parcours.animateur, UUID.randomUUID(), "PUT", "/limite", limite), limite);
+        parcours.inscrire(manche, 1);
+        parcours.inscrire(manche, 2);
+        parcours.inscrire(manche, 3);
+        clearInvocations(banc.participantsDesVues);
+        int publications = banc.diffuseur.envois().size();
+
+        parcours.inscrire(manche, 4);
+
+        assertThat(banc.diffuseur.envois()).hasSize(publications + 5);
+        assertThat(mockingDetails(banc.participantsDesVues).getInvocations()).hasSize(1);
+    }
+
     @Test void ordreEffectifPersonnelEtTroisProchainesSansSecrets() throws Exception {
         UUID manche = parcours.demarrer();
         var limite = new CorpsKaraoke.LimitePassages(3L);
@@ -19,7 +41,7 @@ class FournisseurDeBlocKaraokeTest {
         var premier = parcours.inscrire(manche, 1);
         var second = parcours.inscrire(manche, 2);
         var troisieme = parcours.inscrire(manche, 3);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), parcours.soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(parcours.soiree).get(1), parcours.soiree);
         var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(4));
         banc.service.inscrirePassage(manche, parcours.envoi(autre, corps.envoiId(), "POST", "/passages", corps), corps);
         var priorite = new CorpsKaraoke.PrioritePassage(new CorpsKaraoke.Cible(troisieme.passageId(), 0L), true);
@@ -62,7 +84,7 @@ class FournisseurDeBlocKaraokeTest {
 
     @Test void retardataireAutoriseEtJoueurAbsentSousQuotaRefuse() {
         UUID manche = parcours.demarrer();
-        UUID joueur = ConfigurationTroisJoueurs.JOUEURS.get(2);
+        UUID joueur = joueursDe(parcours.soiree).get(2);
         // Fournisseur commun : eligiblePourMancheActive=false pour tous les Joueurs.
         var retardataire = (VuesKaraoke.BlocKaraokeManette) banc.bloc.fournir(parcours.soiree, Destination.joueur(joueur));
         assertThat(retardataire.peutInscrire() && retardataire.peutRechercher()).isTrue();
@@ -77,7 +99,7 @@ class FournisseurDeBlocKaraokeTest {
     @Test void estimationVientDeLHorlogeEtLePseudoDepartEstConserveSansAccesALaSource() {
         UUID manche = parcours.demarrer();
         var premier = parcours.inscrire(manche, 1);
-        var autre = new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.JOUEURS.get(1), parcours.soiree);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(parcours.soiree).get(1), parcours.soiree);
         var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(2));
         banc.service.inscrirePassage(manche, parcours.envoi(autre, corps.envoiId(), "POST", "/passages", corps), corps);
         banc.ports.absents.add(parcours.joueur.identifiant());
@@ -86,6 +108,205 @@ class FournisseurDeBlocKaraokeTest {
         assertThat(salle.prochainsPassages().getFirst().interpretes().getFirst().pseudo()).isEqualTo("Joueur parti");
         assertThat(salle.prochainsPassages().get(1).attente().dureeMs()).isEqualTo(210000);
         assertThat(salle.prochainsPassages().get(1).attente().calculeeLe()).isEqualTo(banc.horloge.maintenant());
+    }
+
+    @Test void passageAuReposSansCourantNiLectureEtAppelSelonLaFileEtLaPause() throws Exception {
+        UUID manche = parcours.demarrer();
+        var vide = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
+        assertThat(vide.peutAppeler()).isFalse();
+        assertThat(vide.peutReprendre()).isFalse();
+        assertThat(vide.configurationInterface().delaiAppelMs()).isEqualTo(30000);
+        parcours.inscrire(manche, 1);
+        var console = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
+        assertThat(console.peutAppeler()).isTrue();
+        assertThat(console.peutReprendre()).isFalse();
+        assertThat(console.lecteurDesigne() || console.peutPasser() || console.peutCaler()
+                || console.peutReprendreEnParolesSeules()).isFalse();
+        assertThat(console.courant()).isNull();
+        assertThat(console.lecture()).isNull();
+        assertThat(console.fichierLocal()).isNull();
+        var salle = (VuesKaraoke.BlocKaraokeSalle) banc.bloc.fournir(parcours.soiree, Destination.SALLE);
+        assertThat(salle.courant()).isNull();
+        assertThat(salle.lecteurDesigneId()).isNull();
+        assertThat(salle.lecture()).isNull();
+        assertThat(salle.paroles()).isNull();
+        var manette = (VuesKaraoke.BlocKaraokeManette) banc.bloc.fournir(parcours.soiree, Destination.joueur(parcours.joueur.identifiant()));
+        assertThat(manette.peutConfirmerPresence()).isFalse();
+        assertThat(manette.courant()).isNull();
+        parcours.piloter(manche, InterventionDeManche.Action.METTRE_EN_PAUSE);
+        var pause = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
+        assertThat(pause.peutAppeler()).isFalse();
+        assertThat(pause.peutReprendre()).isTrue();
+        verifierCapture(Destination.SALLE, "retrouverEtatSalle");
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+        verifierCapture(Destination.joueur(parcours.joueur.identifiant()), "retrouverEtatManette");
+    }
+
+    @Test void lAppelAlimenteLeCourantLesEstimationsEtLesCapacites() throws Exception {
+        UUID manche = parcours.demarrer();
+        var premier = parcours.inscrire(manche, 1);
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(parcours.soiree).get(1), parcours.soiree);
+        var inscription = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(2));
+        banc.service.inscrirePassage(manche, parcours.envoi(autre, inscription.envoiId(), "POST", "/passages", inscription), inscription);
+        var appel = new CorpsKaraoke.AppelPassage(0L);
+        banc.service.appelerPassage(manche, premier.passageId(),
+                parcours.envoi(parcours.animateur, UUID.randomUUID(), "POST", "/appel", appel), appel);
+        var salle = (VuesKaraoke.BlocKaraokeSalle) banc.bloc.fournir(parcours.soiree, Destination.SALLE);
+        assertThat(salle.courant().passageId()).isEqualTo(premier.passageId());
+        assertThat(salle.courant().etat()).isEqualTo("APPELE");
+        assertThat(salle.prochainsPassages().getFirst().attente().dureeMs()).isEqualTo(210_000L);
+        var console = (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
+        assertThat(console.peutAppeler()).isFalse();
+        assertThat(console.peutPasser()).isTrue();
+        var manette = (VuesKaraoke.BlocKaraokeManette) banc.bloc.fournir(parcours.soiree, Destination.joueur(parcours.joueur.identifiant()));
+        assertThat(manette.peutConfirmerPresence()).isTrue();
+        var autreManette = (VuesKaraoke.BlocKaraokeManette) banc.bloc.fournir(parcours.soiree, Destination.joueur(autre.identifiant()));
+        assertThat(autreManette.peutConfirmerPresence()).isFalse();
+        verifierCapture(Destination.SALLE, "retrouverEtatSalle");
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+        verifierCapture(Destination.joueur(parcours.joueur.identifiant()), "retrouverEtatManette");
+    }
+
+    @Test void enAutomatiqueLaConsoleNePeutPasAppelerUneAttenteRestaureeSansCourant() throws Exception {
+        UUID manche = parcours.demarrer();
+        var inscrit = parcours.inscrire(manche, 1);
+        assertThat(console().peutAppeler()).isTrue();
+
+        // Une attente persistée en Manuel permet d’exercer la capacité avant la prochaine mutation.
+        banc.pilotage.choisir(parcours.soiree, true);
+        banc.registre.retirer(manche);
+        var console = console();
+        assertThat(console.courant()).isNull();
+        assertThat(console.passagesEnAttente()).singleElement()
+                .satisfies(passage -> assertThat(passage.passageId()).isEqualTo(inscrit.passageId()));
+        assertThat(console.peutAppeler()).isFalse();
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+    }
+
+    @Test void lesParolesRestentEnSalleEnPauseEtLeFichierResteEnConsole() throws Exception {
+        UUID manche = parcours.demarrer();
+        var appel = parcours.appeler(manche, parcours.inscrire(manche, 1).passageId());
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), parcours.soiree);
+        UUID lecteur = parcours.designer(manche, ecran);
+        assertThat(parcours.declarer(manche, appel, ecran, lecteur, 186_750L)).isInstanceOf(Accepte.class);
+        assertThat(parcours.confirmer(manche, appel)).isInstanceOf(Accepte.class);
+
+        var enChant = console();
+        assertThat(enChant.lecteurDesigne()).isTrue();
+        assertThat(enChant.peutCaler()).isTrue();
+        assertThat(enChant.peutReprendre()).isFalse();
+        assertThat(enChant.peutReprendreEnParolesSeules()).isFalse();
+        assertThat(enChant.fichierLocal()).isEqualTo(new FichierAudioLocal("Titre.mp3", 120, 186_750L));
+
+        var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, appel.etapeId());
+        assertThat(banc.service.piloter(manche,
+                parcours.envoi(parcours.animateur, UUID.randomUUID(), "POST", "/commandes", pause), pause)).isInstanceOf(Accepte.class);
+        var salleEnPause = (VuesKaraoke.BlocKaraokeSalle) banc.bloc.fournir(parcours.soiree, Destination.SALLE);
+        assertThat(salleEnPause.lecteurDesigneId()).isEqualTo(lecteur);
+        assertThat(salleEnPause.courant().etat()).isEqualTo("EN_PAUSE");
+        assertThat(salleEnPause.paroles().lignes()).extracting(LigneParoles::texte).contains("Une ligne");
+        var consoleEnPause = console();
+        assertThat(consoleEnPause.peutReprendre()).isTrue();
+        assertThat(consoleEnPause.peutCaler()).isFalse();
+        assertThat(consoleEnPause.peutReprendreEnParolesSeules()).isFalse();
+        assertThat(consoleEnPause.fichierLocal()).isEqualTo(enChant.fichierLocal());
+        var manette = banc.bloc.fournir(parcours.soiree, Destination.joueur(parcours.joueur.identifiant()));
+        assertThat(banc.json.writeValueAsString(salleEnPause)).doesNotContain("Titre.mp3", "fichierLocal");
+        assertThat(banc.json.writeValueAsString(manette)).doesNotContain("Titre.mp3", "fichierLocal", "Une ligne");
+        assertThat(banc.json.writeValueAsString(consoleEnPause)).doesNotContain("Une ligne");
+
+        var erreur = new CorpsKaraoke.SignalErreurLectureChanson(lecteur, appel.etapeId(), enChant.lecture().lectureId());
+        assertThat(banc.service.signalerErreurLectureChanson(manche, appel.passageId(),
+                parcours.envoi(ecran, UUID.randomUUID(), "POST", "/erreur-lecture", erreur), erreur)).isInstanceOf(Accepte.class);
+        var consoleEnErreur = console();
+        assertThat(consoleEnErreur.peutReprendre()).isFalse();
+        assertThat(consoleEnErreur.peutCaler()).isFalse();
+        assertThat(consoleEnErreur.peutReprendreEnParolesSeules()).isTrue();
+        verifierCapture(Destination.SALLE, "retrouverEtatSalle");
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+        verifierCapture(Destination.joueur(parcours.joueur.identifiant()), "retrouverEtatManette");
+    }
+
+    @Test void lesTroisBlocsRecoiventLaMoyenneSeulementApresLaCloture() throws Exception {
+        UUID manche = parcours.demarrer(), passage = parcours.ouvrirVote(manche);
+        var votant = parcours.votant(1);
+        var autre = parcours.votant(2);
+        assertThat(voteDe(parcours.joueur).peutVoter()).isFalse();
+        assertThat(voteDe(votant).peutVoter()).isTrue();
+        assertThat(voteDe(votant).maNote()).isNull();
+        assertThat(parcours.voter(manche, passage, votant, new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 4L)))
+                .isInstanceOf(Accepte.class);
+        assertThat(voteDe(votant).maNote()).isEqualTo(4);
+        assertThat(voteDe(votant).peutVoter()).isFalse();
+        assertThat(voteDe(autre).maNote()).isNull();
+        assertThat(voteDe(autre).peutVoter()).isTrue();
+        var salle = (VuesKaraoke.BlocKaraokeSalle) banc.bloc.fournir(parcours.soiree, Destination.SALLE);
+        assertThat(salle.votes()).isEqualTo(console().votes());
+        assertThat(salle.votes()).singleElement().satisfies(vote -> {
+            assertThat(vote.nombreVotes()).isEqualTo(1);
+            assertThat(vote.moyenneDixiemes()).isNull();
+        });
+        assertThat(voteDe(votant).nombreVotes()).isNull();
+        assertThat(voteDe(votant).moyenneDixiemes()).isNull();
+        assertThat(salle.configurationInterface().dureeAffichageMoyenneMs()).isEqualTo(10_000);
+        assertThat(console().configurationInterface().dureeVoteMs()).isEqualTo(30_000);
+        parcours.piloter(manche, InterventionDeManche.Action.METTRE_EN_PAUSE);
+        assertThat(voteDe(autre).peutVoter()).isFalse();
+        assertThat(voteDe(autre).delaiRestantMs()).isEqualTo(30_000);
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+        verifierCapture(Destination.joueur(votant.identifiant()), "retrouverEtatManette");
+        verifierCapture(Destination.SALLE, "retrouverEtatSalle");
+
+        parcours.piloter(manche, InterventionDeManche.Action.REPRENDRE);
+        banc.horloge.avancer(Duration.ofSeconds(30));
+        var salleApresCloture = (VuesKaraoke.BlocKaraokeSalle) banc.bloc.fournir(parcours.soiree, Destination.SALLE);
+        assertThat(salleApresCloture.votes()).isEqualTo(console().votes());
+        assertThat(salleApresCloture.votes()).singleElement()
+                .satisfies(vote -> assertThat(vote.moyenneDixiemes()).isEqualTo(40));
+        assertThat(voteDe(votant).nombreVotes()).isEqualTo(1L);
+        assertThat(voteDe(votant).moyenneDixiemes()).isEqualTo(40);
+        assertThat(voteDe(autre).maNote()).isNull();
+        verifierCapture(Destination.CONSOLE, "retrouverEtatConsole");
+        verifierCapture(Destination.joueur(votant.identifiant()), "retrouverEtatManette");
+        verifierCapture(Destination.SALLE, "retrouverEtatSalle");
+    }
+
+    @Test void projetteLesVotesOuvertsEtLeDernierClosAvecDepartageParNumero() {
+        UUID manche = parcours.demarrer(), interprete = parcours.joueur.identifiant();
+        Instant maintenant = banc.horloge.maintenant();
+        var file = FileAttente.depuis(new EtatFileAttente(parcours.soiree, manche, 1, 1, 1, 1, null, List.of(), Map.of()));
+        Map<UUID, ContenuKaraoke> contenus = new HashMap<>();
+        List<EtatVotePassage> votes = new ArrayList<>();
+        for (int numero = 1; numero <= 4; numero++) {
+            UUID id = new UUID(0, numero);
+            var depart = maintenant.minusSeconds(40 - 5L * numero);
+            var chanson = ServiceKaraokeTest.contenu(numero);
+            file.inscrire(new NouveauPassage(id, parcours.soiree, manche, interprete, List.of(interprete),
+                    chanson.chanson().chansonId(), Duration.ofSeconds(30), numero, depart));
+            file.appelerPassage(new CiblePassage(id, 0));
+            file.demarrerPassage(new CiblePassage(id, 1));
+            file.clorePassage(new CiblePassage(id, 2), EtatPassage.TERMINE, new TraceTerminale("FIN_PREVUE", null, depart));
+            contenus.put(id, chanson);
+            var cloture = numero <= 2 ? maintenant.minusSeconds(5) : null;
+            votes.add(new EtatVotePassage(id, depart, depart.plusSeconds(30), null, cloture, List.of()));
+        }
+        var capture = new InstantaneKaraoke(EtatManche.EN_COURS, file.etat(), contenus, EtatCyclePassage.vide(),
+                Map.of(), null, new EtatVoteDuPublic(votes));
+        var vue = (VuesKaraoke.BlocKaraokeConsole) VuesKaraoke.projeter(capture, Destination.CONSOLE, banc.ports.pseudos(parcours.soiree), maintenant,
+                ServiceKaraokeTest.PROPRIETES, ServiceKaraokeTest.SOURCE);
+        assertThat(vue.votes()).extracting(VuesKaraoke.VoteDuPassage::numero).containsExactly(4L, 3L, 2L);
+        assertThat(vue.votes()).extracting(VuesKaraoke.VoteDuPassage::etat).containsExactly("OUVERT", "OUVERT", "CLOS");
+        assertThat(vue.votes().getLast().nombreVotes()).isZero();
+        assertThat(vue.votes().getLast().moyenneDixiemes()).isNull();
+    }
+
+    private VuesKaraoke.VoteDuPassageManette voteDe(Acteur joueur) {
+        var manette = (VuesKaraoke.BlocKaraokeManette) banc.bloc.fournir(parcours.soiree, Destination.joueur(joueur.identifiant()));
+        return manette.votes().getFirst();
+    }
+
+    private VuesKaraoke.BlocKaraokeConsole console() {
+        return (VuesKaraoke.BlocKaraokeConsole) banc.bloc.fournir(parcours.soiree, Destination.CONSOLE);
     }
 
     void verifierCapture(Destination destination, String operation) throws Exception {

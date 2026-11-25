@@ -6,6 +6,7 @@
   <title>Console d’animation · CroustyQuizz</title>
   <link rel="stylesheet" href="/css/croustyquizz.css">
   <link rel="stylesheet" href="/css/console.css">
+  <link rel="stylesheet" href="/css/photos.css">
   <script defer src="/webjars/stomp__stompjs/bundles/stomp.umd.min.js"></script>
   <script type="module" src="/js/page.mjs"></script>
 </head>
@@ -14,7 +15,24 @@
   <header class="pilotage">
     <div class="pilotage__soiree"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span><span>Console d’animation</span></div>
     <div class="pilotage__manche"><p class="coupure" role="status" data-connexion>Synchronisation…</p></div>
-    <div class="pilotage__commandes"><button type="button" class="bouton" data-reprise disabled>Resynchroniser</button></div>
+    <div class="pilotage__commandes" data-pilotage-soiree>
+      <div class="pilotage__musique">
+        <button type="button" class="bouton" data-musique-attente aria-describedby="musique-attente-statut" disabled>Couper la musique</button>
+        <p id="musique-attente-statut" data-musique-attente-statut role="status"></p>
+      </div>
+      <button type="button" class="bouton" data-reprise disabled>Resynchroniser</button>
+      <button type="button" class="bouton" data-piloter-soiree="TERMINER" aria-disabled="true" aria-haspopup="dialog">Terminer la Soirée</button>
+      <button type="button" class="bouton bouton--action" data-piloter-soiree="LANCER" aria-disabled="true">Lancer la Soirée</button>
+      <button type="button" class="bouton bouton--action" data-piloter-soiree="MANCHE_SUIVANTE" aria-disabled="true">Manche suivante</button>
+      <dialog class="dialogue" aria-labelledby="titre-fin-soiree" data-dialogue-fin>
+        <h2 id="titre-fin-soiree">Terminer la Soirée ?</h2>
+        <p>La Manche active sera arrêtée et les écrans afficheront la fin de la Soirée.</p>
+        <div class="pilotage__confirmation">
+          <button type="button" class="bouton" data-annuler-fin autofocus>Annuler</button>
+          <button type="button" class="bouton bouton--action" data-confirmer-fin>Terminer la Soirée</button>
+        </div>
+      </dialog>
+    </div>
   </header>
   <main class="plan">
     <section class="panneau" aria-label="Soirée et mode en cours">
@@ -28,9 +46,35 @@
     </section>
     <aside class="panneau commun" aria-label="Programme et Joueurs">
       <div class="coquille__mode" data-laterale></div>
-      <h2>Programme</h2><ol class="commun__liste commun__programme" data-programme></ol>
+      <section class="programme" aria-labelledby="titre-programme" data-edition-programme>
+        <h2 id="titre-programme" tabindex="-1">Programme</h2>
+        <ol class="commun__liste commun__programme" role="list" data-programme></ol>
+        <p class="console__note" data-programme-vide hidden>Aucune Manche préparée.</p>
+        <p class="console__note" data-programme-fige hidden>Le programme est figé.</p>
+        <form class="programme__ajout" data-ajout-manche hidden>
+          <div class="champ">
+            <label for="mode-manche">Mode de jeu</label>
+            <select id="mode-manche" name="mode" data-mode-manche>
+              <option value="QUIZ">Quiz</option>
+              <option value="KARAOKE">Karaoké</option>
+            </select>
+          </div>
+          <fieldset class="programme__reglages" data-reglages-communs>
+            <div class="champ">
+              <label for="nombre-etapes">Nombre d’étapes</label>
+              <input id="nombre-etapes" type="number" min="1" max="100" value="3" required data-nombre-etapes>
+            </div>
+            <div class="champ">
+              <label for="temps-par-etape">Temps par étape (s)</label>
+              <input id="temps-par-etape" type="number" min="1" max="3600" value="20" required data-temps-par-etape>
+            </div>
+          </fieldset>
+          <button class="bouton bouton--action" type="submit" data-soumettre-manche aria-disabled="true">Ajouter une Manche</button>
+        </form>
+      </section>
+      <section class="panneau photos--console" data-photos hidden></section>
       <details><summary data-nombre-joueurs>Joueurs</summary><ul class="commun__liste" data-joueurs></ul></details>
-      <details><summary>Classement général</summary><ol class="commun__liste" data-classement></ol></details>
+      <details open><summary>Classement général</summary><ol class="commun__liste" role="list" data-classement></ol></details>
       <p data-buzz>Aucun Buzz reçu</p>
     </aside>
   </main>

@@ -56,8 +56,28 @@
 .pilotage__commandes {
   margin-left: auto;
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: flex-start;
   gap: var(--espace-2);
+}
+.pilotage__confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+  justify-content: flex-end;
+}
+
+.pilotage__musique {
+  display: grid;
+  justify-items: start;
+  gap: var(--espace-1);
+}
+
+.pilotage__musique p {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: 0.875rem;
 }
 
 .indicateurs {
@@ -98,8 +118,6 @@
   }
   .console .panneau { padding: var(--espace-4); }
   .console .panneau h2 small { display: none; }
-  .panneau { padding: var(--espace-4); }
-  .panneau h2 small { display: none; }
   /* Sur tablette, les commandes secondaires gardent leur icône et leur nom accessible. */
   .pilotage { gap: var(--espace-3) var(--espace-4); }
   .pilotage__commandes .bouton--icone-tablette .bouton__libelle,
@@ -117,25 +135,6 @@
   .plan { grid-template-columns: 1fr; }
 }
 
-.panneau {
-  display: flex;
-  flex-direction: column;
-  gap: var(--espace-4);
-  padding: var(--espace-5);
-  border-radius: var(--rayon-grand);
-  background: var(--fond-1);
-}
-.panneau h2 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 1.375rem;
-}
-.panneau h2 small {
-  color: var(--texte-2);
-  font-size: 0.9375rem;
-  font-weight: 400;
-}
 
 .en-cours {
   display: flex;
@@ -167,33 +166,6 @@
   padding: var(--espace-2);
 }
 
-.recherche {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: var(--espace-3);
-  padding: 0 var(--espace-4);
-  border: 2px solid var(--fond-4);
-  border-radius: var(--rayon);
-  background: var(--fond-0);
-}
-.recherche:focus-within {
-  border-color: var(--citron);
-}
-.recherche input {
-  min-height: 52px;
-  border: 0;
-  background: transparent;
-  color: var(--texte);
-  font: 400 1.125rem var(--police-texte);
-  caret-color: var(--citron);
-}
-.recherche input:focus-visible {
-  outline: none;
-}
-.recherche .icone {
-  color: var(--texte-2);
-}
 
 .resultats {
   width: 100%;
@@ -240,4 +212,49 @@
 .console__note {
   color: var(--texte-2);
   font-size: 0.9375rem;
+}
+
+.programme, .programme__ajout {
+  display: grid;
+  gap: var(--espace-3);
+}
+.programme__ajout {
+  justify-items: start;
+  padding-top: var(--espace-3);
+  border-top: 1px solid var(--fond-3);
+}
+.programme__reglages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+.programme__reglages .champ {
+  flex: 1 1 10rem;
+}
+.programme__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--espace-2) var(--espace-4);
+  padding-block: var(--espace-2);
+  border-bottom: 1px solid var(--fond-3);
+}
+.programme__ligne strong, .programme__ligne small {
+  display: block;
+}
+.programme__ligne small {
+  color: var(--texte-2);
+}
+.programme__commandes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+}
+.programme__commandes .bouton {
+  padding-inline: var(--espace-2);
 }

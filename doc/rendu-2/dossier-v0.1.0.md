@@ -15,7 +15,7 @@ Année 2026-2027 · Révision du 18 novembre 2026
 
 Ce dossier fait évoluer le dossier de lancement du Rendu 1. Il en garde l’ossature. Chaque section dit ce qui a changé depuis le 10 novembre et ce qui est réellement livré. Deux sections s’ajoutent : l’état de la feature majeure de chaque étudiant, et le contenu de la version `v0.1.0`.
 
-Sauf mention contraire, les chiffres sont mesurés le 18 novembre 2026 sur `develop`, au commit `6ae1740`. Le tag est posé le 18 novembre, après les dernières fusions : une PR qui n’est pas fusionnée à ce moment reste « en cours » et son code n’est pas dans la version.
+Sauf mention contraire, les chiffres sont mesurés le 18 novembre 2026 au commit `067ba88`, celui que contient le tag `v0.1.0` (commit de fusion `4341d8d` sur `main`). Le tag est posé le 18 novembre, après les dernières fusions : une PR qui n’est pas fusionnée à ce moment reste « en cours » et son code n’est pas dans la version.
 
 ## Équipe, comptes développeurs et fonctionnalités majeures
 
@@ -41,35 +41,34 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 
 # Feature majeure de chaque étudiant : état au 18/11
 
-État relevé sur GitHub le 18 novembre à 14 h.
+État relevé sur GitHub le 18 novembre à 14 h 30, juste après le tag.
 
 <div class="tableau-large">
 
 | Étudiant | Feature | Issues | PR fusionnées | PR en cours | Ce qui reste |
 |---|---|---|---|---|---|
-| Tibxla | Karaoké : File d’attente, puis Passage | #21, en tranches #82, #86, #89, #91, #93, #96 ; #22, en tranches #98 à #100 | #88 (contrat) et #87 (domaine) le 17/11, #97 (corrections du contrat) le 18/11 ; socle des Modes de jeu #81, #83, #84 | #90, #92 et #94, en relecture ; #104 en brouillon | fusionner les tranches 3a, 3b et 4 ; Passage (#22) : contrat en cours (#98), domaine, service, interface ; Vote et Palmarès (#23) |
-| nRayen | Soirée : créer et rejoindre par code | #6 ; suite dans #10 | aucune pour l’instant | #38 : changements demandés le 17/11 ; branche `feature/10-rejoindre-sans-accroc`, sans PR | traiter les quatre points de relecture et fusionner #38 ; ouvrir la PR de #10 ; déroulement manuel (#12), puis Blind test (#17) |
+| Tibxla | Karaoké : File d’attente, puis Passage | #21, en tranches #82, #86, #89, #91, #93, #96 ; #22, en tranches #98 à #100 | #88 (contrat) et #87 (domaine) le 17/11 ; #97 (corrections du contrat), #90 (source LRCLIB) et #92 (service et routes) le 18/11 ; socle des Modes de jeu #81, #83, #84 ; étude de l’existant #64 | #94 (interface), fusionnée dans `develop` quelques minutes après le tag : elle sera dans la version suivante ; #104 en brouillon | Passage (#22) : contrat en cours (#98), domaine, service, interface ; Vote et Palmarès (#23) |
+| nRayen | Soirée : créer et rejoindre par code | #6 ; suite dans #10 | aucune pour l’instant | #38 : quatre corrections faites et validées le 18/11, conflit avec `develop` à résoudre ; branche `feature/10-rejoindre-sans-accroc`, sans PR | résoudre le conflit et fusionner #38 ; ouvrir la PR de #10 ; déroulement manuel (#12), puis Blind test (#17) |
 | Piyakabib | Quiz : première Manche jouable | #14, bloquée par #12 et #13 | aucune pour le Quiz | #105 : ADR 0008, choix de la source des Questions en français (#13), ouverte le 17/11, en relecture | faire valider l’ADR et importer un premier lot de Questions (#13) ; `DeroulementQuiz`, routes et écrans de la Manche (#14) |
 
 </div>
 
 ## Tibxla : Karaoké, File d’attente puis Passage
 
-**Fusionné dans `develop`.** La File d’attente (#21) est découpée en tranches qui suivent l’ADR 0006 : contrat, domaine en Java pur, service et routes, interface. Les deux premières sont fusionnées le 17/11, suivies le 18/11 d’une PR de corrections du contrat :
+**Fusionné dans `develop`.** La File d’attente (#21) est découpée en tranches qui suivent l’ADR 0006 : contrat, domaine en Java pur, service et routes, interface. Le contrat et le domaine sont fusionnés le 17/11 ; les corrections du contrat, la source de paroles et le service le 18/11 :
 
 - le **contrat** (#82, PR #88) : huit opérations HTTP de la File d’attente et le bloc `karaoke` des trois écrans dans `docs/api/`. Le vérificateur des contrats contrôle 75 échanges HTTP, 72 événements et 120 cas de schéma pour ce parcours ;
 - les **corrections du contrat** demandées par nRayen à la relecture de #88 (#96, PR #97), fusionnées le 18/11 ;
 - le **domaine** (#86, PR #87) : `FileAttente` et `Passage` dans `passage`, `DeroulementKaraoke` dans `karaoke`, avec les règles validées le 16/11 dans #21. Les tests du domaine couvrent la rotation par tours, la priorité unique, la limite de Passages en attente par Joueur, le refus d’une même Chanson deux fois en attente et l’accueil d’un retardataire.
 
-**En relecture.**
+- la **source de paroles** (#89, PR #90) : un port (`SourceDeParoles`), son adaptateur LRCLIB et la recherche de Chansons. Les tests n’appellent jamais Internet ;
+- le **service** (#91, PR #92) : le service, les huit routes et deux migrations. La File d’attente est utilisable par HTTP et les vues des trois écrans reçoivent leur bloc `karaoke`.
 
-- **#90** (tranche 3a) : la source de paroles derrière un port (`SourceDeParoles`), son adaptateur LRCLIB et la recherche de Chansons. Les tests n’appellent jamais Internet.
-- **#92** (tranche 3b) : le service, les huit routes et deux migrations. La File d’attente devient utilisable par HTTP et les vues des trois écrans reçoivent leur bloc `karaoke`.
-- **#94** (tranche 4) : l’interface de la File d’attente sur la Manette, la Console d’animation et l’Écran de salle. nRayen l’a relue trois fois, du 17 au 18/11 ; chaque point demandé est corrigé avec un test, et la recette sert cette version.
+**Fusionné après le tag.** **#94** (tranche 4) : l’interface de la File d’attente sur la Manette, la Console d’animation et l’Écran de salle. nRayen l’a relue trois fois, du 17 au 18/11 ; chaque point demandé est corrigé avec un test. Elle est entrée dans `develop` le 18/11 à 14 h 16, juste après la fusion dans `main` : elle n’est pas dans la `v0.1.0`, mais la recette la sert.
 
 **Suite : le Passage (#22).** L’ADR 0007 a tranché la source audio. La tranche 1, le contrat de l’appel, de la lecture et du calage (#98), est écrite : PR #104 en brouillon (dix opérations, parcours d’exemple vérifié), qui sera proposée à la relecture après le Rendu 2. Le domaine (#99) et le service (#100) suivent.
 
-**Travail transverse fusionné depuis le Rendu 1** : canal temps réel (#30), Vue synchronisée et Révisions (#49, #60), routes de test en recette (#58), vérification des réponses HTTP contre les contrats (#59), socle des Modes de jeu (#77, #81, #83, #84), direction visuelle (#75), source audio du Karaoké (#85), livraison et recette (#46, #50), outillage de l’équipe (#41, #44, #45, #52). L’étude de l’existant (#63) est en relecture dans la PR #64.
+**Travail transverse fusionné depuis le Rendu 1** : canal temps réel (#30), Vue synchronisée et Révisions (#49, #60), routes de test en recette (#58), vérification des réponses HTTP contre les contrats (#59), socle des Modes de jeu (#77, #81, #83, #84), direction visuelle (#75), source audio du Karaoké (#85), livraison et recette (#46, #50), outillage de l’équipe (#41, #44, #45, #52). L’étude de l’existant (#63) est fusionnée avec la PR #64 le 18/11.
 
 ## nRayen : Soirée, créer et rejoindre par code
 
@@ -81,11 +80,11 @@ Chaque commit est fait depuis le compte de la personne qui a réalisé le travai
 - les pages pour préparer la Soirée, l’Écran de salle qui affiche le code, le QR code et les Joueurs, et l’arrivée sur la Manette ;
 - le branchement de `soiree` sur `tempsreel`, annoncé au propriétaire avant le code.
 
-**Relecture du 17/11 (Tibxla).** Les points de la relecture précédente sont tous traités. Quatre changements sont demandés avant fusion : le QR code mène à une adresse `http://` derrière un relais HTTPS ; la route du QR code n’applique pas la sécurité de son contrat ; le schéma de l’arrivée contredit sa description ; la Manette perd son jeton lors d’une coupure passagère.
+**Relecture du 17/11 (Tibxla).** Les points de la relecture précédente sont tous traités. Quatre changements sont demandés avant fusion : le QR code mène à une adresse `http://` derrière un relais HTTPS ; la route du QR code n’applique pas la sécurité de son contrat ; le schéma de l’arrivée contredit sa description ; la Manette perd son jeton lors d’une coupure passagère. nRayen les a corrigés dans la nuit du 17 au 18/11, un commit par point, et Tibxla les a validés le 18/11. Il reste à résoudre un conflit avec `develop`, apparu avec les fusions du Karaoké : la PR n’est donc pas dans la `v0.1.0`.
 
 **Suite déjà poussée.** La branche `feature/10-rejoindre-sans-accroc` (#10), empilée sur #38, ajoute 6 commits le 17/11 : filtre des pseudos injurieux, refus d’un pseudo déjà pris, tests de la reconnexion d’une Manette avec son jeton, arrivée en cours de Manche et passage de l’arrivée à la Manette en temps réel. Elle n’a pas encore de PR. Au total, les 20 commits de nRayen sont sur ces deux branches et ne sont pas encore dans `develop`.
 
-**Relectures.** nRayen a approuvé 5 PR (#30, #36, #37, #39, #75) et demandé des changements sur 3 (#30, #88, #94). Il a coordonné avec Piyakabib la règle d’arrivée d’un Joueur pendant une Manche de Quiz, puis mis à jour le contrat en conséquence.
+**Relectures.** nRayen a approuvé 10 PR (#30, #36, #37, #39, #75, #94, #97, #102, #103 et la livraison #107) et demandé des changements sur 3 (#30, #88, #94). Il a coordonné avec Piyakabib la règle d’arrivée d’un Joueur pendant une Manche de Quiz, puis mis à jour le contrat en conséquence.
 
 **Reste** : le déroulement manuel des Manches (#12), puis le Blind test (#17 à #19), le Format Équipe (#26) et l’Assistant (#28).
 
@@ -109,22 +108,19 @@ Le Rendu 1 annonçait `v0.1.0` comme le jalon du **socle**. C’est ce que livre
 - **Socle des Modes de jeu** (ADR 0006, #78 à #80) : `DeroulementDeManche` reçoit les actions des Joueurs et les commandes de pilotage. Le `ServiceDeManche` prend le verrou de la Soirée, appelle le déroulement, enregistre l’état dans une seule transaction, puis publie les vues après validation. Une commande devenue sans objet est refusée (`COMMANDE_PERIMEE`) ; un envoi répété rend son résultat initial ; tout refus suit le format `Probleme`. Le temps passe par l’`Horloge` et ses minuteurs.
 - **Temps réel** (ADR 0004) : canal WebSocket et STOMP, Révisions par destination, dernière Vue synchronisée gardée par `tempsreel`, assemblage de chaque vue en une partie commune plus un bloc par Mode de jeu, contrôle d’accès aux abonnements.
 - **Pages communes des trois écrans** (#80) : `console.html`, `manette.html` et `ecran.html` chargent le module du Mode de jeu en cours et tiennent leur Vue synchronisée à jour, avec reprise après coupure. Un module factice et des identités de démonstration permettent de les essayer en développement et en recette.
-- **Domaine du Karaoké** : File d’attente et Passages (`passage`), déroulement du Karaoké (`karaoke`), en Java pur.
+- **File d’attente du Karaoké, côté serveur** : domaine en Java pur (`passage`, `karaoke`), source de paroles LRCLIB et recherche de Chansons (#90), service sérialisé par Soirée, huit routes HTTP et persistance (#92). Elle s’utilise par HTTP et par les vues des trois écrans ; son interface (#94) est arrivée dans `develop` juste après le tag.
+- **Glossaire et étude de l’existant** (#64) : Freestyle, Passages à plusieurs, Délégation, paliers ; ADR 0005 sur l’Enregistrement d’un Passage.
 - **Version** : `pom.xml` passe en `0.1.0` (PR #103) ; le README renvoie vers la release et vers les dossiers de rendu.
 - **Contrats réseau** (`docs/api/`) : premier parcours de Quiz et File d’attente du Karaoké. Le contrat de la File d’attente intègre les corrections de #97. Le vérificateur contrôle 77 schémas, 34 opérations, 123 échanges HTTP, 85 événements et 143 cas de schéma.
-- **Base** : deux migrations Flyway, le point de départ du schéma et le cycle des Manches avec les reçus des envois.
-- **Décisions et conception** : ADR 0004, 0006 et 0007 ; direction visuelle (`DESIGN.md`, `PRODUCT.md`, polices et icônes sous licence libre) ; procédure de déploiement (`docs/deploiement.md`).
+- **Base** : quatre migrations Flyway : le point de départ du schéma, le cycle des Manches avec les reçus des envois, les Passages de la File d’attente et le contenu des Chansons.
+- **Décisions et conception** : ADR 0004 à 0007 ; direction visuelle (`DESIGN.md`, `PRODUCT.md`, polices et icônes sous licence libre) ; procédure de déploiement (`docs/deploiement.md`).
 - **Intégration continue et livraison** : voir la section « Livraisons, intégration continue et qualité ».
 
-## En relecture : livré seulement si fusionné avant le tag
+## Encore en relecture au moment du tag
 
 | PR | Contenu | Auteur |
 |---|---|---|
-| #90 | Source de paroles LRCLIB et recherche de Chansons | Tibxla |
-| #92 | Service, routes et persistance de la File d’attente | Tibxla |
-| #94 | Interface de la File d’attente sur les trois écrans | Tibxla |
 | #38 | Créer une Soirée et la rejoindre par code | nRayen |
-| #64 | Étude de l’existant intégrée au glossaire, ADR 0005 | Tibxla |
 | #105 | Choix de la source des Questions en français, ADR 0008 | Piyakabib |
 
 ## Ce que la v0.1.0 ne contient pas
@@ -141,7 +137,7 @@ Le problème et la cible n’ont pas changé. Un **Lieu** qui accueille du publi
 ## Ce qui a changé depuis le Rendu 1
 
 - **Une étude de l’existant** (novembre 2026, section du PRD nº 2). Deux produits du marché ont été étudiés. Nous en reprenons des parcours et des règles, réécrits dans nos propres spécifications, jamais leurs textes, visuels ou sons. Retenu : trois interfaces au travail distinct, une File d’attente qui tourne par tours avec une priorité visible, un Écran de salle qu’on peut fermer et rouvrir sans interrompre la Manche. Corrigé : des boutons de Réponse qui portent un texte et pas seulement une couleur, un score validé par le serveur avant son animation, aucun succès annoncé sans réponse du serveur. Écarté : la notation de la voix, le hors connexion, les applications natives.
-- **Des paliers.** Les ajouts sont rangés en trois paliers pour pouvoir couper par le bas : palier 1, cœur du Karaoké et direction visuelle ; palier 2, Passages à plusieurs et image du Lieu ; palier 3, un quatrième Mode de jeu proposé, le Freestyle, et l’Enregistrement d’un Passage. Ces termes entrent au glossaire avec la PR #64, encore en relecture.
+- **Des paliers.** Les ajouts sont rangés en trois paliers pour pouvoir couper par le bas : palier 1, cœur du Karaoké et direction visuelle ; palier 2, Passages à plusieurs et image du Lieu ; palier 3, un quatrième Mode de jeu proposé, le Freestyle, et l’Enregistrement d’un Passage. Ces termes sont entrés au glossaire avec la PR #64.
 - **Une direction visuelle commune** (#65, `DESIGN.md`) : le rouleau de tickets d’une Soirée, lisible à cinq mètres dans un bar sombre et utilisable d’une main sur la Manette, avec la cible WCAG 2.2 AA.
 
 L’innovation d’usage reste la continuité de la Soirée : **un seul accès par QR code**, une Manette qui change d’elle-même à chaque Manche, un Pilotage Automatique avec reprise en main par l’Animateur, et une préparation par l’Assistant externe. Ces apports restent des hypothèses : aucun test en salle n’a encore eu lieu.
@@ -156,9 +152,9 @@ Le dossier est maintenu dans **`doc/rendu-2/dossier-v0.1.0.md`** et compilé en 
 
 ## Le suivi en chiffres, au 18/11
 
-- **66 issues**, dont 22 fermées.
-- **39 PR**, dont 31 fusionnées (2 de Dependabot) et 8 ouvertes. 27 PR ont été fusionnées depuis celle du Rendu 1 (#36).
-- **Relectures** : Piyakabib a approuvé 24 PR, nRayen 9, Tibxla 2. Des changements ont été demandés sur 4 PR (#30, #38, #88, #94).
+- **66 issues**, dont 26 fermées.
+- **40 PR**, dont 37 fusionnées (2 de Dependabot) et 3 ouvertes. 33 PR ont été fusionnées depuis celle du Rendu 1 (#36), dont la livraison `develop` vers `main` (#107).
+- **Relectures** : Piyakabib a approuvé 26 PR, nRayen 10, Tibxla 2. Des changements ont été demandés sur 4 PR (#30, #38, #88, #94).
 
 ## Ce qui a changé dans la façon de travailler
 
@@ -189,7 +185,7 @@ Les parcours décrivent la **cible fonctionnelle** du Rendu 1. Chacun indique ma
 ## 4. Chanter et voter au Karaoké
 
 **Acteurs : le Joueur appelé, le public et l’Animateur.** Un Joueur s’inscrit dans la File d’attente, chante quand il est appelé, puis le public vote de 1 à 5.\
-**État :** le contrat et le domaine de la File d’attente sont fusionnés ; le service et l’interface sont en relecture (#92, #94). La source audio est décidée (ADR 0007) : un fichier local choisi sur l’ordinateur de l’Écran de salle, sinon les paroles seules. Le Rendu 1 prévoyait, en Pilotage Automatique, de passer au suivant après 30 secondes sans confirmation. La spécification du Passage (#22) traite d’abord le Pilotage Manuel : ces 30 secondes y sont un repère, le Joueur appelé peut encore confirmer, et l’Animateur décide d’attendre ou de passer. Le Vote et le Palmarès (#23) restent à faire.
+**État :** le contrat, le domaine, la source de paroles et le service de la File d’attente sont fusionnés ; l’interface (#94) est fusionnée dans `develop` juste après le tag et sera dans la version suivante. La source audio est décidée (ADR 0007) : un fichier local choisi sur l’ordinateur de l’Écran de salle, sinon les paroles seules. Le Rendu 1 prévoyait, en Pilotage Automatique, de passer au suivant après 30 secondes sans confirmation. La spécification du Passage (#22) traite d’abord le Pilotage Manuel : ces 30 secondes y sont un repère, le Joueur appelé peut encore confirmer, et l’Animateur décide d’attendre ou de passer. Le Vote et le Palmarès (#23) restent à faire.
 
 ## 5. Jouer en Équipe et gérer un imprévu
 
@@ -237,13 +233,13 @@ En base, `manche_deroulement` garde l’état de chaque Manche et `manche_envoi`
 | Sujet | Rendu 1 | Au 18/11 |
 |---|---|---|
 | Source audio du Karaoké | à valider | **décidée** (ADR 0007, après un prototype, #20) : fichier local sur l’Écran de salle, sinon paroles seules ; une vidéo intégrée au palier 2 |
-| Paroles synchronisées | LRCLIB envisagé | adaptateur LRCLIB en relecture (#90) |
+| Paroles synchronisées | LRCLIB envisagé | **adaptateur LRCLIB fusionné** (#90) |
 | Extraits du Blind test | Deezer envisagé | inchangé, non commencé |
-| Banque de Questions en français | à choisir | à choisir (#13) |
+| Banque de Questions en français | à choisir | OpenQuizzDB proposé (ADR 0008, PR #105, en relecture) |
 | Prestataire SMS | à choisir | à choisir (#33) |
 | Assistant (serveur MCP) | Spring AI envisagé | inchangé, non commencé (#28) |
 
-Décisions d’architecture sur `develop` : ADR 0001 à 0004, 0006 et 0007. L’ADR 0005, sur l’Enregistrement d’un Passage, est dans la PR #64, et l’ADR 0008, sur la source des Questions du Quiz, dans la PR #105.
+Décisions d’architecture sur `develop` : ADR 0001 à 0007. L’ADR 0008, sur la source des Questions du Quiz, est proposé dans la PR #105.
 
 
 # Protocole d’IA, livraisons et qualité
@@ -288,7 +284,7 @@ S’y ajoutent l’analyse CodeQL de GitHub, Dependabot (mises à jour groupées
 | Production | Render et Neon, <https://croustyquizz-prod.onrender.com>, créée au jalon `v0.1.0` | chaque livraison taguée, à partir de `v0.1.0` |
 | Démo de secours | serveur de Tibxla, `tools/demo.sh`, à la demande | `main` ou un tag |
 
-**Tests.** Au 18/11 sur `6ae1740`, `./mvnw verify` exécute **142 tests JUnit** dans 22 classes, sans échec. `npm test --prefix tools/api` exécute **36 tests** Node, après la vérification des contrats. Les tests couvrent :
+**Tests.** Au 18/11 sur `067ba88`, contenu du tag, `./mvnw verify` exécute **308 tests JUnit** dans 30 classes, sans échec. `npm test --prefix tools/api` exécute **36 tests** Node, après la vérification des contrats. Les tests couvrent :
 
 - les déroulements en Java pur avec une `Horloge` factice, par la classe commune `ContratDeroulementDeManche` ;
 - le service de Manche : verrou, transaction, publication après validation, envois répétés ;
@@ -300,15 +296,15 @@ Restent à mesurer : une salle de **60 Joueurs simultanés** et l’usage sur de
 
 ## README, licence et indicateurs
 
-| Indicateur, au 18/11 sur `6ae1740` | Valeur |
+| Indicateur, au 18/11 sur `067ba88` | Valeur |
 |---|---|
-| Couverture des lignes (JaCoCo) | **95,4 %** (880 lignes sur 922) |
-| Couverture des branches (JaCoCo) | **87,0 %** (456 sur 524) |
+| Couverture des lignes (JaCoCo) | **94,6 %** (1 453 lignes sur 1 536) |
+| Couverture des branches (JaCoCo) | **85,9 %** (807 sur 939) |
 | Alertes PMD (Error Prone et Best Practices) | **0** |
-| Tests JUnit et tests Node | **142** et **36**, sans échec |
+| Tests JUnit et tests Node | **308** et **36**, sans échec |
 | Version du `pom.xml` | `0.1.0` |
 | Licence | **MIT**, fichier `LICENSE` |
 
-Ces mesures portent sur le code existant, c’est-à-dire le socle et le domaine du Karaoké. Elles ne disent rien des packages encore vides. Zéro alerte PMD signifie qu’aucun problème n’est détecté par les règles configurées, pas l’absence de bug. Le README présente l’installation, le déploiement et les badges de version, de licence, de couverture, d’alertes PMD et de CI ; les badges de couverture et de PMD reflètent le dernier build réussi de `develop`.
+Ces mesures portent sur le code existant, c’est-à-dire le socle et la File d’attente du Karaoké côté serveur. Elles ne disent rien des packages encore vides. Zéro alerte PMD signifie qu’aucun problème n’est détecté par les règles configurées, pas l’absence de bug. Le README présente l’installation, le déploiement et les badges de version, de licence, de couverture, d’alertes PMD et de CI ; les badges de couverture et de PMD reflètent le dernier build réussi de `develop`.
 
-<p class="references">Références : consignes du Rendu 2 (issue nº 101) ; dossier du Rendu 1 ; PRD nº 2 ; GLOSSARY.md ; AGENTS.md ; CONTRIBUTING.md ; PRODUCT.md ; DESIGN.md ; pom.xml ; workflows ci.yml et livraison.yml ; docs/deploiement.md ; docs/ecrans.md ; ADR 0001 à 0004, 0006 et 0007 ; issues et PR citées, consultées le 18/11/2026.</p>
+<p class="references">Références : consignes du Rendu 2 (issue nº 101) ; dossier du Rendu 1 ; PRD nº 2 ; GLOSSARY.md ; AGENTS.md ; CONTRIBUTING.md ; PRODUCT.md ; DESIGN.md ; pom.xml ; workflows ci.yml et livraison.yml ; docs/deploiement.md ; docs/ecrans.md ; ADR 0001 à 0008 ; issues et PR citées, consultées le 18/11/2026.</p>
