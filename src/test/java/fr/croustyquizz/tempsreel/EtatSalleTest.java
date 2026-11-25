@@ -20,6 +20,8 @@ import org.springframework.messaging.support.ExecutorSubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import fr.croustyquizz.soiree.ServiceSoiree;
+
 class EtatSalleTest {
 	@Test
 	void laRouteRefuseUnAbonnementInactifPuisCaptureLaVueCompleteDuBuzz() throws Exception {
@@ -46,7 +48,7 @@ class EtatSalleTest {
 		entetes.setSubscriptionId(abonnement.toString());
 		entetes.setDestination(Canaux.salle(soiree));
 		registre.afterMessageHandled(MessageBuilder.createMessage(new byte[0], entetes.getMessageHeaders()), null, broker, null);
-		var buzz = new BuzzControleur(diffuseur, horloge, verrous);
+		var buzz = new BuzzControleur(diffuseur, horloge, verrous, mock(ServiceSoiree.class));
 		buzz.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Alpha"));
 		buzz.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Bravo"));
 		mvc.perform(get(route).param("abonnementId", abonnement.toString())).andExpect(status().isOk())
@@ -64,7 +66,8 @@ class EtatSalleTest {
 	@Test
 	void lesVuesDeBuzzSontImmuablesEtLimiteesAux64Derniers() {
 		var diffuseur = new DiffuseurFactice();
-		var controleur = new BuzzControleur(diffuseur, Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), new VerrousSoiree());
+		var controleur = new BuzzControleur(diffuseur, Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), new VerrousSoiree(),
+				mock(ServiceSoiree.class));
 		UUID soiree = UUID.randomUUID();
 		for (int i = 0; i < 65; i++) {
 			controleur.buzzer(soiree, new BuzzControleur.DemandeDeBuzz("Joueur " + i));

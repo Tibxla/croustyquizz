@@ -12,7 +12,14 @@ export function corpsVote({ envoiId, vote, note }) {
 }
 
 export const formaterNote = note => `${note} sur 5`;
-export const formaterNombreVotes = nombre => `${nombre} vote${nombre > 1 ? 's' : ''}`;
+export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
+export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
+
+export function votesVisiblesSalle(bloc, maintenant) {
+	const duree = bloc.configurationInterface.dureeAffichageMoyenneMs;
+	return (bloc.votes ?? []).filter(vote => vote.etat === 'OUVERT' || !vote.suivantDemarre
+		|| maintenant < Date.parse(vote.clotureLe) + duree).slice(0, 2);
+}
 
 export function delaiVoteRestant(vote, maintenant, enPause) {
 	return delaiAppelRestant({ delaiAppelRestantMs: vote.delaiRestantMs, calculeLe: vote.calculeLe, maintenant, enPause });
