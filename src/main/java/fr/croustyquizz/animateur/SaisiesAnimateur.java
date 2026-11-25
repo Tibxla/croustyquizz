@@ -59,7 +59,7 @@ final class SaisiesAnimateur {
 		}
 	}
 
-	record CreationInvitation(@NotBlank @Email @CodePointLength(max = 254) String email) {
+	record CreationInvitation(@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email) {
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
 		static CreationInvitation lire(JsonNode corps) {
 			verifierObjet(corps, 1);

@@ -37,8 +37,8 @@ class ComptesAnimateur {
 	}
 
 	void verifierEmailDisponible(String email) {
-		boolean existe = jdbc.sql("select exists (select 1 from animateur where lower(email) = lower(:email))")
-				.param("email", email).query(Boolean.class).single();
+		boolean existe = jdbc.sql("select exists (select 1 from animateur where lower(email) = :email)")
+				.param("email", normaliser(email)).query(Boolean.class).single();
 		if (existe) {
 			throw emailDejaUtilise().exception();
 		}
@@ -84,7 +84,7 @@ class ComptesAnimateur {
 	}
 
 	/** La casse est repliée en Java : le lower() de PostgreSQL dépend de la locale de la base. */
-	private static String normaliser(String email) {
+	static String normaliser(String email) {
 		return email.toLowerCase(Locale.ROOT);
 	}
 

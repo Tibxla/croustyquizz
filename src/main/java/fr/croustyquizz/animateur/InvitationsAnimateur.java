@@ -31,7 +31,8 @@ class InvitationsAnimateur {
 		this.horloge = horloge;
 	}
 
-	InvitationCreee creer(UUID lieuId, String email) {
+	InvitationCreee creer(UUID lieuId, String emailSaisi) {
+		String email = ComptesAnimateur.normaliser(emailSaisi);
 		comptes.verifierEmailDisponible(email);
 		String cle = Secrets.tirer(hasard);
 		Instant expireLe = horloge.maintenant().plus(DUREE).truncatedTo(ChronoUnit.MICROS);
