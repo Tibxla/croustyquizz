@@ -5,8 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import fr.croustyquizz.manche.RefusDeCommande;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
@@ -47,6 +51,30 @@ class CorpsKaraokeTest {
     @ValueSource(strings = {"\u200B", "Lune\u200B", "\u00AD", "\uFEFFLune", "Lu\u0007ne", "!!!", "« … »", ""})
     void refuseLesCaracteresDeFormatEtLesClesVides(String titre) {
         refuser(titre);
+    }
+
+    /** Un cas de src/test/resources/karaoke/verdicts-suggestion.json, relu par le test de la Manette. */
+    record Verdict(String texte, Integer repetitions, boolean accepte) {
+        String valeur() { return texte.repeat(repetitions == null ? 1 : repetitions); }
+    }
+
+    record Verdicts(String description, List<Verdict> cas) { }
+
+    static List<Verdict> verdictsPartages() throws IOException {
+        try (InputStream flux = CorpsKaraokeTest.class.getResourceAsStream("/karaoke/verdicts-suggestion.json")) {
+            return JsonMapper.builder().build().readValue(flux, Verdicts.class).cas();
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("verdictsPartages")
+    void lesVerdictsPartagesAvecLaManetteSontCeuxDuServeur(Verdict verdict) {
+        for (var corps : List.<Runnable>of(() -> new CorpsKaraoke.SuggestionChanson(verdict.valeur(), "Indochine"),
+                () -> new CorpsKaraoke.SuggestionChanson("Lune", verdict.valeur()))) {
+            boolean accepte;
+            try { corps.run(); accepte = true; } catch (RefusDeCommande refus) { accepte = false; }
+            assertThat(accepte).as("%s", verdict).isEqualTo(verdict.accepte());
+        }
     }
 
     @Test void lesTabulationsRestentDesBlancs() {

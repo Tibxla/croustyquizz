@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { chanson, creerBanc, terminerMicrotaches, vue } from './karaoke-dom-factice.mjs';
 import { monter as manette } from '../../src/main/resources/static/js/modes/karaoke/manette.mjs';
 import { monter as consoleKaraoke } from '../../src/main/resources/static/js/modes/karaoke/console.mjs';
@@ -71,17 +72,14 @@ test('Manette : le refus conserve la saisie et le démontage annule la requête 
 	assert.equal(b.appels[1].args[3].signal.aborted, true);
 });
 
-// Verdicts relevés sur CorpsKaraoke.verifierChampSuggestion (Java 21) : true si le serveur accepte le champ.
-const VERDICTS_DU_SERVEUR = [
-	['\u200B', false], ['a\u200Bb', false], ['a\u0007', false], ['\u001Fabc\u001C', true], ['abc\u0085', true],
-	['« … » !?', false], ['  \t ', false], ['\u0958'.repeat(61), false], ['\u0958'.repeat(60), true],
-	['É'.repeat(120), true], ['É'.repeat(121), false], ['E\u0301'.repeat(60), true], ['E\u0301'.repeat(61), false],
-	['♥', true], ['\u0301', false], ['\u00A0x\u00A0', true], ['\u3000', false], ['\uFEFFabc', false],
-	['abc\uD800', false], ['’', false], ['Ⅻ', true], ['\u00AD', false], ['a\u2028b', true], ['...a', true],
-	['\u202Eabc', false], ['ﬁ', true], ['  Éclat   du soir  ', true], ['\u061C', false], ['x\u0000', false],
-];
+// Verdicts de CorpsKaraoke.verifierChampSuggestion, partagés avec CorpsKaraokeTest : si la règle Java change,
+// le fichier change avec elle et ce test rappelle la Manette.
+const VERDICTS_DU_SERVEUR = JSON.parse(readFileSync(
+	new URL('../../src/test/resources/karaoke/verdicts-suggestion.json', import.meta.url), 'utf8')).cas
+	.map(({ texte, repetitions = 1, accepte }) => [texte.repeat(repetitions), accepte]);
 
 test('Manette : la validation d’un champ de suggestion rend le même verdict que le serveur', () => {
+	assert.ok(VERDICTS_DU_SERVEUR.length >= 29, `${VERDICTS_DU_SERVEUR.length} cas`);
 	for (const [texte, accepte] of VERDICTS_DU_SERVEUR) {
 		assert.equal(erreurChampSuggestion(texte) === '', accepte, JSON.stringify(texte));
 	}
