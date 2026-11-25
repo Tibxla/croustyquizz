@@ -21,6 +21,8 @@ function banc({ envoyer, surEnvoi } = {}) {
 	const communs = creer('reglages-communs', 'fieldset');
 	const nombre = creer('nombre-etapes', 'input');
 	const temps = creer('temps-par-etape', 'input');
+	const erreurAjout = creer('erreur-ajout', 'p');
+	erreurAjout.hidden = true;
 	const ajout = creer('soumettre-manche', 'button');
 	const liste = creer('programme', 'ol');
 	const programmeFige = creer('programme-fige', 'p');
@@ -35,7 +37,7 @@ function banc({ envoyer, surEnvoi } = {}) {
 	});
 	const programme = monterProgramme(panneau, contexte);
 	return {
-		ajout, appels, communs, formulaire, liste, mode, nombre, programmeFige, temps, programme,
+		ajout, appels, communs, erreurAjout, formulaire, liste, mode, nombre, programmeFige, temps, programme,
 		captures: () => captures, connecter: changerEtat,
 		afficher: (manches, etat = 'PREPARATION') => programme.afficher({ soiree: { etat }, programme: manches }),
 	};
@@ -84,6 +86,24 @@ test('le Karaoké envoie un objet de réglages vide et le démontage annule l’
 	b.appels[0].rejeter(new DOMException('Annulation', 'AbortError'));
 	await terminerMicrotaches();
 	assert.equal(b.captures(), 0);
+});
+
+test('un mode proposé sans réglages dans la Console se signale au lieu d’un bouton inerte', () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'BLIND_TEST';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 0);
+	assert.equal(b.erreurAjout.hidden, false);
+	assert.match(b.erreurAjout.textContent, /pas encore ses réglages dans la Console/);
+
+	b.mode.value = 'KARAOKE';
+	b.mode.dispatchEvent({ type: 'change' });
+	assert.equal(b.erreurAjout.hidden, true);
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
 });
 
 test('déplace avec une permutation complète, retire avec DELETE et affiche le programme figé', async () => {

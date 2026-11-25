@@ -38,6 +38,7 @@ export function monterProgramme(panneau, contexte) {
 	const zonesDeReglages = Object.entries(REGLAGES_DES_MODES).filter(([, { zone }]) => zone)
 		.map(([modeDeJeu, { zone }]) => [modeDeJeu, element(zone)]);
 	const ajout = element('soumettre-manche');
+	const erreurAjout = element('erreur-ajout');
 	const liste = element('programme');
 	const route = `/api/soirees/${contexte.soireeId}`;
 	let modifiable = false;
@@ -71,6 +72,7 @@ export function monterProgramme(panneau, contexte) {
 	}
 
 	function actualiserReglages() {
+		erreurAjout.hidden = true;
 		for (const [modeDeJeu, zone] of zonesDeReglages) {
 			zone.hidden = mode.value !== modeDeJeu;
 			zone.disabled = zone.hidden;
@@ -80,7 +82,14 @@ export function monterProgramme(panneau, contexte) {
 	function ajouter(evenement) {
 		evenement.preventDefault();
 		const reglagesDuMode = REGLAGES_DES_MODES[mode.value];
-		if (!reglagesDuMode) return;
+		if (!reglagesDuMode) {
+			// Une option de « Mode de jeu » sans entrée dans REGLAGES_DES_MODES : le dire plutôt qu'un bouton inerte.
+			if (!peutEnvoyer()) return;
+			erreurAjout.textContent = 'Ce Mode de jeu n’a pas encore ses réglages dans la Console : il ne peut pas être ajouté.';
+			erreurAjout.hidden = false;
+			return;
+		}
+		erreurAjout.hidden = true;
 		void modifier('POST', '/manches', { mode: mode.value, reglages: reglagesDuMode.lire(element) });
 	}
 
