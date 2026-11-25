@@ -29,6 +29,7 @@ final class PoigneeDeMainAnimateur implements HandshakeInterceptor {
 	private static final String SESSION = "sessionAnimateur";
 	private static final String CSRF = "csrfAnimateur";
 	private static final String CONNEXION = "connexionAnimateur";
+	private static final String ENTETE_CSRF = "X-CSRF-TOKEN";
 
 	private final CsrfTokenRepository jetons;
 
@@ -57,14 +58,23 @@ final class PoigneeDeMainAnimateur implements HandshakeInterceptor {
 	public void afterHandshake(ServerHttpRequest requete, ServerHttpResponse reponse,
 			WebSocketHandler gestionnaire, Exception erreur) { }
 
+	/**
+	 * Rend l'Animateur de la session du handshake si le CONNECT porte son jeton CSRF. Sans cet en-tête, la
+	 * connexion ne revendique pas la session : un Écran de salle ouvert dans un navigateur connecté reste
+	 * anonyme (dev et recette) ou passe par le résolveur, qui le refuse en production.
+	 */
 	@SuppressWarnings("PMD.CloseResource") // La session HTTP conserve le WebSocket jusqu’à sa fermeture.
 	static AnimateurConnecte connecter(SimpMessageHeaderAccessor entetes) {
 		var attributs = entetes.getSessionAttributes();
 		if (attributs == null || !(attributs.get(SESSION) instanceof SessionAnimateur session)) {
 			return null;
 		}
-		if (!(attributs.get(CSRF) instanceof CsrfToken jeton)
-				|| !csrfValide(jeton, entetes.getFirstNativeHeader(jeton.getHeaderName()))) {
+		CsrfToken jeton = attributs.get(CSRF) instanceof CsrfToken csrf ? csrf : null;
+		String masque = entetes.getFirstNativeHeader(jeton == null ? ENTETE_CSRF : jeton.getHeaderName());
+		if (masque == null) {
+			return null;
+		}
+		if (jeton == null || !csrfValide(jeton, masque)) {
 			throw new MessageDeliveryException("Le jeton CSRF est absent ou invalide.");
 		}
 		if (!(attributs.get(CONNEXION) instanceof WebSocketSession connexion) || !session.ajouter(connexion)) {
@@ -86,9 +96,6 @@ final class PoigneeDeMainAnimateur implements HandshakeInterceptor {
 	}
 
 	private static boolean csrfValide(CsrfToken jeton, String masque) {
-		if (masque == null) {
-			return false;
-		}
 		byte[] attendu = jeton.getToken().getBytes(StandardCharsets.UTF_8);
 		byte[] donnees;
 		try {

@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.WebSocket;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,8 +19,10 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.tomcat.websocket.WsWebSocketContainer;
@@ -47,6 +50,7 @@ import org.springframework.web.socket.WebSocketHttpHeaders;
 
 import tools.jackson.databind.json.JsonMapper;
 
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.soiree.Format;
@@ -240,6 +244,96 @@ class CanalTempsReelTest {
 		diffuseur.diffuserSalle(SOIREE, new EvenementDeTest("témoin"));
 		assertThat(donnees(salle.poll(1, TimeUnit.SECONDS))).containsEntry("texte", "témoin");
 		assertThat(salle).isEmpty();
+	}
+
+	/** #180 : le cookie de session ne fait de la connexion celle de l'Animateur qu'avec le jeton CSRF. */
+	@Test
+	void unEcranAnonymeDeDemonstrationSOuvreDansUnNavigateurConnecteEnAnimateur() throws Exception {
+		var animateur = SessionAnimateurHttp.ouvrir(port, json);
+		UUID demonstration = UUID.randomUUID();
+		var session = connecterAvecCookie(animateur, new StompHeaders());
+		var ecran = abonner(session, Canaux.salle(demonstration));
+
+		diffuseur.diffuserSalle(demonstration, new EvenementDeTest("Vue de démonstration"));
+
+		assertThat(ecran.poll(2, TimeUnit.SECONDS)).isNotNull().containsEntry("soireeId", demonstration.toString());
+	}
+
+	@Test
+	void sansJetonCsrfLeCookieNeDonnePasLaConsoleDeSonLieu() throws Exception {
+		var animateur = SessionAnimateurHttp.ouvrir(port, json);
+		UUID soiree = creerSoiree(animateur);
+		var session = connecterAvecCookie(animateur, new StompHeaders());
+		UUID abonnement = UUID.randomUUID();
+		var entetes = new StompHeaders();
+		entetes.setId(abonnement.toString());
+		entetes.setDestination(Canaux.console(soiree));
+		var console = new ArrayBlockingQueue<Map<String, Object>>(2);
+		session.subscribe(entetes, collecteur(console));
+
+		// Le broker traite les abonnements d'une même connexion dans l'ordre.
+		UUID demonstration = UUID.randomUUID();
+		var temoin = abonner(session, Canaux.salle(demonstration));
+		assertThat(abonnements.estInstalle(abonnement, Canaux.console(soiree))).isFalse();
+		diffuseur.envoyerConsole(soiree, new EvenementDeTest("Vue de la Console"));
+		diffuseur.diffuserSalle(demonstration, new EvenementDeTest("témoin"));
+		assertThat(temoin.poll(2, TimeUnit.SECONDS)).isNotNull();
+		assertThat(console).isEmpty();
+	}
+
+	@Test
+	void unJetonCsrfInvalideFaitToujoursRefuserLaConnexion() throws Exception {
+		var animateur = SessionAnimateurHttp.ouvrir(port, json);
+		var trames = new LinkedBlockingQueue<String>();
+		WebSocket socket = http.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(5))
+				.subprotocols("v12.stomp").header("Cookie", animateur.cookie())
+				.buildAsync(URI.create("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION),
+						new WebSocket.Listener() {
+							private final StringBuilder trame = new StringBuilder();
+
+							@Override
+							public CompletionStage<?> onText(WebSocket ws, CharSequence fragment, boolean fin) {
+								trame.append(fragment);
+								if (fin) {
+									trames.add(trame.toString());
+									trame.setLength(0);
+								}
+								return WebSocket.Listener.super.onText(ws, fragment, fin);
+							}
+
+						}).get(5, TimeUnit.SECONDS);
+		try {
+			socket.sendText("CONNECT\naccept-version:1.2\nhost:localhost\nX-CSRF-TOKEN:invalide\n\n\0", true).join();
+
+			// Le CONNECT refusé ne reçoit jamais CONNECTED.
+			assertThat(trames.poll(2, TimeUnit.SECONDS)).satisfiesAnyOf(
+					trame -> assertThat(trame).isNull(), trame -> assertThat(trame).doesNotStartWith("CONNECTED"));
+		} finally {
+			socket.abort();
+		}
+	}
+
+	private StompSession connecterAvecCookie(SessionAnimateurHttp animateur, StompHeaders entetes) throws Exception {
+		WebSocketStompClient client = new WebSocketStompClient(clientWebSocket());
+		clients.add(client);
+		client.setMessageConverter(new JacksonJsonMessageConverter());
+		StompSession session = client
+				.connectAsync("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION,
+						animateur.poigneeDeMain(), entetes, new StompSessionHandlerAdapter() { })
+				.get(5, TimeUnit.SECONDS);
+		sessions.add(session);
+		return session;
+	}
+
+	private UUID creerSoiree(SessionAnimateurHttp animateur) throws Exception {
+		var requete = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/soirees"))
+				.timeout(Duration.ofSeconds(5)).header("Content-Type", "application/json")
+				.header("Cookie", animateur.cookie()).header("X-CSRF-TOKEN", animateur.csrf())
+				.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(
+						Map.of("titre", "Soirée du Lieu", "format", "SOLO", "pilotage", "MANUEL")))).build();
+		var reponse = http.send(requete, HttpResponse.BodyHandlers.ofString());
+		assertThat(reponse.statusCode()).isEqualTo(201);
+		return UUID.fromString(json.readTree(reponse.body()).path("id").asString());
 	}
 
 	private StandardWebSocketClient clientWebSocket() {

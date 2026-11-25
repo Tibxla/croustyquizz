@@ -11,7 +11,7 @@ import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { appeler, appelerAvecCsrf, memoire } from './api.js';
-import { consulterSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
+import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
 import { monterInvitationConsole } from './invitation.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -81,6 +81,7 @@ async function demarrer() {
 	let csrf;
 	let suivi;
 	let arreterTout;
+	let arreterMaintien;
 	if (consoleConnectee) {
 		const session = await consulterSession();
 		if (session.statut === 401) return;
@@ -111,6 +112,7 @@ async function demarrer() {
 		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
 		if (reponse.statut !== 200 || !reponse.corps?.token) throw new Error(reponse.corps?.detail ?? 'Impossible d’obtenir le jeton de session. Recharge la Console.');
 		csrf = reponse.corps.token;
+		arreterMaintien = maintenirSession();
 	}
 
 	const transport = creerTransport({ jeton, csrf });
@@ -183,6 +185,7 @@ async function demarrer() {
 	arreterTout = () => {
 		if (arrete) return;
 		arrete = true;
+		arreterMaintien?.();
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
 		pilotage?.demonter();

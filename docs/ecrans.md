@@ -10,6 +10,8 @@ Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les
 
 Avec l’application sur le port 8080, `playwright-cli run-code --filename=tools/ecrans/compte-recette-navigateur.mjs` (après `playwright-cli open`) joue l’inscription, le refus du mot de passe, la connexion, la création, la synchronisation de la Console et la déconnexion dans un contexte isolé. Le script crée un compte et une Soirée fictifs dans la base de développement.
 
+La Console connectée consulte sa session toutes les cinq minutes (`maintenirSession` de `js/compte.mjs`) : sans requête HTTP pendant 30 minutes, Tomcat l’expirerait en plein Pilotage Automatique et fermerait la connexion STOMP de la Console.
+
 1. En navigation privée, ouvre `/preparer-soiree.html`. La page de connexion doit s’ouvrir avec le chemin demandé dans `retour`.
 2. Suis « Créer un compte ». Envoie le formulaire vide, puis une inscription valide. Vérifie au clavier le focus sur le premier champ en erreur et l’association du message au champ. L’inscription réussie ramène à la connexion.
 3. Saisis un mauvais mot de passe. Vérifie le message en français et le retour du focus au mot de passe. Connecte-toi avec le bon mot de passe : la préparation doit s’ouvrir.

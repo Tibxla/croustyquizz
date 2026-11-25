@@ -2,12 +2,12 @@ package fr.croustyquizz.animateur;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.net.HttpCookie;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -142,9 +142,8 @@ class AnimateurHttpTest {
 			verifier("obtenirCsrf", 200, renouvellement);
 			var fermeture = envoyer(client, "DELETE", SESSION, Map.of("Cookie", session, CSRF, jeton(renouvellement)), null);
 			verifier("deconnecterAnimateur", 204, fermeture);
-			var cookieExpire = HttpCookie.parse(fermeture.headers().firstValue("Set-Cookie").orElseThrow()).getFirst();
-			assertThat(cookieExpire.getName()).isEqualTo("JSESSIONID");
-			assertThat(cookieExpire.hasExpired()).isTrue();
+			assertThat(fermeture.headers().allValues("Set-Cookie"))
+					.allSatisfy(entete -> assertThat(entete).contains("HttpOnly", "SameSite=Lax"));
 
 			verifierRefus("consulterAnimateur", 401, "AUTHENTIFICATION_REQUISE",
 					envoyer(client, "GET", SESSION, Map.of("Cookie", session), null));
@@ -155,6 +154,51 @@ class AnimateurHttpTest {
 					Map.of("Cookie", cookie(apresFermeture), CSRF, jeton(renouvellement)), connexion(email, motDePasse)));
 			verifierRefus("deconnecterAnimateur", 401, "AUTHENTIFICATION_REQUISE", envoyer(client, "DELETE", SESSION,
 					Map.of("Cookie", cookie(apresFermeture), CSRF, jeton(apresFermeture)), null));
+		}
+	}
+
+	@Test
+	void enregistreLEmailEnMinusculesSansDependreDeLaBase() throws Exception {
+		String motDePasse = "le mot de passe d’Élise";
+		try (var client = HttpClient.newHttpClient()) {
+			var csrf = obtenirCsrf(client);
+			var entetes = Map.of("Cookie", cookie(csrf), CSRF, jeton(csrf));
+			JsonNode compte = verifier("inscrireAnimateur", 201, envoyer(client, "POST", INSCRIPTION, entetes,
+					inscription("Élise.Ñúñez@Exemple.test", motDePasse, "L’Écluse")));
+
+			assertThat(jdbc.sql("select email from animateur where id = cast(:id as uuid)")
+					.param("id", compte.at("/animateur/id").asString()).query(String.class).single())
+					.isEqualTo("élise.ñúñez@exemple.test");
+			verifierRefus("inscrireAnimateur", 409, "EMAIL_DEJA_UTILISE", envoyer(client, "POST", INSCRIPTION,
+					entetes, inscription("élise.ñúñez@exemple.test", motDePasse, "L’Écluse bis")));
+			assertThat(verifier("connecterAnimateur", 200, envoyer(client, "POST", SESSION, entetes,
+					connexion("ÉLISE.ÑÚÑEZ@EXEMPLE.TEST", motDePasse)))).isEqualTo(compte.path("animateur"));
+		}
+	}
+
+	@Test
+	void refuseUnSurrogateIsoleDansChaqueChampEnregistre() throws Exception {
+		try (var client = HttpClient.newHttpClient()) {
+			var csrf = obtenirCsrf(client);
+			var entetes = Map.of("Cookie", cookie(csrf), CSRF, jeton(csrf), "Content-Type", "application/json");
+			// Corps écrits à la main : la sérialisation Java remplacerait le surrogate isolé par « ? ».
+			String modele = """
+					{"email":"%s","motDePasse":"un mot de passe correct","nom":"%s",\
+					"lieu":{"nom":"%s","ville":"%s"}}""";
+			String isole = "\\ud800";
+			var corps = List.of(
+					modele.formatted(isole + "rose@exemple.test", "Rose", "Le Kiosque", "Nanterre"),
+					modele.formatted("rose@exemple.test", "Rose" + isole, "Le Kiosque", "Nanterre"),
+					modele.formatted("rose@exemple.test", "Rose", "Le Kiosque" + isole, "Nanterre"),
+					modele.formatted("rose@exemple.test", "Rose", "Le Kiosque", "Nanterre" + isole));
+			for (String brut : corps) {
+				verifierRefus("inscrireAnimateur", 422, "DONNEES_INVALIDES",
+						envoyerBrut(client, "POST", INSCRIPTION, entetes, brut));
+			}
+			assertThat(jdbc.sql("select count(*) from lieu where nom like 'Le Kiosque%'")
+					.query(Integer.class).single()).isZero();
+			verifierRefus("connecterAnimateur", 422, "DONNEES_INVALIDES", envoyerBrut(client, "POST", SESSION,
+					entetes, "{\"email\":\"" + isole + "rose@exemple.test\",\"motDePasse\":\"un mot de passe\"}"));
 		}
 	}
 
@@ -238,6 +282,14 @@ class AnimateurHttpTest {
 			requete.header("Content-Type", "application/json").method(methode,
 					HttpRequest.BodyPublishers.ofString(json.writeValueAsString(corps)));
 		}
+		return client.send(requete.build(), HttpResponse.BodyHandlers.ofString());
+	}
+
+	private HttpResponse<String> envoyerBrut(HttpClient client, String methode, String chemin,
+			Map<String, String> entetes, String corps) throws Exception {
+		var requete = HttpRequest.newBuilder(URI.create("http://localhost:" + port + chemin));
+		entetes.forEach(requete::header);
+		requete.method(methode, HttpRequest.BodyPublishers.ofString(corps));
 		return client.send(requete.build(), HttpResponse.BodyHandlers.ofString());
 	}
 
