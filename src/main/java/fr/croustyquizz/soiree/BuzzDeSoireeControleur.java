@@ -42,9 +42,23 @@ class BuzzDeSoireeControleur {
 			throw new Refuse(400, "REQUETE_INVALIDE", "Fournis un identifiant d’envoi. Le corps et l’en-tête doivent concorder.")
 					.exception();
 		}
+		ServiceBuzz.CibleDuBuzz cible = cible(saisie);
 		String route = "/api/soirees/" + soireeId + "/buzz";
-		var envoi = new EnvoiDeCommande(acteur, route, envoiId, Map.of());
-		return ReponsesDeCommande.http(service.buzzer(envoi), route);
+		// La cible fait partie de l'empreinte : le même envoiId vers un autre Morceau est un envoi réutilisé.
+		var envoi = new EnvoiDeCommande(acteur, route, envoiId, cible == null ? Map.of()
+				: Map.of("mancheId", cible.mancheId(), "etapeId", cible.etapeId()));
+		return ReponsesDeCommande.http(service.buzzer(envoi, cible), route);
+	}
+
+	/** Pendant un Blind test, mancheId et etapeId vont ensemble (BuzzSaisi) ; hors Blind test, ils sont absents. */
+	private static ServiceBuzz.CibleDuBuzz cible(Saisie saisie) {
+		if (saisie == null || saisie.mancheId() == null && saisie.etapeId() == null) {
+			return null;
+		}
+		if (saisie.mancheId() == null || saisie.etapeId() == null) {
+			throw new Refuse(400, "REQUETE_INVALIDE", "Le Buzz nomme à la fois sa Manche et son Morceau.").exception();
+		}
+		return new ServiceBuzz.CibleDuBuzz(lireUuid(saisie.mancheId()), lireUuid(saisie.etapeId()));
 	}
 
 	private static UUID lireUuid(String valeur) {
@@ -54,7 +68,7 @@ class BuzzDeSoireeControleur {
 		return UUID.fromString(valeur);
 	}
 
-	record Saisie(@NotNull String envoiId) {
+	record Saisie(@NotNull String envoiId, String mancheId, String etapeId) {
 		@JsonAnySetter
 		public void refuserChampInconnu(String nom, Object valeur) {
 			throw new IllegalArgumentException("Champ non prévu dans un envoi de Buzz.");
