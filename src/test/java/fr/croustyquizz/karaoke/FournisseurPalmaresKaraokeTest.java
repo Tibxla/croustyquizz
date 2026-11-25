@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
@@ -29,7 +30,7 @@ class FournisseurPalmaresKaraokeTest {
     @Autowired SocleDeManche socle;
     @Autowired AssembleurDeVues assembleur;
     @Autowired PersistanceKaraokeJpa persistance;
-    @Autowired ServiceKaraoke service;
+    @Autowired JdbcTemplate jdbc;
 
     @Test void attendUneFinDeKaraokeEtMasqueLePalmaresPendantUneMancheOuApresUnQuiz() {
         assertThat(palmares(Destination.SALLE).isNull()).isTrue();
@@ -62,9 +63,8 @@ class FournisseurPalmaresKaraokeTest {
             enregistrer(seconde, 3, List.of(present), 3, 0);
         });
 
-        assertThat(service.palmaresKaraoke(soiree)).extracting(VuesKaraoke.LignePalmaresKaraoke::numero)
-                .containsExactly(2L, 1L, 3L, 4L);
         var console = palmares(Destination.CONSOLE);
+        assertThat(console.findValuesAsString("numero")).containsExactly("2", "1", "3", "4");
         assertThat(console.size()).isEqualTo(4);
         assertThat(console.get(1).at("/interpretes/0/pseudo").asString()).isEqualTo("Joueur parti");
         assertThat(console.get(1).at("/interpretes/1/joueurId").asString()).isEqualTo(present.toString());
@@ -77,6 +77,25 @@ class FournisseurPalmaresKaraokeTest {
             assertThat(salle.get(i)).isEqualTo(console.get(i));
         }
         assertThat(palmares(Destination.joueur(present)).isMissingNode()).isTrue();
+    }
+
+    @Test void ecarteUnPassageSansContenuSansCasserLesVuesNiLesRangs() {
+        var manche = UUID.randomUUID();
+        manche(manche, ModeDeJeu.KARAOKE, EtatManche.TERMINEE, FIN);
+        var interpretes = List.of(ConfigurationTroisJoueurs.joueursDe(soiree).getFirst());
+        var passages = List.of(
+                passagePourPalmares(soiree, manche, 1, interpretes, EtatPassage.TERMINE, FIN.minusSeconds(30)),
+                passagePourPalmares(soiree, manche, 2, interpretes, EtatPassage.TERMINE, FIN.minusSeconds(20)),
+                passagePourPalmares(soiree, manche, 3, interpretes, EtatPassage.TERMINE, FIN.minusSeconds(10)));
+        new TransactionTemplate(socle.transactions()).executeWithoutResult(statut -> enregistrerPourPalmares(persistance, passages,
+                List.of(votePourPalmares(passages.get(0), FIN, notes(3)), votePourPalmares(passages.get(1), FIN, notes(5)),
+                        votePourPalmares(passages.get(2), FIN, notes(4)))));
+        jdbc.update("delete from karaoke_contenu_passage where passage_id = ?", passages.get(1).id());
+
+        var console = palmares(Destination.CONSOLE);
+        assertThat(console.findValuesAsString("numero")).containsExactly("3", "1");
+        assertThat(console.findValuesAsString("rang")).containsExactly("1", "2");
+        assertThat(palmares(Destination.SALLE)).isEqualTo(console);
     }
 
     private void manche(UUID id, ModeDeJeu mode, EtatManche etat, Instant modifieLe) {
