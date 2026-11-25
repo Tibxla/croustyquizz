@@ -82,6 +82,18 @@ class DictionnaireDeRimesFourniTest {
                 .allSatisfy(entree -> assertThat(entree.sons()).as(entree.mot()).hasSizeGreaterThanOrEqualTo(3));
     }
 
+    @Test
+    void chaqueTerminaisonThematiqueTermineLaPrononciationDeLexiqueQuandLeMotYFigure() throws IOException {
+        Map<String, List<List<String>>> prononciations = entreesDeLExtrait().stream().collect(Collectors.groupingBy(
+                EntreePhonetique::mot, Collectors.mapping(EntreePhonetique::sons, Collectors.toList())));
+
+        assertThat(ListesThematiquesDeRimes.lire())
+                .filteredOn(entree -> prononciations.containsKey(entree.mot()))
+                .allSatisfy(entree -> assertThat(prononciations.get(entree.mot()))
+                        .as("%s (%s)", entree.mot(), String.join(" ", entree.sons()))
+                        .anySatisfy(sons -> assertThat(sons).endsWith(entree.sons().toArray(String[]::new))));
+    }
+
     @ParameterizedTest
     @CsvSource({
         "soirées, soirée",
