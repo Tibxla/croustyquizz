@@ -79,6 +79,12 @@ class SoireesDuLieuHttpTest {
 	}
 
 	@Test
+	void unIndexSuitLeFiltreEtLeTriDeLaListe() {
+		assertThat(jdbc.queryForList("select indexdef from pg_indexes where tablename = 'soiree'", String.class))
+				.anySatisfy(definition -> assertThat(definition).endsWith("(lieu_id, creee_le DESC, id DESC)"));
+	}
+
+	@Test
 	void unLieuSansSoireeRecoitUneListeVide() throws Exception {
 		assertThat(lister(SessionAnimateurHttp.ouvrir(port, json)).path("soirees").isEmpty()).isTrue();
 	}
