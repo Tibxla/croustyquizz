@@ -304,6 +304,8 @@
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   gap: 0.6vw 1.2vw;
+  max-block-size: 36vh;
+  overflow: auto;
   margin: 0;
   padding: 0;
   list-style: none;

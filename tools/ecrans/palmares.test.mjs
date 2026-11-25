@@ -67,3 +67,10 @@ test('aucune colonne fixe ne coupe le rang, le numéro ou la note, et les colonn
 	const tronques = reglesPalmares(css).filter(regle => /text-overflow:\s*ellipsis/.test(regle.corps)).flatMap(regle => regle.selecteurs);
 	assert.deepEqual(tronques, ['.salle--coquille .palmares .palmares__chanson']);
 });
+
+test('la liste du Palmarès a une hauteur bornée, pour que le talon d’accès reste à l’écran', async () => {
+	const css = await cssSalle();
+	const corps = css.match(/(?:^|[}/])\s*\.salle--coquille \.palmares ul\s*\{([^}]*)\}/)?.[1] ?? '';
+	assert.match(corps, /max-block-size:\s*[\d.]+vh;/);
+	assert.match(corps, /overflow:\s*auto;/);
+});
