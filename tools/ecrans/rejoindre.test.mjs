@@ -22,3 +22,8 @@ test('le code et le pseudo ont chacun leur message d’erreur, relié au champ e
 	assert.match(balise('pseudo'), /aria-describedby="[^"]*\bpseudo-aide\b/);
 	assert.match(balise('pseudo-aide'), /class="champ__aide"/);
 });
+
+// #4 : la limite de requêtes répond 429 TROP_DE_REQUETES ; la page le dit au lieu du message générique.
+test('un 429 de la limite de requêtes a son propre message', () => {
+	assert.match(page, /TROP_DE_REQUETES: '[^']*réessaie\.'/);
+});

@@ -61,3 +61,29 @@ test('la Manette réessaie sur demande avec le même envoi après une confirmati
 	buzz.demonter();
 	assert.equal(envois[2].signal.aborted, true);
 });
+
+test('un 429 de la limite de requêtes affiche son detail comme tout refus, sans réessai automatique', async () => {
+	const bouton = new EventTarget();
+	const envois = [];
+	const bandeau = [];
+	const { contexte, changerEtat } = creerContexte({ soireeId: 's1', resynchroniser() { throw new Error('Aucune recapture attendue.'); },
+		envoyer: (methode, route, corps) => new Promise(resoudre => { envois.push({ corps, resoudre }); }),
+		surEnvoi: (etat, detail) => bandeau.push({ etat, detail }),
+	});
+	const buzz = monterBuzz(bouton, contexte);
+	buzz.afficher(ouverte);
+	changerEtat('synchronisee');
+	bouton.dispatchEvent(new Event('click'));
+	const detail = 'Trop de requêtes en peu de temps. Réessaie dans 1 seconde.';
+	envois[0].resoudre({ statut: 429, corps: { status: 429, code: 'TROP_DE_REQUETES', detail } });
+	await setImmediate();
+	await setImmediate();
+
+	assert.deepEqual(bandeau.at(-1), { etat: 'refuse', detail });
+	assert.equal(envois.length, 1);
+	assert.equal(bouton.disabled, false);
+	assert.equal(bouton.textContent, 'Buzzer');
+	bouton.dispatchEvent(new Event('click'));
+	assert.notEqual(envois[1].corps.envoiId, envois[0].corps.envoiId);
+	buzz.demonter();
+});
