@@ -1,3 +1,4 @@
+import { creerListeEnregistrements, registreDe } from '../../enregistrements.mjs';
 import { texteEnvoi } from './commun.mjs';
 import { creerEnregistrement, diagnostiquer } from './enregistrement.mjs';
 
@@ -28,9 +29,6 @@ const impossibilites = {
 	'navigateur-incompatible': 'Enregistrement impossible : ce navigateur ne sait pas enregistrer le micro.',
 	'format-absent': 'Enregistrement impossible : ce navigateur n’enregistre ni en MP4 ni en WebM.',
 };
-const AVERTISSEMENT = 'Ils restent sur ce téléphone tant que cette page reste ouverte, même après la Manche. '
-	+ 'Un rechargement ou la fermeture de la page les efface : télécharge-les, puis retire-les.';
-
 export function nomFichier(titre, depart, fichier, maintenant = Date.now()) {
 	const chanson = (titre ?? '').replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ').trim().replace(/\s+/g, ' ').slice(0, 100);
 	const instant = Date.parse(depart ?? '');
@@ -38,43 +36,6 @@ export function nomFichier(titre, depart, fichier, maintenant = Date.now()) {
 	const jour = [date.getFullYear(), date.getMonth() + 1, date.getDate()]
 		.map(nombre => String(nombre).padStart(2, '0')).join('-');
 	return `${chanson || 'Passage'} - ${jour}.${fichier.type.startsWith('audio/mp4') ? 'm4a' : 'webm'}`;
-}
-
-// Les fichiers prêts vivent hors du module de Manche, un registre par page : ils survivent au démontage
-// et reviennent au montage suivant. Seuls le retrait confirmé et pagehide révoquent leurs URL.
-// Rien n'est écrit sur le disque : un rechargement les perd, et la Manette le dit.
-const registres = new WeakMap();
-function registreDe(page) {
-	const existant = registres.get(page);
-	if (existant) return existant;
-	const fichiers = new Map(), abonnes = new Set();
-	const prevenir = () => [...abonnes].forEach(rappel => rappel());
-	const revoquer = entree => { if (entree.url) URL.revokeObjectURL(entree.url); };
-	const registre = {
-		fichiers, abonnes,
-		ajouter(entree) {
-			const ancienne = fichiers.get(entree.id);
-			if (ancienne) { revoquer(ancienne); fichiers.delete(entree.id); }
-			fichiers.set(entree.id, entree);
-			prevenir();
-		},
-		retirer(id) {
-			const entree = fichiers.get(id);
-			if (!entree) return;
-			revoquer(entree);
-			fichiers.delete(id);
-			prevenir();
-		},
-	};
-	page.defaultView?.addEventListener?.('pagehide', evenement => {
-		// Une page gardée en cache (persisted) peut revenir telle quelle : ses liens restent valides.
-		if (evenement?.persisted) return;
-		for (const entree of fichiers.values()) revoquer(entree);
-		fichiers.clear();
-		prevenir();
-	});
-	registres.set(page, registre);
-	return registre;
 }
 
 // Un verrou d'écran par Manette, voulu tant qu'un micro est ouvert. Le système le libère quand la page
@@ -130,23 +91,20 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 	// Une seule zone d'annonce, jamais déplacée : les textes près des boutons restent muets.
 	const annonce = e('p', 'karaoke__annonce-enregistrement visuellement-cache');
 	annonce.setAttribute('role', 'status');
-	const resultats = e('section', 'karaoke__enregistrements');
-	resultats.hidden = true;
-	const titreResultats = e('h2', '', 'Tes Enregistrements');
-	titreResultats.tabIndex = -1;
-	const liste = e('div', 'karaoke__enregistrements-liste');
-	resultats.append(titreResultats, e('p', '', AVERTISSEMENT), liste);
-	ui.principale.append(annonce, resultats);
-	const vuesFichiers = new Map();
-	const dejaAnnonces = new Set(registre.fichiers.keys());
 	const annonces = [];
+	const fichiers = creerListeEnregistrements({ document: page, registre,
+		annoncer: texte => annonces.push(texte), repli: () => repli(null) });
+	fichiers.element.classList.add('karaoke__enregistrements');
+	ui.principale.append(annonce, fichiers.element);
 	let renduPrevu = false, focus = null;
 	function rafraichir() {
 		if (renduPrevu) return;
 		renduPrevu = true;
 		queueMicrotask(() => { renduPrevu = false; ui.rendre(); });
 	}
-	registre.abonnes.add(rafraichir);
+	const quitterRegistre = registre.abonner(rafraichir);
+	// Monté, le Karaoké présente lui-même la liste : la coquille se retire.
+	const quitterPresentation = registre.presenter();
 
 	const envoiAccord = id => ui.dernierEnvoi(e => e.commande.type === 'ACCORD_ENREGISTREMENT' && e.commande.passageId === id);
 	const accordDe = id => ui.bloc.mesAccordsEnregistrement?.includes(id) ?? false;
@@ -214,68 +172,6 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 		if (commandes.hidden) commandes.remove();
 	}
 
-	function retirerFichier(id) {
-		registre.retirer(id);
-		rendreFichiers();
-		(registre.fichiers.size ? titreResultats : repli(null))?.focus();
-	}
-
-	function confirmerRetrait(entree, declencheur) {
-		const dialogue = ui.dialogue({ titre: 'Retirer l’Enregistrement', declencheur, confirmation: {
-			libelle: 'Confirmer le retrait',
-			permise: () => registre.fichiers.has(entree.id),
-			executer: () => retirerFichier(entree.id),
-		} });
-		dialogue.annuler.textContent = 'Annuler';
-		dialogue.contenu.append(e('p', '', `As-tu bien téléchargé ${entree.titre} ? Le fichier sera effacé de ce téléphone.`),
-			dialogue.confirmer);
-	}
-
-	function creerVueFichier(entree) {
-		const vueFichier = e('div', 'karaoke__enregistrement-fichier');
-		vueFichier.append(e('h3', '', entree.titre));
-		if (entree.echec) vueFichier.append(e('p', '', 'La prise a échoué : aucun son n’a été capté.'));
-		else {
-			const lien = e('a', 'bouton', 'Télécharger mon Enregistrement');
-			lien.href = entree.url;
-			lien.download = entree.nom;
-			lien.setAttribute('aria-label', `Télécharger mon Enregistrement : ${entree.titre}`);
-			const ecoute = e('audio');
-			ecoute.src = entree.url;
-			ecoute.controls = true;
-			ecoute.preload = 'metadata';
-			ecoute.setAttribute('aria-label', `Écouter ton Enregistrement : ${entree.titre}`);
-			vueFichier.append(lien, e('p', '', 'Écouter'), ecoute);
-			if (entree.motif === 'interrompu') vueFichier.append(e('p', '', 'Cette prise a été interrompue.'));
-		}
-		// Le retrait d'un fichier vaut confirmation de son téléchargement ; un échec se retire d'un geste.
-		const retirer = bouton('Retirer', () => {
-			if (entree.echec) retirerFichier(entree.id);
-			else confirmerRetrait(entree, retirer);
-		}, 'bouton bouton--lien');
-		retirer.setAttribute('data-action', 'retirer');
-		retirer.setAttribute('aria-label', `Retirer l’Enregistrement : ${entree.titre}`);
-		vueFichier.append(retirer);
-		return vueFichier;
-	}
-
-	function rendreFichiers() {
-		for (const [id, vueFichier] of vuesFichiers) {
-			if (!registre.fichiers.has(id)) { vueFichier.remove(); vuesFichiers.delete(id); }
-		}
-		for (const entree of registre.fichiers.values()) {
-			if (vuesFichiers.has(entree.id)) continue;
-			const vueFichier = creerVueFichier(entree);
-			vuesFichiers.set(entree.id, vueFichier);
-			liste.append(vueFichier);
-			if (dejaAnnonces.has(entree.id)) continue;
-			dejaAnnonces.add(entree.id);
-			annonces.push(entree.echec ? `La prise de ${entree.titre} a échoué : aucun son n’a été capté.`
-				: `Ton Enregistrement est prêt : ${entree.titre}.`);
-		}
-		resultats.hidden = registre.fichiers.size === 0;
-	}
-
 	// Lu avant tout placer() : déplacer un bouton dans un nouveau ticket lui fait perdre le focus.
 	function memoriserFocus() {
 		const actif = page.activeElement;
@@ -329,7 +225,7 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 				const phase = passages.get(id)?.phase ?? 'termine';
 				rendreFiche(fiche, phase, autorise && accordDe(id), autorise && phase !== 'termine');
 			}
-			rendreFichiers();
+			fichiers.rendre();
 			verrou.maintenir([...prises.values()].some(fiche => gardeEcranAllume(fiche.prise.lire().etat)));
 			if (annonces.length) annonce.textContent = annonces.splice(0).join(' ');
 		},
@@ -355,7 +251,9 @@ export function installerEnregistrementsManette(ui, { repli = () => null } = {})
 		detruire() {
 			reinitialiser();
 			verrou.detruire();
-			registre.abonnes.delete(rafraichir);
+			quitterRegistre();
+			quitterPresentation();
+			fichiers.detruire();
 		},
 	};
 }

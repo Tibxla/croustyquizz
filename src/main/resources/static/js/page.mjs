@@ -8,6 +8,7 @@ import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterBuzz } from './buzz-manette.mjs';
+import { monterEnregistrements } from './enregistrements.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
@@ -124,6 +125,10 @@ async function demarrer() {
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
+	// Hors module de Karaoké, la coquille garde « Tes Enregistrements » à portée ; aucun envoi ne lui est confié.
+	const zoneEnregistrements = element('enregistrements');
+	const enregistrements = zoneEnregistrements
+		? monterEnregistrements(zoneEnregistrements, { repli: () => element('titre') }) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
@@ -151,7 +156,7 @@ async function demarrer() {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
-		pilotage?.demonter();
+		pilotage?.demonter(); enregistrements?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
 	});
