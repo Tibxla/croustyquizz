@@ -23,19 +23,19 @@ public final class Attentes {
 
 	/** L'observateur attend un signal qui doit venir, sous le {@link #PLAFOND}. */
 	public static void attendre(CountDownLatch signal) {
-		attendre(signal, PLAFOND_SECONDES, "Signal attendu non reçu sous le plafond.");
+		patienter(signal, PLAFOND_SECONDES, "Signal attendu non reçu sous le plafond.");
 	}
 
 	/** Le fil reste retenu jusqu'au feu vert du test, sous la {@link #RETENUE_SECONDES retenue}. */
 	public static void retenir(CountDownLatch feuVert) {
-		attendre(feuVert, RETENUE_SECONDES, "Retenue sans feu vert du test.");
+		patienter(feuVert, RETENUE_SECONDES, "Retenue sans feu vert du test.");
 	}
 
 	/**
 	 * Lève une exception non contrôlée plutôt qu'une {@link AssertionError} : un fil de serveur de test
 	 * (com.sun.net.httpserver) ferme alors l'échange au lieu de relancer l'erreur.
 	 */
-	private static void attendre(CountDownLatch signal, long secondes, String motif) {
+	private static void patienter(CountDownLatch signal, long secondes, String motif) {
 		try {
 			if (!signal.await(secondes, TimeUnit.SECONDS)) { throw new IllegalStateException(motif); }
 		} catch (InterruptedException interruption) {

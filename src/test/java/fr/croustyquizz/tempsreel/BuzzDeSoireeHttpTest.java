@@ -174,7 +174,7 @@ class BuzzDeSoireeHttpTest {
 		assertThat(evenement.path("donnees").path("dernierBuzz")).isEqualTo(suivant);
 	}
 
-	// Pas de budget global : chaque attente du test a déjà son plafond, qu'un budget fixe pourrait trancher avant terme.
+	// Pas de budget global : chaque attente du test est déjà bornée, et un budget fixe pourrait la trancher avant terme.
 	@Test
 	void soixanteManettesBuzzantEnsembleRecoiventToutesLesRevisionsDansLeMemeOrdre() throws Exception {
 		SoireeOuverte soiree = ouvrirSoiree();

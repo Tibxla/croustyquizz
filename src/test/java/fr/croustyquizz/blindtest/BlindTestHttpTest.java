@@ -301,7 +301,7 @@ class BlindTestHttpTest {
 				.path("vue").path("mancheActive").isNull());
 		List<String> attendus = List.of("manche-demarree", "morceau-saute", "manche-terminee");
 		List<String> types = new ArrayList<>();
-		// La série est lue jusqu'à son dernier type attendu, sous le plafond, et non jusqu'au premier silence.
+		// La série est lue jusqu'à son dernier type attendu, sous le plafond : une diffusion en retard ne la tronque pas.
 		long limite = System.nanoTime() + PLAFOND.toNanos();
 		int trouves = 0;
 		while (trouves < attendus.size()) {
