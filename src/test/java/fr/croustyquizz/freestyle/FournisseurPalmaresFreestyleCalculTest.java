@@ -25,7 +25,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
-/** Coût du Palmarès du Freestyle dans un assemblage : un calcul pour la salle et la Console, aucun pendant une Manche active. */
+/** Coût et robustesse du Palmarès du Freestyle dans un assemblage de vues. */
 class FournisseurPalmaresFreestyleCalculTest {
     private final UUID soiree = UUID.randomUUID();
     private final UUID joueur = UUID.randomUUID();
@@ -73,6 +73,21 @@ class FournisseurPalmaresFreestyleCalculTest {
         assertThat(prepare.fournir(Destination.SALLE, partie)).isNull();
         assertThat(prepare.fournir(Destination.CONSOLE, partie)).isNull();
         verifyNoInteractions(depot, service, persistance, passages, participants);
+    }
+
+    @Test void ecarteUnPassageSansContenuFigeSansCasserLesRangs() {
+        var resultats = List.of(resultat(1, 3), resultat(2, 5), resultat(3, 4));
+        var contenus = contenus(resultats);
+        contenus.remove(resultats.get(2).passageId());
+        avec(resultats, contenus);
+
+        var prepare = fournisseur.preparer(soiree);
+        var console = (List<?>) prepare.fournir(Destination.CONSOLE, horsManche());
+        var salle = (List<?>) prepare.fournir(Destination.SALLE, horsManche());
+
+        assertThat(numeros(console)).containsExactly(2L, 1L);
+        assertThat(console).extracting("rang").containsExactly(1L, 2L);
+        assertThat(salle).isEqualTo(console);
     }
 
     private void avec(List<ResultatVote> resultats, Map<UUID, EtatFreestyle.Contenu> contenus) {

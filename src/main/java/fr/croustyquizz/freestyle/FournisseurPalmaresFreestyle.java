@@ -70,10 +70,12 @@ final class FournisseurPalmaresFreestyle implements FournisseurDeChampCommun {
     }
 
     private List<VuesFreestyle.LignePalmares> classer(UUID soireeId, UUID mancheId) {
-        var classement = ClassementParVote.classer(passages.resultatsDeVote(List.of(mancheId)));
         var contenus = persistance.contenus(mancheId);
+        // Un Passage sans contenu figé n'a rien à montrer : l'écarter avant de classer garde des rangs contigus.
+        var classables = passages.resultatsDeVote(List.of(mancheId)).stream()
+                .filter(resultat -> contenus.containsKey(resultat.passageId())).toList();
         var pseudos = participants.pseudos(soireeId);
-        return classement.stream()
+        return ClassementParVote.classer(classables).stream()
                 .map(ligne -> VuesFreestyle.lignePalmares(ligne, contenus, pseudos)).toList();
     }
 }
