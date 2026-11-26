@@ -23,8 +23,8 @@ export function erreurChampSuggestion(texte) {
 	// Sous la limite à la saisie, au-delà une fois nettoyé : seul NFC allonge un texte (U+0958 donne deux points de code, U+FB2C trois).
 	if (longueur(nettoye) > LONGUEUR_MAX) return `Certains caractères comptent pour plusieurs : raccourcis ce texte à ${LONGUEUR_MAX} caractères au plus.`;
 	if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(nettoye)) return 'Retire les caractères invisibles ou de contrôle.';
-	// Clé de regroupement du serveur (normaliserSuggestion) : sans marques, ponctuation ni blancs, il ne reste rien.
-	const cle = nettoye.normalize('NFKC').normalize('NFD').replace(/[\p{M}\p{P}\p{White_Space}]+/gu, '');
+	// Clé de regroupement du serveur (normaliserSuggestion) : sans diacritiques U+0300 à U+036F, ponctuation ni blancs, il ne reste rien.
+	const cle = nettoye.normalize('NFKC').normalize('NFD').replace(/[\u0300-\u036F\p{P}\p{White_Space}]+/gu, '');
 	if (!sansExtremites(cle)) return 'Ajoute au moins une lettre ou un chiffre.';
 	return '';
 }

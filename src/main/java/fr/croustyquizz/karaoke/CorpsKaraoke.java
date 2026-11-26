@@ -36,12 +36,12 @@ public final class CorpsKaraoke {
     }
 
     /**
-     * Clé de regroupement seule : NFKC, sans casse ni marques d'accent, apostrophes et guillemets typographiques
-     * ramenés à l'ASCII, ponctuation Unicode supprimée, puis blancs regroupés à nouveau.
+     * Clé de regroupement seule : NFKC, minuscules, retrait des diacritiques U+0300 à U+036F après NFD,
+     * apostrophes et guillemets typographiques ramenés à l'ASCII, ponctuation supprimée et blancs regroupés.
      */
     static String normaliserSuggestion(String texte) {
         String compatible = Normalizer.normalize(texte, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
-        String sansAccent = Normalizer.normalize(compatible, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        String sansAccent = Normalizer.normalize(compatible, Normalizer.Form.NFD).replaceAll("[\\u0300-\\u036F]+", "");
         String ascii = sansAccent.replaceAll("[\u2018\u2019]", "'").replaceAll("[\u00AB\u00BB\u201C\u201D]", "\"");
         return ascii.replaceAll("\\p{P}+", "").replaceAll("\\p{IsWhite_Space}+", " ").strip();
     }

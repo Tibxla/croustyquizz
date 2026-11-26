@@ -310,17 +310,15 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		}
 		ui.remplacerListe(resultats, lignes, titre);
 	}
-	// Comme le serveur : favoris d'abord, ordre conservé sinon. Les lignes existantes sont déplacées, pas recréées,
-	// pour que le déclencheur de la fiche reste connecté.
+	// L'ordre d'insertion des lignes est celui de la réponse de recherche.
 	function trierResultatsAffiches() {
-		const chansons = recherche?.donnees?.chansons;
-		if (!chansons?.length) return;
-		const triees = [...chansons.filter(c => estFavorite(c.chansonId)), ...chansons.filter(c => !estFavorite(c.chansonId))];
-		if (triees.every((c, i) => c === chansons[i])) return;
-		recherche = { ...recherche, donnees: { ...recherche.donnees, chansons: triees } };
-		const deplacees = new Set(lignesResultats.values());
-		const autres = Array.from(resultats.children).filter(ligne => !deplacees.has(ligne));
-		ui.remplacerListe(resultats, [...triees.map(c => lignesResultats.get(c.chansonId)).filter(Boolean), ...autres], titre);
+		const favorites = [], autres = [];
+		for (const [chansonId, ligne] of lignesResultats) {
+			(estFavorite(chansonId) ? favorites : autres).push(ligne);
+		}
+		const triees = [...favorites, ...autres];
+		if (triees.every((ligne, i) => ligne === resultats.children[i])) return;
+		ui.remplacerListe(resultats, triees, titre);
 	}
 	function ouvrirFiche() {
 		const courante = fiche;

@@ -47,6 +47,11 @@ class CorpsKaraokeTest {
         assertThat(cle("Lune")).isNotEqualTo(cle("Lunes"));
     }
 
+    @Test void laCleConserveLesMarquesHorsDeLaPlageDesDiacritiquesRetires() {
+        assertThat(cle("がっこう")).isEqualTo(cle("か\u3099っこう")).isNotEqualTo(cle("かっこう"));
+        assertThat(cle("का")).isNotEqualTo(cle("क"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"\u200B", "Lune\u200B", "\u00AD", "\uFEFFLune", "Lu\u0007ne", "!!!", "« … »", ""})
     void refuseLesCaracteresDeFormatEtLesClesVides(String titre) {
