@@ -108,12 +108,14 @@ export function monterAudioSalle(zone, soireeId) {
 		audio.choisirDossier(Array.from(choix.files));
 		choix.value = '';
 	});
-	audio.surChangement(({ fichiers, sonDebloque }) => {
+	audio.surChangement(({ fichiers, morceauxDisponibles, sonDebloque }) => {
 		const avaitFocus = document.activeElement === activer;
 		alerte.hidden = activer.hidden = sonDebloque;
 		if (avaitFocus && activer.hidden) choisir.focus();
 		const nombre = fichiers?.length;
-		aide.textContent = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
+		const compteur = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
+		const texte = morceauxDisponibles === false ? 'Aucun morceau lisible dans Attente' : compteur;
+		if (aide.textContent !== texte) aide.textContent = texte;
 	});
 	zone.hidden = false;
 	return audio;

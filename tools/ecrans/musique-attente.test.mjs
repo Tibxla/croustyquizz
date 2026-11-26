@@ -78,15 +78,19 @@ test('un morceau illisible parmi des lisibles est écarté sans tarir la Musique
 	assert.equal(epuisements, 0);
 });
 
-test('un morceau qui échoue en cours de lecture compte aussi parmi les morceaux écartés', async () => {
+test('une erreur en cours de lecture passe au morceau suivant et conserve le morceau interrompu', async () => {
 	let epuisements = 0;
 	const b = banc({ illisibles: ['A'], surMorceauxEpuises: () => { epuisements++; } });
 	b.musique.autoriserLecture(true);
-	b.musique.choisirFichiers(['A', 'B']);
+	b.musique.choisirFichiers(['A', 'B', 'C']);
 	await terminerMicrotaches();
 	assert.deepEqual(b.lectures, [['B', 0]]);
+	b.avancer(1250);
 	b.echouer();
 	await terminerMicrotaches();
-	assert.equal(b.fichier(), undefined);
-	assert.equal(epuisements, 1);
+	assert.deepEqual(b.lectures, [['B', 0], ['C', 0]]);
+	b.finir();
+	await terminerMicrotaches();
+	assert.deepEqual(b.lectures, [['B', 0], ['C', 0], ['B', 0]]);
+	assert.equal(epuisements, 0);
 });

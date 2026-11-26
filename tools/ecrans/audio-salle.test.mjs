@@ -4,7 +4,7 @@ import { creerAudioSalle, monterAudioSalle } from '../../src/main/resources/stat
 import { creerCoordinationSon } from '../../src/main/resources/static/js/coordination-son.mjs';
 import { creerContexte } from '../../src/main/resources/static/js/contexte.mjs';
 import { monterMusiqueDAttenteSalle } from '../../src/main/resources/static/js/pilotage-musique-attente.mjs';
-import { creerDocument } from './karaoke-dom-factice.mjs';
+import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
 test('le même lecteur joue la Musique d’attente pendant la préparation puis la Chanson au départ', { timeout: 3000 }, async t => {
 	const attente = { name: 'Ambiance.ogg', webkitRelativePath: 'Musique/Attente/Ambiance.ogg' };
@@ -300,7 +300,7 @@ test('une absence décidée pendant une coupure ne part pas si une autre fenêtr
 });
 
 // Une page `ecran.html` réduite à sa zone audio, avec de faux éléments média et les vrais Web Locks de Node.
-function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, soireeId = 'soiree' } = {}) {
+function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, soireeId = 'soiree', urlsIllisibles = [] } = {}) {
 	const document = creerDocument(), creer = document.createElement;
 	let lecture = Promise.withResolvers();
 	document.createElement = tag => {
@@ -310,7 +310,10 @@ function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, soireeId = 'soir
 		Object.assign(element, { currentTime: 0, paused: true, load() {}, pause() { element.paused = true; } });
 		Object.defineProperty(element, 'src', { get: () => source, set(valeur) {
 			source = valeur;
-			if (valeur.startsWith('blob:')) queueMicrotask(() => element.dispatchEvent({ type: 'loadedmetadata' }));
+			if (valeur.startsWith('blob:')) {
+				const type = urlsIllisibles.includes(valeur) ? 'error' : 'loadedmetadata';
+				queueMicrotask(() => element.dispatchEvent({ type }));
+			}
 		} });
 		const retirer = element.removeAttribute.bind(element);
 		element.removeAttribute = nom => { if (nom === 'src') source = ''; retirer(nom); };
@@ -433,4 +436,22 @@ test('sans Web Locks, en http:// hors localhost, l’Écran de salle joue seul l
 	ecran.choisirDossier([morceauAttente('Ambiance')]);
 	assert.equal(await lecture, 'blob:Ambiance.ogg');
 	assert.equal(ecran.joue(), true);
+});
+
+test('l’Écran de salle indique quand le dossier choisi ne fournit aucun morceau lisible dans Attente', { timeout: 3000 }, async t => {
+	const ecran = ecranDeSalle(t, 100, { verrous: null, urlsIllisibles: ['blob:Abîmé.ogg'] });
+	ecran.activer.click();
+	await ecran.sonActive();
+	ecran.choisirDossier([morceauAttente('Abîmé')]);
+	assert.equal(ecran.aide.textContent, '1 fichier audio');
+	await terminerMicrotaches();
+	assert.equal(ecran.aide.textContent, 'Aucun morceau lisible dans Attente');
+
+	ecran.choisirDossier([{ name: 'Chanson.ogg', webkitRelativePath: 'Musique/Chanson.ogg' }]);
+	assert.equal(ecran.aide.textContent, 'Aucun morceau lisible dans Attente');
+
+	const lecture = ecran.attendreLecture();
+	ecran.choisirDossier([morceauAttente('Ambiance')]);
+	assert.equal(await lecture, 'blob:Ambiance.ogg');
+	assert.equal(ecran.aide.textContent, '1 fichier audio');
 });
