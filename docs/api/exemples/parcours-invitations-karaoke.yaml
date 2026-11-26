@@ -99,20 +99,32 @@ http:
 - nom: Alizé n’est invitée à aucun Passage de Basile
   operationId: repondreInvitation
   acteur: joueur:66000000-0000-4000-8000-000000000003
-  parametres:
+  parametres: &passage-de-basile
     passageId: 66000000-0000-4000-8000-000000000021
+  accesRefuse: true
   requete:
     envoiId: 66000000-0000-4000-8000-000000000105
     numeroModification: 0
     reponse: ACCEPTER
   statut: 404
-  reponse:
+  reponse: &invitation-introuvable
     type: about:blank
     title: Commande refusée
     status: 404
     code: RESSOURCE_INTROUVABLE
-    detail: Cette Invitation est introuvable.
+    detail: Ressource introuvable.
     instance: /api/soirees/66000000-0000-4000-8000-000000000001/manches/66000000-0000-4000-8000-000000000002/passages/66000000-0000-4000-8000-000000000021/invitation
+- nom: Alizé réutilise son envoiId sur le Passage de Basile et reçoit encore 404
+  operationId: repondreInvitation
+  acteur: joueur:66000000-0000-4000-8000-000000000003
+  parametres: *passage-de-basile
+  accesRefuse: true
+  requete:
+    envoiId: 66000000-0000-4000-8000-000000000105
+    numeroModification: 0
+    reponse: REFUSER
+  statut: 404
+  reponse: *invitation-introuvable
 - nom: Célia accepte
   operationId: repondreInvitation
   acteur: joueur:66000000-0000-4000-8000-000000000005
@@ -470,11 +482,13 @@ http:
         - *id005
         invitationsEmises:
         - passageId: 66000000-0000-4000-8000-000000000020
+          numero: 1
           invite:
             joueurId: 66000000-0000-4000-8000-000000000004
             pseudo: Basile
           etat: EN_ATTENTE
         - passageId: 66000000-0000-4000-8000-000000000020
+          numero: 1
           invite:
             joueurId: 66000000-0000-4000-8000-000000000005
             pseudo: Célia-Marguerite de la Roche
@@ -1066,11 +1080,13 @@ evenements:
         - *id013
         invitationsEmises:
         - passageId: 66000000-0000-4000-8000-000000000020
+          numero: 1
           invite:
             joueurId: 66000000-0000-4000-8000-000000000004
             pseudo: Basile
           etat: EN_ATTENTE
         - passageId: 66000000-0000-4000-8000-000000000020
+          numero: 1
           invite:
             joueurId: 66000000-0000-4000-8000-000000000005
             pseudo: Célia-Marguerite de la Roche
@@ -1244,11 +1260,13 @@ evenements:
         - *id014
         invitationsEmises:
         - passageId: 66000000-0000-4000-8000-000000000020
+          numero: 1
           invite:
             joueurId: 66000000-0000-4000-8000-000000000004
             pseudo: Basile
           etat: EN_ATTENTE
         - passageId: 66000000-0000-4000-8000-000000000020
+          numero: 1
           invite:
             joueurId: 66000000-0000-4000-8000-000000000005
             pseudo: Célia-Marguerite de la Roche
@@ -1574,7 +1592,7 @@ evenements:
       eligiblePourMancheActive: true
       derniereReponse: null
       resultatPersonnel: null
-      karaoke:
+      karaoke: &karaoke-apres-appel
         mancheId: 66000000-0000-4000-8000-000000000002
         etat: EN_COURS
         limitePassagesEnAttente: 1
@@ -1629,6 +1647,27 @@ evenements:
         motifInscriptionRefusee: LIMITE_ATTEINTE
         peutConfirmerPresence: false
         votes: []
+- nom: passage-appele — Alizé voit l’Invitation expirée pour le Passage appelé
+  canal: joueur
+  message:
+    <<: *id025
+    donnees:
+      <<: *id026
+      joueurId: 66000000-0000-4000-8000-000000000003
+      karaoke:
+        <<: *karaoke-apres-appel
+        mesPassagesEnAttente: []
+        invitationsEmises:
+        - passageId: 66000000-0000-4000-8000-000000000020
+          numero: 1
+          invite:
+            joueurId: 66000000-0000-4000-8000-000000000004
+            pseudo: Basile
+          etat: EXPIREE
+        nombrePersonnelEnAttente: 0
+        peutInscrire: true
+        motifInscriptionRefusee: null
+        peutConfirmerPresence: true
 cases:
 - nom: La salle refuse un champ d’Invitations
   schema: BlocKaraokeSalle
@@ -1687,6 +1726,7 @@ cases:
   valide: false
   valeur:
     passageId: 66000000-0000-4000-8000-000000000020
+    numero: 1
     invite:
       joueurId: 66000000-0000-4000-8000-000000000004
       pseudo: Basile

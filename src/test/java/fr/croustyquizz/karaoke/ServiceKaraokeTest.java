@@ -92,6 +92,25 @@ class ServiceKaraokeTest {
         assertThat(banc.socle.envois().retrouver(envoi)).isNull();
     }
 
+    @Test void unInscripteurSansInvitationNePeutPasRejouerUnAncienRecu() {
+        UUID manche = demarrer();
+        UUID passage = inscrire(manche, 1).passageId();
+        UUID envoiId = UUID.randomUUID();
+        String route = "/passages/" + passage + "/invitation";
+        var ancienCorps = new CorpsKaraoke.ReponseInvitation(envoiId, 0L, "ACCEPTER");
+        var ancienEnvoi = envoi(joueur, envoiId, "POST", route, ancienCorps);
+        banc.socle.envois().enregistrer(ancienEnvoi, new Refuse(404, "RESSOURCE_INTROUVABLE", "Invitation introuvable."),
+                banc.horloge.maintenant());
+
+        var corps = new CorpsKaraoke.ReponseInvitation(envoiId, 0L, "REFUSER");
+        var tentative = envoi(joueur, envoiId, "POST", route, corps);
+        assertThatThrownBy(() -> banc.service.repondreInvitation(manche, passage, tentative, corps))
+                .isInstanceOfSatisfying(RefusDeCommande.class, e -> {
+                    assertThat(e.refus().statutHttp()).isEqualTo(404);
+                    assertThat(e.refus().code()).isEqualTo("RESSOURCE_INTROUVABLE");
+                });
+    }
+
     @Test void activiteEtAccesSontRevalidesApresLaSourceSansRecu() {
         UUID manche = demarrer();
         doAnswer(a -> { banc.ports.inactives.add(manche); return Optional.of(contenu(1)); }).when(banc.source).charger(1);

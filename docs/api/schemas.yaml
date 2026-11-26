@@ -3324,12 +3324,18 @@ $defs:
   InvitationEmise:
     type: object
     additionalProperties: false
-    description: Dernier état d’une Invitation émise par l’inscripteur d’un Passage en attente. REFUSEE couvre
-      aussi l’invité qui a quitté le Passage après avoir accepté.
+    description: Dernier état d’une Invitation suivie par l’inscripteur. REFUSEE couvre aussi l’invité qui a quitté
+      le Passage après avoir accepté. EXPIREE reste visible si le Passage sort de la File ou si l’invité part.
+      Le pseudo d’un invité absent de la Soirée est remplacé par « Joueur parti ».
     properties:
       passageId:
         type: string
         format: uuid
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+        description: Numéro du Passage, y compris après sa sortie de la File.
       invite:
         $ref: '#/$defs/InterpretePublic'
       etat:
@@ -3341,6 +3347,7 @@ $defs:
         - EXPIREE
     required:
     - passageId
+    - numero
     - invite
     - etat
   InvitationRecue:
@@ -3482,8 +3489,9 @@ $defs:
             $ref: '#/$defs/PassageEnAttentePublic'
         invitationsEmises:
           type: array
-          description: Invitations émises par ce Joueur pour ses Passages en attente, dont il est l’inscripteur et
-            le premier Interprète, dans l’ordre de la File puis des Invitations.
+          description: Invitations des Passages en attente dont ce Joueur est l’inscripteur, dans l’ordre de la File,
+            puis ses Invitations expirées pour des Passages sortis de la File, par numéro de Passage.
+            Pour un même Passage, les Invitations sont dans l’ordre d’émission.
           items:
             $ref: '#/$defs/InvitationEmise'
         invitationsRecues:

@@ -140,14 +140,23 @@ for (const { nom, exemples } of parcours) {
       ? `/topic/joueurs/${vue.joueurId}`
       : `/topic/soirees/${vue.soiree.id}/${canal}`;
     projections.push({ destination, vue, revision, instant: Date.parse(instant), contexte });
-    // Une Manette ne voit que ses propres invitations : émises pour ses Passages en attente, dont elle
-    // est le premier Interprète, ou reçues ; jamais une invitation entre deux autres Joueurs.
+    // Une Manette ne voit que ses propres Invitations. Au Karaoké, les Invitations
+    // expirées restent visibles après la sortie du Passage de la File.
     const blocPassages = vue.karaoke ?? vue.freestyle;
+    const courant = blocPassages?.courant;
     if (canal === 'joueur' && blocPassages) {
       const siens = new Map(blocPassages.mesPassagesEnAttente.map(p => [p.passageId, p]));
       for (const invitation of blocPassages.invitationsEmises) {
-        assert.equal(siens.get(invitation.passageId)?.interpretes[0].joueurId, vue.joueurId,
-          `${contexte} : invitation émise pour le Passage d’autrui`);
+        const attente = siens.get(invitation.passageId) ?? vue.karaoke?.prochainsPassages.find(p => p.passageId === invitation.passageId);
+        const passage = attente ?? (courant?.passageId === invitation.passageId ? courant : null);
+        if (!attente) {
+          assert.ok(vue.karaoke, `${contexte} : invitation émise pour le Passage d’autrui ou sorti de la File du Freestyle`);
+          assert.equal(invitation.etat, 'EXPIREE', `${contexte} : invitation encore visible hors de la File`);
+        }
+        if (passage) {
+          assert.equal(passage.interpretes[0].joueurId, vue.joueurId, `${contexte} : invitation émise pour le Passage d’autrui`);
+          assert.equal(passage.numero, invitation.numero, `${contexte} : numéro du Passage incohérent`);
+        }
         assert.notEqual(invitation.invite.joueurId, vue.joueurId, `${contexte} : invitation émise vers soi`);
       }
       for (const invitation of blocPassages.invitationsRecues) {
@@ -158,7 +167,6 @@ for (const { nom, exemples } of parcours) {
     }
     // Le courant du Passage suit l'état de la Manche porté par le bloc : échéance d'appel nulle exactement
     // en pause, état EN_PAUSE seulement dans une Manche en pause.
-    const courant = blocPassages?.courant;
     if (courant) {
       const enPause = blocPassages.etat === 'EN_PAUSE';
       if (courant.etat === 'APPELE') {

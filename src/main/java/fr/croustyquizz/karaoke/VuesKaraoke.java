@@ -4,6 +4,7 @@ import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.*;
 import java.time.*;
 import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Projections par destination, sans identifiant de fournisseur. Les paroles ne vont qu’à la salle, le fichier
@@ -25,7 +26,7 @@ public final class VuesKaraoke {
     /** Invitation en suspens, vue par la seule Console (#135). */
     public record InvitationEnAttente(UUID passageId, InterpretePublic invite) { }
     /** Invitation émise, vue par la seule Manette de l’inscripteur. */
-    public record InvitationEmise(UUID passageId, InterpretePublic invite, InvitationPassage.Etat etat) { }
+    public record InvitationEmise(UUID passageId, long numero, InterpretePublic invite, InvitationPassage.Etat etat) { }
     /** Invitation en suspens, vue par la seule Manette de l’invité, avec la cible à renvoyer. */
     public record InvitationRecue(CiblePassage passage, long numero, ResumeChanson chanson, InterpretePublic inscrivant,
             List<InterpretePublic> interpretes) { }
@@ -81,7 +82,8 @@ public final class VuesKaraoke {
         var positions = file.positions();
         var delaiAppel = Duration.ofSeconds(proprietes.passage().delaiAppelSecondes());
         var attentes = file.estimerAttentes(maintenant, enPause, projection.prochainAppelPrevuLe(), projection.actif(), delaiAppel);
-        List<PassageEnAttentePublic> publics = file.ordreEffectif().stream()
+        var ordre = file.ordreEffectif();
+        List<PassageEnAttentePublic> publics = ordre.stream()
                 .map(p -> new PassageEnAttentePublic(p.id(), p.numeroModification(), p.numero(),
                         ResumeChanson.de(instantane.contenus().get(p.id()).chanson()), interpretes(p.interpretes(), pseudos),
                         positions.get(p.id()), p.tourNormal(), p.id().equals(etat.passagePrioritaireId()), attentes.get(p.id())))
@@ -119,7 +121,7 @@ public final class VuesKaraoke {
                         && projection.courant().interpretes().contains(joueur);
                 yield new BlocKaraokeManette(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                         etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
-                        personnels, invitationsEmises(file, pseudos, joueur), invitationsRecues(instantane, file, pseudos, joueur),
+                        personnels, invitationsEmises(etat, ordre, pseudos, joueur), invitationsRecues(instantane, file, pseudos, joueur),
                         personnels.size(), true, peutInscrire, peutInscrire ? null : "LIMITE_ATTEINTE", peutConfirmer,
                         VoteDuPublic.visibles(instantane.voteDuPublic(), file).stream()
                                 .map(vote -> projeterVoteManette(instantane, file, pseudos, maintenant, vote, joueur)).toList());
@@ -135,11 +137,17 @@ public final class VuesKaraoke {
                 .filter(i -> i.passageId().equals(p.id()) && pseudos.containsKey(i.inviteId()))).toList();
     }
 
-    private static List<InvitationEmise> invitationsEmises(FileAttente file, Map<UUID, String> pseudos, UUID joueur) {
+    private static List<InvitationEmise> invitationsEmises(EtatFileAttente etat, List<Passage> ordre,
+            Map<UUID, String> pseudos, UUID joueur) {
+        var sortis = etat.passages().stream().filter(p -> p.etat() != EtatPassage.EN_ATTENTE)
+                .sorted(Comparator.comparingLong(Passage::numero));
         // Un invité devenu inscripteur après un départ ne voit pas sa propre Invitation.
-        return invitations(file, pseudos).stream().filter(i -> file.trouver(i.passageId()).inscripteurId().equals(joueur)
-                        && !i.inviteId().equals(joueur))
-                .map(i -> new InvitationEmise(i.passageId(), interprete(i.inviteId(), pseudos), i.etat())).toList();
+        return Stream.concat(ordre.stream(), sortis).filter(p -> p.inscripteurId().equals(joueur))
+                .flatMap(p -> etat.invitations().stream().filter(i -> i.passageId().equals(p.id()) && !i.inviteId().equals(joueur))
+                        .filter(i -> i.etat() == InvitationPassage.Etat.EXPIREE
+                                || (p.etat() == EtatPassage.EN_ATTENTE && pseudos.containsKey(i.inviteId())))
+                        .map(i -> new InvitationEmise(p.id(), p.numero(), interprete(i.inviteId(), pseudos), i.etat())))
+                .toList();
     }
 
     private static List<InvitationRecue> invitationsRecues(InstantaneKaraoke instantane, FileAttente file,

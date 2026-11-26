@@ -2,7 +2,7 @@ import { creerInterface, creerTicket, creerCatalogue, texteEnvoi, texteAutresPas
 import { installerScene } from '../passage/scene-manette.mjs';
 import { installerVotes } from '../passage/votes-manette.mjs';
 import { installerInvitations } from '../passage/invitations-manette.mjs';
-import { estInscripteur, lignesInvitations, texteDesinscription } from './invitations.mjs';
+import { estInscripteur, lignesInvitations, texteDesinscription, texteEtatInvitation } from './invitations.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton } = ui;
@@ -11,8 +11,11 @@ export function monter(zones, contexte) {
 	const invitations = installerInvitations(ui);
 	const titre = e('h2', '', 'Tes Passages'); titre.tabIndex = -1;
 	const personnels = e('div', 'karaoke__personnels');
+	const expirees = e('ul');
+	expirees.setAttribute('aria-label', 'Invitations expirées des Passages sortis de la File');
+	expirees.hidden = true;
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
-	ui.principale.append(titre, personnels, invalidation);
+	ui.principale.append(titre, personnels, expirees, invalidation);
 	const catalogue = creerCatalogue(ui, ui.principale, { inscrire: true });
 	const ensuite = e('h2', '', 'Ensuite'); ensuite.tabIndex = -1;
 	const file = e('ol', 'rouleau'), autres = e('p'); ui.principale.append(ensuite, file, autres);
@@ -61,6 +64,12 @@ export function monter(zones, contexte) {
 			ticket.querySelector('.mon-ticket__bas').append(commandes); return ticket;
 		});
 		ui.remplacerListe(personnels, tickets.length ? tickets : [e('p', '', "Tu n'attends aucun Passage.")], titre);
+		const idsEnAttente = new Set(ui.bloc.mesPassagesEnAttente.map(p => p.passageId));
+		const lignesExpirees = (ui.bloc.invitationsEmises ?? [])
+			.filter(i => i.etat === 'EXPIREE' && !idsEnAttente.has(i.passageId))
+			.map(i => e('li', '', `Passage ${i.numero} · ${texteEtatInvitation(i)}`));
+		expirees.replaceChildren(...lignesExpirees);
+		expirees.hidden = !lignesExpirees.length;
 		ui.remplacerListe(file, ui.bloc.prochainsPassages.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }), ensuite);
 		file.hidden = !ui.bloc.prochainsPassages.length;
 		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);

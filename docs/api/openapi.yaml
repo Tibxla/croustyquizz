@@ -2047,9 +2047,9 @@ paths:
         file-attente-modifiee sur les trois destinations, la salle sans aucune Invitation. Reçu et rejeu par
         envoiId : README.md, section Karaoké, « Commandes, compteurs et reçus ». Refus dans l’ordre (groupes N,
         V, X, D, T, P) : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404
-        RESSOURCE_INTROUVABLE (Manche, portée ou présence), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu),
-        409 ETAT_INCOMPATIBLE (Manche terminée), 404 RESSOURCE_INTROUVABLE (Passage inconnu, ou aucune
-        Invitation de ce Joueur sur ce Passage), 409 COMMANDE_PERIMEE (compteur, Passage sorti de l’attente,
+        RESSOURCE_INTROUVABLE (Manche, portée, présence ou Joueur non invité à un Passage connu, sans reçu),
+        409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409 ETAT_INCOMPATIBLE (Manche terminée),
+        404 RESSOURCE_INTROUVABLE (Passage inconnu), 409 COMMANDE_PERIMEE (compteur, Passage sorti de l’attente,
         Invitation déjà acceptée, refusée ou expirée), puis pour ACCEPTER 409 PASSAGE_DEJA_INSCRIT et 409
         LIMITE_ATTEINTE. 503 SERVICE_INDISPONIBLE sans reçu.'
       tags:
