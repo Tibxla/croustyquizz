@@ -2,6 +2,19 @@ import { estInactif, marquerInactif, texteEnvoi } from './commun.mjs';
 import { peutReessayer } from './envois.mjs';
 
 const LONGUEUR_MAX = 120;
+const longueur = texte => [...texte].length;
+
+function erreurChampSuggestion(texte) {
+	if (longueur(texte) > LONGUEUR_MAX) return `Utilise au plus ${LONGUEUR_MAX} caractères.`;
+	// Comme String.strip() côté serveur, le nettoyage retire aussi U+001C à U+001F aux extrémités.
+	const nettoye = texte.normalize('NFC').replace(/\p{White_Space}+/gu, ' ').replace(/^[ \u001C-\u001F]+|[ \u001C-\u001F]+$/g, '');
+	if (!nettoye) return 'Renseigne ce champ.';
+	if (longueur(nettoye) > LONGUEUR_MAX) return `Certains caractères comptent pour plusieurs. Raccourcis ce texte à ${LONGUEUR_MAX} caractères au plus.`;
+	if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(nettoye)) return 'Retire les caractères invisibles ou de contrôle.';
+	// Teste si la clé de regroupement du serveur serait vide.
+	const cle = nettoye.normalize('NFKC').toLowerCase().normalize('NFD').replace(/[\u0300-\u036F\p{P}\p{White_Space}]+/gu, '');
+	return cle ? '' : 'La ponctuation et les accents seuls ne suffisent pas.';
+}
 
 export function installerSuggestionManette(ui) {
 	const { e, bouton, ecouter } = ui;
@@ -67,14 +80,10 @@ export function installerSuggestionManette(ui) {
 		if (composition || formulaire.hidden || estInactif(envoyer)) return;
 		const corps = {}, invalides = [];
 		for (const { nom, saisie, erreur } of champs) {
-			const texte = saisie.value;
-			const nettoye = texte.replace(/\p{White_Space}+/gu, ' ').trim();
-			let message = '';
-			if ([...texte].length > LONGUEUR_MAX) message = `Utilise au plus ${LONGUEUR_MAX} caractères.`;
-			else if (!nettoye.normalize('NFD').replace(/\p{M}+/gu, '').trim()) message = 'Renseigne ce champ.';
+			const message = erreurChampSuggestion(saisie.value);
 			indiquerErreur(saisie, erreur, message);
 			if (message) invalides.push(saisie);
-			corps[nom] = texte;
+			corps[nom] = saisie.value;
 		}
 		if (invalides.length) { invalides[0].focus(); return; }
 		ui.commande({ type: 'SUGGERER_CHANSON', methode: 'POST', chemin: `${ui.racine()}/suggestions`,

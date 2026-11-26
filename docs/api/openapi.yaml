@@ -1792,9 +1792,9 @@ paths:
         regroupés, extrémités supprimées. REQUETE_INVALIDE pour un champ vide, trop long, qui contient encore un
         caractère de contrôle ou de format (catégorie Cf, comme U+200B), ou dont la clé normalisée est vide
         (ponctuation seule, par exemple). Dans la Soirée, la première graphie nettoyée est conservée.
-        La clé de regroupement applique NFKC, ramène les apostrophes et guillemets typographiques
-        (’ ‘ « » “ ”) à leur forme ASCII, supprime la ponctuation Unicode puis regroupe à nouveau les blancs ;
-        la casse, les accents, les blancs et la ponctuation ne distinguent donc pas les demandes.
+        La clé de regroupement applique NFKC, passe en minuscules et retire les diacritiques combinants
+        U+0300 à U+036F après décomposition NFD. Elle ramène les apostrophes et guillemets typographiques
+        (’ ‘ « » “ ”) à leur forme ASCII, supprime la ponctuation Unicode et regroupe à nouveau les blancs.
         Un même Joueur ne compte qu’une fois. Sous le verrou de la Soirée, un Joueur participe à 5 groupes
         ouverts au plus et la Soirée compte 50 groupes ouverts au plus : rejoindre un sixième groupe ou en
         ouvrir un cinquante et unième rend 409 LIMITE_ATTEINTE, sans mutation ni publication. Rejoindre un

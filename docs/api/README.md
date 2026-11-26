@@ -167,7 +167,11 @@ Une transaction unique enregistre la mutation. Après validation de cette transa
 
 ### Suggestions et favoris de Chansons
 
-La Manette peut envoyer un titre et un artiste pendant le Karaoké, même en pause ou lorsque son quota de Passages est atteint. La Console voit les groupes de la Soirée, classés par nombre de Joueurs décroissant. Chaque Joueur compte une fois par groupe. La première graphie est affichée après nettoyage des blancs. Pour regrouper, le serveur applique NFKC, ramène les apostrophes et guillemets typographiques à leur forme ASCII, supprime la ponctuation, ignore la casse et les marques d’accent, puis compare le titre et l’artiste séparément. Un champ qui garde un caractère de contrôle ou de format (`Cf`), qui dépasse 120 points de code une fois nettoyé (NFC, blancs regroupés) ou dont la clé est vide rend `400 REQUETE_INVALIDE`. Un Joueur participe à 5 groupes ouverts au plus, et la Soirée en compte 50 au plus : au-delà, `409 LIMITE_ATTEINTE`, sans mutation ni publication. Le retrait utilise le compteur affiché pour protéger une demande arrivée depuis.
+La Manette peut envoyer un titre et un artiste pendant le Karaoké, même en pause ou lorsque son quota de Passages est atteint. La Console voit les groupes de la Soirée, classés par nombre de Joueurs décroissant. Chaque Joueur compte une fois par groupe. La première graphie est affichée après nettoyage.
+
+Le titre et l’artiste doivent chacun compter de 1 à 120 points de code à la saisie et après nettoyage (NFC, blancs Unicode regroupés, extrémités supprimées). Une longueur hors limites, un caractère de contrôle ou de format (`Cf`) encore présent après nettoyage ou une clé vide entraîne un `400 REQUETE_INVALIDE`. Pour regrouper les suggestions, le serveur applique NFKC, passe en minuscules et retire les diacritiques combinants U+0300 à U+036F après décomposition NFD. Il ramène les apostrophes et guillemets typographiques à leur forme ASCII, supprime la ponctuation Unicode et regroupe les blancs. Il compare le titre et l’artiste séparément.
+
+Un Joueur participe à 5 groupes ouverts au plus, et la Soirée en compte 50 au plus. Au-delà, la commande rend `409 LIMITE_ATTEINTE`, sans mutation ni publication. Le retrait utilise le compteur affiché pour protéger une demande arrivée depuis.
 
 Les Chansons favorites de la Soirée remontent en tête des résultats pour les deux interfaces. À l’intérieur de chaque groupe, le classement habituel s’applique. La Console reçoit les identifiants des favoris et peut en ajouter ou en retirer. Le rattachement au Lieu suivra #180.
 

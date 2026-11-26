@@ -70,6 +70,50 @@ test('Manette : le refus conserve la saisie et le démontage annule la requête 
 	assert.equal(b.appels[1].args[3].signal.aborted, true);
 });
 
+test('Manette : une suggestion peut contenir une marque conservée par la clé du serveur', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	b.module.afficher(vue(), capture);
+	b.connecter('synchronisee');
+	bouton(b.principale, 'Suggérer une Chanson').click();
+	const formulaire = b.principale.querySelector('form.karaoke__suggestion');
+	const [titre, artiste] = formulaire.querySelectorAll('input');
+	titre.value = '\u3099'; // Dakuten japonais.
+	artiste.value = '\u093E'; // Signe vocalique devanagari.
+	formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
+	assert.deepEqual(b.appels[0].args[2], { titre: '\u3099', artiste: '\u093E' });
+});
+
+test('Manette : une suggestion invalide est signalée sous le champ avant l’envoi', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	b.module.afficher(vue(), capture);
+	b.connecter('synchronisee');
+	bouton(b.principale, 'Suggérer une Chanson').click();
+	const formulaire = b.principale.querySelector('form.karaoke__suggestion');
+	const [titre, artiste] = formulaire.querySelectorAll('input');
+	for (const [valeurTitre, valeurArtiste, invalide] of [
+		['Lune', '!!!', artiste],
+		['Lune\u200B', 'Indochine', titre],
+		['\u0958'.repeat(61), 'Indochine', titre], // NFC décompose chaque U+0958 en deux points de code.
+		['Lune', '\u0301', artiste],
+	]) {
+		titre.value = valeurTitre;
+		artiste.value = valeurArtiste;
+		formulaire.dispatchEvent({ type: 'submit' });
+		assert.equal(b.appels.length, 0, JSON.stringify([valeurTitre, valeurArtiste]));
+		const erreur = formulaire.querySelector(`#${invalide.getAttribute('aria-describedby')}`);
+		assert.equal(erreur.hidden, false);
+		assert.ok(erreur.textContent);
+		assert.equal(invalide.getAttribute('aria-invalid'), 'true');
+		assert.equal(b.document.activeElement, invalide);
+		invalide.dispatchEvent({ type: 'input' });
+		assert.equal(erreur.hidden, true);
+		assert.equal(invalide.getAttribute('aria-invalid'), null);
+	}
+});
+
 test('Console : la suggestion associe le compteur au retrait et disparaît sur la vue publiée', async t => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
 	t.after(() => b.module.demonter());
@@ -148,8 +192,9 @@ async function ouvrirFicheConsole(b, chansons) {
 test('Console : basculer un favori retrie les résultats affichés sans relancer la recherche ni perdre le focus', async t => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
 	t.after(() => b.module.demonter());
-	const { declencheur, dialogue } = await ouvrirFicheConsole(b, [chanson, autre]);
-	assert.deepEqual(ordreResultats(b.laterale), ['c', 'd']);
+	const chansons = ['a', 'b', 'c', 'd'].map(chansonId => ({ ...chanson, chansonId, titre: `Titre ${chansonId}` }));
+	const { declencheur, dialogue } = await ouvrirFicheConsole(b, chansons);
+	assert.deepEqual(ordreResultats(b.laterale), ['a', 'b', 'c', 'd']);
 	const favori = bouton(dialogue, 'Ajouter aux favoris');
 	favori.focus();
 	favori.click();
@@ -164,17 +209,22 @@ test('Console : basculer un favori retrie les résultats affichés sans relancer
 	await terminerMicrotaches();
 	b.module.afficher(vue({ chansonsFavorites: ['d'] }), { source: 'evenement', type: 'favoris-chansons-modifies' });
 	assert.equal(b.appels.length, 3);
-	assert.deepEqual(ordreResultats(b.laterale), ['d', 'c']);
+	assert.deepEqual(ordreResultats(b.laterale), ['d', 'a', 'b', 'c']);
 	assert.equal(declencheur.isConnected, true);
 	assert.equal(favori.getAttribute('aria-disabled'), null);
+	bouton(dialogue, 'Retirer des favoris').click();
+	assert.deepEqual(b.appels[3].args[2], { favorite: false });
+	b.appels[3].resolve({ statut: 200, corps: {} });
+	await terminerMicrotaches();
+	assert.deepEqual(ordreResultats(b.laterale), ['d', 'a', 'b', 'c']);
+	b.module.afficher(vue({ chansonsFavorites: [] }), { source: 'evenement', type: 'favoris-chansons-modifies' });
+	assert.deepEqual(ordreResultats(b.laterale), ['a', 'b', 'c', 'd']);
 	dialogue.close();
 	assert.equal(b.document.activeElement, declencheur);
 
-	b.module.afficher(vue({ chansonsFavorites: [] }), { source: 'evenement', type: 'favoris-chansons-modifies' });
-	assert.deepEqual(ordreResultats(b.laterale), ['d', 'c']);
 	b.module.afficher(vue({ chansonsFavorites: ['c'] }), { source: 'evenement', type: 'favoris-chansons-modifies' });
-	assert.deepEqual(ordreResultats(b.laterale), ['c', 'd']);
-	assert.equal(b.appels.length, 3);
+	assert.deepEqual(ordreResultats(b.laterale), ['c', 'a', 'b', 'd']);
+	assert.equal(b.appels.length, 4);
 });
 
 test('Console : à la fermeture de la fiche, le focus retrouve le résultat redessiné par data-chanson-id', async t => {
