@@ -162,7 +162,8 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 			liste.replaceChildren(...enfants);
 			if (avaitFocus) {
 				(Array.from(liste.querySelectorAll('[data-passage-id], [data-chanson-id]')).find(e =>
-					e.tagName === actif.tagName && (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id
+					!e.disabled && !e.hidden && e.tagName === actif.tagName
+					&& (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id
 					&& e.getAttribute('data-action') === action) ?? titre)?.focus();
 			}
 		},
@@ -265,25 +266,44 @@ export function invitesPossibles(joueurs, moi) {
 
 function creerChoixInvites(ui, moi) {
 	const { e, ecouter } = ui;
-	const candidats = invitesPossibles(ui.joueurs, moi);
-	if (!candidats.length) return null;
+	const element = e('div');
 	const groupe = e('fieldset', 'karaoke__invites');
 	const legende = e('legend', '', 'Chanter avec (trois au plus)');
 	const aide = e('p', 'champ__aide', 'Chaque Joueur coché reçoit une Invitation et choisit de te rejoindre.');
 	groupe.append(legende, aide);
-	const cases = candidats.map(joueur => {
-		const ligne = e('label', 'karaoke__invite'), choix = e('input');
-		choix.type = 'checkbox'; choix.value = joueur.id; choix.checked = false;
-		ligne.append(choix, e('span', '', joueur.pseudo));
-		groupe.append(ligne);
-		return choix;
-	});
-	const limiter = () => {
-		const pleins = cases.filter(c => c.checked).length >= NOMBRE_INVITES_MAX;
-		for (const c of cases) c.disabled = pleins && !c.checked;
-	};
-	for (const c of cases) ecouter(c, 'change', limiter);
-	return { element: groupe, choisis: () => cases.filter(c => c.checked).map(c => c.value) };
+	const cases = new Map();
+	const choisis = () => [...cases.values()].filter(({ choix }) => choix.checked).map(({ choix }) => choix.value);
+	function limiter() {
+		const pleins = choisis().length >= NOMBRE_INVITES_MAX;
+		for (const { choix } of cases.values()) choix.disabled = pleins && !choix.checked;
+	}
+	function rendre() {
+		const candidats = invitesPossibles(ui.joueurs, moi);
+		const presents = new Set(candidats.map(joueur => joueur.id));
+		for (const [id, { ligne }] of cases) {
+			if (presents.has(id)) continue;
+			ligne.remove();
+			cases.delete(id);
+		}
+		for (const joueur of candidats) {
+			const existante = cases.get(joueur.id);
+			if (existante) {
+				if (existante.pseudo.textContent !== joueur.pseudo) existante.pseudo.textContent = joueur.pseudo;
+				continue;
+			}
+			const ligne = e('label', 'karaoke__invite'), choix = e('input'), pseudo = e('span', '', joueur.pseudo);
+			choix.type = 'checkbox'; choix.value = joueur.id;
+			ligne.append(choix, pseudo);
+			groupe.append(ligne);
+			cases.set(joueur.id, { ligne, choix, pseudo });
+			ecouter(choix, 'change', limiter);
+		}
+		element.hidden = !cases.size;
+		if (!cases.size) groupe.remove();
+		else if (!element.contains(groupe)) element.append(groupe);
+		limiter();
+	}
+	return { element, rendre, choisis };
 }
 
 export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
@@ -365,10 +385,10 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			if (fiche.origineErreur === 'delai') contenu.append(bouton('Réessayer', () => consulter(courante.chansonId, declencheur)));
 		} else if (inscrire) {
 			invitations = creerChoixInvites(ui, ui.contexte.acteur.identifiant);
-			if (invitations) contenu.append(invitations.element);
+			contenu.append(invitations.element);
 			boutonInscription = bouton("M'inscrire", () => {
 				if (!fiche?.donnees || !etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises).possible) return;
-				const invitesIds = invitations?.choisis() ?? [];
+				const invitesIds = invitations.choisis();
 				// Sans invité, le corps reste celui d'une inscription seule.
 				const corps = invitesIds.length ? { chansonId: fiche.chansonId, invitesIds } : { chansonId: fiche.chansonId };
 				ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages`, corps,
@@ -386,6 +406,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		const etat = etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises);
 		motif.textContent = etat.motif ?? '';
 		if (inscrire) {
+			invitations.rendre();
 			const cle = ui.inscription(fiche.chansonId), envoi = ui.envoiInscription(fiche.chansonId);
 			boutonInscription.disabled = !etat.possible || Boolean(cle);
 			etatAction.textContent = texteEnvoi(envoi);

@@ -3,7 +3,7 @@ import { peutReessayer } from './envois.mjs';
 import { formaterTempsRestant } from './presentation.mjs';
 import { delaiAppelRestant } from './paroles.mjs';
 import { corpsVote, delaiVoteRestant, etatVoteManette, formaterMoyenne, formaterNombreVotes, formaterNote } from './vote.mjs';
-import { estInscripteur, lignesInvitations, texteDesinscription, texteInvitation } from './invitations.mjs';
+import { estInscripteur, lignesInvitations, texteDesinscription, texteEtatInvitation, texteInvitation } from './invitations.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton } = ui;
@@ -17,8 +17,11 @@ export function monter(zones, contexte) {
 	ui.principale.append(titreInvitations, invitations);
 	const titre = e('h2', '', 'Tes Passages'); titre.tabIndex = -1;
 	const personnels = e('div', 'karaoke__personnels');
+	const expirees = e('ul');
+	expirees.setAttribute('aria-label', 'Invitations expirées des Passages sortis de la File');
+	expirees.hidden = true;
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
-	ui.principale.append(titre, personnels, invalidation);
+	ui.principale.append(titre, personnels, expirees, invalidation);
 	const catalogue = creerCatalogue(ui, ui.principale, { inscrire: true });
 	const ensuite = e('h2', '', 'Ensuite'); ensuite.tabIndex = -1;
 	const file = e('ol', 'rouleau'), autres = e('p'); ui.principale.append(ensuite, file, autres);
@@ -112,7 +115,7 @@ export function monter(zones, contexte) {
 	// Invitations reçues : la Chanson, qui invite, et deux gestes, Accepter ou Refuser (#138).
 	function rendreInvitations() {
 		const recues = ui.bloc.invitationsRecues ?? [];
-		titreInvitations.hidden = invitations.hidden = !recues.length;
+		const titreAvaitFocus = ui.document.activeElement === titreInvitations;
 		const fiches = recues.map((invitation, rang) => {
 			const cible = invitation.passage;
 			const ticket = creerTicket(ui, { ...invitation, passageId: cible.passageId }, { personnel: true, courant: true });
@@ -140,7 +143,10 @@ export function monter(zones, contexte) {
 			if (ui.reessaiPossible(envoi)) bas.append(bouton('Réessayer le même envoi', () => ui.reessayer(envoi.cle)));
 			return ticket;
 		});
-		ui.remplacerListe(invitations, fiches, titre);
+		const enReste = recues.length > 0;
+		ui.remplacerListe(invitations, fiches, enReste ? titreInvitations : titre);
+		titreInvitations.hidden = invitations.hidden = !enReste;
+		if (!enReste && titreAvaitFocus) titre.focus();
 	}
 	function envoiPresence() {
 		return ui.dernierEnvoi(e => e.commande.type === 'CONFIRMER_PRESENCE' && e.commande.passageId === ui.bloc.courant?.passageId);
@@ -174,6 +180,12 @@ export function monter(zones, contexte) {
 			ticket.querySelector('.mon-ticket__bas').append(commandes); return ticket;
 		});
 		ui.remplacerListe(personnels, tickets.length ? tickets : [e('p', '', "Tu n'attends aucun Passage.")], titre);
+		const idsEnAttente = new Set(ui.bloc.mesPassagesEnAttente.map(p => p.passageId));
+		const lignesExpirees = (ui.bloc.invitationsEmises ?? [])
+			.filter(i => i.etat === 'EXPIREE' && !idsEnAttente.has(i.passageId))
+			.map(i => e('li', '', `Passage ${i.numero} · ${texteEtatInvitation(i)}`));
+		expirees.replaceChildren(...lignesExpirees);
+		expirees.hidden = !lignesExpirees.length;
 		ui.remplacerListe(file, ui.bloc.prochainsPassages.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }), ensuite);
 		file.hidden = !ui.bloc.prochainsPassages.length;
 		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
