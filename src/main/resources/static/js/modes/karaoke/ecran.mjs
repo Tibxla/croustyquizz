@@ -1,3 +1,4 @@
+import { texteCredit } from '../../bibliotheque.mjs';
 import { creerInterface, creerTicket, creerUuid, texteAutresPassages } from './commun.mjs';
 import { creerCycleLecture } from './cycle-lecture.mjs';
 import { delaiAppelRestant, determinerLignes, positionChronologique } from './paroles.mjs';
@@ -24,7 +25,10 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	const ui = creerInterface(zones, contexte, { annoncerConnexion: false }), { e, ecouter } = ui;
 	const invitation = e('h2', 'karaoke__invitation'), prochain = e('div', 'karaoke__prochain');
 	const minutes = e('p', 'karaoke__delai chiffres'), paroles = e('div', 'karaoke__paroles');
-	ui.principale.append(invitation, prochain, minutes, paroles);
+	// Crédit exigé par la licence d'une Chanson de la Bibliothèque de base, pendant tout son Passage (ADR 0011).
+	const credit = e('p', 'karaoke__credit');
+	credit.hidden = true;
+	ui.principale.append(invitation, prochain, minutes, paroles, credit);
 	const listeVotes = e('div', 'karaoke__bandeaux-vote');
 	const bandeaux = new Map();
 	listeVotes.hidden = true;
@@ -37,10 +41,14 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	ui.principale.append(autreLecteur);
 	let cycle, requetes, ticketCourant, descriptionCourant, etiquetteCourant, blocAffiche, trame, versionParoles, lignes = [], indexAffiche;
 	let votesChronometres = false;
-	function actualiserDossier({ fichiers, sonDebloque } = audio.etat()) {
+	function actualiserDossier({ fichiers, dossier, sonDebloque } = audio.etat()) {
 		if (ui.synchronisee && fichiers !== designation.fichiers) {
 			designation.fichiers = fichiers;
-			cycle.choisirDossier(fichiers);
+			// Sans dossier, la Bibliothèque de base suffit, mais seul un geste sur un dossier prend la place d'un autre lecteur.
+			if (dossier === null && fichiers) {
+				cycle.reprendreDossier({ fichiers, sonDebloque, aEteLectrice: true });
+				if (ui.bloc) cycle.surVue(ui.bloc);
+			} else cycle.choisirDossier(fichiers);
 		}
 		if (sonDebloque && !cycle.etat().sonDebloque) void cycle.debloquer({ attendreVue: () => !ui.synchronisee });
 	}
@@ -222,6 +230,10 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		prochain.replaceChildren(...(prochain.hidden ? [] : [creerTicket(ui, passages[0])]));
 		minutes.hidden = !appel || enErreur;
 		paroles.hidden = !actif || appel || enErreur || !bloc.paroles;
+		const libre = actif && !appel && actif.chanson.origine === 'BIBLIOTHEQUE' ? actif.chanson.bibliotheque : null;
+		const texteDuCredit = libre ? `Chanson : ${texteCredit({ ...actif.chanson, licence: libre.licence })}` : '';
+		credit.hidden = !libre;
+		if (credit.textContent !== texteDuCredit) credit.textContent = texteDuCredit;
 		if (paroles.hidden) {
 			paroles.replaceChildren();
 			versionParoles = indexAffiche = undefined;

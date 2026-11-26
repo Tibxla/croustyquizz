@@ -496,3 +496,19 @@ test('un nouvel appel capturé après une lecture déjà jouée réexamine sa vu
 	assert.deepEqual(b.gestes.filter(g => g === 'lire'), ['lire']);
 	assert.equal(b.commandes.filter(c => c.chemin === '/passages/p2/erreur-lecture').length, 1);
 });
+
+test('sans fichier du Lieu, une Chanson de la Bibliothèque de base se prépare par son URL et se déclare comme un fichier local', async () => {
+	const libre = { fichier: '/bibliotheque/chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, licence: 'CC BY-SA 4.0',
+		urlLicence: 'https://creativecommons.org/licenses/by-sa/4.0/deed.fr', urlSource: 'https://example.org/la-lanterne' };
+	const chanson = { titre: 'La lanterne', artiste: 'Les Lucioles', origine: 'BIBLIOTHEQUE', bibliotheque: libre };
+	const b = await preparer([], appel('p', { chanson }));
+	assert.deepEqual(b.chargements[0].f, { name: 'les-lucioles-la-lanterne.mp3', size: 2400, url: libre.fichier });
+	b.chargements[0].resolve({ dureeMs: 4000 });
+	await terminerMicrotaches();
+	assert.deepEqual(b.commandes.at(-1).corps, { lecteurId: 'ici', etapeId: 'e-p', numeroModification: 1, source: 'FICHIER_LOCAL',
+		fichier: { nom: 'les-lucioles-la-lanterne.mp3', tailleOctets: 2400, dureeMs: 4000 }, motifParolesSeules: null });
+	// Le fichier du Lieu, s'il existe, l'emporte.
+	const lieu = { name: 'Les Lucioles - La lanterne.mp3', size: 99, webkitRelativePath: 'Musique/Les Lucioles - La lanterne.mp3' };
+	const avecDossier = await preparer([lieu], appel('p', { chanson }));
+	assert.equal(avecDossier.chargements[0].f, lieu);
+});

@@ -171,3 +171,5 @@
   .karaoke .ticket--detache .ticket__corps,
   .karaoke .mon-ticket--detachement .mon-ticket__bas { animation: none; }
 }
+/* Crédit d'une Chanson de la Bibliothèque de base, sous les paroles, en texte secondaire. */
+.salle .karaoke__credit { margin: 1.2vw 0 0; font-size: 1.5vw; color: var(--texte-2); }

@@ -1,4 +1,4 @@
-import { trouverFichierDeChanson } from './fichiers.mjs';
+import { choisirFichierDeChanson } from './fichiers.mjs';
 import { passageActif } from './presentation.mjs';
 
 const estPreparation = etat => etat === 'preparation' || etat === 'preparee';
@@ -88,7 +88,7 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 		const cible = { passageId, numeroModification, version: versionDossier };
 		preparation = cible;
 		changerPhase('preparation');
-		const resultat = trouverFichierDeChanson(fichiers, chanson);
+		const resultat = choisirFichierDeChanson(fichiers, chanson);
 		let fichier = null, motif = 'FICHIER_' + resultat.etat.toUpperCase();
 		if (resultat.etat === 'unique') {
 			const { name: nom, size: tailleOctets } = resultat.fichier;
