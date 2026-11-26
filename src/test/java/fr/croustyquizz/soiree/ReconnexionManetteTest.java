@@ -122,12 +122,9 @@ class ReconnexionManetteTest {
 		// La Manette se met en veille : une vue part pendant qu'elle n'écoute plus.
 		premiere.disconnect();
 		await().atMost(Duration.ofSeconds(5)).until(() -> !abonnements.estInstalle(abonnement, Canaux.joueur(joueurId), lea));
-		// Sa seule connexion fermée, Léa passe hors ligne (#8) : une vue de plus part vers les Manettes.
-		await().atMost(Duration.ofSeconds(5)).until(() -> !json.readTree(envoyer(HttpMethod.GET,
-				"/api/soirees/" + soireeId + "/etat/manette", null, jeton).getBody()).at("/vue/joueurs/0/connecte").asBoolean());
 		publier(soireeId, joueurId);
 
-		// Reconnexion avec le même jeton, qui la remet en ligne avant CONNECTED ; une vue part pendant la resynchronisation.
+		// Reconnexion avec le même jeton ; une vue part pendant la resynchronisation.
 		StompSession seconde = connecter(jeton);
 		UUID reprise = UUID.randomUUID();
 		BlockingQueue<Map<String, Object>> recus = abonner(seconde, Canaux.joueur(joueurId), reprise, lea);
@@ -136,9 +133,7 @@ class ReconnexionManetteTest {
 		JsonNode recapture = capturer(soireeId, reprise, jeton);
 
 		long revisionReprise = recapture.path("revision").asLong();
-		// Trois vues publiées par le test, plus le départ hors ligne et le retour en ligne.
-		assertThat(revisionReprise).isEqualTo(revision + 5);
-		assertThat(recapture.at("/vue/joueurs/0/connecte").asBoolean()).isTrue();
+		assertThat(revisionReprise).isEqualTo(revision + 3);
 		assertThat(recapture.at("/vue/joueurId").asString()).isEqualTo(joueurId.toString());
 		assertThat(recapture.at("/vue/joueurs/0/pseudo").asString()).isEqualTo("Léa");
 		// La vue manquée n'est pas rejouée ; celle reçue pendant la reprise est déjà dans la capture.

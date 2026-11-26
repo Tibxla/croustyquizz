@@ -27,7 +27,8 @@ channels:
       avant son installation par le broker.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier, les commandes du lecteur
       de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
-      Soirée. musique-attente-modifiee après changement du réglage de l’Animateur ou de la disponibilité
+      Soirée. joueurs-modifies à l’arrivée d’un Joueur et lors d’un changement de présence.
+      musique-attente-modifiee après changement du réglage de l’Animateur ou de la disponibilité
       signalée par l’Écran de salle, y compris hors Manche. Karaoké : file-attente-modifiee après inscription, désinscription, retrait, placement ou
       priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
       passage-demarre, passage-termine et passage-saute pour le cycle du Passage.
@@ -53,6 +54,7 @@ channels:
     address: /topic/soirees/{soireeId}/console
     description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND
       de commande métier. Une révision est propre à cette destination et à cette Soirée.
+      joueurs-modifies à l’arrivée d’un Joueur et lors d’un changement de présence.
       musique-attente-modifiee transporte la vue complète après changement du réglage de l’Animateur
       ou de la disponibilité signalée par l’Écran de salle, y compris hors Manche. Karaoké :
       file-attente-modifiee après inscription, désinscription, retrait, placement ou priorité ;
@@ -81,7 +83,9 @@ channels:
     address: /topic/joueurs/{joueurId}
     description: "Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
-      propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
+      propre à cette destination et à cette Soirée. joueurs-modifies à l’arrivée d’un Joueur.
+      La présence est actualisée à la prochaine vue publiée vers la Manette pour une autre cause ;
+      une capture rend la dernière vue publiée. Karaoké : file-attente-modifiee après
       inscription, désinscription, retrait, placement ou priorité ; limite-passages-modifiee après
       changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
       pour le cycle du Passage. En Pilotage Automatique, passage-appele est aussi l’unique cause si
