@@ -71,6 +71,8 @@ http:
                 album: null
                 dureeMs: 205000
                 etatParoles: SYNCHRONISEES
+                origine: LRCLIB
+                bibliotheque: null
               interpretes: &a1
                 - joueurId: 98000000-0000-4000-8000-000000000003
                   pseudo: Alizé
@@ -92,6 +94,8 @@ http:
                 album: Album fictif
                 dureeMs: 180000
                 etatParoles: SYNCHRONISEES
+                origine: LRCLIB
+                bibliotheque: null
               interpretes: &a11
                 - joueurId: 98000000-0000-4000-8000-000000000004
                   pseudo: Basile
@@ -113,6 +117,8 @@ http:
                 album: null
                 dureeMs: 240000
                 etatParoles: SYNCHRONISEES
+                origine: LRCLIB
+                bibliotheque: null
               interpretes: *a1
               position: 3
               tour: 2
@@ -178,6 +184,8 @@ http:
                 album: null
                 dureeMs: 200000
                 etatParoles: SYNCHRONISEES
+                origine: LRCLIB
+                bibliotheque: null
               interpretes: *a11
               position: 4
               tour: 2
