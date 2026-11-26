@@ -109,6 +109,7 @@ async function demarrer() {
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
+	let connexionRefusee = false;
 	boutonReprise?.addEventListener('click', () => suivi?.resynchroniser({ explicite: true }));
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
@@ -125,6 +126,8 @@ async function demarrer() {
 		},
 		surEtat(etat) {
 			changerEtat(etat);
+			if (etat === 'coupure' && connexionRefusee) return;
+			connexionRefusee = false;
 			etatConnexion.textContent = {
 				synchronisation: 'Synchronisation…', synchronisee: 'Vue synchronisée',
 				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',
@@ -132,6 +135,7 @@ async function demarrer() {
 		},
 		// Refus du serveur au CONNECT : pas de reconnexion automatique, le motif reste affiché.
 		surRefus(motif) {
+			connexionRefusee = true;
 			etatConnexion.textContent = 'Connexion refusée.';
 			afficherErreur(motif);
 		},
