@@ -81,7 +81,7 @@ test('la salle applique la coupure dès la capture et ne relance qu’après le 
 		position: () => 0, surFin: () => () => {}, surErreur: () => () => {},
 	}, coordonner(surAttente) {
 		return { activer: surAttente, signalerSonDeManche: actif => surAttente(!actif),
-			attendreSonDeManche: async () => true, annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {}, detruire() {} };
+			attendreSonDeManche: async () => true, annoncerMorceaux() {}, publierDisponibilite: (disponibles, signal, publier) => publier(), detruire() {} };
 	} });
 	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree', envoyer: async () => ({ statut: 200 }) });
 	const salle = monterMusiqueDAttenteSalle(audio, contexte);
@@ -123,8 +123,7 @@ test('la salle signale seulement la disponibilité du dossier choisi, dans l’o
 	const audio = {
 		reglerMusiqueDAttente() {},
 		surChangement(rappel) { dossierChoisi = rappel; return () => { dossierChoisi = undefined; }; },
-		// Fenêtre seule : l'absence de morceaux part dès que les autres fenêtres ont été regardées.
-		async attendreAucunMorceauAilleurs(signal) { signal.throwIfAborted(); },
+		publierDisponibilite: (disponibles, signal, publier) => publier(),
 	};
 	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree',
 		envoyer(methode, route, corps, options) {
@@ -151,6 +150,38 @@ test('la salle signale seulement la disponibilité du dossier choisi, dans l’o
 	assert.equal(dossierChoisi, undefined);
 });
 
+test('la salle ignore l’absence si le dossier change pendant la vérification des autres fenêtres', async t => {
+	const envois = [];
+	const verification = Promise.withResolvers();
+	let dossierChoisi, signalAbsence;
+	const audio = {
+		reglerMusiqueDAttente() {},
+		surChangement(rappel) { dossierChoisi = rappel; return () => {}; },
+		async publierDisponibilite(disponibles, signal, publier) {
+			if (!disponibles) {
+				signalAbsence = signal;
+				await verification.promise;
+			}
+			await publier();
+		},
+	};
+	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree',
+		async envoyer(methode, route, { morceauxDisponibles }) {
+			envois.push(morceauxDisponibles);
+			return { statut: 200 };
+		},
+	});
+	const salle = monterMusiqueDAttenteSalle(audio, contexte);
+	t.after(() => salle.demonter());
+	changerEtat('synchronisee');
+	dossierChoisi({ fichiers: [], morceauxDisponibles: false });
+	dossierChoisi({ fichiers: [{ name: 'Ambiance.ogg' }], morceauxDisponibles: true });
+	assert.equal(signalAbsence.aborted, true);
+	verification.resolve();
+	await terminerMicrotaches();
+	assert.deepEqual(envois, [true], 'seul le dernier choix de dossier doit être publié');
+});
+
 test('la salle signale l’absence de morceaux quand elle a écarté tous ceux du dossier comme illisibles', async () => {
 	const envois = [];
 	const illisible = { name: 'Abîmé.ogg', webkitRelativePath: 'Musique/Attente/Abîmé.ogg' };
@@ -163,7 +194,7 @@ test('la salle signale l’absence de morceaux quand elle a écarté tous ceux d
 	}, coordonner(surAttente) {
 		// Fenêtre seule : aucune autre n'a de morceaux.
 		return { activer: surAttente, signalerSonDeManche() {}, attendreSonDeManche: async () => true,
-			annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {}, detruire() {} };
+			annoncerMorceaux() {}, publierDisponibilite: (disponibles, signal, publier) => publier(), detruire() {} };
 	} });
 	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree',
 		async envoyer(methode, route, corps) { envois.push({ methode, route, corps }); return { statut: 200 }; } });

@@ -3,10 +3,14 @@ const PRESENCE = `${PREFIXE}fenetre:`;
 const AUDIO = `${PREFIXE}lecture`;
 // Tenu par chaque fenêtre dont le dossier a des morceaux dans Attente, que son son soit activé ou non.
 const MORCEAUX = `${PREFIXE}morceaux:`;
+const PUBLICATION = `${PREFIXE}publication:`;
 
-export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente }) {
+export function creerCoordinationSon({ verrous, canal, ouverteA, id, soireeId, surAttente }) {
 	const candidature = `${PRESENCE}${ouverteA.toFixed(3).padStart(18, '0')}:${id}`;
-	const nomVerrouMorceaux = `${MORCEAUX}${id}`;
+	const portee = soireeId.toLowerCase();
+	const prefixeMorceaux = `${MORCEAUX}${portee}:`;
+	const nomVerrouMorceaux = `${prefixeMorceaux}${id}`;
+	const nomVerrouPublication = `${PUBLICATION}${portee}`;
 	let presence, attente, manche, surveillance, revision = 0, fermeture, verrouMorceaux, liberationMorceaux;
 
 	function prendre(nom, mode) {
@@ -63,6 +67,11 @@ export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente 
 		canal.postMessage(null);
 		void actualiser();
 	}
+	async function autresFenetresAvecMorceaux() {
+		const { held, pending } = await verrous.query();
+		return new Set([...held, ...pending].filter(verrou => verrou.mode === 'exclusive'
+			&& verrou.name.startsWith(prefixeMorceaux) && verrou.name !== nomVerrouMorceaux).map(verrou => verrou.name));
+	}
 	canal.onmessage = () => { void actualiser(); };
 
 	return {
@@ -104,19 +113,21 @@ export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente 
 				verrouMorceaux = undefined;
 			}
 		},
-		// Résout quand plus aucune autre fenêtre n'a de morceaux dans Attente ; rejette si `signal` est annulé.
-		async attendreAucunMorceauAilleurs(signal) {
+		async publierDisponibilite(morceauxDisponibles, signal, publier) {
+			// Si deux fenêtres perdent leurs morceaux ensemble, chacune rend le sien avant de regarder les autres.
+			if (!morceauxDisponibles) await liberationMorceaux;
 			for (;;) {
-				// La fenêtre qui vient de perdre ses morceaux doit d'abord avoir rendu son verrou : de deux fenêtres
-				// qui les perdent ensemble, la dernière à regarder voit alors l'autre libre.
-				await liberationMorceaux;
-				signal.throwIfAborted();
-				const { held, pending } = await verrous.query();
-				const autres = new Set([...held, ...pending].filter(verrou => verrou.mode === 'exclusive'
-					&& verrou.name.startsWith(MORCEAUX) && verrou.name !== nomVerrouMorceaux).map(verrou => verrou.name));
-				if (!autres.size) return;
-				// Le navigateur libère ces verrous même si l'autre fenêtre ferme sans envoyer de message.
+				const autres = await verrous.request(nomVerrouPublication, { mode: 'exclusive', signal }, async () => {
+					const avecMorceaux = morceauxDisponibles ? null : await autresFenetresAvecMorceaux();
+					signal.throwIfAborted();
+					if (avecMorceaux?.size) return avecMorceaux;
+					await publier();
+				});
+				if (!autres) return;
+				// Attendre hors du verrou de publication, puis revérifier en le reprenant.
+				// Le navigateur libère aussi les verrous des fenêtres qui se ferment.
 				await Promise.all([...autres].map(nom => verrous.request(nom, { mode: 'shared', signal }, () => {})));
+				signal.throwIfAborted();
 			}
 		},
 		detruire() {

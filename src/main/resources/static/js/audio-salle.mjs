@@ -35,7 +35,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		lecteur: creerLecteurDePassage({ lecteur, sonde, attendreSonDeManche: coordination.attendreSonDeManche }),
 		etat,
 		surChangement(rappel) { abonnes.add(rappel); return () => abonnes.delete(rappel); },
-		attendreAucunMorceauAilleurs: signal => coordination.attendreAucunMorceauAilleurs(signal),
+		publierDisponibilite: coordination.publierDisponibilite,
 		choisirDossier(selection) {
 			fichiers = selection.filter(estFichierAudio);
 			const morceaux = fichiersDeMusiqueDAttente(fichiers);
@@ -76,18 +76,18 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 	};
 }
 
-function coordonnerDans(navigateur, id, surAttente) {
+function coordonnerDans(navigateur, id, soireeId, surAttente) {
 	if (!navigateur.navigator.locks || !navigateur.BroadcastChannel) {
 		// Sans Web Locks (page en http:// hors localhost), la fenêtre se croit seule : elle joue dès qu'elle candidate.
 		return { activer: candidate => surAttente(candidate), signalerSonDeManche() {}, attendreSonDeManche: async () => true,
-			annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {}, detruire() {} };
+			annoncerMorceaux() {}, publierDisponibilite: (disponibles, signal, publier) => publier(), detruire() {} };
 	}
 	return creerCoordinationSon({ verrous: navigateur.navigator.locks,
 		canal: new navigateur.BroadcastChannel('croustyquizz:son'),
-		ouverteA: navigateur.performance.timeOrigin, id, surAttente });
+		ouverteA: navigateur.performance.timeOrigin, id, soireeId, surAttente });
 }
 
-export function monterAudioSalle(zone) {
+export function monterAudioSalle(zone, soireeId) {
 	const document = zone.ownerDocument, navigateur = document.defaultView;
 	const ressources = {
 		document, creerUrl: fichier => navigateur.URL.createObjectURL(fichier), revoquerUrl: url => navigateur.URL.revokeObjectURL(url),
@@ -96,7 +96,7 @@ export function monterAudioSalle(zone) {
 	const audio = creerAudioSalle({ lecteurId, lecteur: creerLecteurLocal(ressources),
 		// Un élément séparé lit seulement les métadonnées pendant l’appel. Seul l’élément audio joue.
 		sonde: creerLecteurLocal({ ...ressources, type: 'video' }),
-		coordonner: surAttente => coordonnerDans(navigateur, lecteurId, surAttente) });
+		coordonner: surAttente => coordonnerDans(navigateur, lecteurId, soireeId, surAttente) });
 	const choisir = zone.querySelector('[data-choisir-dossier]');
 	const choix = zone.querySelector('input');
 	const activer = zone.querySelector('[data-activer-son]');

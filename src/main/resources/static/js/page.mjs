@@ -76,7 +76,7 @@ async function demarrer() {
 	const zoneTalon = element('talon');
 	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
-	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
+	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio, acces.soireeId) : null;
 	let suivi;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
