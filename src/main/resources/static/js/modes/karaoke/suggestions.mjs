@@ -3,17 +3,30 @@ import { peutReessayer } from './envois.mjs';
 
 const LONGUEUR_MAX = 120;
 const longueur = texte => [...texte].length;
+// String.strip() de Java retire aussi U+001C à U+001F, qui ne sont pas des blancs Unicode.
+const sansExtremites = texte => texte.replace(/^[ \u001C-\u001F]+|[ \u001C-\u001F]+$/g, '');
 
-function erreurChampSuggestion(texte) {
+/**
+ * Anticipe CorpsKaraoke.verifierChampSuggestion, qui fait foi : même nettoyage (NFC, blancs Unicode regroupés,
+ * extrémités retirées), mêmes caractères interdits (contrôles, format Cf, demi-surrogates) et même clé vide.
+ * Rend le message à afficher sous le champ, ou une chaîne vide.
+ *
+ * Le serveur fait autorité. Les classes Unicode (Cf, Cs, P, M, White_Space) et les tables NFC et NFKC suivent
+ * la version Unicode du navigateur, qui peut différer de celle de Java 21 : un caractère trop récent pour l'un
+ * des deux peut être refusé ici et accepté par le serveur, ou l'inverse (le 400 du serveur prend alors le relais).
+ * Cet écart est accepté : il ne touche que des caractères rares, et le cas courant reste vérifié avant l'envoi.
+ */
+export function erreurChampSuggestion(texte) {
 	if (longueur(texte) > LONGUEUR_MAX) return `Utilise au plus ${LONGUEUR_MAX} caractères.`;
-	// Comme String.strip() côté serveur, le nettoyage retire aussi U+001C à U+001F aux extrémités.
-	const nettoye = texte.normalize('NFC').replace(/\p{White_Space}+/gu, ' ').replace(/^[ \u001C-\u001F]+|[ \u001C-\u001F]+$/g, '');
+	const nettoye = sansExtremites(texte.normalize('NFC').replace(/\p{White_Space}+/gu, ' '));
 	if (!nettoye) return 'Renseigne ce champ.';
-	if (longueur(nettoye) > LONGUEUR_MAX) return `Certains caractères comptent pour plusieurs. Raccourcis ce texte à ${LONGUEUR_MAX} caractères au plus.`;
+	// Sous la limite à la saisie, au-delà une fois nettoyé : seul NFC allonge un texte (U+0958 donne deux points de code, U+FB2C trois).
+	if (longueur(nettoye) > LONGUEUR_MAX) return `Certains caractères comptent pour plusieurs : raccourcis ce texte à ${LONGUEUR_MAX} caractères au plus.`;
 	if (/[\p{Cc}\p{Cf}\p{Cs}]/u.test(nettoye)) return 'Retire les caractères invisibles ou de contrôle.';
-	// Teste si la clé de regroupement du serveur serait vide.
-	const cle = nettoye.normalize('NFKC').toLowerCase().normalize('NFD').replace(/[\u0300-\u036F\p{P}\p{White_Space}]+/gu, '');
-	return cle ? '' : 'La ponctuation et les accents seuls ne suffisent pas.';
+	// Clé de regroupement du serveur (normaliserSuggestion) : sans diacritiques U+0300 à U+036F, ponctuation ni blancs, il ne reste rien.
+	const cle = nettoye.normalize('NFKC').normalize('NFD').replace(/[\u0300-\u036F\p{P}\p{White_Space}]+/gu, '');
+	if (!sansExtremites(cle)) return 'Ajoute au moins une lettre ou un chiffre.';
+	return '';
 }
 
 export function installerSuggestionManette(ui) {

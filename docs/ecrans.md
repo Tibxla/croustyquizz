@@ -187,8 +187,9 @@ Sur une Soirée de démonstration avec une Manche de Karaoké démarrée (voir �
 2. Sur la Manette du Joueur 2, suggérer le même titre avec une autre casse et des espaces en trop. La Console n'affiche qu'un groupe, avec « 2 Joueurs » et sans pseudo. Les Manettes n'affichent aucune liste de suggestions.
 3. « Retirer » vide la liste (« Aucune suggestion. »).
 4. Dans la Console, chercher un mot fréquent, ouvrir la fiche du quatrième résultat et « Ajouter aux favoris ». La Chanson passe en tête des résultats de la Console et de la Manette. « Retirer des favoris » rend l'ordre initial.
+5. Sur une Manette, ouvrir l'onglet Réseau puis envoyer trois suggestions refusées par le serveur (#211) : un titre fait d'une espace sans chasse U+200B (à coller, par exemple depuis la console avec `copy('\u200B')`), un artiste « !?… », puis un titre de 61 U+0958 (`copy('\u0958'.repeat(61))`), que NFC décompose en 122 points de code. Chacune affiche son erreur sous le champ concerné (« Retire les caractères invisibles ou de contrôle. », « Ajoute au moins une lettre ou un chiffre. », « Certains caractères comptent pour plusieurs : raccourcis ce texte à 120 caractères au plus. »), le champ est annoncé invalide et reçoit le focus, et aucune requête `…/suggestions` ne part. Saisir dans le champ efface son erreur.
 
-Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans interface graphique : les quatre étapes sont conformes. Elle a révélé qu'un titre long élargissait la Manette à 499 px, parce que `.bouton` reste sur une ligne. Les titres des résultats passent maintenant à la ligne, et la page tient en 390 px.
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans interface graphique : les quatre premières étapes sont conformes. Elle a révélé qu'un titre long élargissait la Manette à 499 px, parce que `.bouton` reste sur une ligne. Les titres des résultats passent maintenant à la ligne, et la page tient en 390 px.
 
 ## Recette navigateur du Pilotage de démonstration (#119)
 
