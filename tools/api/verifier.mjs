@@ -138,13 +138,20 @@ for (const { nom, exemples } of parcours) {
       ? `/topic/joueurs/${vue.joueurId}`
       : `/topic/soirees/${vue.soiree.id}/${canal}`;
     projections.push({ destination, vue, revision, instant: Date.parse(instant), contexte });
-    // Une Manette ne voit que ses propres invitations : émises pour ses Passages en attente, dont elle
-    // est le premier Interprète, ou reçues ; jamais une invitation entre deux autres Joueurs.
+    // Les Invitations d’un Passage sorti de la File restent visibles seulement quand elles ont expiré.
     if (canal === 'joueur' && vue.karaoke) {
       const siens = new Map(vue.karaoke.mesPassagesEnAttente.map(p => [p.passageId, p]));
       for (const invitation of vue.karaoke.invitationsEmises) {
-        assert.equal(siens.get(invitation.passageId)?.interpretes[0].joueurId, vue.joueurId,
-          `${contexte} : invitation émise pour le Passage d’autrui`);
+        const attente = siens.get(invitation.passageId) ?? vue.karaoke.prochainsPassages.find(p => p.passageId === invitation.passageId);
+        const courant = vue.karaoke.courant;
+        const passage = attente ?? (courant?.passageId === invitation.passageId ? courant : null);
+        if (!attente) {
+          assert.equal(invitation.etat, 'EXPIREE', `${contexte} : invitation encore visible hors de la File`);
+        }
+        if (passage) {
+          assert.equal(passage.interpretes[0].joueurId, vue.joueurId, `${contexte} : invitation émise pour le Passage d’autrui`);
+          assert.equal(passage.numero, invitation.numero, `${contexte} : numéro du Passage incohérent`);
+        }
         assert.notEqual(invitation.invite.joueurId, vue.joueurId, `${contexte} : invitation émise vers soi`);
       }
       for (const invitation of vue.karaoke.invitationsRecues) {

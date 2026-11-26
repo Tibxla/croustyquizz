@@ -102,9 +102,9 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     }
     public ResultatDeCommande desinscrirePassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.DesinscriptionPassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
-        socle.verrous().executer(envoi.acteur().soireeId(), () -> { verifierPortee(mancheId, passageId, envoi.acteur()); return null; });
+        socle.verrous().executer(envoi.acteur().soireeId(), () -> { verifierPortee(mancheId, passageId, envoi.acteur(), false); return null; });
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
-            verifierPortee(mancheId, passageId, envoi.acteur());
+            verifierPortee(mancheId, passageId, envoi.acteur(), false);
             return d.recevoir(new DesinscrirePassage(envoi.acteur(), recueLe, envoi.envoiId(),
                     new CiblePassage(passageId, corps.numeroModification())));
         }));
@@ -112,9 +112,12 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     /** Acceptation ou refus de son Invitation par le Joueur invité (#138). */
     public ResultatDeCommande repondreInvitation(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
             CorpsKaraoke.ReponseInvitation corps) {
-        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
-        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.recevoir(new RepondreInvitation(
-                envoi.acteur(), recueLe, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification()), corps.accepte()))));
+        return socle.verrous().executer(envoi.acteur().soireeId(), () -> {
+            verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+            verifierPortee(mancheId, passageId, envoi.acteur(), true);
+            return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.recevoir(new RepondreInvitation(
+                    envoi.acteur(), recueLe, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification()), corps.accepte()))));
+        });
     }
     /**
      * Départ d’un Joueur (#205) : retiré de ses Passages en attente, il laisse le Passage aux autres Interprètes. Sans
@@ -348,11 +351,12 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche ou Joueur introuvable.").exception();
         }
     }
-    /** Le Passage d’autrui, dont le Joueur n’est ni Interprète ni invité, est introuvable avant tout reçu. */
-    private void verifierPortee(UUID mancheId, UUID passageId, Acteur acteur) {
+    /** Vérifie la portée sur un Passage connu avant tout reçu : invité, ou Interprète pour la désinscription. */
+    private void verifierPortee(UUID mancheId, UUID passageId, Acteur acteur, boolean invitationRequise) {
         EtatFileAttente file = passages.charger(mancheId);
         UUID joueur = acteur.identifiant();
-        if (file != null && file.passages().stream().anyMatch(p -> p.id().equals(passageId) && !p.interpretes().contains(joueur))
+        if (file != null && file.passages().stream().anyMatch(p ->
+                p.id().equals(passageId) && (invitationRequise || !p.interpretes().contains(joueur)))
                 && file.invitations().stream().noneMatch(i -> i.passageId().equals(passageId) && i.inviteId().equals(joueur))) {
             throw introuvable().exception();
         }

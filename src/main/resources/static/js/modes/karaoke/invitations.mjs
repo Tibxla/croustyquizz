@@ -12,8 +12,11 @@ export function joindrePseudos(pseudos) {
 
 /** Une ligne par Invitation émise pour ce Passage, dans l'ordre d'émission. */
 export function lignesInvitations(invitationsEmises, passageId) {
-	return (invitationsEmises ?? []).filter(i => i.passageId === passageId)
-		.map(i => `${i.invite.pseudo} : ${ETATS[i.etat] ?? i.etat}`);
+	return (invitationsEmises ?? []).filter(i => i.passageId === passageId).map(texteEtatInvitation);
+}
+
+export function texteEtatInvitation(invitation) {
+	return `${invitation.invite.pseudo} : ${ETATS[invitation.etat] ?? invitation.etat}`;
 }
 
 /** Texte de confirmation de la désinscription, qui nomme les autres Interprètes (#139). */

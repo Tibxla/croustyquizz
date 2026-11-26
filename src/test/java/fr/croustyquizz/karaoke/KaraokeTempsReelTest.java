@@ -412,6 +412,35 @@ class KaraokeTempsReelTest {
         }
     }
 
+    @Test void unJoueurSansInvitationRecoitUn404AvantToutRecu() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var joueurs = joueursDe(soiree);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur, Map.of("envoiId", UUID.randomUUID(),
+                "chansonId", IdentifiantsChanson.encoder(1), "invitesIds", List.of(joueurs.get(1))), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString() + "/invitation";
+        var tiers = new Acteur(Acteur.Type.JOUEUR, joueurs.get(2), soiree);
+        UUID envoiId = UUID.randomUUID();
+        var corps = Map.of("envoiId", envoiId, "numeroModification", 0, "reponse", "ACCEPTER");
+        var premierRefus = envoyer(HttpMethod.POST, route, tiers, corps, null);
+        var rejeu = envoyer(HttpMethod.POST, route, tiers,
+                Map.of("envoiId", envoiId, "numeroModification", 0, "reponse", "REFUSER"), null);
+
+        org.junit.jupiter.api.Assertions.assertAll(
+                () -> verifierInvitationIntrouvable(premierRefus),
+                () -> verifierInvitationIntrouvable(rejeu),
+                () -> assertThat(socle.envois().retrouver(new EnvoiDeCommande(tiers, route, envoiId,
+                        new CorpsKaraoke.EmpreinteHttp("POST", new CorpsKaraoke.ReponseInvitation(envoiId, 0L, "ACCEPTER")))))
+                        .as("reçu du Joueur non invité").isNull());
+    }
+
+    private void verifierInvitationIntrouvable(ResponseEntity<String> reponse) throws Exception {
+        KaraokeHttpTest.verifier("repondreInvitation", reponse, 404);
+        assertThat(json.readTree(reponse.getBody()).path("code").asString()).isEqualTo("RESSOURCE_INTROUVABLE");
+    }
+
     /**
      * Passages à plusieurs (#135) : Invitation à l'inscription, refus, limite de l'invité, acceptation, départ d'un
      * invité, expiration à l'appel et Vote refusé aux Interprètes, sur PostgreSQL, en HTTP et en STOMP.
@@ -507,6 +536,12 @@ class KaraokeTempsReelTest {
         vues = lireTous(flux, "passage-appele");
         assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues").isEmpty()).isTrue();
         assertThat(vues.get(console).at("/karaoke/invitationsEnAttente").isEmpty()).isTrue();
+        var expiree = vues.get(manetteInscrivant).at("/karaoke/invitationsEmises");
+        assertThat(expiree.size()).isEqualTo(1);
+        assertThat(expiree.get(0).path("passageId").asString()).isEqualTo(passage);
+        assertThat(expiree.get(0).path("numero").asLong()).isEqualTo(1);
+        assertThat(expiree.get(0).path("etat").asString()).isEqualTo("EXPIREE");
+        assertThat(vues.get(manetteInvite).at("/karaoke/invitationsEmises").isEmpty()).isTrue();
         var tardive = envoyer(HttpMethod.POST, route, silencieux, reponse("ACCEPTER", 2), null);
         KaraokeHttpTest.verifier("repondreInvitation", tardive, 409);
         assertThat(json.readTree(tardive.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
@@ -531,6 +566,11 @@ class KaraokeTempsReelTest {
         assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues").isEmpty()).isTrue();
         assertThat(vues.get(console).at("/karaoke/invitationsEnAttente").isEmpty()).isTrue();
         assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isZero();
+        var apresRetrait = vues.get(manetteInscrivant).at("/karaoke/invitationsEmises");
+        assertThat(apresRetrait.size()).isEqualTo(2);
+        assertThat(apresRetrait.get(1).path("passageId").asString()).isEqualTo(autreId);
+        assertThat(apresRetrait.get(1).path("etat").asString()).isEqualTo("EXPIREE");
+        assertThat(capturer(manetteInscrivant).at("/vue/karaoke/invitationsEmises")).isEqualTo(apresRetrait);
         KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/" + autreId + "/invitation",
                 silencieux, reponse("ACCEPTER", 1), null), 409);
     }

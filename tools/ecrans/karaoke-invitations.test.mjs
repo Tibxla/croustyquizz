@@ -86,6 +86,27 @@ test('Manette : une vue reçue pendant que Refuser a le focus le laisse sur Refu
 	assert.equal(b.document.activeElement, bouton(b.principale, 'Accepter'));
 });
 
+test('Manette : après Refuser, le focus reste dans Invitations tant qu’il en reste', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const autre = { ...recue, passage: { passageId: 'autre', numeroModification: 0 } };
+	b.module.afficher(vue({ invitationsRecues: [recue, autre] }), capture);
+	b.connecter('synchronisee');
+	const refuser = bouton(b.principale, 'Refuser');
+	refuser.focus();
+	refuser.click();
+	b.module.afficher(vue({ invitationsRecues: [autre] }), evenement);
+	assert.equal(b.document.activeElement.textContent, 'Invitations');
+	b.appels[0].resolve({ statut: 200, corps: { action: 'REFUSER' } });
+	await terminerMicrotaches();
+
+	const dernierRefus = bouton(b.principale, 'Refuser');
+	dernierRefus.focus();
+	dernierRefus.click();
+	b.module.afficher(vue({ invitationsRecues: [] }), evenement);
+	assert.equal(b.document.activeElement.textContent, 'Tes Passages');
+});
+
 test('Manette : chaque bouton d’Invitation nomme sa Chanson et qui invite', t => {
 	const b = creerBanc(manette);
 	t.after(() => b.module.demonter());
@@ -127,6 +148,19 @@ test('Manette : l’invité accepté quitte le Passage par la désinscription, s
 	assert.equal(b.appels[0].args[2].numeroModification, 2);
 });
 
+test('Manette : une Invitation expirée reste lisible après la sortie du Passage', t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	const invitation = { passageId: 'duo', numero: 21, invite: basile, etat: 'EXPIREE' };
+	b.module.afficher(vue({ mesPassagesEnAttente: [duo([jo])], invitationsEmises: [
+		{ ...invitation, invite: { ...basile, pseudo: 'Joueur parti' } }] }), capture);
+	assert.match(b.principale.textContent, /Joueur parti : sans réponse/);
+
+	b.module.afficher(vue({ invitationsEmises: [invitation] }), evenement);
+	assert.match(b.principale.textContent, /Passage 21 · Basile : sans réponse/);
+	assert.equal(bouton(b.principale, 'Me désinscrire'), undefined);
+});
+
 test('Manette : la fiche coche trois invités au plus, sans soi, et n’ajoute invitesIds que s’il y en a', async t => {
 	const b = creerBanc(manette);
 	t.after(() => b.module.demonter());
@@ -141,8 +175,15 @@ test('Manette : la fiche coche trois invités au plus, sans soi, et n’ajoute i
 	assert.deepEqual(cases.map(c => c.value), ['b', 'c', 'd', 'e']);
 	for (const c of cases.slice(0, 3)) { c.checked = true; c.dispatchEvent({ type: 'change' }); }
 	assert.equal(cases[3].disabled, true);
+	cases[1].focus();
+	b.module.afficher({ ...vue(), joueurs: joueurs.filter(j => j.id !== 'b') }, evenement);
+	const apresDepart = b.principale.querySelector('dialog').querySelectorAll('input');
+	assert.deepEqual(apresDepart.map(c => c.value), ['c', 'd', 'e']);
+	assert.deepEqual(apresDepart.filter(c => c.checked).map(c => c.value), ['c', 'd']);
+	assert.equal(apresDepart[2].disabled, false);
+	assert.equal(b.document.activeElement === apresDepart[0], true);
 	bouton(b.principale, "M'inscrire").click();
-	assert.deepEqual(b.appels[2].args[2].invitesIds, ['b', 'c', 'd']);
+	assert.deepEqual(b.appels[2].args[2].invitesIds, ['c', 'd']);
 
 	const seul = creerBanc(manette);
 	t.after(() => seul.module.demonter());
