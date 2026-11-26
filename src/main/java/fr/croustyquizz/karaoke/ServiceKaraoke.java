@@ -119,6 +119,15 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
                     envoi.acteur(), recueLe, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification()), corps.accepte()))));
         });
     }
+    /**
+     * Départ d’un Joueur (#205) : retiré de ses Passages en attente, il laisse le Passage aux autres Interprètes. Sans
+     * reçu ; un départ sans effet ou une Manche terminée entre-temps refuse sans mutation ni publication, et ce refus
+     * n’a personne à qui répondre.
+     */
+    @Override public void retirerJoueurParti(UUID soireeId, UUID mancheId, UUID joueurId) {
+        appliquer(soireeId, mancheId, d -> ((DeroulementKaraoke) d).retirerJoueurParti(joueurId,
+                socle.horloge().maintenant().truncatedTo(java.time.temporal.ChronoUnit.MICROS)));
+    }
     public ResultatDeCommande voterPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.VotePassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->

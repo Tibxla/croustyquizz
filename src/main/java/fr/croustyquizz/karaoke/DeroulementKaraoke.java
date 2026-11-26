@@ -16,6 +16,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     private static final String LECTURE_MODIFIEE = "lecture-chanson-modifiee";
     private static final String CALAGE_MODIFIE = "calage-chanson-modifie";
     private static final String PASSAGE_APPELE = "passage-appele";
+    private static final String FILE_MODIFIEE = "file-attente-modifiee";
 
     private final ContexteDeManche contexte;
     private final Duration delaiAppel;
@@ -137,6 +138,21 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         return apres(appliquerAction(action), action == null ? null : action.recueLe());
     }
 
+    /**
+     * Départ d’un Joueur, par Exclusion ou à sa demande (#205) : la File le retire de ses Passages en attente, en pause
+     * comme hors pause. Le Passage appelé ou en cours n’est pas touché. Aucun reçu : le geste vient du serveur. Un
+     * départ sans effet est refusé, pour que le service ne réécrive pas la Manche sans changement.
+     */
+    public ResultatDeCommande retirerJoueurParti(UUID joueurId, Instant recueLe) {
+        Refuse refus = gardeCommune();
+        if (refus != null) { return refus; }
+        ResultatFile resultat = file.retirerJoueurParti(joueurId, recueLe);
+        if (resultat instanceof ResultatFile.SansEffet) {
+            return new Refuse(409, "ETAT_INCOMPATIBLE", "Ce Joueur n’a aucun Passage en attente ni Invitation en suspens.");
+        }
+        return accepter(resultat, null, FILE_MODIFIEE);
+    }
+
     private ResultatDeCommande appliquerAction(ActionJoueur action) {
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
@@ -178,7 +194,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         contenus.put(inscription.faits().passageId(), inscription.contenu());
         return new Accepte(new AccusePassage(inscription.envoiId(), contexte.soireeId(), contexte.mancheId(),
                 inscription.faits().passageId(), 0, "INSCRIRE", inscription.recueLe(), EtatPassage.EN_ATTENTE),
-                ECRANS, "file-attente-modifiee", 201);
+                ECRANS, FILE_MODIFIEE, 201);
     }
 
     private ResultatDeCommande apres(ResultatDeCommande resultat, Instant maintenant) {
@@ -246,7 +262,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
             Passage passage = passage(priorite.passage());
             return accepter(resultat, new AccuseFileAttente(priorite.envoiId(), contexte.soireeId(), contexte.mancheId(),
                     "DEFINIR_PRIORITE", priorite.recueLe(), new CiblePassage(passage.id(), passage.numeroModification())),
-                    "file-attente-modifiee");
+                    FILE_MODIFIEE);
         }
         if (commande instanceof ReglerLimitePassages limite) {
             ResultatFile resultat = file.reglerLimite(limite.limitePassagesEnAttente());
@@ -491,7 +507,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (resultat instanceof ResultatFile.Refus r) { return r.refus(); }
         Passage passage = passage(cible);
         return accepter(resultat, new AccusePassage(envoiId, contexte.soireeId(), contexte.mancheId(), passage.id(),
-                passage.numeroModification(), action, recueLe, passage.etat()), "file-attente-modifiee");
+                passage.numeroModification(), action, recueLe, passage.etat()), FILE_MODIFIEE);
     }
 
     private Accepte accepter(ResultatFile resultat, Object accuse, String typeEvenement) {

@@ -29,8 +29,8 @@ channels:
       de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
       Soirée. musique-attente-modifiee après changement du réglage de l’Animateur ou de la disponibilité
       signalée par l’Écran de salle, y compris hors Manche. Karaoké : file-attente-modifiee après inscription, désinscription, réponse à une
-      Invitation (la vue n’en porte aucune), retrait, placement ou
-      priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
+      Invitation (la vue n’en porte aucune), départ d’un Interprète en attente (prêt, mais déclenché
+      par aucune commande avant l’Exclusion, #11), retrait, placement ou priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
       passage-demarre, passage-termine et passage-saute pour le cycle du Passage.
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une
       fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une reprise appelle le
@@ -56,8 +56,9 @@ channels:
       de commande métier. Une révision est propre à cette destination et à cette Soirée.
       musique-attente-modifiee transporte la vue complète après changement du réglage de l’Animateur
       ou de la disponibilité signalée par l’Écran de salle, y compris hors Manche. Karaoké :
-      file-attente-modifiee après inscription, désinscription, réponse à une Invitation, retrait,
-      placement ou priorité ;
+      file-attente-modifiee après inscription, désinscription, réponse à une Invitation, départ d’un
+      Interprète en attente (prêt, mais déclenché par aucune commande avant l’Exclusion, #11),
+      retrait, placement ou priorité ;
       limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre,
       passage-termine et passage-saute pour le cycle du Passage.
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une fin
@@ -84,7 +85,9 @@ channels:
     description: "Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
       propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
-      inscription, désinscription, réponse à une Invitation, retrait, placement ou priorité ;
+      inscription, désinscription, réponse à une Invitation, départ d’un Interprète en attente
+      (prêt, mais déclenché par aucune commande avant l’Exclusion, #11), retrait, placement ou
+      priorité ;
       limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
       pour le cycle du Passage. En Pilotage Automatique, passage-appele est aussi l’unique cause si
       une inscription, une fin de lecture, une fin prévue, PASSER_ETAPE, une clôture de vote ou une

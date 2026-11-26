@@ -153,6 +153,13 @@ public class ServiceDeManche<R, E> {
 			return resultat;
 		});
 	}
+	/**
+	 * Départ d'un Joueur pendant la Manche, par Exclusion ou à sa demande (#205). Un mode qui garde des Joueurs
+	 * dans son état le redéfinit par {@link #appliquer} ; par défaut, il n'y a rien à retirer.
+	 */
+	public void retirerJoueurParti(UUID soireeId, UUID mancheId, UUID joueurId) {
+		// Aucun état commun ne retient le Joueur.
+	}
 	/** Refus de {@link #appliquer} pour une Manche ni en cours ni en pause ; un mode peut le préciser. */
 	protected Refuse refusHorsDeroulement(ManchePersistante manche) {
 		return new Refuse(409, "ETAT_INCOMPATIBLE", "La Manche n'est pas en cours.");

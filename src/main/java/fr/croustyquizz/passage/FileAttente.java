@@ -173,12 +173,18 @@ public final class FileAttente {
         return new Refuse(422, "DONNEES_INVALIDES", "Tu ne peux pas t’inviter toi-même.");
     }
 
-    /** Applique le départ ou l’Exclusion du Joueur à tous ses Passages encore en attente et à ses invitations. */
+    /**
+     * Applique le départ ou l’Exclusion du Joueur à tous ses Passages encore en attente et à ses invitations. Les
+     * Invitations qu’il a reçues expirent, comme celles qu’il a émises et qui restent sans réponse : elles portaient son
+     * nom, et le Passage transmis à un autre Interprète n’en reçoit pas de nouvelles (#205).
+     */
     public ResultatFile retirerJoueurParti(UUID joueurId, Instant recueLe) {
         List<Passage> attentes = passages.stream().filter(p -> p.etat() == EtatPassage.EN_ATTENTE
                 && p.interpretes().contains(joueurId)).toList();
         boolean invite = invitations.stream().anyMatch(i -> i.enSuspens() && i.inviteId().equals(joueurId));
-        expirerInvitations(i -> i.inviteId().equals(joueurId));
+        Set<UUID> inscrits = new HashSet<>();
+        attentes.stream().filter(p -> p.inscripteurId().equals(joueurId)).forEach(p -> inscrits.add(p.id()));
+        expirerInvitations(i -> i.inviteId().equals(joueurId) || inscrits.contains(i.passageId()));
         if (attentes.isEmpty()) { return invite ? new ResultatFile.Modifiee() : new ResultatFile.SansEffet(); }
         retirerInterpreteDesAttentes(joueurId, recueLe, attentes);
         // Comme pour une désinscription, l’Interprète accepté qui part retire son accord (#135).
