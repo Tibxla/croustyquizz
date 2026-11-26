@@ -117,6 +117,23 @@ Le Buzz du socle est disponible dans une Soirée ouverte ou en cours hors Manche
 
 La pause gèle le temps restant ; la reprise crée une nouvelle échéance serveur. En Manuel, `PASSER_ETAPE` clôt d’abord une Question ouverte et montre sa correction ; un nouvel appel, avec un nouvel identifiant d’envoi, passe à la Question suivante. Après la dernière correction, la Manche est terminée. L’Animateur demande ensuite `MANCHE_SUIVANTE`, qui clôt la Soirée si le programme est épuisé. L’arrêt explicite d’une Manche abandonne l’étape non corrigée sans lui attribuer de points.
 
+## Limite de requêtes
+
+Avant toute exposition publique (#4), le serveur limite le Buzz, les Réponses et l’accès à une Soirée. Au-delà, il répond `429 TROP_DE_REQUETES` au format `Probleme` (réponse réutilisable `Erreur429`), avec `Cache-Control: no-store` et `Retry-After` en secondes. La requête ne change rien : ni reçu ni mutation. Une Manette affiche le `detail` comme tout refus ; rien ne réessaie automatiquement. Chaque route a sa propre limite et chaque clé son propre compteur : une Manette qui martèle ne gêne pas sa voisine. Les seuils par défaut sont réglables (`docs/deploiement.md`, « Limite de requêtes ») :
+
+| Routes | Clé | Rafale, puis rythme |
+|---|---|---|
+| `envoyerBuzz` | jeton (`Authorization`) | 10, puis 5 par seconde |
+| `envoyerReponse`, `deposerBrouillonProposition`, `validerProposition`, `voterPassage` | jeton | 20, puis 10 par seconde |
+| `rejoindreSoiree`, codes inconnus (`404 CODE_ACCES_INVALIDE`) | adresse IP | 20, puis 1 toutes les 3 s |
+| `rejoindreSoiree`, toutes les arrivées | adresse IP | 120, puis 1 toutes les 3 s |
+| `creerAccesEcran` | adresse IP | 10, puis 1 toutes les 6 s |
+| `consulterQrCodeSoiree` | jeton | 10, puis 1 par seconde |
+
+Une requête sans `Authorization` est comptée sur son adresse IP. Une arrivée acceptée ou refusée pour son pseudo ne consomme pas d’essai de code, si bien qu’une salle de 60 Joueurs derrière le même Wi-Fi peut arriver d’un coup. Le seau des codes n’est consulté qu’une fois la réponse connue : un code inconnu au-delà de la limite reçoit `429` au lieu de `404`, mais un code qui mène à une Soirée ouverte n’est jamais refusé par ce seau, même si d’autres téléphones du même réseau ont épuisé leurs essais. Seule la limite de toutes les arrivées vaut aussi pour lui.
+
+Chaque route garde au plus un nombre fixe de clés en mémoire (`plafond-cles`). Au plafond, une clé nouvelle passe sans être comptée, sauf pour les codes inconnus : un code inconnu d’une adresse nouvelle reçoit alors `429`, un bon code passe toujours. Remplir la table d’une route ne touche pas celle d’une autre.
+
 ## Blind test
 
 Les règles sont celles de l’[ADR 0009](../adr/0009-deroulement-du-blind-test.md). Ce qui suit les décrit vues du réseau ; [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) les illustre.
