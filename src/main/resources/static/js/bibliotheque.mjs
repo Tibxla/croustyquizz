@@ -1,0 +1,51 @@
+// Bibliothèque de base (ADR 0011) : musique libre livrée avec l'application, décrite par son catalogue.
+import { estFichierAudio, fichiersDeMusiqueDAttente, normaliserNomAudio } from './modes/karaoke/fichiers.mjs';
+
+const VIDE = Object.freeze({ version: 1, licences: {}, morceaux: [] });
+const SECTIONS = [['attente', 'Musique d’attente'], ['instrumentale', 'Instrumentales du Freestyle'], ['chanson', 'Chansons du Karaoké']];
+
+// Le catalogue est revalidé à chaque chargement ; sans lui, la bibliothèque est vide et le dossier du Lieu suffit.
+export async function chargerBibliotheque(chercher = globalThis.fetch) {
+	try {
+		const reponse = await chercher('/bibliotheque/catalogue.json', { cache: 'no-cache' });
+		if (!reponse.ok) return VIDE;
+		const catalogue = await reponse.json();
+		return Array.isArray(catalogue?.morceaux) && catalogue.licences && typeof catalogue.licences === 'object' ? catalogue : VIDE;
+	} catch {
+		return VIDE;
+	}
+}
+
+function credit(catalogue, morceau) {
+	const licence = catalogue.licences[morceau.licence];
+	return { titre: morceau.titre, artiste: morceau.artiste, licence: licence?.nom ?? morceau.licence, urlLicence: licence?.url ?? null };
+}
+
+// Chaque entrée devient un fichier lisible par son URL, comme un fichier du dossier l'est par son objet File.
+export function morceauxDeLaBibliotheque(catalogue, type) {
+	return catalogue.morceaux.filter(morceau => morceau.type === type).map(morceau => ({
+		name: morceau.fichier.split('/').at(-1), size: morceau.tailleOctets, url: `/bibliotheque/${morceau.fichier}`,
+		credit: credit(catalogue, morceau),
+	}));
+}
+
+const nomsPossibles = ({ name, credit: { titre, artiste } }) => new Set([normaliserNomAudio(name), normaliserNomAudio(titre),
+	normaliserNomAudio(`${artiste} ${titre}`), normaliserNomAudio(`${titre} ${artiste}`)]);
+
+// Les morceaux d'Attente du dossier s'ajoutent à ceux de la bibliothèque ; un morceau du dossier remplace son homonyme.
+export function fusionnerMorceauxDAttente(bibliotheque, fichiersDuDossier) {
+	const lieu = fichiersDeMusiqueDAttente(fichiersDuDossier.filter(estFichierAudio));
+	const noms = new Set(lieu.map(fichier => normaliserNomAudio(fichier.name)));
+	return [...bibliotheque.filter(morceau => ![...nomsPossibles(morceau)].some(nom => noms.has(nom))), ...lieu];
+}
+
+export const texteCredit = ({ titre, artiste, licence }) => `« ${titre} », ${artiste} · ${licence}`;
+
+// Données de la page des crédits, section par section, dans l'ordre du catalogue.
+export function decrireCredits(catalogue) {
+	return SECTIONS.map(([type, titre]) => ({ type, titre, entrees: catalogue.morceaux.filter(m => m.type === type).map(morceau => {
+		const { licence, urlLicence } = credit(catalogue, morceau);
+		return { titre: morceau.titre, artiste: morceau.artiste, licence, urlLicence, source: morceau.source,
+			paroles: morceau.lrc ? `/bibliotheque/${morceau.lrc}` : null, parolesPartagees: /BY-SA/.test(morceau.licence) };
+	}) })).filter(section => section.entrees.length);
+}

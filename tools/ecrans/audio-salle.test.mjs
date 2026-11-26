@@ -4,7 +4,7 @@ import { creerAudioSalle, monterAudioSalle } from '../../src/main/resources/stat
 import { creerCoordinationSon } from '../../src/main/resources/static/js/coordination-son.mjs';
 import { creerContexte } from '../../src/main/resources/static/js/contexte.mjs';
 import { monterMusiqueDAttenteSalle } from '../../src/main/resources/static/js/pilotage-musique-attente.mjs';
-import { creerDocument } from './karaoke-dom-factice.mjs';
+import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
 test('le même lecteur joue la Musique d’attente pendant la préparation puis la Chanson au départ', { timeout: 3000 }, async t => {
 	const attente = { name: 'Ambiance.ogg', webkitRelativePath: 'Musique/Attente/Ambiance.ogg' };
@@ -44,6 +44,17 @@ test('le même lecteur joue la Musique d’attente pendant la préparation puis 
 // Préfixe des verrous de présence de `coordination-son.mjs` ; chaque test vérifie d'abord qu'il trouve la fenêtre qui joue.
 const PRESENCE = 'croustyquizz:son:fenetre:';
 const morceauAttente = nom => ({ name: `${nom}.ogg`, webkitRelativePath: `Musique/Attente/${nom}.ogg` });
+const CATALOGUE_VIDE = { version: 1, licences: {}, morceaux: [] };
+const CATALOGUE = { version: 1,
+	licences: { 'CC-BY-4.0': { nom: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/deed.fr' } },
+	morceaux: [{ type: 'attente', titre: 'Ambiance', artiste: 'Kevin MacLeod', dureeMs: 3000, licence: 'CC-BY-4.0',
+		source: 'https://example.org/ambiance', fichier: 'attente/kevin-macleod-ambiance.mp3', tailleOctets: 1200 }] };
+const AVEC_CHANSON = { ...CATALOGUE, morceaux: [...CATALOGUE.morceaux, { type: 'chanson', numero: 1, titre: 'La lanterne',
+	artiste: 'Les Lucioles', dureeMs: 4000, licence: 'CC-BY-4.0', source: 'https://example.org/la-lanterne',
+	fichier: 'chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, lrc: 'chansons/les-lucioles-la-lanterne.lrc' }] };
+const libre = { name: 'kevin-macleod-ambiance.mp3', size: 1200, url: '/bibliotheque/attente/kevin-macleod-ambiance.mp3',
+	credit: { titre: 'Ambiance', artiste: 'Kevin MacLeod', licence: 'CC BY 4.0',
+		urlLicence: 'https://creativecommons.org/licenses/by/4.0/deed.fr' } };
 
 async function candidaturesDe(id) {
 	const { held, pending } = await navigator.locks.query();
@@ -53,7 +64,7 @@ async function candidaturesDe(id) {
 // les échanges du BroadcastChannel et des Web Locks déjà lancés. La requête des verrous reste le témoin déterministe.
 const laisserPasser = () => new Promise(resolve => setTimeout(resolve, 20));
 
-function fenetreDeSalle(t, ouverteA, id, { illisibles = [] } = {}) {
+function fenetreDeSalle(t, ouverteA, id, { illisibles = [], bibliotheque } = {}) {
 	let fichier, debut = Promise.withResolvers();
 	const fenetre = { audible: undefined, essais: [] };
 	const lecteur = {
@@ -72,7 +83,7 @@ function fenetreDeSalle(t, ouverteA, id, { illisibles = [] } = {}) {
 		surErreur: () => () => {},
 	};
 	const audio = creerAudioSalle({ lecteur, sonde: { async charger() { return { dureeMs: null }; }, detruire() {} }, lecteurId: id,
-		coordonner: surAttente => creerCoordinationSon({ verrous: navigator.locks,
+		bibliotheque, coordonner: surAttente => creerCoordinationSon({ verrous: navigator.locks,
 			canal: new BroadcastChannel('croustyquizz-test-sans-dossier'), ouverteA, id, surAttente }) });
 	t.after(() => audio.detruire());
 	audio.reglerMusiqueDAttente(true);
@@ -272,7 +283,7 @@ test('une absence décidée pendant une coupure ne part pas si une autre fenêtr
 });
 
 // Une page `ecran.html` réduite à sa zone audio, avec de faux éléments média et les vrais Web Locks de Node.
-function ecranDeSalle(t, ouverteA, { verrous = navigator.locks } = {}) {
+function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, bibliotheque } = {}) {
 	const document = creerDocument(), creer = document.createElement;
 	let lecture = Promise.withResolvers();
 	document.createElement = tag => {
@@ -282,13 +293,13 @@ function ecranDeSalle(t, ouverteA, { verrous = navigator.locks } = {}) {
 		Object.assign(element, { currentTime: 0, paused: true, load() {}, pause() { element.paused = true; } });
 		Object.defineProperty(element, 'src', { get: () => source, set(valeur) {
 			source = valeur;
-			if (valeur.startsWith('blob:')) queueMicrotask(() => element.dispatchEvent({ type: 'loadedmetadata' }));
+			if (/^(blob:|\/bibliotheque\/)/.test(valeur)) queueMicrotask(() => element.dispatchEvent({ type: 'loadedmetadata' }));
 		} });
 		const retirer = element.removeAttribute.bind(element);
 		element.removeAttribute = nom => { if (nom === 'src') source = ''; retirer(nom); };
 		element.play = async () => {
 			element.paused = false;
-			if (tag === 'audio' && source.startsWith('blob:')) lecture.resolve(source);
+			if (tag === 'audio' && /^(blob:|\/bibliotheque\/)/.test(source)) lecture.resolve(source);
 		};
 		if (tag === 'audio') ecran.audio = element;
 		return element;
@@ -306,9 +317,10 @@ function ecranDeSalle(t, ouverteA, { verrous = navigator.locks } = {}) {
 	const ecran = {
 		choisir: element('button', 'data-choisir-dossier'), choix: element('input'), aide: element('p', 'data-aide-son'),
 		alerte: element('p', 'data-son-bloque'), activer: element('button', 'data-activer-son'),
+		credit: element('p', 'data-credit-salle'),
 	};
 	document.body.append(zone);
-	ecran.salle = monterAudioSalle(zone);
+	ecran.salle = monterAudioSalle(zone, { bibliotheque: bibliotheque ?? Promise.resolve(CATALOGUE_VIDE) });
 	t.after(() => ecran.salle.detruire());
 	ecran.salle.reglerMusiqueDAttente(true);
 	return Object.assign(ecran, {
@@ -371,4 +383,45 @@ test('sans Web Locks, en http:// hors localhost, l’Écran de salle joue seul l
 	ecran.choisirDossier([morceauAttente('Ambiance')]);
 	assert.equal(await lecture, 'blob:Ambiance.ogg');
 	assert.equal(ecran.joue(), true);
+});
+
+test('sans dossier, la Bibliothèque de base joue en attente dès le son activé, et la fenêtre devient prête pour les Chansons', { timeout: 3000 }, async t => {
+	const fenetre = fenetreDeSalle(t, 100, 'bibliotheque', { bibliotheque: AVEC_CHANSON });
+	assert.equal(fenetre.audio.etat().morceauxDisponibles, true, 'la bibliothèque a des morceaux, sans aucun dossier');
+	assert.equal(fenetre.audio.etat().fichiers, null, 'pas encore prête : le son n’est pas activé');
+	assert.deepEqual(await candidaturesDe('bibliotheque'), []);
+	const lecture = fenetre.attendreLecture();
+	await fenetre.audio.activerSon();
+	assert.deepEqual(await lecture, libre);
+	assert.deepEqual(fenetre.audio.etat().fichiers, [], 'le clic rend la fenêtre prête pour les Chansons libres, sans fichier du Lieu');
+	const sansChanson = fenetreDeSalle(t, 300, 'attente-seule', { bibliotheque: CATALOGUE });
+	await sansChanson.audio.activerSon();
+	assert.equal(sansChanson.audio.etat().fichiers, null, 'sans Chanson libre, rien à lire au Karaoké : la fenêtre attend un dossier');
+	await terminerMicrotaches();
+	assert.deepEqual(fenetre.audio.etat().morceauEnCours, libre);
+	// Un dossier sans Attente garde les morceaux de la bibliothèque.
+	fenetre.audio.choisirDossier([{ name: 'Artiste - Chanson.mp3', webkitRelativePath: 'Musique/Artiste - Chanson.mp3' }]);
+	assert.equal(fenetre.audio.etat().morceauxDisponibles, true);
+});
+
+test('l’Écran de salle affiche le crédit du morceau de la bibliothèque qui joue, jamais celui d’un fichier du Lieu', { timeout: 3000 }, async t => {
+	const ecran = ecranDeSalle(t, 100, { bibliotheque: Promise.resolve(CATALOGUE) });
+	assert.equal(ecran.activer.hidden, false, 'Activer le son se propose dès l’ouverture');
+	assert.equal(ecran.alerte.hidden, true);
+	assert.equal(ecran.credit.hidden, true);
+	await new Promise(resolve => { const retirer = ecran.salle.surChangement(({ morceauxDisponibles }) => {
+		if (morceauxDisponibles) { retirer(); resolve(); } }); });
+	assert.equal(ecran.aide.textContent, 'Bibliothèque de base');
+	const lecture = ecran.attendreLecture();
+	ecran.activer.click();
+	assert.equal(await lecture, '/bibliotheque/attente/kevin-macleod-ambiance.mp3');
+	await terminerMicrotaches();
+	assert.equal(ecran.credit.hidden, false);
+	assert.equal(ecran.credit.textContent, 'Musique : « Ambiance », Kevin MacLeod · CC BY 4.0');
+	const relais = ecran.attendreLecture();
+	ecran.choisirDossier([{ name: 'Kevin MacLeod - Ambiance.ogg', webkitRelativePath: 'Musique/Attente/Kevin MacLeod - Ambiance.ogg' }]);
+	assert.equal(await relais, 'blob:Kevin MacLeod - Ambiance.ogg', 'le morceau du Lieu remplace son homonyme');
+	await terminerMicrotaches();
+	assert.equal(ecran.credit.hidden, true);
+	assert.equal(ecran.aide.textContent, '1 fichier audio en plus de la Bibliothèque de base');
 });

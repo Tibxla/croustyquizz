@@ -91,8 +91,9 @@ export function monterMusiqueDAttenteSalle(audio, contexte) {
 	}
 
 	const retirerDossier = audio.surChangement(({ fichiers, morceauxDisponibles }) => {
-		// Le même dossier peut perdre ses morceaux quand la Musique d'attente les écarte comme illisibles.
-		if (fichiers === null || (fichiers === dernierDossier && morceauxDisponibles === dernierSignal)) return;
+		// Le même dossier peut perdre ses morceaux quand la Musique d'attente les écarte comme illisibles. Sans dossier,
+		// la Bibliothèque de base suffit à signaler des morceaux ; sans l'un ni l'autre, la fenêtre ne signale rien (ADR 0011).
+		if (morceauxDisponibles == null || (fichiers === dernierDossier && morceauxDisponibles === dernierSignal)) return;
 		dernierDossier = fichiers;
 		dernierSignal = morceauxDisponibles;
 		absenceEnAttente?.abort();

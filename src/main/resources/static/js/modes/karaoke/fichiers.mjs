@@ -26,3 +26,12 @@ export function trouverFichierDeChanson(fichiers, { artiste, titre }) {
 	}
 	return fichier ? { etat: 'unique', fichier } : { etat: 'absent' };
 }
+
+// Ordre des sources (ADR 0011) : le fichier unique du Lieu, sinon celui de la Bibliothèque de base, lu par son URL.
+export function choisirFichierDeChanson(fichiers, chanson) {
+	const local = trouverFichierDeChanson(fichiers ?? [], chanson);
+	const libre = chanson.bibliotheque;
+	if (local.etat === 'unique' || !libre) return local;
+	return { etat: 'unique', bibliotheque: true,
+		fichier: { name: libre.fichier.split('/').at(-1), size: libre.tailleOctets, url: libre.fichier } };
+}

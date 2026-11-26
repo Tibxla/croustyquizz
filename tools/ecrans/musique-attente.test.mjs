@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { terminerMicrotaches } from './karaoke-dom-factice.mjs';
 import { creerMusiqueDAttente } from '../../src/main/resources/static/js/musique-attente.mjs';
 
-function banc({ illisibles = [], surMorceauxEpuises } = {}) {
+function banc({ illisibles = [], surMorceauxEpuises, surMorceau } = {}) {
 	let fichier, position, fin, erreur;
 	const lectures = [];
-	const musique = creerMusiqueDAttente({ hasard: () => 0, surMorceauxEpuises, lecteur: {
+	const musique = creerMusiqueDAttente({ hasard: () => 0, surMorceauxEpuises, surMorceau, lecteur: {
 		async charger(candidat) {
 			if (illisibles.includes(candidat)) throw new Error('Fichier audio illisible.');
 			fichier = candidat;
@@ -89,4 +89,20 @@ test('un morceau qui échoue en cours de lecture compte aussi parmi les morceaux
 	await terminerMicrotaches();
 	assert.equal(b.fichier(), undefined);
 	assert.equal(epuisements, 1);
+});
+
+test('la Musique d’attente annonce le morceau qui joue, puis son silence, pour en afficher le crédit', async () => {
+	const annonces = [];
+	const b = banc({ surMorceau: morceau => annonces.push(morceau) });
+	b.musique.choisirFichiers(['A', 'B']);
+	b.musique.autoriserLecture(true);
+	await terminerMicrotaches();
+	assert.deepEqual(annonces, ['B']);
+	b.finir();
+	await terminerMicrotaches();
+	assert.deepEqual(annonces, ['B', null, 'A']);
+	b.musique.autoriserLecture(false);
+	assert.deepEqual(annonces, ['B', null, 'A', null]);
+	b.musique.detruire();
+	assert.deepEqual(annonces, ['B', null, 'A', null]);
 });

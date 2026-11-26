@@ -183,3 +183,24 @@ test('la salle signale l’absence de morceaux quand elle a écarté tous ceux d
 	salle.demonter();
 	await audio.detruire();
 });
+
+test('la salle signale les morceaux de la Bibliothèque de base sans attendre de dossier, mais rien tant qu’elle n’en sait rien', async () => {
+	const envois = [];
+	let changer;
+	const audio = {
+		reglerMusiqueDAttente() {},
+		surChangement(rappel) { changer = rappel; return () => {}; },
+		async attendreAucunMorceauAilleurs(signal) { signal.throwIfAborted(); },
+	};
+	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree',
+		envoyer(methode, route, corps) { envois.push(corps); return Promise.resolve({ statut: 200 }); } });
+	const salle = monterMusiqueDAttenteSalle(audio, contexte);
+	changerEtat('synchronisee');
+	changer({ fichiers: null, morceauxDisponibles: null });
+	await terminerMicrotaches();
+	assert.deepEqual(envois, [], 'catalogue pas encore lu : rien à signaler');
+	changer({ fichiers: null, morceauxDisponibles: true });
+	await terminerMicrotaches();
+	assert.deepEqual(envois, [{ morceauxDisponibles: true }]);
+	salle.demonter();
+});

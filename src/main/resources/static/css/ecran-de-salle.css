@@ -293,3 +293,15 @@
 .salle__audio:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
 .salle__audio .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
 .salle__audio p:empty { display: none; }
+/* Crédit de la Bibliothèque de base (ADR 0011) : discret dans le pied, à l'échelle de la salle pour rester lisible à 5 m. */
+.salle__credit {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+  font-size: 1.5vw;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.salle__credits { color: inherit; }

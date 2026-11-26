@@ -79,6 +79,10 @@
   color: var(--texte-2);
   font-size: 0.875rem;
 }
+.pilotage__credits {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
 
 .indicateurs {
   display: flex;
