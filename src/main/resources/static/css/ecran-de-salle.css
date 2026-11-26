@@ -299,9 +299,9 @@
   margin: 0;
   min-width: 0;
   font-size: 1.5vw;
+  line-height: 1.2;
   text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Un titre long passe à la ligne plutôt que de couper la licence, que CC BY exige. */
+  overflow-wrap: anywhere;
 }
 .salle__credits { color: inherit; }
