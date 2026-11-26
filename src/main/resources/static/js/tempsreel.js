@@ -6,7 +6,7 @@ export const motifRefusParDefaut = 'Le serveur a refusé la connexion en temps r
 // Module ES sans dépendance. Le client STOMP réel est chargé par la page.
 // Les pages ne manipulent que des vues complètes, jamais les Révisions.
 // surRefus(motif) : le serveur a refusé CONNECT (trame ERROR avant CONNECTED) ; aucune reconnexion
-// automatique ne suit, seule resynchroniser() relance la connexion.
+// automatique ne suit, seule resynchroniser({ explicite: true }) relance la connexion.
 export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {}, surRefus = () => {} }, adaptations = {}) {
 	const {
 		transport = transportStomp,
@@ -21,6 +21,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {}, 
 		delaiCapture = 10000,
 	} = adaptations;
 	let arrete = false;
+	let connexionRefusee = false;
 	let courant;
 	let minuterie;
 	let heureCapture;
@@ -53,6 +54,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {}, 
 			recommencer(suivi);
 			return;
 		}
+		connexionRefusee = true;
 		nettoyer();
 		surEtat('coupure');
 		surRefus(motif || motifRefusParDefaut);
@@ -147,8 +149,9 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {}, 
 			arrete = true;
 			nettoyer();
 		},
-		resynchroniser() {
-			if (arrete) return;
+		resynchroniser({ explicite = false } = {}) {
+			if (arrete || (connexionRefusee && !explicite)) return;
+			connexionRefusee = false;
 			nettoyer();
 			ouvrir();
 		},

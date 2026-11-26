@@ -109,7 +109,7 @@ async function demarrer() {
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
-	boutonReprise?.addEventListener('click', contexte.resynchroniser);
+	boutonReprise?.addEventListener('click', () => suivi?.resynchroniser({ explicite: true }));
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {

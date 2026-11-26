@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.TestInstance;
@@ -98,12 +100,22 @@ class CanalTempsReelTest {
 	@MockitoBean
 	private CaptureVuePrototype repli;
 
+	@MockitoBean
+	private Clock horloge;
+
 	private final HttpClient http = HttpClient.newHttpClient();
 	private final JsonMapper json = JsonMapper.builder().build();
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("stomp-test-");
 	private final List<WebSocketStompClient> clients = new ArrayList<>();
 	private final List<StompSession> sessions = new CopyOnWriteArrayList<>();
+
+	@BeforeEach
+	void utiliserLHeureSysteme() {
+		Clock systeme = Clock.systemUTC();
+		when(horloge.instant()).thenAnswer(invocation -> systeme.instant());
+		when(horloge.getZone()).thenReturn(systeme.getZone());
+	}
 
 	@AfterEach
 	void fermerLesSessions() {
@@ -145,6 +157,24 @@ class CanalTempsReelTest {
 	@Test
 	void unConnectRefuseRecoitUneTrameErrorAvecSonMotifPuisLaFermeture() throws Exception {
 		UUID soiree = soirees.creer("Soirée enregistrée", Format.SOLO, Pilotage.MANUEL).getId();
+		assertThat(motifDuConnectRefuse("demo:ECRAN:" + soiree + ":" + UUID.randomUUID())).isEqualTo(
+				"Cette Soirée n'accepte pas d'Écran de démonstration : ouvre l'Écran de salle avec la clé créée depuis la Console.");
+	}
+
+	@Test
+	void uneCleDEcranExpireeInviteARouvrirLEcranDepuisLaPreparation() throws Exception {
+		when(horloge.instant()).thenReturn(Instant.parse("2026-11-26T19:30:00Z"));
+		UUID soiree = soirees.creer("Soirée avec Écran", Format.SOLO, Pilotage.MANUEL).getId();
+		var ouverture = acces.ouvrirEcran(soiree);
+		when(horloge.instant()).thenReturn(ouverture.acces().getExpireLe());
+		String consigne = "Rouvre l'Écran de salle depuis la préparation de la Soirée pour obtenir une nouvelle clé";
+
+		assertThat(motifDuConnectRefuse(ouverture.cle())).contains(consigne);
+		acces.ouvrirEcran(soiree); // La création d'une clé purge les clés expirées.
+		assertThat(motifDuConnectRefuse(ouverture.cle())).contains(consigne);
+	}
+
+	private String motifDuConnectRefuse(String jeton) throws Exception {
 		BlockingQueue<String> trames = new ArrayBlockingQueue<>(4);
 		CompletableFuture<CloseStatus> fermeture = new CompletableFuture<>();
 		var entetes = new WebSocketHttpHeaders();
@@ -162,17 +192,16 @@ class CanalTempsReelTest {
 		}, entetes, URI.create("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION)).get(5, TimeUnit.SECONDS);
 		try {
 			connexion.sendMessage(new TextMessage("CONNECT\naccept-version:1.2\nhost:localhost\n"
-					+ "Authorization:Bearer demo:ECRAN:" + soiree + ":" + UUID.randomUUID() + "\n\n\0"));
+					+ "Authorization:Bearer " + jeton + "\n\n\0"));
 
 			String trame = trames.poll(5, TimeUnit.SECONDS);
 			assertThat(trame).as("réponse au CONNECT refusé").isNotNull();
 			var erreur = StompHeaderAccessor.wrap(new StompDecoder()
 					.decode(ByteBuffer.wrap(trame.getBytes(StandardCharsets.UTF_8))).getFirst());
 			assertThat(erreur.getCommand()).isEqualTo(StompCommand.ERROR);
-			assertThat(erreur.getMessage()).isEqualTo(
-					"Cette Soirée n'accepte pas d'Écran de démonstration : ouvre l'Écran de salle avec la clé créée depuis la Console.");
 			assertThat(fermeture.get(5, TimeUnit.SECONDS)).isEqualTo(CloseStatus.PROTOCOL_ERROR);
 			assertThat(trames).isEmpty();
+			return erreur.getMessage();
 		} finally {
 			if (connexion.isOpen()) {
 				connexion.close();

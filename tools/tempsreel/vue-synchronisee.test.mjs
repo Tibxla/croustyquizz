@@ -232,20 +232,23 @@ function demarrerSansConnexion() {
 	return { ...pilote, vues, etats, refus, suivi };
 }
 
-test('un CONNECT refusé affiche son motif et ne se reconnecte pas, même après la fermeture', async () => {
+test('un CONNECT refusé affiche son motif et attend une reprise explicite malgré les demandes de capture', async () => {
 	const p = demarrerSansConnexion();
 	p.connexions[0].surTrameErreur('Cette Soirée n’accepte pas d’Écran de démonstration.');
 	p.connexions[0].surDeconnexion();
+	p.suivi.resynchroniser();
 	await p.avancer(60000);
 	assert.deepEqual(p.refus, ['Cette Soirée n’accepte pas d’Écran de démonstration.']);
 	assert.equal(p.etats.at(-1), 'coupure');
 	assert.equal(p.connexions.length, 1);
 	assert.equal(p.connexions[0].fermee, true);
 	assert.equal(p.minuteries.size, 0);
-	// La reprise manuelle reste possible.
-	p.suivi.resynchroniser();
+	p.suivi.resynchroniser({ explicite: true });
 	assert.equal(p.connexions.length, 2);
 	assert.equal(p.etats.at(-1), 'synchronisation');
+	p.connexions[1].surConnexion();
+	await repondre(p);
+	assert.equal(p.etats.at(-1), 'synchronisee');
 	p.suivi.arreter();
 });
 
