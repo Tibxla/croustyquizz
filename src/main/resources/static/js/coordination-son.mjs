@@ -5,7 +5,10 @@ const AUDIO = `${PREFIXE}lecture`;
 const MORCEAUX = `${PREFIXE}morceaux:`;
 
 export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente }) {
-	const candidature = `${PRESENCE}${ouverteA.toFixed(3).padStart(18, '0')}:${id}`;
+	// Le rang passe avant l'ouverture : une fenêtre qui joue le dossier du Lieu (rang 1) l'emporte sur celles
+	// qui n'ont que la Bibliothèque de base (rang 0), puis la plus récente de chaque rang (ADR 0011).
+	const nomCandidature = rang => `${PRESENCE}${rang}:${ouverteA.toFixed(3).padStart(18, '0')}:${id}`;
+	let candidature = nomCandidature(0);
 	const nomVerrouMorceaux = `${MORCEAUX}${id}`;
 	let presence, attente, manche, surveillance, revision = 0, fermeture, verrouMorceaux, liberationMorceaux;
 
@@ -66,18 +69,23 @@ export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente 
 	canal.onmessage = () => { void actualiser(); };
 
 	return {
-		activer(sonActive) {
-			if (fermeture || sonActive === Boolean(presence)) return;
-			if (sonActive) {
-				presence = prendre(candidature, 'exclusive');
-				void presence.prise.then(signalerChangement);
-			} else {
+		activer(sonActive, prioritaire = false) {
+			const voulue = sonActive ? nomCandidature(prioritaire ? 1 : 0) : undefined;
+			if (fermeture || voulue === (presence ? candidature : undefined)) return;
+			let liberee = Promise.resolve();
+			if (presence) {
 				revision++;
 				surveiller();
 				taireAttente();
 				const ancienne = presence;
 				presence = undefined;
-				void ancienne.liberer().then(signalerChangement);
+				liberee = ancienne.liberer();
+				if (!voulue) void liberee.then(signalerChangement);
+			}
+			if (voulue) {
+				candidature = voulue;
+				const nouvelle = presence = prendre(candidature, 'exclusive');
+				void liberee.then(() => nouvelle.prise).then(signalerChangement);
 			}
 		},
 		signalerSonDeManche(actif) {

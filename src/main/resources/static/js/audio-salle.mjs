@@ -11,6 +11,7 @@ import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliotheque: catalogue = CATALOGUE_VIDE }) {
 	const abonnes = new Set();
 	let fichiers = null, dossier = null, bibliotheque = [], chansonsLibres = false, morceauxDisponibles = null, morceauEnCours = null;
+	let morceauxDuLieu = false;
 	let sonDebloque = false, suspendu = false, detruit = false, musiqueAutorisee = false, attenteAutorisee = false;
 	const etat = () => ({ fichiers, dossier, bibliotheque: bibliotheque.length > 0 || chansonsLibres, sonDebloque,
 		morceauxDisponibles, morceauEnCours });
@@ -22,7 +23,10 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 	function notifier() { for (const rappel of abonnes) rappel(etat()); }
 	// Seule une fenêtre qui a des morceaux dans Attente candidate : sans eux, elle ferait taire celle qui en a.
 	// Le son activé sert aussi au son de Manche, qui se passe de dossier.
-	function actualiserCandidature() { coordination.activer(sonDebloque && !suspendu && morceauxDisponibles === true); }
+	// Une fenêtre qui n'a que la bibliothèque candidate aussi, mais derrière celles qui ont des morceaux du Lieu.
+	function actualiserCandidature() {
+		coordination.activer(sonDebloque && !suspendu && morceauxDisponibles === true, morceauxDuLieu);
+	}
 	const musique = creerMusiqueDAttente({ lecteur, surSonBloque() {
 		sonDebloque = false;
 		actualiserCandidature();
@@ -30,6 +34,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 	}, surMorceauxEpuises() {
 		// Tous les morceaux d'Attente sont illisibles : comme un dossier sans Attente, jusqu'au prochain choix.
 		morceauxDisponibles = false;
+		morceauxDuLieu = false;
 		coordination.annoncerMorceaux(false);
 		actualiserCandidature();
 		notifier();
@@ -40,6 +45,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 	// Sans dossier ni bibliothèque, la fenêtre ne sait rien de ses morceaux et ne signale rien.
 	function actualiserMorceaux() {
 		const morceaux = fusionnerMorceauxDAttente(bibliotheque, dossier ?? []);
+		morceauxDuLieu = morceaux.some(morceau => !morceau.url);
 		morceauxDisponibles = morceaux.length > 0 ? true : dossier === null ? null : false;
 		musique.choisirFichiers(morceaux);
 		if (morceauxDisponibles !== null) coordination.annoncerMorceaux(morceauxDisponibles);

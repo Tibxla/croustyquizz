@@ -425,3 +425,23 @@ test('l’Écran de salle affiche le crédit du morceau de la bibliothèque qui 
 	assert.equal(ecran.credit.hidden, true);
 	assert.equal(ecran.aide.textContent, '1 fichier audio en plus de la Bibliothèque de base');
 });
+
+test('une fenêtre qui n’a que la Bibliothèque de base ne prend pas la Musique d’attente à celle qui joue le dossier du Lieu', { timeout: 3000 }, async t => {
+	const lieu = fenetreDeSalle(t, 100, 'lieu', { bibliotheque: CATALOGUE });
+	const morceau = morceauAttente('Ambiance du Lieu');
+	lieu.audio.choisirDossier([morceau]);
+	const premiere = lieu.attendreLecture();
+	await lieu.audio.activerSon();
+	const joue = await premiere;
+	assert.ok([morceau, libre].some(m => JSON.stringify(m) === JSON.stringify(joue)));
+	const nouvelle = fenetreDeSalle(t, 200, 'libre', { bibliotheque: CATALOGUE });
+	await nouvelle.audio.activerSon();
+	assert.equal((await candidaturesDe('libre')).length, 1, 'elle candidate : elle a des morceaux');
+	await laisserPasser();
+	assert.equal(nouvelle.audible, undefined, 'mais la fenêtre du dossier garde la main');
+	assert.notEqual(lieu.audible, undefined);
+	// Sans dossier ailleurs, la bibliothèque joue.
+	const relais = nouvelle.attendreLecture();
+	await lieu.audio.detruire();
+	assert.deepEqual(await relais, libre);
+});
