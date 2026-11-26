@@ -28,7 +28,8 @@
  *
  * <p>PresenceDesManettes suit les connexions STOMP des Joueurs dans ConnexionsDesManettes, que lit
  * FournisseurCommunSoiree pour le champ connecte : la fermeture de la dernière connexion d'une
- * Manette, puis son retour, publient joueurs-modifies sous le verrou de la Soirée (#8).
+ * Manette, puis son retour, publient joueurs-modifies sous le verrou de la Soirée (#8). La fin de la
+ * Soirée, signalée par CycleDeScene, oublie cette présence ; ensuite, plus rien n'est suivi ni publié (#266).
  *
  * <p>Propriétaire : Tibxla.
  */

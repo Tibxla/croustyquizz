@@ -910,7 +910,8 @@ paths:
         un état de Soirée incompatible ou un Mode de jeu sans service donne 409 ETAT_INCOMPATIBLE.
         TERMINER : en Soirée EN_COURS, clôt la Manche active éventuelle sans etapeId, puis passe la Soirée à TERMINEE.
         La fin de Soirée publie soiree-terminee à la Console, à l’Écran de salle et à toutes les Manettes, avec
-        mancheActive et modeEnCours à null. En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
+        mancheActive et modeEnCours à null ; ensuite, la présence des Manettes n’est plus suivie ni publiée
+        (README, « Vues par blocs »). En Manuel, la fin naturelle d’une Manche attend MANCHE_SUIVANTE. La correction
         d’une Question attend PASSER_ETAPE avant la prochaine Question ; le serveur déclenche la correction à l’échéance
         ou sur PASSER_ETAPE. Idempotence selon Idempotency-Key.'
       tags:

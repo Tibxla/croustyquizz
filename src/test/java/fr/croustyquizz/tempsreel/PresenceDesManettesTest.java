@@ -39,7 +39,7 @@ class PresenceDesManettesTest {
 
 	private final UUID soiree = UUID.randomUUID();
 	private final UUID joueur = UUID.randomUUID();
-	private final IdentiteStomp identite = new IdentiteStomp(new Acteur(Acteur.Type.JOUEUR, joueur, soiree));
+	private final UUID sam = UUID.randomUUID();
 	private final ConnexionsDesManettes connexions = new ConnexionsDesManettes();
 	private final VerrousSoiree verrous = new VerrousSoiree();
 	private final EtatDeSoiree soirees = mock(EtatDeSoiree.class);
@@ -70,6 +70,61 @@ class PresenceDesManettesTest {
 	PresenceDesManettesTest() {
 		when(soirees.estEnregistree(soiree)).thenReturn(true);
 		canal.subscribe(message -> destinations.add(SimpMessageHeaderAccessor.getDestination(message.getHeaders())));
+	}
+
+	@Test
+	void avantLaFinLaFermetureDeLaDerniereConnexionPublieLesJoueurs() {
+		var onglet = new Onglet("a");
+		onglet.ouvrir();
+		onglet.fermer();
+
+		assertThat(destinations).hasSize(2);
+		assertThat(diffuseur.capturerSalle(soiree, null).vue().type()).isEqualTo("joueurs-modifies");
+		assertThat(connexions.estConnecte(joueur)).isFalse();
+	}
+
+	@Test
+	void laFinDeLaSoireeOublieLaPresenceDeSesJoueurs() {
+		var onglet = new Onglet("a");
+		onglet.ouvrir();
+		onglet.fermer();
+		new Onglet("b", sam).ouvrir();
+
+		presence.oublierALaFin(new CycleDeScene(soiree, false, true));
+
+		assertThat(connexions.estConnecte(joueur)).isTrue();
+		assertThat(connexions.suitLaSoiree(soiree)).isFalse();
+	}
+
+	@Test
+	void unCycleDeSceneSansFinGardeLaPresence() {
+		var onglet = new Onglet("a");
+		onglet.ouvrir();
+		onglet.fermer();
+
+		presence.oublierALaFin(new CycleDeScene(soiree, true, false));
+		presence.oublierALaFin(new CycleDeScene(soiree, false, false));
+
+		assertThat(connexions.estConnecte(joueur)).isFalse();
+		assertThat(connexions.suitLaSoiree(soiree)).isTrue();
+	}
+
+	@Test
+	void apresLaFinUneManetteQuiSeFermeOuRevientNePublieRienEtNeLaisseRienEnMemoire() {
+		var ongletSam = new Onglet("b", sam);
+		ongletSam.ouvrir();
+		when(soirees.estTerminee(soiree)).thenReturn(true);
+
+		ongletSam.fermer();
+		var onglet = new Onglet("a");
+		onglet.ouvrir();
+		assertThat(connexions.suitLaSoiree(soiree)).isFalse();
+		onglet.fermer();
+
+		assertThat(destinations).isEmpty();
+		assertThat(connexions.suitLaSoiree(soiree)).isFalse();
+		assertThat(connexions.estConnecte(joueur)).isTrue();
+		assertThat(connexions.estConnecte(sam)).isTrue();
 	}
 
 	@Test
@@ -110,6 +165,18 @@ class PresenceDesManettesTest {
 	}
 
 	@Test
+	void laDerniereFermetureRetireLaConnexionMemeSiLaLectureDeLEtatEchoue() {
+		var onglet = new Onglet("dernier");
+		onglet.ouvrir();
+		when(soirees.estTerminee(soiree)).thenThrow(new CannotGetJdbcConnectionException("PostgreSQL indisponible"));
+
+		onglet.fermer();
+
+		assertThat(connexions.estConnecte(joueur)).isFalse();
+		assertThat(destinations).isEmpty();
+	}
+
+	@Test
 	void laPresenceNeSePublieQuALaSalleEtALaConsole() {
 		var onglet = new Onglet("dernier");
 		onglet.ouvrir();
@@ -132,10 +199,16 @@ class PresenceDesManettesTest {
 
 	private final class Onglet {
 		private final String session;
+		private final IdentiteStomp identite;
 		private final Map<String, Object> attributs = new ConcurrentHashMap<>();
 
 		private Onglet(String session) {
+			this(session, joueur);
+		}
+
+		private Onglet(String session, UUID joueurId) {
 			this.session = session;
+			this.identite = new IdentiteStomp(new Acteur(Acteur.Type.JOUEUR, joueurId, soiree));
 		}
 
 		private void ouvrir() {

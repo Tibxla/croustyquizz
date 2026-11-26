@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterEach;
@@ -33,12 +34,14 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
+import fr.croustyquizz.tempsreel.ConnexionsDesManettes;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -59,6 +62,8 @@ class SoireeDeBoutEnBoutTest {
 
 	@LocalServerPort private int port;
 	@Autowired private JsonMapper json;
+	@Autowired private ConnexionsDesManettes connexions;
+	@Autowired private SimpUserRegistry utilisateurs;
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final WebSocketStompClient stomp = new WebSocketStompClient(new StandardWebSocketClient(conteneur));
 	private final List<StompSession> sessions = new ArrayList<>();
@@ -128,6 +133,57 @@ class SoireeDeBoutEnBoutTest {
 					.containsExactly(lea.enLigne(true, json));
 		}
 		assertThat(retour.capture().path("vue").path("joueurs")).containsExactly(lea.enLigne(true, json));
+	}
+
+	/**
+	 * Fin de la Soirée (#266) : la présence est oubliée, une Manette qui se ferme ensuite ne publie plus rien, et
+	 * la capture rend la vue soiree-terminee, avec la présence constatée à la fin. Noé n'ouvre jamais de connexion STOMP : il reste
+	 * connecté jusqu'à sa première connexion.
+	 */
+	@Test
+	@Timeout(30)
+	void aLaFinDeLaSoireeLaPresenceEstOublieeEtUneManetteQuiSeFermeNePublieRien() throws Exception {
+		animateur = SessionAnimateurHttp.ouvrir(port, json);
+		Soiree soiree = creerEtOuvrir("Soirée de clôture");
+		verifier("ajouterManche", envoyer(HttpMethod.POST, soiree.route() + "/manches", Acces.console(animateur),
+				Map.of("mode", "KARAOKE", "reglages", Map.of()), null), 201);
+		Ecoute salle = ecouter(Acces.bearer(soiree.cleEcran()), "/topic/soirees/" + soiree.id() + "/salle",
+				soiree.route() + "/etat/salle", "retrouverEtatSalle");
+		Joueur lea = rejoindre(soiree, "Léa");
+		Joueur sam = rejoindre(soiree, "Sam");
+		Joueur noe = rejoindre(soiree, "Noé");
+		Ecoute manetteDeLea = ecouter(Acces.bearer(lea.jeton()), "/topic/joueurs/" + lea.id(),
+				soiree.route() + "/etat/manette", "retrouverEtatManette");
+		ecouter(Acces.bearer(sam.jeton()), "/topic/joueurs/" + sam.id(), soiree.route() + "/etat/manette",
+				"retrouverEtatManette").session().disconnect();
+		assertThat(salle.jusqua(JOUEURS_MODIFIES, joueurs -> joueurs.equals(json.valueToTree(List.of(
+				lea.enLigne(true, json), sam.enLigne(false, json), noe.enLigne(true, json)))))).isNotNull();
+
+		verifier("piloterSoiree", envoyer(HttpMethod.POST, soiree.route() + "/commandes", Acces.console(animateur),
+				Map.of("action", "LANCER"), UUID.randomUUID()), 200);
+		verifier("piloterSoiree", envoyer(HttpMethod.POST, soiree.route() + "/commandes", Acces.console(animateur),
+				Map.of("action", "TERMINER"), UUID.randomUUID()), 200);
+		JsonNode fin = salle.jusqua("soiree-terminee", joueurs -> true);
+		assertThat(fin.path("donnees").path("joueurs")).containsExactly(lea.enLigne(true, json),
+				sam.enLigne(false, json), noe.enLigne(true, json));
+
+		// La capture prend le verrou de la Soirée : la fin, sa publication et son oubli sont alors achevés.
+		JsonNode apresLaFin = verifier("retrouverEtatSalle", envoyer(HttpMethod.GET, soiree.route() + "/etat/salle",
+				Acces.bearer(soiree.cleEcran()), null, null), 200);
+		assertThat(apresLaFin.path("vue").path("joueurs")).isEqualTo(fin.path("donnees").path("joueurs"));
+		// La mémoire de la Soirée est rendue dès la fin : Sam, hors ligne à la fin, n'y figure plus.
+		assertThat(connexions.estConnecte(sam.id())).isTrue();
+
+		String nomDeLea = "JOUEUR:" + lea.id() + ":" + soiree.id();
+		assertThat(utilisateurs.getUser(nomDeLea)).isNotNull();
+		manetteDeLea.session().disconnect();
+		await().atMost(Duration.ofSeconds(5)).until(() -> utilisateurs.getUser(nomDeLea) == null);
+		// Attente d'absence, une fois la fermeture constatée par le serveur : aucun joueurs-modifies ne suit la fin.
+		assertThat(salle.evenements().poll(1, TimeUnit.SECONDS)).isNull();
+		JsonNode capture = verifier("retrouverEtatSalle", envoyer(HttpMethod.GET, soiree.route() + "/etat/salle",
+				Acces.bearer(soiree.cleEcran()), null, null), 200);
+		assertThat(capture.path("vue").path("joueurs")).isEqualTo(fin.path("donnees").path("joueurs"));
+		assertThat(connexions.estConnecte(lea.id())).isTrue();
 	}
 
 	private Soiree creerEtOuvrir(String titre) throws Exception {
@@ -222,6 +278,18 @@ class SoireeDeBoutEnBoutTest {
 			JsonNode evenement = evenements.poll(5, TimeUnit.SECONDS);
 			assertThat(evenement).as("événement %s", type).isNotNull();
 			assertThat(evenement.path("type").asString()).isEqualTo(type);
+			return evenement;
+		}
+
+		/** Premier événement de ce type dont les Joueurs remplissent la condition ; les autres sont passés. */
+		JsonNode jusqua(String type, Predicate<JsonNode> joueurs) throws InterruptedException {
+			long limite = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+			JsonNode evenement;
+			do {
+				evenement = evenements.poll(limite - System.nanoTime(), TimeUnit.NANOSECONDS);
+				assertThat(evenement).as("événement %s", type).isNotNull();
+			} while (!type.equals(evenement.path("type").asString())
+					|| !joueurs.test(evenement.path("donnees").path("joueurs")));
 			return evenement;
 		}
 	}

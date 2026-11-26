@@ -29,6 +29,7 @@ Le test `SoireeDeBoutEnBoutTest` joue ce parcours en profil `prod`, en HTTP et S
 4. Ferme l’onglet de la Manette. En quelques secondes, la Console et l’Écran de salle affichent « Léa · déconnecté » ; le compteur reste à 1 et le dernier Buzz ne change pas. Un téléphone mis en veille ou privé de réseau peut garder sa connexion ouverte jusqu’à ce que le serveur constate l’absence de battements STOMP, soit trois intervalles de dix secondes : l’indication arrive alors au bout d’une trentaine de secondes.
 5. Rouvre la Manette depuis `/rejoindre.html` ou en rescannant le QR code. Elle retrouve Léa sans redemander de pseudo, et les deux écrans repassent à « Léa · connecté ». Ouvre la même Manette dans deux onglets, ferme-en un : Léa reste connectée ; ferme le second : elle passe hors ligne.
 6. Recharge l’Écran de salle pendant que Léa est hors ligne : la capture affiche toujours « Léa · déconnecté ».
+7. Fin de Soirée (#266). Léa connectée, rejoins la Soirée sous « Sam » dans un troisième profil, puis ferme sa Manette : « Sam · déconnecté ». Dans « Programme », ajoute un Karaoké, lance la Soirée, puis termine-la depuis la Console. Le Podium final s’affiche et la liste garde « Léa · connecté » et « Sam · déconnecté ». Ferme alors la Manette de Léa : rien ne change sur les deux écrans, et aucune erreur JavaScript n’apparaît.
 
 ## Recette du programme de la Soirée (#9)
 
