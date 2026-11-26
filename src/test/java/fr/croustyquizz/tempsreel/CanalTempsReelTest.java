@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.TestInstance;
@@ -48,6 +47,7 @@ import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -100,7 +100,8 @@ class CanalTempsReelTest {
 	@MockitoBean
 	private CaptureVuePrototype repli;
 
-	@MockitoBean
+	// Espion plutôt que simulacre : l'horloge réelle sert au démarrage du contexte (LimiteDeRequetes la lit déjà).
+	@MockitoSpyBean
 	private Clock horloge;
 
 	private final HttpClient http = HttpClient.newHttpClient();
@@ -109,13 +110,6 @@ class CanalTempsReelTest {
 	private final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("stomp-test-");
 	private final List<WebSocketStompClient> clients = new ArrayList<>();
 	private final List<StompSession> sessions = new CopyOnWriteArrayList<>();
-
-	@BeforeEach
-	void utiliserLHeureSysteme() {
-		Clock systeme = Clock.systemUTC();
-		when(horloge.instant()).thenAnswer(invocation -> systeme.instant());
-		when(horloge.getZone()).thenReturn(systeme.getZone());
-	}
 
 	@AfterEach
 	void fermerLesSessions() {

@@ -147,7 +147,7 @@ x-stomp:
   version: '1.2'
   sousProtocole: v12.stomp
   connect:
-    Authorization: Bearer <jetonJoueur ou cleEcran> ; sinon session Animateur par cookie du handshake
+    Authorization: 'Bearer <jetonJoueur, cleEcran ou demo:ANIMATEUR> ; la session Animateur par cookie du handshake viendra avec #5'
     X-CSRF-TOKEN: Jeton obtenu par HTTP dans ce navigateur, requis pour CONNECT
     refus: Trame ERROR dont l’en-tête message porte un motif affichable, puis fermeture de la WebSocket, sans CONNECTED ; la coquille ne se reconnecte pas d’elle-même
   subscribe:

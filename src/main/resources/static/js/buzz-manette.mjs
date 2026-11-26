@@ -1,4 +1,4 @@
-import { creerUuid } from './modes/karaoke/commun.mjs';
+import { creerUuid } from './uuid.mjs';
 
 export function monterBuzz(bouton, contexte) {
 	let disponible = false;
@@ -15,7 +15,7 @@ export function monterBuzz(bouton, contexte) {
 
 	async function buzzer() {
 		if (bouton.disabled) return;
-		// Sur un téléphone en http:// (réseau local), crypto.randomUUID n'existe pas : creerUuid a un repli.
+		// creerUuid fonctionne aussi sur un téléphone en http:// (réseau local).
 		envoiId ??= creerUuid();
 		requete = new AbortController();
 		actualiser();

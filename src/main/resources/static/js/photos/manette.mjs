@@ -1,4 +1,4 @@
-import { creerUuid } from '../modes/karaoke/commun.mjs';
+import { creerUuid } from '../uuid.mjs';
 import { element, routePhotos } from './commun.mjs';
 
 const COTE_MAX = 1600;

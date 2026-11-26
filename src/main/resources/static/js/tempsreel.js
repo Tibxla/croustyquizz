@@ -1,4 +1,5 @@
 import { transportStomp } from './transport.mjs';
+import { creerUuid } from './uuid.mjs';
 export { creerTransport, transportStomp } from './transport.mjs';
 
 export const motifRefusParDefaut = 'Le serveur a refusé la connexion en temps réel.';
@@ -157,11 +158,4 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {}, 
 		},
 		maintenantServeur: () => heureCapture === undefined ? null : heureCapture + maintenant() - instantCapture,
 	};
-}
-
-function creerUuid() {
-	if (globalThis.crypto.randomUUID) return globalThis.crypto.randomUUID();
-	// crypto.randomUUID n'est disponible qu'en contexte sécurisé, contrairement à getRandomValues.
-	return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (chiffre) =>
-		(chiffre ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (chiffre / 4)))).toString(16));
 }
