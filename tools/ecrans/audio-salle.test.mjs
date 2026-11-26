@@ -405,6 +405,21 @@ test('deux Soirées du même navigateur signalent chacune la disponibilité de l
 	], 'les morceaux et la publication en cours de l’autre Soirée ne bloquent pas mon absence');
 });
 
+test('deux Soirées jouent leur Musique d’attente indépendamment, même pendant le son de Manche de l’une', { timeout: 3000 }, async t => {
+	const premiere = ecranDeSalle(t, 100, { soireeId: 'premiere', bibliotheque: CATALOGUE });
+	const seconde = ecranDeSalle(t, 200, { soireeId: 'seconde', bibliotheque: CATALOGUE });
+	const lecturePremiere = premiere.attendreLecture();
+	premiere.activer.click();
+	const morceau = await lecturePremiere;
+	const lectureSeconde = seconde.attendreLecture();
+	seconde.activer.click();
+	assert.equal(await lectureSeconde, morceau);
+	assert.equal(premiere.audio.paused, false, 'les deux Soirées jouent ensemble');
+	assert.equal(await seconde.salle.signalerSonDeManche(true), true);
+	assert.equal(seconde.audio.paused, true);
+	assert.equal(premiere.audio.paused, false, 'le son de Manche ne suspend que sa Soirée');
+});
+
 test('l’Écran de salle qui annule « Choisir le dossier » laisse jouer celui qui a le dossier', { timeout: 3000 }, async t => {
 	const ancien = ecranDeSalle(t, 100);
 	assert.equal(ancien.zone.hidden, false);

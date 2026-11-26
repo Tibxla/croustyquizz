@@ -1,11 +1,15 @@
 package fr.croustyquizz.karaoke;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.CacheControl;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import tools.jackson.databind.json.JsonMapper;
@@ -30,8 +34,17 @@ public class ConfigurationBibliotheque implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registre) {
         registre.addResourceHandler("/bibliotheque/*.json").addResourceLocations(proprietes.racine())
-                .setCacheControl(CacheControl.noCache());
+                .setCacheControl(CacheControl.noCache()).setUseLastModified(false)
+                .setEtagGenerator(ConfigurationBibliotheque::empreinte);
         registre.addResourceHandler("/bibliotheque/**").addResourceLocations(proprietes.racine())
                 .setCacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic());
+    }
+
+    private static String empreinte(Resource catalogue) {
+        try (var contenu = catalogue.getInputStream()) {
+            return "\"" + DigestUtils.md5DigestAsHex(contenu) + "\"";
+        } catch (IOException erreur) {
+            throw new UncheckedIOException(erreur);
+        }
     }
 }

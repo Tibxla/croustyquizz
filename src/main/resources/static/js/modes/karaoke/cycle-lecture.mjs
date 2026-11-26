@@ -1,12 +1,12 @@
-import { choisirFichierDeChanson } from './fichiers.mjs';
+import { choisirFichierDeChanson, fichierParUrl } from './fichiers.mjs';
 import { passageActif } from './presentation.mjs';
 
 const estPreparation = etat => etat === 'preparation' || etat === 'preparee';
 const joueOuEstEnPause = etat => etat === 'lecture' || etat === 'pause';
 
-export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
+export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat, attendreDisparitionLecteur, peutDesigner = () => true }) {
 	let phase = 'sans-dossier', phaseInterrompue, sonDebloque = false, aEteLectrice = false, autreLecteur = false;
-	let fichiers, prochainDossier, versionDossier = 0, intentionDesignation = false;
+	let fichiers, prochainDossier, versionDossier = 0, intentionDesignation = false, bibliothequeSeule = false, relais;
 	let vue, derniereDesignation, preparation, depart, essaiSon = 0, detruit = false;
 	const declarations = new Set(), demandesTraitees = new Set();
 	const lecturesJouees = new Set(), erreursSignalees = new Set();
@@ -24,6 +24,36 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 		catch { return null; } // Une réponse perdue peut être rattrapée par la vue. Aucun réessai.
 	}
 	function designation() { void commander('PUT', '/lecteur', {}); }
+	function annulerRelais() {
+		relais?.controle?.abort();
+		relais = undefined;
+	}
+	function demanderRelais(id) {
+		annulerRelais();
+		relais = { id, demande: true };
+		intentionDesignation = false;
+		designation();
+	}
+	function actualiserRelais() {
+		if (!bibliothequeSeule || !vue || !sonDebloque || !peutDesigner()) return;
+		const { lecteurDesigneId: id, courant } = vue;
+		if (relais && relais.id !== id) annulerRelais();
+		if (id === lecteurId) {
+			intentionDesignation = false;
+			return;
+		}
+		if (relais?.demande) return;
+		if (intentionDesignation && (id == null || !passageActif(courant))) {
+			demanderRelais(id);
+		} else if (id != null && attendreDisparitionLecteur && !relais) {
+			const attente = relais = { id, controle: new AbortController() };
+			void attendreDisparitionLecteur(id, attente.controle.signal).then(disparu => {
+				if (!disparu || relais !== attente) return;
+				if (peutDesigner() && sonDebloque && vue.lecteurDesigneId === id) demanderRelais(id);
+				else annulerRelais();
+			}, () => {});
+		}
+	}
 	const cheminPassage = (courant, suffixe) => `/passages/${encodeURIComponent(courant.passageId)}/${suffixe}`;
 
 	function signaler(suffixe, champs = {}) {
@@ -38,6 +68,8 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 		if (avaitFichier) lecteur.detruire();
 	}
 	function appliquerDossier(nouveauxFichiers) {
+		bibliothequeSeule = false;
+		annulerRelais();
 		fichiers = nouveauxFichiers;
 		prochainDossier = undefined;
 		versionDossier++;
@@ -90,17 +122,24 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 		changerPhase('preparation');
 		const resultat = choisirFichierDeChanson(fichiers, chanson);
 		let fichier = null, motif = 'FICHIER_' + resultat.etat.toUpperCase();
-		if (resultat.etat === 'unique') {
-			const { name: nom, size: tailleOctets } = resultat.fichier;
+		const candidats = resultat.etat === 'unique' ? [resultat.fichier] : [];
+		if (!resultat.bibliotheque && chanson.bibliotheque) {
+			const libre = chanson.bibliotheque;
+			candidats.push(fichierParUrl(libre.fichier, libre.tailleOctets));
+		}
+		for (const candidat of candidats) {
+			const { name: nom, size: tailleOctets } = candidat;
 			motif = 'FICHIER_ILLISIBLE';
 			// FichierAudioLocal.nom accepte un nom seul, sans séparateur de chemin.
 			if (/^[^/\\]+$/.test(nom)) {
 				cible.charge = true;
 				try {
-					const { dureeMs } = await lecteur.charger(resultat.fichier);
+					const { dureeMs } = await lecteur.charger(candidat);
 					fichier = { nom, tailleOctets, dureeMs };
 					motif = null;
+					break;
 				} catch { /* Le fichier reste illisible. */ }
+				if (!estToujoursEnPreparation(cible)) return;
 			}
 		}
 		if (!estToujoursEnPreparation(cible) || cible.declaree) return;
@@ -215,7 +254,8 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 		reprendreDossier(dossier) {
 			if (detruit || phase !== 'sans-dossier') return;
 			({ fichiers, aEteLectrice, sonDebloque } = dossier);
-			intentionDesignation = aEteLectrice;
+			bibliothequeSeule = dossier.dossier === null;
+			intentionDesignation = bibliothequeSeule || aEteLectrice;
 			changerPhase(sonDebloque ? 'pret' : 'son-bloque');
 		},
 		async debloquer({ attendreVue = () => false } = {}) {
@@ -238,7 +278,10 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 				reprendreApresDeblocage();
 				traiterVue();
 			} else if (change) surEtat(etat());
+			if (change && bibliothequeSeule) intentionDesignation = true;
+			actualiserRelais();
 		},
+		actualiserRelais,
 		surVue(nouvelleVue, origine) {
 			if (detruit) return;
 			const precedente = vue;
@@ -247,7 +290,7 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 			const avant = aEteLectrice, avantAutre = autreLecteur;
 			autreLecteur = lecteurDesigneId != null && lecteurDesigneId !== lecteurId;
 			if (lecteurDesigneId != null) aEteLectrice = !autreLecteur;
-			if (intentionDesignation) {
+			if (intentionDesignation && !bibliothequeSeule) {
 				intentionDesignation = false;
 				if (lecteurDesigneId == null) designation();
 			}
@@ -257,10 +300,12 @@ export function creerCycleLecture({ lecteur, lecteurId, envoyer, surEtat }) {
 			if (avant !== aEteLectrice || avantAutre !== autreLecteur) surEtat(etat());
 			if (phase === 'son-bloque' && sonDebloque) reprendreApresDeblocage();
 			traiterVue(origine, precedente?.etat);
+			actualiserRelais();
 		},
 		detruire() {
 			if (detruit) return;
 			detruit = true;
+			annulerRelais();
 			retirerFin?.();
 			retirerErreur?.();
 			preparation = undefined;

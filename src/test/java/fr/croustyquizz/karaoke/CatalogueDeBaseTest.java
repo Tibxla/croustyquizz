@@ -43,6 +43,42 @@ class CatalogueDeBaseTest {
     }
 
     @Test
+    void chaqueMp3LivreContientSonCreditSaLicenceEtSesModifications() throws IOException {
+        var chargeur = new DefaultResourceLoader();
+        String racine = "classpath:static/bibliotheque/";
+        var catalogue = CatalogueDeBase.charger(chargeur, racine, json);
+        for (var morceau : catalogue.entrees()) {
+            if (!morceau.fichier().endsWith(".mp3")) { continue; }
+            try (var flux = chargeur.getResource(racine + morceau.fichier()).getInputStream()) {
+                byte[] entete = flux.readNBytes(10);
+                assertThat(new String(entete, 0, 3, StandardCharsets.US_ASCII)).as(morceau.fichier()).isEqualTo("ID3");
+                int taille = 0;
+                for (int i = 6; i < 10; i++) { taille = (taille << 7) | entete[i]; }
+                String etiquettes = new String(flux.readNBytes(taille), StandardCharsets.UTF_8);
+                assertThat(etiquettes).as(morceau.fichier()).contains(morceau.titre(), morceau.artiste(),
+                        morceau.source().toString(), CatalogueDeBase.LICENCES_ACCEPTEES.get(morceau.licence()).toString(),
+                        "Recompression en MP3 et normalisation du volume");
+            }
+        }
+    }
+
+    @Test
+    void chaqueLrcLivreContientSonCreditSaLicenceEtSesModifications() throws IOException {
+        var chargeur = new DefaultResourceLoader();
+        String racine = "classpath:static/bibliotheque/";
+        var catalogue = CatalogueDeBase.charger(chargeur, racine, json);
+        for (var chanson : catalogue.entrees()) {
+            if (chanson.lrc() == null) { continue; }
+            String lrc = chargeur.getResource(racine + chanson.lrc()).getContentAsString(StandardCharsets.UTF_8);
+            assertThat(lrc.lines().takeWhile(ligne -> !ligne.matches("^\\[\\d.*")).toList()).as(chanson.lrc()).contains(
+                    "[#:Crédit " + chanson.titre() + " — " + chanson.artiste() + " — " + chanson.source() + "]",
+                    "[#:Licence " + CatalogueDeBase.LICENCES_ACCEPTEES.get(chanson.licence()) + "]",
+                    "[#:Modifications Transcription et synchronisation des paroles par CroustyQuizz.]");
+            assertThat(ParolesLrc.lireStrictement(lrc, chanson.dureeMs())).isNotEmpty();
+        }
+    }
+
+    @Test
     void leCatalogueDEssaiDonneSesMorceauxSesChansonsEtLeurCredit() {
         var catalogue = essai();
         assertThat(catalogue.entrees()).extracting(EntreeDeBibliotheque::type)

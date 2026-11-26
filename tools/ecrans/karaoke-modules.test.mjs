@@ -5,11 +5,12 @@ import { monter as manette } from '../../src/main/resources/static/js/modes/kara
 import { monter as consoleKaraoke } from '../../src/main/resources/static/js/modes/karaoke/console.mjs';
 import { creerEcranKaraoke } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
 import { creerAudioSalle } from '../../src/main/resources/static/js/audio-salle.mjs';
+import { creerCoordinationSon } from '../../src/main/resources/static/js/coordination-son.mjs';
 import { readFile } from 'node:fs/promises';
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'karaoke-file-modifiee' };
 const bouton = (zone, texte) => zone.querySelectorAll('button').find(b => b.textContent === texte);
 
-function bancLecteur({ bibliotheque } = {}) {
+function bancLecteur({ bibliotheque, lecteurId = 'lecteur', soireeId, memoireLecteur } = {}) {
 	const appels = [], sonsDeManche = [], trames = new Map();
 	let numero = 0;
 	let sonDebloque = false;
@@ -24,9 +25,11 @@ function bancLecteur({ bibliotheque } = {}) {
 		surErreur: () => () => {},
 		detruire: () => appels.push('libérer'),
 	};
-	const audioSalle = creerAudioSalle({ lecteur, lecteurId: 'lecteur', bibliotheque,
+	const audioSalle = creerAudioSalle({ lecteur, lecteurId, bibliotheque,
 		sonde: { charger: async () => ({ dureeMs: 2000 }), detruire() {} },
-		coordonner: () => ({ activer() {}, signalerSonDeManche: actif => sonsDeManche.push(actif),
+		coordonner: surAttente => soireeId ? creerCoordinationSon({ verrous: navigator.locks,
+			canal: new BroadcastChannel(soireeId), ouverteA: performance.timeOrigin, id: lecteurId, soireeId, surAttente, memoireLecteur }) :
+			({ activer() {}, signalerSonDeManche: actif => sonsDeManche.push(actif),
 			attendreSonDeManche: async () => sonsDeManche.at(-1), annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {},
 			detruire() {} }),
 	});
@@ -856,16 +859,18 @@ const AVEC_CHANSON = { version: 1, licences: { 'CC-BY-SA-4.0': { nom: 'CC BY-SA 
 	artiste: 'Les Lucioles', dureeMs: 4000, licence: 'CC-BY-SA-4.0', source: 'https://example.org/la-lanterne',
 	fichier: 'chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, lrc: 'chansons/les-lucioles-la-lanterne.lrc' }] };
 
-test('salle : sans dossier, « Activer le son » rend l’Écran lecteur des Chansons libres, sans prendre la place d’un autre', async t => {
+test('salle : « Activer le son » sans dossier choisit un lecteur libre, ou reprend la désignation au prochain intervalle', async t => {
 	const audio = bancLecteur({ bibliotheque: AVEC_CHANSON });
 	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
 	t.after(() => b.module.demonter());
 	b.connecter('synchronisee');
 	b.contexte.maintenantServeur = () => heureAppel;
-	b.module.afficher(vue({ lecteurDesigneId: 'ailleurs' }), capture);
+	b.module.afficher(vue({ lecteurDesigneId: 'ailleurs', courant: courant('EN_COURS') }), capture);
 	await audio.audioSalle.activerSon();
 	await terminerMicrotaches();
 	assert.deepEqual(b.appels.map(appel => appel.args[1]), [], 'un autre Écran lit déjà : il le reste');
+	b.module.afficher(vue({ lecteurDesigneId: 'ailleurs' }), evenement);
+	assert.deepEqual(b.appels.map(appel => [appel.args[0], appel.args[1].split('/').at(-1)]), [['PUT', 'lecteur']]);
 
 	const seule = bancLecteur({ bibliotheque: AVEC_CHANSON });
 	const c = creerBanc((z, contexte) => ecran(z, contexte, seule), 'ECRAN');
@@ -877,6 +882,56 @@ test('salle : sans dossier, « Activer le son » rend l’Écran lecteur des Cha
 	await seule.audioSalle.activerSon();
 	await terminerMicrotaches();
 	assert.deepEqual(c.appels.map(appel => [appel.args[0], appel.args[1].split('/').at(-1)]), [['PUT', 'lecteur']]);
+});
+
+test('salle : après rechargement sans dossier, le nouveau lecteur reprend l’appel et joue au départ', { timeout: 3000 }, async t => {
+	const soireeId = 'rechargement-karaoke';
+	let identifiantRetenu;
+	const memoireLecteur = { lire: () => identifiantRetenu, retenir: id => { identifiantRetenu = id; } };
+	const premiere = bancLecteur({ bibliotheque: AVEC_CHANSON, lecteurId: 'disparu', soireeId, memoireLecteur });
+	const ancien = creerBanc((z, c) => ecran(z, c, premiere), 'ECRAN');
+	ancien.connecter('synchronisee');
+	ancien.contexte.maintenantServeur = () => heureAppel;
+	ancien.module.afficher(vue({ lecteurDesigneId: null }), capture);
+	await premiere.audioSalle.activerSon();
+	assert.deepEqual(ancien.appels.map(a => a.args[2]), [{ lecteurId: 'disparu' }]);
+	ancien.module.demonter();
+	await premiere.audioSalle.detruire();
+	const audio = bancLecteur({ bibliotheque: AVEC_CHANSON, lecteurId: 'nouveau', soireeId, memoireLecteur });
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
+	t.after(() => { b.module.demonter(); return audio.audioSalle.detruire(); });
+	b.connecter('synchronisee');
+	b.contexte.maintenantServeur = () => heureAppel;
+	const chanson = { titre: 'La lanterne', artiste: 'Les Lucioles', origine: 'BIBLIOTHEQUE',
+		bibliotheque: { fichier: '/bibliotheque/chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400 } };
+	const appele = courant('APPELE', { chanson });
+	b.module.afficher(vue({ lecteurDesigneId: 'disparu', courant: appele }), capture);
+	assert.deepEqual(b.appels, []);
+	await audio.audioSalle.activerSon();
+	await terminerMicrotaches();
+	assert.deepEqual(b.appels.map(a => a.args[2]), [{ lecteurId: 'nouveau' }]);
+	b.module.afficher(vue({ lecteurDesigneId: 'nouveau', courant: appele }), evenement);
+	await terminerMicrotaches();
+	assert.equal(b.appels[1].args[2].fichier.nom, 'les-lucioles-la-lanterne.mp3');
+	b.appels[1].resolve({ statut: 200 });
+	await terminerMicrotaches();
+	b.module.afficher(vue({ lecteurDesigneId: 'nouveau', courant: { ...appele, etat: 'EN_COURS' },
+		lecture: { lecteurId: 'nouveau', lectureId: 'l', source: 'FICHIER_LOCAL', etat: 'DEMARREE' } }),
+	{ source: 'evenement', type: 'passage-demarre' });
+	await terminerMicrotaches();
+	assert.ok(audio.appels.includes('lire'));
+});
+
+test('salle : un lecteur d’un autre navigateur garde la désignation pendant son appel', async t => {
+	const audio = bancLecteur({ bibliotheque: AVEC_CHANSON, soireeId: 'lecteur-exterieur' });
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
+	t.after(() => { b.module.demonter(); return audio.audioSalle.detruire(); });
+	b.connecter('synchronisee');
+	b.contexte.maintenantServeur = () => heureAppel;
+	b.module.afficher(vue({ lecteurDesigneId: 'autre-navigateur', courant: courant('APPELE') }), capture);
+	await audio.audioSalle.activerSon();
+	await terminerMicrotaches();
+	assert.deepEqual(b.appels, []);
 });
 
 test('salle : le crédit d’une Chanson de la Bibliothèque de base reste affiché pendant tout son Passage', t => {

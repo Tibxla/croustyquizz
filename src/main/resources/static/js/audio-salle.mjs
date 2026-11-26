@@ -65,6 +65,8 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 		etat,
 		surChangement(rappel) { abonnes.add(rappel); return () => abonnes.delete(rappel); },
 		publierDisponibilite: coordination.publierDisponibilite,
+		attendreDisparitionLecteur: coordination.attendreDisparitionLecteur,
+		memoriserDesignation: coordination.memoriserDesignation,
 		choisirDossier(selection) {
 			dossier = fichiers = selection.filter(estFichierAudio);
 			actualiserMorceaux();
@@ -112,9 +114,15 @@ function coordonnerDans(navigateur, id, soireeId, surAttente) {
 		return { activer: candidate => surAttente(candidate), signalerSonDeManche() {}, attendreSonDeManche: async () => true,
 			annoncerMorceaux() {}, publierDisponibilite: (disponibles, signal, publier) => publier(), detruire() {} };
 	}
+	const canal = `croustyquizz:son:${soireeId.toLowerCase()}`;
+	const cleLecteur = `${canal}:lecteur`;
+	const memoireLecteur = {
+		lire() { try { return navigateur.sessionStorage.getItem(cleLecteur); } catch { return null; } },
+		retenir(id) { try { navigateur.sessionStorage.setItem(cleLecteur, id); } catch { /* Stockage indisponible. */ } },
+	};
 	return creerCoordinationSon({ verrous: navigateur.navigator.locks,
-		canal: new navigateur.BroadcastChannel('croustyquizz:son'),
-		ouverteA: navigateur.performance.timeOrigin, id, soireeId, surAttente });
+		canal: new navigateur.BroadcastChannel(canal),
+		ouverteA: navigateur.performance.timeOrigin, id, soireeId, surAttente, memoireLecteur });
 }
 
 export function monterAudioSalle(zone, soireeId, { bibliotheque = chargerBibliotheque(navigateurDe(zone).fetch?.bind(navigateurDe(zone))) } = {}) {

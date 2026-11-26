@@ -44,9 +44,8 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	function actualiserDossier({ fichiers, dossier, sonDebloque } = audio.etat()) {
 		if (ui.synchronisee && fichiers !== designation.fichiers) {
 			designation.fichiers = fichiers;
-			// Sans dossier, la Bibliothèque de base suffit, mais seul un geste sur un dossier prend la place d'un autre lecteur.
 			if (dossier === null && fichiers) {
-				cycle.reprendreDossier({ fichiers, sonDebloque, aEteLectrice: true });
+				cycle.reprendreDossier({ fichiers, dossier, sonDebloque, aEteLectrice: designation.aEteLectrice });
 				if (ui.bloc) cycle.surVue(ui.bloc);
 			} else cycle.choisirDossier(fichiers);
 		}
@@ -57,8 +56,13 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		const signal = requetes.signal;
 		cycle = creerCycleLecture({
 			lecteur, lecteurId,
-			envoyer: (methode, chemin, corps) => contexte.envoyer(methode, `${ui.racine()}${chemin}`, corps,
-				{ entetes: { 'Idempotency-Key': creerUuid() }, signal, annoncer: false }),
+			attendreDisparitionLecteur: audio.attendreDisparitionLecteur,
+			peutDesigner: () => ui.synchronisee,
+			envoyer(methode, chemin, corps) {
+				if (chemin === '/lecteur') audio.memoriserDesignation?.();
+				return contexte.envoyer(methode, `${ui.racine()}${chemin}`, corps,
+					{ entetes: { 'Idempotency-Key': creerUuid() }, signal, annoncer: false });
+			},
 			surEtat(etat) {
 				designation.aEteLectrice = etat.aEteLectrice;
 				autreLecteur.hidden = !etat.autreLecteur;
@@ -220,6 +224,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 			if (!sonDeManche) void contexte.signalerSonDeManche(false);
 		}
 		actualiserDossier();
+		cycle.actualiserRelais();
 		const enErreur = lecture?.etat === 'EN_ERREUR';
 		if (!actif) invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
 		else if (enErreur) invitation.textContent = "La musique ne se lance pas. L'Animateur choisit la suite.";

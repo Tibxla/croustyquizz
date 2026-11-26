@@ -2472,8 +2472,11 @@ paths:
       operationId: designerLecteurChanson
       summary: Désigner le lecteur de l’Écran de salle
       description: 'Manche Karaoké active en Soirée EN_COURS. Écran de salle. La fenêtre qui vient de choisir son
-        dossier se désigne par un lecteurId qu’elle a engendré ; la dernière désignation l’emporte, un seul
-        lecteur par Manche. La fenêtre garde son dossier et se redésigne à la Manche Karaoké suivante.
+        dossier se désigne par un lecteurId qu’elle a engendré. Une fenêtre qui active le son avec la seule
+        Bibliothèque de base peut aussi se désigner entre deux Passages ou lorsque son navigateur constate
+        la disparition du lecteur désigné.
+        La dernière désignation l’emporte, un seul lecteur par Manche. La fenêtre garde son dossier et peut
+        se redésigner à la Manche Karaoké suivante.
         Pendant l’appel, la désignation efface la lecture préparée par un autre lecteur ; jamais celle d’un
         Passage démarré, dont les signaux restent réservés à son lecteur. Publie lecture-chanson-modifiee
         sur la salle et la Console. Aucun code propre : le lecteur déjà désigné réussit sans effet ni
