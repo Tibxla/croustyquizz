@@ -18,7 +18,9 @@ export async function appeler(methode, route, { corps, secret, entetes = {} } = 
 	const type = reponse.headers.get('Content-Type') ?? '';
 	const contenu = type.includes('json') ? await reponse.json().catch(() => null) : null;
 	if (reponse.ok) return { ok: true, statut: reponse.status, corps: contenu };
-	return { ok: false, statut: reponse.status, code: contenu?.code ?? 'ERREUR_INATTENDUE' };
+	// Le detail d'un Probleme dit ce qui bloque, par exemple combien de temps attendre après un 429.
+	const detail = typeof contenu?.detail === 'string' ? contenu.detail : undefined;
+	return { ok: false, statut: reponse.status, code: contenu?.code ?? 'ERREUR_INATTENDUE', ...(detail ? { detail } : {}) };
 }
 
 // UUID v4 pour Idempotency-Key, y compris hors contexte sécurisé (voir uuid.mjs).
