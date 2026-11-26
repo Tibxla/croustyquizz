@@ -7,13 +7,25 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 		lecture = undefined;
 		lecteur.detruire();
 	}
-	function traiterErreur(erreur) {
+	function passerAuSuivant() {
+		if (!lecture) return;
 		liberer();
+		index = (index + 1) % fichiers.length;
+		position = 0;
+		void jouer();
+	}
+	function traiterErreur(erreur, echecDeChargement = false) {
 		if (erreur?.name === 'NotAllowedError') {
+			liberer();
 			surSonBloque();
 			return;
 		}
-		// Un fichier illisible est écarté jusqu'au prochain choix du dossier.
+		if (!echecDeChargement) {
+			passerAuSuivant();
+			return;
+		}
+		liberer();
+		// Un fichier qui ne se charge pas est écarté jusqu'au prochain choix du dossier.
 		fichiers.splice(index, 1);
 		if (index === fichiers.length) index = 0;
 		position = 0;
@@ -32,17 +44,11 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 			await lecteur.lire();
 		} catch (erreur) {
 			if (tentative !== lecture) return;
-			traiterErreur(erreur);
+			traiterErreur(erreur, !tentative.chargee);
 		}
 	}
 
-	const retirerFin = lecteur.surFin(() => {
-		if (!lecture) return;
-		liberer();
-		index = (index + 1) % fichiers.length;
-		position = 0;
-		void jouer();
-	});
+	const retirerFin = lecteur.surFin(passerAuSuivant);
 	const retirerErreur = lecteur.surErreur(erreur => { if (lecture) traiterErreur(erreur); });
 
 	return {
