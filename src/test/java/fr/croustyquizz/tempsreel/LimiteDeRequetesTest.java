@@ -30,6 +30,7 @@ class LimiteDeRequetesTest {
 	private static final String SOIREE = "/api/soirees/" + UUID.randomUUID();
 	private static final String BUZZ = SOIREE + "/buzz";
 	private static final String REJOINDRE = "/api/soirees/rejoindre";
+	private static final String CONNEXION = "/api/animateurs/session";
 	private static final ReglagesDesLimites.Seuil DEUX_PAR_SECONDE = new ReglagesDesLimites.Seuil(2, Duration.ofSeconds(1));
 
 	private final HorlogeFactice horloge = new HorlogeFactice();
@@ -227,6 +228,50 @@ class LimiteDeRequetesTest {
 	}
 
 	@Test
+	void leSeuilDeConnexionDesactiveNeCompteAucunEchec() {
+		limite = new LimiteDeRequetes(reglages(false, 1_000), horloge, JSON);
+		var requete = requete("POST", CONNEXION, null, "192.0.2.10");
+		String email = "lea@exemple.test";
+		for (int i = 0; i < 3; i++) {
+			assertThat(limite.verifierEssaisDeConnexion(email, requete)).isEmpty();
+			assertThat(limite.compterEchecDeConnexion(email, requete)).isEmpty();
+		}
+		assertThat(limite.nombreDeSeaux()).isZero();
+	}
+
+	@Test
+	void uneConnexionSansEchecNeCreePasDeSeauPourLeCouple() {
+		var requete = requete("POST", CONNEXION, null, "192.0.2.10");
+		assertThat(limite.verifierEssaisDeConnexion("lea@exemple.test", requete)).isEmpty();
+		assertThat(limite.nombreDeSeaux()).isZero();
+	}
+
+	@Test
+	void auPlafondLeSeuilDeConnexionNeCompteQueLesCouplesDejaSuivis() {
+		limite = new LimiteDeRequetes(reglages(true, 1), horloge, JSON);
+		var requete = requete("POST", CONNEXION, null, "192.0.2.10");
+		var autreAdresse = requete("POST", CONNEXION, null, "192.0.2.11");
+		String email = "lea@exemple.test";
+		assertThat(limite.compterEchecDeConnexion(email, requete)).isEmpty();
+		assertThat(limite.compterEchecDeConnexion(email, requete)).isEmpty();
+
+		for (int i = 0; i < 3; i++) {
+			assertThat(limite.verifierEssaisDeConnexion(email, autreAdresse)).isEmpty();
+			assertThat(limite.compterEchecDeConnexion(email, autreAdresse)).isEmpty();
+		}
+		assertThat(limite.nombreDeSeaux()).isEqualTo(1);
+		assertThat(limite.verifierEssaisDeConnexion(email, requete)).hasValueSatisfying(
+				refus -> assertThat(refus.getStatusCode().value()).isEqualTo(429));
+
+		horloge.avancer(Duration.ofSeconds(2));
+		assertThat(limite.compterEchecDeConnexion(email, autreAdresse)).isEmpty();
+		assertThat(limite.compterEchecDeConnexion(email, autreAdresse)).isEmpty();
+		assertThat(limite.verifierEssaisDeConnexion(email, autreAdresse)).isPresent();
+		assertThat(limite.verifierEssaisDeConnexion(email, requete)).isEmpty();
+		assertThat(limite.nombreDeSeaux()).isEqualTo(1);
+	}
+
+	@Test
 	void lesSeauxRedevenusPleinsSontPurges() throws Exception {
 		envoyer("POST", BUZZ, "jeton-lea", null);
 		envoyer("POST", BUZZ, "jeton-sam", null);
@@ -303,6 +348,26 @@ class LimiteDeRequetesTest {
 		assertThat(refus.getStatus()).isEqualTo(429);
 		assertThat(refus.getHeader("Retry-After")).isEqualTo("3");
 		assertThat(envoyer("POST", REJOINDRE, null, 201, "203.0.113.4").getStatus()).isEqualTo(201);
+	}
+
+	@Test
+	void leJournalDesRefusDeConnexionIndiqueSeulementLeNomDeLaTable() {
+		var requete = requete("POST", CONNEXION, null, "192.0.2.10");
+		String email = "lea@exemple.test";
+		Logger journal = (Logger) LoggerFactory.getLogger(LimiteDeRequetes.class);
+		var lignes = new ListAppender<ILoggingEvent>();
+		lignes.start();
+		journal.addAppender(lignes);
+		try {
+			limite.compterEchecDeConnexion(email, requete);
+			limite.compterEchecDeConnexion(email, requete);
+			assertThat(limite.verifierEssaisDeConnexion(email, requete)).isPresent();
+		} finally {
+			journal.detachAppender(lignes);
+		}
+
+		assertThat(lignes.list).extracting(ILoggingEvent::getFormattedMessage)
+				.containsExactly("Limite de requêtes atteinte : connexion-email.");
 	}
 
 	@Test

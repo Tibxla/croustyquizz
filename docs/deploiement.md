@@ -177,7 +177,7 @@ Soirée (#4), ainsi que la connexion et l'inscription de l'Animateur (#238). Cha
 seuil a un seau à jetons par clé, en mémoire : une seule instance tourne,
 la mémoire locale suffit. Un seau accepte une rafale, puis regagne un jeton à chaque
 intervalle. Au-delà, le serveur répond `429 TROP_DE_REQUETES` avec `Retry-After`, sans
-exécuter la requête ; la Manette affiche le message, rien ne réessaie tout seul.
+reçu ni mutation métier. La Manette affiche le message sans réessayer automatiquement.
 
 | Route | Clé | Rafale | Puis | Pourquoi |
 |---|---|---|---|---|
@@ -188,8 +188,8 @@ exécuter la requête ; la Manette affiche le message, rien ne réessaie tout se
 | Accès de l'Écran de salle | adresse IP | 10 | 1 toutes les 6 s | L'Animateur ouvre un ou deux Écrans par Soirée. |
 | QR code | clé d'Écran | 10 | 1 par seconde | L'Écran ne le charge qu'au changement de code. |
 | Connexion de l'Animateur | adresse IP | 20 | 1 toutes les 3 s | Borne les calculs BCrypt depuis un réseau, même si les e-mails changent à chaque essai. |
-| Connexion de l'Animateur | e-mail normalisé | 5 | 1 toutes les 30 s | Borne les essais sur le même e-mail, même depuis plusieurs réseaux. |
-| Inscription de l'Animateur | adresse IP | 10 | 1 toutes les 60 s | Freine la création en série de comptes et les essais d'e-mails déjà inscrits. |
+| Connexion de l'Animateur, échecs d'identification | couple e-mail normalisé et adresse IP | 5 | 1 toutes les 30 s | Les échecs depuis un réseau laissent les essais des autres réseaux disponibles. |
+| Inscription de l'Animateur | adresse IP | 20 | 1 toutes les 30 s | Accueille plusieurs Animateurs derrière le même NAT et freine la création en série de comptes. |
 
 Le seuil des codes est plus large que 10 par minute : dans un lieu, tous les téléphones
 sur le Wi-Fi sortent par la même adresse IP, et une salle de 60 se trompe de code plus

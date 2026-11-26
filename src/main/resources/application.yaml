@@ -36,7 +36,7 @@ server:
         same-site: lax
 
 croustyquizz:
-  # Limite de requêtes (#4) : une rafale, puis un jeton regagné à chaque intervalle, par route et par clé.
+  # Limite de requêtes (#4, #238) : une rafale, puis un jeton regagné à chaque intervalle, par seuil et par clé.
   # Justification de chaque seuil dans ReglagesDesLimites ; réglage dans docs/deploiement.md.
   limites:
     actif: true
@@ -74,8 +74,8 @@ croustyquizz:
       rafale: 5
       intervalle: 30s
     inscription-adresse:
-      rafale: 10
-      intervalle: 60s
+      rafale: 20
+      intervalle: 30s
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30

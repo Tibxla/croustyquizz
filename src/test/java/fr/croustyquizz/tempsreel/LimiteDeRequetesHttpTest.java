@@ -83,11 +83,13 @@ class LimiteDeRequetesHttpTest {
 	}
 
 	@Test
-	void laLimiteSuitLEmailIndependammentDeSaCasseEtDeLAdresse() throws Exception {
+	void laLimiteSuitLEmailSansDistinctionDeCasseSurLaMemeAdresseSeulement() throws Exception {
 		var navigateur = navigateur("198.51.100.55");
-		String email = "élise.inconnue@exemple.test";
+		String email = "élise.animateur@exemple.test";
+		String mauvaisMotDePasse = "un-mot-de-passe-incorrect";
+		verifier("inscrireAnimateur", inscrire(navigateur, email), 201);
 		for (int i = 0; i < 4; i++) {
-			verifier("connecterAnimateur", connecter(navigateur, email, MOT_DE_PASSE), 401);
+			verifier("connecterAnimateur", connecter(navigateur, email, mauvaisMotDePasse), 401);
 		}
 
 		// Le succès d'un autre Animateur, sur le même réseau, laisse le dernier essai de cet e-mail disponible.
@@ -95,35 +97,51 @@ class LimiteDeRequetesHttpTest {
 		String autreEmail = "autre-animateur@exemple.test";
 		verifier("inscrireAnimateur", inscrire(voisin, autreEmail), 201);
 		verifier("connecterAnimateur", connecter(voisin, autreEmail, MOT_DE_PASSE), 200);
-		verifier("connecterAnimateur", connecter(navigateur, email, MOT_DE_PASSE), 401);
+		verifier("connecterAnimateur", connecter(navigateur, email, mauvaisMotDePasse), 401);
 
+		String emailMajuscule = "ÉLISE.ANIMATEUR@EXEMPLE.TEST";
+		verifierLimite("connecterAnimateur", connecter(navigateur, emailMajuscule, MOT_DE_PASSE), "30");
 		var autreReseau = navigateur("198.51.100.56");
-		String emailMajuscule = "ÉLISE.INCONNUE@EXEMPLE.TEST";
-		verifierLimite("connecterAnimateur", connecter(autreReseau, emailMajuscule, MOT_DE_PASSE), "30");
+		verifier("connecterAnimateur", connecter(autreReseau, emailMajuscule, MOT_DE_PASSE), 200);
 		horloge.avancer(Duration.ofSeconds(30).minusMillis(1));
-		verifierLimite("connecterAnimateur", connecter(autreReseau, emailMajuscule, MOT_DE_PASSE), "1");
+		verifierLimite("connecterAnimateur", connecter(navigateur, emailMajuscule, MOT_DE_PASSE), "1");
 		horloge.avancer(Duration.ofMillis(1));
-		verifier("connecterAnimateur", connecter(autreReseau, emailMajuscule, MOT_DE_PASSE), 401);
+		verifier("connecterAnimateur", connecter(navigateur, emailMajuscule, MOT_DE_PASSE), 200);
+	}
+
+	@Test
+	void lesConnexionsReussiesLaissentLaRafaleDEchecsDisponible() throws Exception {
+		String adresse = "198.51.100.57";
+		String email = "connexions-reussies@exemple.test";
+		verifier("inscrireAnimateur", inscrire(navigateur(adresse), email), 201);
+		for (int i = 0; i < 6; i++) {
+			verifier("connecterAnimateur", connecter(navigateur(adresse), email, MOT_DE_PASSE), 200);
+		}
+
+		var navigateur = navigateur(adresse);
+		for (int i = 0; i < 5; i++) {
+			verifier("connecterAnimateur", connecter(navigateur, email, "incorrect"), 401);
+		}
+		verifierLimite("connecterAnimateur", connecter(navigateur, email, "incorrect"), "30");
 	}
 
 	@Test
 	void laLimiteDInscriptionParAdresseSeRouvreAuDelaiAnnonce() throws Exception {
 		var navigateur = navigateur("198.51.100.53");
-		String premierEmail = "premiere-inscription@exemple.test";
-		verifier("inscrireAnimateur", inscrire(navigateur, premierEmail), 201);
-		for (int i = 0; i < 9; i++) {
-			verifier("inscrireAnimateur", inscrire(navigateur, premierEmail), 409);
+		for (int i = 0; i < 20; i++) {
+			verifier("inscrireAnimateur", inscrire(navigateur, "inscription-" + i + "@exemple.test"), 201);
 		}
 
 		String autreEmail = "autre-inscription@exemple.test";
-		verifierLimite("inscrireAnimateur", inscrire(navigateur, autreEmail), "60");
+		verifierLimite("inscrireAnimateur", inscrire(navigateur, autreEmail), "30");
 		verifier("inscrireAnimateur", inscrire(navigateur("198.51.100.54"), autreEmail), 201);
 
-		horloge.avancer(Duration.ofSeconds(60).minusMillis(1));
+		horloge.avancer(Duration.ofSeconds(30).minusMillis(1));
 		String dernierEmail = "derniere-inscription@exemple.test";
 		verifierLimite("inscrireAnimateur", inscrire(navigateur, dernierEmail), "1");
 		horloge.avancer(Duration.ofMillis(1));
 		verifier("inscrireAnimateur", inscrire(navigateur, dernierEmail), 201);
+		verifierLimite("inscrireAnimateur", inscrire(navigateur, "inscription-suivante@exemple.test"), "30");
 	}
 
 	@Test

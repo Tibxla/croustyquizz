@@ -107,8 +107,10 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe. Au-delà de la limite de connexion par e-mail normalisé ou par
-        adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
+        sans distinguer e-mail et mot de passe. Une adresse IP qui a épuisé ses tentatives, ou un couple
+        e-mail normalisé et adresse IP qui a épuisé ses essais d’identification, reçoit 429 TROP_DE_REQUETES
+        avec Retry-After. Seuls les échecs d’identification alimentent le compteur du couple
+        (README.md, « Limite de requêtes »).'
       tags:
       - Accès
       security: []
@@ -3456,8 +3458,8 @@ components:
           schema:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur429:
-      description: 'TROP_DE_REQUETES : la limite de requêtes de la route est atteinte pour ce jeton, cette clé
-        d’Écran, cet e-mail ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé :
+      description: 'TROP_DE_REQUETES : le seuil de requêtes est atteint pour ce jeton, cette clé d’Écran,
+        cette adresse IP ou ce couple e-mail et adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé :
         aucun reçu, aucune mutation. Retry-After indique quand le seuil atteint permet un nouvel essai, décidé
         par la personne et jamais automatique.'
       headers:

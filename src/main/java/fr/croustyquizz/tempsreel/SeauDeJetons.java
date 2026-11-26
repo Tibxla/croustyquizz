@@ -23,14 +23,18 @@ final class SeauDeJetons {
 
 	/** Prend un jeton : rend 0 s'il y en avait un, sinon l'attente en nanosecondes avant le prochain, sans rien consommer. */
 	long prendre(long maintenant) {
-		long depart = Math.max(pleinA, maintenant);
-		long attente = depart - maintenant - tolerance;
+		long attente = attenteAvantPrise(maintenant);
 		if (attente > 0) {
 			return attente;
 		}
-		pleinA = depart + intervalle;
+		pleinA = Math.max(pleinA, maintenant) + intervalle;
 		refusSignale = false;
 		return 0;
+	}
+
+	/** Rend l'attente avant le prochain jeton sans le prendre. */
+	long attenteAvantPrise(long maintenant) {
+		return Math.max(0, pleinA - maintenant - tolerance);
 	}
 
 	/** Vrai au premier refus qui suit une acceptation : le journal ne note qu'un refus par série. */

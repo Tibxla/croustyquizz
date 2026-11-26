@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.manche.ReponsesDeCommande;
+import fr.croustyquizz.manche.RefusDeCommande;
 import fr.croustyquizz.tempsreel.LimiteDeRequetes;
 
 @RestController
@@ -70,11 +71,19 @@ class AnimateurControleur {
 	ResponseEntity<?> connecterAnimateur(@Valid @RequestBody SaisiesAnimateur.Connexion saisie,
 			HttpServletRequest requete, HttpServletResponse reponse) {
 		String emailNormalise = ComptesAnimateur.normaliser(saisie.email());
-		var refus = limites.compterEssaiDeConnexion(emailNormalise, requete);
+		var refus = limites.verifierEssaisDeConnexion(emailNormalise, requete);
 		if (refus.isPresent()) {
 			return refus.orElseThrow();
 		}
-		var identite = comptes.reconnaitre(emailNormalise, saisie.motDePasse());
+		ComptesAnimateur.IdentiteAnimateur identite;
+		try {
+			identite = comptes.reconnaitre(emailNormalise, saisie.motDePasse());
+		} catch (RefusDeCommande echec) {
+			if (!"IDENTIFIANTS_INVALIDES".equals(echec.refus().code())) {
+				throw echec;
+			}
+			return limites.compterEchecDeConnexion(emailNormalise, requete).orElseThrow(() -> echec);
+		}
 		var authentification = UsernamePasswordAuthenticationToken.authenticated(identite, null, List.of());
 		renouvellement.onAuthentication(authentification, requete, reponse);
 		var contexte = SecurityContextHolder.createEmptyContext();

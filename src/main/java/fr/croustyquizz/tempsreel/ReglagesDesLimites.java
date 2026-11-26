@@ -11,10 +11,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * ne les atteint pas, un script qui martèle une route ou essaie des codes d'accès, si.
  *
  * @param actif          {@code false} coupe la limite sans redéployer, par exemple si elle gênait une Soirée
- * @param plafondCles    nombre de seaux gardés en mémoire pour chaque route ; au-delà, une nouvelle clé passe sans
+ * @param plafondCles    nombre de seaux gardés en mémoire par seuil ; au-delà, une nouvelle clé passe sans
  *                       être comptée, sauf un code inconnu, refusé
  * @param buzz           par jeton : la Manette n'envoie qu'un Buzz à la fois, un doigt ne tient pas 5 par seconde
- * @param reponses       par jeton et par route : le brouillon part au plus deux fois par seconde pendant la saisie
+ * @param reponses       par jeton, avec un seuil distinct pour le brouillon, la Proposition, le Vote et la Réponse
  * @param codesInconnus  par adresse IP : seuls les codes inconnus comptent, une fois la réponse connue, et le bon
  *                       code n'est jamais refusé ici. Une salle derrière un seul Wi-Fi peut se tromper de code
  *                       une vingtaine de fois d'affilée sans voir de 429, et un voisin qui épuise ces essais ne
@@ -28,8 +28,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param accesEcran     par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle
  * @param qrCode         par clé d'Écran : l'Écran de salle ne le charge qu'au changement de code
  * @param connexionAdresse par adresse IP : borne le nombre de vérifications BCrypt, même avec des e-mails différents
- * @param connexionEmail par e-mail normalisé : borne les essais sur un compte même depuis plusieurs réseaux
- * @param inscriptionAdresse par adresse IP : freine la création de comptes et l'énumération des e-mails connus
+ * @param connexionEmail par couple e-mail normalisé et adresse IP : seuls les échecs d'identification comptent
+ * @param inscriptionAdresse par adresse IP : la rafale accueille plusieurs Animateurs sur un même réseau
  */
 @ConfigurationProperties("croustyquizz.limites")
 public record ReglagesDesLimites(boolean actif, int plafondCles, Seuil buzz, Seuil reponses, Seuil codesInconnus,

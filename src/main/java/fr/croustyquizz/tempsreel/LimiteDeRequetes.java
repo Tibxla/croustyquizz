@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -56,8 +57,10 @@ import tools.jackson.databind.json.JsonMapper;
  * d'adresse privée ou locale). Ce filtre ne lit donc jamais X-Forwarded-For lui-même : un client ne peut pas
  * choisir sa clé. Une adresse IPv6 compte par bloc de 64 bits, qu'un seul abonné reçoit en entier.
  *
- * <p>À la connexion, le contrôleur applique aussi le seuil par e-mail normalisé après validation du corps,
- * avant la recherche du compte et le calcul BCrypt. L'e-mail est conservé et journalisé sous forme d'empreinte.
+ * <p>À la connexion, le seuil par adresse IP borne les vérifications BCrypt. Le contrôleur vérifie aussi le
+ * seuil du couple e-mail normalisé et adresse IP avant l'identification. Seul un échec d'identification crée
+ * ou débite un seau pour ce couple. L'empreinte de l'e-mail sert à la clé en mémoire. Le journal de ce seuil
+ * indique uniquement le nom de la table.
  *
  * <p>L'arrivée par code a deux seaux par adresse : toutes les arrivées, prises avant la requête, et les seuls
  * codes inconnus, pris une fois la réponse connue. Un code inconnu au-delà de la limite voit son {@code 404}
@@ -67,7 +70,7 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>Mémoire bornée sans tâche de fond : à chaque requête limitée, au plus une fois par minute, les seaux
  * redevenus pleins sont oubliés, ce qui ne change rien puisqu'un seau plein vaut un seau neuf. Chaque seuil a sa
- * table et son plafond : des jetons inventés ne remplissent que la table de leur route, jamais celle des arrivées.
+ * table et son plafond : des jetons inventés occupent la table du seuil qui les compte.
  * Au plafond, une nouvelle clé passe sans être comptée plutôt que d'être refusée, pour ne pas bloquer la salle,
  * sauf sur les codes inconnus : un code inconnu d'une adresse nouvelle y reçoit {@code 429}, le bon code passe.
  * Le temps vient de l'Horloge, remplacée par une horloge factice dans les tests.
@@ -154,13 +157,31 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		}
 	}
 
-	/** Compte un essai pour l'e-mail normalisé de la connexion et rend le refus HTTP si le seuil est atteint. */
-	public Optional<ResponseEntity<Probleme>> compterEssaiDeConnexion(String emailNormalise, HttpServletRequest requete) {
+	/** Vérifie le seuil du couple avant l'identification, sans créer de seau ni prendre de jeton. */
+	public Optional<ResponseEntity<Probleme>> verifierEssaisDeConnexion(String emailNormalise, HttpServletRequest requete) {
 		if (!actif) {
 			return Optional.empty();
 		}
-		long attente = prendre(new CleDeSeau(connexionEmail, empreinte(emailNormalise)), nanos(horloge.maintenant()));
+		long attente = mesurer(cleDeConnexion(emailNormalise, requete), nanos(horloge.maintenant()), false);
 		return attente > 0 ? Optional.of(refus(requete, attente)) : Optional.empty();
+	}
+
+	/** Compte un échec d'identification et rend le refus si un autre échec a déjà épuisé le seau. */
+	public Optional<ResponseEntity<Probleme>> compterEchecDeConnexion(String emailNormalise, HttpServletRequest requete) {
+		if (!actif) {
+			return Optional.empty();
+		}
+		CleDeSeau cle = cleDeConnexion(emailNormalise, requete);
+		long attente;
+		// Les échecs sont les seuls à créer des clés dans cette table : sérialiser leur admission tient le plafond.
+		synchronized (connexionEmail) {
+			attente = prendre(cle, nanos(horloge.maintenant()));
+		}
+		return attente > 0 ? Optional.of(refus(requete, attente)) : Optional.empty();
+	}
+
+	private CleDeSeau cleDeConnexion(String emailNormalise, HttpServletRequest requete) {
+		return new CleDeSeau(connexionEmail, empreinte(emailNormalise) + ":" + adresse(requete));
 	}
 
 	/**
@@ -182,7 +203,7 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 		tampon.copyBodyToResponse();
 	}
 
-	/** Nombre de seaux en mémoire, toutes routes confondues, pour les tests de purge et de plafond. */
+	/** Nombre de seaux en mémoire, tous seuils confondus, pour les tests de purge et de plafond. */
 	int nombreDeSeaux() {
 		return tables.stream().mapToInt(table -> table.seaux.size()).sum();
 	}
@@ -196,18 +217,42 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 				return auPlafond(cle.table(), maintenant);
 			}
 		}
+		return mesurer(cle, maintenant, true);
+	}
+
+	private long mesurer(CleDeSeau cle, long maintenant, boolean debiter) {
 		long[] attente = new long[1];
 		boolean[] signaler = new boolean[1];
-		seaux.compute(cle.valeur(), (inutile, seau) -> {
+		BiFunction<String, SeauDeJetons, SeauDeJetons> mesurerSeau = (inutile, seau) -> {
 			SeauDeJetons courant = seau == null ? nouveauSeau(cle, maintenant) : seau;
-			attente[0] = courant.prendre(maintenant);
+			attente[0] = debiter ? courant.prendre(maintenant) : courant.attenteAvantPrise(maintenant);
 			signaler[0] = attente[0] > 0 && courant.premierRefus();
 			return courant;
-		});
-		if (signaler[0] && JOURNAL.isInfoEnabled()) {
-			JOURNAL.info("Limite de requêtes atteinte : {} pour {}.", cle.table().nom, cle.valeur());
+		};
+		if (debiter) {
+			cle.table().seaux.compute(cle.valeur(), mesurerSeau);
+		} else {
+			cle.table().seaux.computeIfPresent(cle.valeur(), mesurerSeau);
+		}
+		if (signaler[0]) {
+			journaliserLimiteAtteinte(cle);
 		}
 		return attente[0];
+	}
+
+	/** Pour le seuil par e-mail, seul le nom de la table part au journal : jamais l'empreinte de l'e-mail. */
+	private void journaliserLimiteAtteinte(CleDeSeau cle) {
+		String table = cle.table().nom;
+		if (connexionEmail.equals(cle.table())) {
+			if (JOURNAL.isInfoEnabled()) {
+				JOURNAL.info("Limite de requêtes atteinte : {}.", table);
+			}
+		} else {
+			String valeur = cle.valeur();
+			if (JOURNAL.isInfoEnabled()) {
+				JOURNAL.info("Limite de requêtes atteinte : {} pour {}.", table, valeur);
+			}
+		}
 	}
 
 	private static SeauDeJetons nouveauSeau(CleDeSeau cle, long maintenant) {
@@ -236,7 +281,7 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 
 	/**
 	 * Table pleine : la nouvelle clé passe sans être comptée, sauf sur les codes inconnus, où elle est refusée pour
-	 * un intervalle. Le journal l'avertit au plus une fois par minute et par route.
+	 * un intervalle. Le journal avertit au plus une fois par minute et par seuil.
 	 */
 	private long auPlafond(TableDeSeaux table, long maintenant) {
 		long precedent = table.dernierAvertissement.get();
