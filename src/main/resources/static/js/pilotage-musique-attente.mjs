@@ -71,17 +71,16 @@ export function monterMusiqueDAttenteSalle(audio, contexte) {
 		aSignaler = undefined;
 		enCours = true;
 		try {
-			if (!morceauxDisponibles) {
-				// Le serveur ne garde qu'un signal pour toute la salle : juste avant de partir, l'absence attend
-				// qu'aucune autre fenêtre n'ait de morceaux. Un nouveau changement de cette fenêtre l'annule.
-				await audio.attendreAucunMorceauAilleurs(absence.signal);
+			const signal = absence?.signal ?? fin.signal;
+			await audio.publierDisponibilite(morceauxDisponibles, signal, () => {
+				signal.throwIfAborted();
 				if (!synchronisee) {
-					aSignaler ??= false;
+					aSignaler ??= morceauxDisponibles;
 					return;
 				}
-			}
-			await contexte.envoyer('PUT', route(contexte.soireeId) + '/disponibilite', { morceauxDisponibles },
-				{ signal: fin.signal, annoncer: false });
+				return contexte.envoyer('PUT', route(contexte.soireeId) + '/disponibilite', { morceauxDisponibles },
+					{ signal: fin.signal, annoncer: false });
+			});
 		} catch {
 			// Un signal perdu n'est pas renvoyé : le prochain changement du dossier ou de ses morceaux en donnera un nouveau.
 		} finally {
