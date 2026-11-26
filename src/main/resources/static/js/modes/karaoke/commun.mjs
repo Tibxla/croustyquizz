@@ -2,17 +2,12 @@ import { ouvrirDialogue } from '../../dialogue.mjs';
 import { creerMachineEnvoi, exigeCapture, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
 import { teintePassage, formaterDuree, formaterAttente, etatInscription, libelleEtatTicketPublic } from './presentation.mjs';
+import { creerUuid } from '../../uuid.mjs';
+
+// Réexport pour les modules du Karaoké qui l'importent d'ici.
+export { creerUuid };
 
 export const texteAutresPassages = n => (n ? `et ${n} ${n > 1 ? 'autres' : 'autre'}` : '');
-
-export function creerUuid(cryptoDisponible = globalThis.crypto) {
-	if (cryptoDisponible.randomUUID) return cryptoDisponible.randomUUID();
-	const octets = cryptoDisponible.getRandomValues(new Uint8Array(16));
-	octets[6] = (octets[6] & 15) | 64;
-	octets[8] = (octets[8] & 63) | 128;
-	const hex = Array.from(octets, octet => octet.toString(16).padStart(2, '0')).join('');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
 
 const styles = new WeakMap();
 const paroles = { SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',

@@ -1,7 +1,7 @@
 import { creerCoordinationSon } from './coordination-son.mjs';
 import { creerLecteurDePassage } from './lecteur-de-passage.mjs';
 import { creerMusiqueDAttente } from './musique-attente.mjs';
-import { creerUuid } from './modes/karaoke/commun.mjs';
+import { creerUuid } from './uuid.mjs';
 import { estFichierAudio, fichiersDeMusiqueDAttente } from './modes/karaoke/fichiers.mjs';
 import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 
