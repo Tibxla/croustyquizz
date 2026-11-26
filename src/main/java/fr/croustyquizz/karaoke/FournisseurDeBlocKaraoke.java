@@ -14,10 +14,12 @@ public final class FournisseurDeBlocKaraoke implements FournisseurDeBloc {
     private final ParticipantsDePassage participants;
     private final ProprietesKaraoke proprietes;
     private final ProprietesSourceKaraoke source;
+    private final CatalogueDeBase catalogue;
     public FournisseurDeBlocKaraoke(DepotDeManches depot, ObjectProvider<ServiceKaraoke> service,
-            ParticipantsDePassage participants, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
+            ParticipantsDePassage participants, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source,
+            CatalogueDeBase catalogue) {
         this.depot = depot; this.service = service; this.participants = participants;
-        this.proprietes = proprietes; this.source = source;
+        this.proprietes = proprietes; this.source = source; this.catalogue = catalogue;
     }
     @Override public ModeDeJeu mode() { return ModeDeJeu.KARAOKE; }
     @Override public Object fournir(UUID soireeId, Destination destination) {
@@ -30,6 +32,6 @@ public final class FournisseurDeBlocKaraoke implements FournisseurDeBloc {
         var instantane = (InstantaneKaraoke) service.getObject().instantane(soireeId, active.get().getMancheId());
         var pseudos = participants.pseudos(soireeId);
         var maintenant = active.get().getModifieLe();
-        return destination -> VuesKaraoke.projeter(instantane, destination, pseudos, maintenant, proprietes, source);
+        return destination -> VuesKaraoke.projeter(instantane, destination, pseudos, maintenant, proprietes, source, catalogue);
     }
 }

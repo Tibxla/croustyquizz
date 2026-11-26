@@ -40,6 +40,11 @@ public final class RechercheKaraoke {
                 .toList();
     }
 
+    /** Rang 0 ou 1 : la Chanson répond à la recherche, comme le ferait une source externe. */
+    static boolean correspond(String rechercheNettoyee, Chanson chanson) {
+        return rang(normaliser(rechercheNettoyee), chanson) <= 1;
+    }
+
     static String normaliser(String texte) {
         return Normalizer.normalize(texte, Normalizer.Form.NFKD).replaceAll("\\p{M}+", "")
                 .toLowerCase(Locale.ROOT).replace("œ", "oe").replace("æ", "ae")

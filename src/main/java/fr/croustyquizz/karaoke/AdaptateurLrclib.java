@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -27,8 +26,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
@@ -178,7 +175,7 @@ public final class AdaptateurLrclib implements SourceDeParoles {
         Long duree = duree(donnee.path("duration"));
         String synchronisees = texte(donnee.path("syncedLyrics"));
         String simples = texte(donnee.path("plainLyrics"));
-        List<LigneParoles> lignes = analyserLignes(synchronisees, duree);
+        List<LigneParoles> lignes = ParolesLrc.lire(synchronisees, duree);
         JsonNode instrumental = donnee.path("instrumental");
         EtatParoles etat = etatParoles(instrumental, synchronisees, simples, lignes);
         if (texte(donnee.path("trackName")) == null || texte(donnee.path("artistName")) == null) {
@@ -222,43 +219,5 @@ public final class AdaptateurLrclib implements SourceDeParoles {
         if (!lignes.isEmpty()) { return EtatParoles.SYNCHRONISEES; }
         if (synchronisees != null) { return EtatParoles.INCONNU; }
         return simples == null ? EtatParoles.ABSENTES : EtatParoles.NON_SYNCHRONISEES;
-    }
-
-    private static final Pattern HORODATAGE = Pattern.compile("\\[(\\d+):([0-5]\\d)(?:\\.(\\d{2,3}))?\\]");
-
-    private static List<LigneParoles> analyserLignes(String paroles, Long duree) {
-        List<LigneParoles> lignes = new ArrayList<>();
-        if (paroles == null) { return List.of(); }
-        for (String ligne : paroles.split("\\R")) {
-            analyserLigne(ligne.trim(), duree, lignes);
-        }
-        lignes.sort(Comparator.comparingLong(LigneParoles::positionMs));
-        return List.copyOf(lignes);
-    }
-
-    private static void analyserLigne(String ligne, Long duree, List<LigneParoles> lignes) {
-        List<Long> positions = new ArrayList<>();
-        int debut = 0;
-        while (debut < ligne.length() && ligne.charAt(debut) == '[') {
-            int fin = ligne.indexOf(']', debut);
-            if (fin < 0) { return; }
-            Matcher balise = HORODATAGE.matcher(ligne.substring(debut, fin + 1));
-            if (!balise.matches()) { return; }
-            try {
-                long minutes = Math.multiplyExact(Long.parseLong(balise.group(1)), 60000L);
-                long secondes = Long.parseLong(balise.group(2)) * 1000;
-                String fraction = balise.group(3);
-                long millisecondes = fraction == null ? 0 : Long.parseLong(fraction) * (fraction.length() == 2 ? 10 : 1);
-                positions.add(Math.addExact(Math.addExact(minutes, secondes), millisecondes));
-            } catch (ArithmeticException | NumberFormatException erreur) {
-                return;
-            }
-            debut = fin + 1;
-        }
-        String texte = ligne.substring(debut).trim();
-        if (texte.isEmpty()) { return; }
-        for (long position : positions) {
-            if (duree == null || position < duree) { lignes.add(new LigneParoles(position, texte)); }
-        }
     }
 }

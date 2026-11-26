@@ -23,6 +23,7 @@ import tools.jackson.databind.json.JsonMapper;
 class ServiceKaraokeTest {
     static final ProprietesKaraoke PROPRIETES = new ProprietesKaraoke(new ProprietesKaraoke.Passage(1, 30, 30, 10), new ProprietesKaraoke.Karaoke(8000, 10000));
     static final ProprietesSourceKaraoke SOURCE = new ProprietesSourceKaraoke(URI.create("https://source.invalid"), "Test", 5000, 2000000, 120);
+    static final CatalogueDeBase CATALOGUE = CatalogueDeBaseTest.essai();
     final BancKaraoke banc = new BancKaraoke();
     final UUID soiree = UUID.randomUUID();
     final Acteur joueur = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).getFirst(), soiree);
@@ -404,6 +405,52 @@ class ServiceKaraokeTest {
         verifyNoInteractions(banc.source, banc.calages);
     }
 
+    @Test void uneChansonDeLaBibliothequeSeTrouveSInscritEtSeLitSansLrclib() {
+        UUID manche = demarrer();
+        String chansonId = IdentifiantsChanson.encoderBibliotheque(1);
+        doThrow(new SourceParolesIndisponible("Panne")).when(banc.source).charger(anyLong());
+        doThrow(new SourceParolesIndisponible("Panne")).when(banc.source).rechercher(anyString());
+        var resultats = banc.service.rechercherChansons(joueur, soiree, manche, "Lanterne", UUID.randomUUID()).chansons();
+        assertThat(resultats).singleElement().satisfies(resume -> {
+            assertThat(resume.chansonId()).isEqualTo(chansonId);
+            assertThat(resume.origine()).isEqualTo(OrigineChanson.BIBLIOTHEQUE);
+            assertThat(resume.bibliotheque().fichier()).isEqualTo("/bibliotheque/chansons/les-lucioles-la-lanterne.wav");
+        });
+        assertThat(banc.service.consulterChanson(joueur, soiree, manche, chansonId).inscriptionPossible()).isTrue();
+        var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), chansonId);
+        var inscription = banc.service.inscrirePassage(manche, envoi(joueur, corps.envoiId(), "POST", "/passages", corps), corps);
+        assertThat(ReponsesDeCommande.statut(inscription)).isEqualTo(201);
+        UUID passage = ((AccusePassage) ((Accepte) inscription).accuse()).passageId();
+        var instantane = (InstantaneKaraoke) banc.service.instantane(soiree, manche);
+        assertThat(instantane.contenus().get(passage)).isEqualTo(CatalogueDeBaseTest.essai().contenu(1).orElseThrow());
+
+        var appel = appeler(manche, passage);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        UUID lecteur = designer(manche, ecran);
+        clearInvocations(banc.source);
+        var declaration = new CorpsKaraoke.DeclarationLectureChanson(lecteur, appel.etapeId(), 1L, "FICHIER_LOCAL",
+                new CorpsKaraoke.Fichier("les-lucioles-la-lanterne.wav", 32044L, 4000L), null);
+        assertThat(banc.service.declarerLectureChanson(manche, passage, envoi(ecran, UUID.randomUUID(), "POST", "/lecture",
+                declaration), declaration)).isInstanceOf(Accepte.class);
+        // Le LRC du catalogue est calé sur son fichier : aucune autre version n'est cherchée.
+        assertThat(lectureDe(manche, appel).origineParoles()).isEqualTo(OrigineParoles.VERSION_ADAPTEE);
+        assertThat(lectureDe(manche, appel).paroles().lignes()).hasSize(3);
+        verify(banc.source, never()).rechercher(anyString());
+        verify(banc.source, never()).charger(anyLong());
+        var salle = (VuesKaraoke.BlocKaraokeSalle) banc.bloc.fournir(soiree, Destination.SALLE);
+        assertThat(salle.courant().chanson().origine()).isEqualTo(OrigineChanson.BIBLIOTHEQUE);
+        assertThat(salle.courant().chanson().bibliotheque().licence()).isEqualTo("CC BY-SA 4.0");
+    }
+
+    @Test void uneChansonDeLrclibNePorteNiOrigineDeBibliothequeNiCredit() {
+        UUID manche = demarrer();
+        var resultats = banc.service.rechercherChansons(joueur, soiree, manche, "Chanson", UUID.randomUUID()).chansons();
+        assertThat(resultats).singleElement().satisfies(resume -> {
+            assertThat(resume.origine()).isEqualTo(OrigineChanson.LRCLIB);
+            assertThat(resume.bibliotheque()).isNull();
+        });
+    }
+
     @Test void leBancRestaureLeCycleLaLectureEtLeLecteurApresEviction() {
         UUID manche = demarrer();
         var appel = appeler(manche, inscrire(manche, 1).passageId());
@@ -682,7 +729,8 @@ class ServiceKaraokeTest {
             when(source.rechercher(anyString())).thenReturn(List.of(contenu(1).chanson()));
             var commun = new ConfigurationTroisJoueurs.Commun(depot);
             var beans = new StaticListableBeanFactory();
-            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE);
+            bloc = new FournisseurDeBlocKaraoke(depot, beans.getBeanProvider(ServiceKaraoke.class), participantsDesVues, PROPRIETES, SOURCE,
+                    CATALOGUE);
             assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur, evenement -> { });
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
@@ -695,8 +743,8 @@ class ServiceKaraokeTest {
                     etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId(), etat.voteDuPublic()));
                 }
             };
-            service = new ServiceKaraoke(fabrique, persistance, socle, ports, ports, passages, source, PROPRIETES, SOURCE,
-                    new ChoixDeVersionParoles(source, SOURCE), calages);
+            service = new ServiceKaraoke(fabrique, persistance, socle, ports, ports, passages,
+                    new SourcesDeChansons(CATALOGUE, source), PROPRIETES, SOURCE, new ChoixDeVersionParoles(source, SOURCE), calages);
             beans.addBean("service", service);
         }
         @Override protected Object doGetTransaction() { return new Object(); }

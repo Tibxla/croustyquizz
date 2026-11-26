@@ -11,10 +11,13 @@ import java.util.*;
  */
 public final class VuesKaraoke {
     private VuesKaraoke() { }
-    public record ResumeChanson(String chansonId, String titre, String artiste, String album, Long dureeMs, EtatParoles etatParoles) {
-        public static ResumeChanson de(Chanson chanson) {
+    /** L'origine se lit dans le chansonId ; fichier et crédit viennent du catalogue, sans rien persister (ADR 0011). */
+    public record ResumeChanson(String chansonId, String titre, String artiste, String album, Long dureeMs, EtatParoles etatParoles,
+            OrigineChanson origine, ChansonDeBibliotheque bibliotheque) {
+        public static ResumeChanson de(Chanson chanson, CatalogueDeBase catalogue) {
             return new ResumeChanson(chanson.chansonId(), chanson.titre(), chanson.artiste(), chanson.album(),
-                    chanson.dureeMs() != null && chanson.dureeMs() > 0 ? chanson.dureeMs() : null, chanson.etatParoles());
+                    chanson.dureeMs() != null && chanson.dureeMs() > 0 ? chanson.dureeMs() : null, chanson.etatParoles(),
+                    OrigineChanson.de(chanson.chansonId()), catalogue.bibliotheque(chanson.chansonId()).orElse(null));
         }
     }
     public record ResultatsChansons(UUID rechercheId, String recherche, List<ResumeChanson> chansons) {
@@ -58,7 +61,7 @@ public final class VuesKaraoke {
             long numeroModificationCalage, DemandePositionLecture demandePosition) { }
 
     public static Object projeter(InstantaneKaraoke instantane, Destination destination, Map<UUID, String> pseudos,
-            Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
+            Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source, CatalogueDeBase catalogue) {
         var etat = instantane.file();
         if (destination.type() == Destination.Type.JOUEUR && !pseudos.containsKey(destination.joueurId())) {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Joueur introuvable.").exception();
@@ -67,13 +70,13 @@ public final class VuesKaraoke {
         boolean enPause = instantane.etatManche() == EtatManche.EN_PAUSE;
         boolean enCours = instantane.etatManche() == EtatManche.EN_COURS;
         var projection = CycleDePassage.projeter(etat, instantane.cycle(), enPause, maintenant);
-        var courant = courant(instantane, projection, pseudos);
+        var courant = courant(instantane, projection, pseudos, catalogue);
         var positions = file.positions();
         var delaiAppel = Duration.ofSeconds(proprietes.passage().delaiAppelSecondes());
         var attentes = file.estimerAttentes(maintenant, enPause, projection.prochainAppelPrevuLe(), projection.actif(), delaiAppel);
         List<PassageEnAttentePublic> publics = file.ordreEffectif().stream()
                 .map(p -> new PassageEnAttentePublic(p.id(), p.numeroModification(), p.numero(),
-                        ResumeChanson.de(instantane.contenus().get(p.id()).chanson()), interpretes(p, pseudos),
+                        ResumeChanson.de(instantane.contenus().get(p.id()).chanson(), catalogue), interpretes(p, pseudos),
                         positions.get(p.id()), p.tourNormal(), p.id().equals(etat.passagePrioritaireId()), attentes.get(p.id())))
                 .toList();
         var configuration = new ConfigurationInterfaceKaraoke(source.longueurRechercheMax(),
@@ -89,7 +92,7 @@ public final class VuesKaraoke {
                     etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
                     instantane.lecteurDesigneId(), lecturePublique,
                     lecture != null && projection.courant().etat() == EtatPassage.EN_COURS ? lecture.paroles() : null,
-                    projeterVotesPublics(instantane, file, pseudos, maintenant));
+                    projeterVotesPublics(instantane, file, pseudos, maintenant, catalogue));
             case CONSOLE -> new BlocKaraokeConsole(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                     etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, publics, true, true, true,
                     instantane.lecteurDesigneId() != null,
@@ -97,7 +100,7 @@ public final class VuesKaraoke {
                     projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
                             && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
                     lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier(),
-                    projeterVotesPublics(instantane, file, pseudos, maintenant));
+                    projeterVotesPublics(instantane, file, pseudos, maintenant, catalogue));
             case JOUEUR -> {
                 UUID joueur = destination.joueurId();
                 var personnels = publics.stream().filter(p -> p.interpretes().stream().anyMatch(i -> i.joueurId().equals(joueur))).toList();
@@ -108,16 +111,16 @@ public final class VuesKaraoke {
                         etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
                         personnels, personnels.size(), true, peutInscrire, peutInscrire ? null : "LIMITE_ATTEINTE", peutConfirmer,
                         votesVisibles(instantane, file).stream()
-                                .map(vote -> projeterVoteManette(instantane, file, pseudos, maintenant, vote, joueur)).toList());
+                                .map(vote -> projeterVoteManette(instantane, file, pseudos, maintenant, vote, joueur, catalogue)).toList());
             }
             default -> throw new IllegalArgumentException("Une destination concrète est requise.");
         };
     }
 
     private static List<VoteDuPassage> projeterVotesPublics(InstantaneKaraoke instantane, FileAttente file,
-            Map<UUID, String> pseudos, Instant maintenant) {
+            Map<UUID, String> pseudos, Instant maintenant, CatalogueDeBase catalogue) {
         return votesVisibles(instantane, file).stream()
-                .map(vote -> projeterVote(instantane, file, pseudos, maintenant, vote)).toList();
+                .map(vote -> projeterVote(instantane, file, pseudos, maintenant, vote, catalogue)).toList();
     }
 
     private static List<EtatVotePassage> votesVisibles(InstantaneKaraoke instantane, FileAttente file) {
@@ -133,19 +136,19 @@ public final class VuesKaraoke {
     }
 
     private static VoteDuPassage projeterVote(InstantaneKaraoke instantane, FileAttente file,
-            Map<UUID, String> pseudos, Instant maintenant, EtatVotePassage vote) {
+            Map<UUID, String> pseudos, Instant maintenant, EtatVotePassage vote, CatalogueDeBase catalogue) {
         Passage passage = file.trouver(vote.passageId());
         var projection = VoteDuPublic.projeter(vote, maintenant);
         return new VoteDuPassage(passage.id(), passage.numero(),
-                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage, pseudos),
+                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson(), catalogue), interpretes(passage, pseudos),
                 projection.ouvert() ? "OUVERT" : "CLOS", projection.delaiRestantMs(), projection.calculeLe(),
                 projection.clotureLe(), projection.nombreVotes(), projection.suivantDemarre(), projection.moyenneDixiemes());
     }
 
     private static VoteDuPassageManette projeterVoteManette(InstantaneKaraoke instantane, FileAttente file,
-            Map<UUID, String> pseudos, Instant maintenant, EtatVotePassage vote, UUID joueur) {
+            Map<UUID, String> pseudos, Instant maintenant, EtatVotePassage vote, UUID joueur, CatalogueDeBase catalogue) {
         Passage passage = file.trouver(vote.passageId());
-        var publicVote = projeterVote(instantane, file, pseudos, maintenant, vote);
+        var publicVote = projeterVote(instantane, file, pseudos, maintenant, vote, catalogue);
         Integer maNote = vote.votes().stream().filter(note -> note.joueurId().equals(joueur))
                 .map(VoteRecu::note).findFirst().orElse(null);
         boolean peutVoter = vote.ouvert() && instantane.etatManche() == EtatManche.EN_COURS
@@ -156,11 +159,12 @@ public final class VuesKaraoke {
                 publicVote.moyenneDixiemes());
     }
 
-    private static CourantPourFile courant(InstantaneKaraoke instantane, ProjectionCycle cycle, Map<UUID, String> pseudos) {
+    private static CourantPourFile courant(InstantaneKaraoke instantane, ProjectionCycle cycle, Map<UUID, String> pseudos,
+            CatalogueDeBase catalogue) {
         Passage passage = cycle.courant();
         if (passage == null) { return null; }
         return new CourantPourFile(passage.id(), passage.numeroModification(), passage.numero(),
-                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson()), interpretes(passage, pseudos),
+                ResumeChanson.de(instantane.contenus().get(passage.id()).chanson(), catalogue), interpretes(passage, pseudos),
                 cycle.etapeId(), cycle.etat(), cycle.prochainAppelPrevuLe(), cycle.appeleLe(), cycle.echeanceAppelLe(),
                 cycle.delaiAppelRestantMs(), cycle.demarreLe(), cycle.finPrevueLe(), cycle.positionChronologiqueMs(),
                 cycle.tempsPauseMs(), cycle.calculeLe(), cycle.clotureLe());
