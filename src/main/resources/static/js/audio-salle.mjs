@@ -10,12 +10,14 @@ import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 // fenêtre n'est pas prête, [] quand « Activer le son » la rend prête avec les seules Chansons de la Bibliothèque de base.
 export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliotheque: catalogue = CATALOGUE_VIDE }) {
 	const abonnes = new Set();
+	const morceauxIllisibles = new Set();
 	let fichiers = null, dossier = null, bibliotheque = [], chansonsLibres = false, morceauxDisponibles = null, morceauEnCours = null;
 	let morceauxDuLieu = false;
 	let sonDebloque = false, suspendu = false, detruit = false, musiqueAutorisee = false, attenteAutorisee = false;
 	const etat = () => ({ fichiers, dossier, bibliotheque: bibliotheque.length > 0 || chansonsLibres, sonDebloque,
-		morceauxDisponibles, morceauEnCours });
+		morceauxDisponibles, morceauxDuLieu, morceauEnCours });
 	function lireCatalogue(nouveau) {
+		for (const morceau of bibliotheque) morceauxIllisibles.delete(morceau);
 		bibliotheque = morceauxDeLaBibliotheque(nouveau, 'attente');
 		chansonsLibres = nouveau.entrees.some(morceau => morceau.type === 'chanson');
 		if (chansonsLibres && sonDebloque) fichiers ??= [];
@@ -31,23 +33,21 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 		sonDebloque = false;
 		actualiserCandidature();
 		notifier();
-	}, surMorceauxEpuises() {
-		// Tous les morceaux d'Attente sont illisibles : comme un dossier sans Attente, jusqu'au prochain choix.
-		morceauxDisponibles = false;
-		morceauxDuLieu = false;
-		coordination.annoncerMorceaux(false);
-		actualiserCandidature();
-		notifier();
+	}, surMorceauEcarte(morceau, nombreRestants) {
+		morceauxIllisibles.add(morceau);
+		actualiserMorceaux(nombreRestants);
 	}, surMorceau(morceau) {
 		morceauEnCours = morceau;
 		notifier();
 	} });
 	// Sans dossier ni bibliothèque, la fenêtre ne sait rien de ses morceaux et ne signale rien.
-	function actualiserMorceaux() {
-		const morceaux = fusionnerMorceauxDAttente(bibliotheque, dossier ?? []);
+	function actualiserMorceaux(nombreRestants) {
+		const lisible = morceau => !morceauxIllisibles.has(morceau);
+		const morceaux = fusionnerMorceauxDAttente(bibliotheque.filter(lisible), (dossier ?? []).filter(lisible));
 		morceauxDuLieu = morceaux.some(morceau => !morceau.url);
-		morceauxDisponibles = morceaux.length > 0 ? true : dossier === null ? null : false;
-		musique.choisirFichiers(morceaux);
+		morceauxDisponibles = dossier !== null || bibliotheque.length > 0 ? morceaux.length > 0 : null;
+		// Après un échec, ne recharger la liste que si un homonyme de la bibliothèque y revient.
+		if (morceaux.length !== nombreRestants) musique.choisirFichiers(morceaux);
 		if (morceauxDisponibles !== null) coordination.annoncerMorceaux(morceauxDisponibles);
 		actualiserCandidature();
 		notifier();
@@ -68,6 +68,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 		attendreDisparitionLecteur: coordination.attendreDisparitionLecteur,
 		memoriserDesignation: coordination.memoriserDesignation,
 		choisirDossier(selection) {
+			morceauxIllisibles.clear();
 			dossier = fichiers = selection.filter(estFichierAudio);
 			actualiserMorceaux();
 		},
@@ -149,7 +150,7 @@ export function monterAudioSalle(zone, soireeId, { bibliotheque = chargerBibliot
 		audio.choisirDossier(Array.from(choix.files));
 		choix.value = '';
 	});
-	function afficher({ fichiers, dossier, bibliotheque: libre, sonDebloque, morceauEnCours }) {
+	function afficher({ fichiers, dossier, bibliotheque: libre, sonDebloque, morceauxDuLieu, morceauEnCours }) {
 		const avaitFocus = document.activeElement === activer;
 		// « Activer le son » se propose dès l'ouverture : la bibliothèque n'attend que ce clic.
 		activer.hidden = sonDebloque;
@@ -157,7 +158,11 @@ export function monterAudioSalle(zone, soireeId, { bibliotheque = chargerBibliot
 		if (avaitFocus && activer.hidden) choisir.focus();
 		const nombre = dossier?.length;
 		const lieu = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
-		aide.textContent = libre ? (lieu ? `${lieu} en plus de la Bibliothèque de base` : 'Bibliothèque de base') : lieu;
+		let texteAide = libre ? (lieu ? `${lieu} en plus de la Bibliothèque de base` : 'Bibliothèque de base') : lieu;
+		if (dossier !== null && !morceauxDuLieu) {
+			texteAide = libre ? 'Aucun morceau lisible dans Attente du dossier · Bibliothèque de base' : 'Aucun morceau lisible dans Attente';
+		}
+		if (aide.textContent !== texteAide) aide.textContent = texteAide;
 		if (credit) {
 			credit.hidden = !morceauEnCours?.credit;
 			const texte = credit.hidden ? '' : `Musique : ${texteCredit(morceauEnCours.credit)}`;

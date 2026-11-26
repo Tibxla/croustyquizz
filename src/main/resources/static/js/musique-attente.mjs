@@ -1,5 +1,5 @@
 // `surMorceau` reçoit le morceau qui joue, puis null quand il se tait : l'Écran de salle en affiche le crédit.
-export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {}, surMorceauxEpuises = () => {},
+export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {}, surMorceauEcarte = () => {},
 	surMorceau = () => {} }) {
 	let fichiers = [], index = 0, position = 0, autorisee = false, lecture, annonce = null;
 
@@ -16,18 +16,30 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 		lecteur.detruire();
 		annoncer(null);
 	}
-	function traiterErreur(erreur) {
+	function passerAuSuivant() {
+		if (!lecture) return;
 		liberer();
+		index = (index + 1) % fichiers.length;
+		position = 0;
+		void jouer();
+	}
+	function traiterErreur(erreur, echecDeChargement = false) {
 		if (erreur?.name === 'NotAllowedError') {
+			liberer();
 			surSonBloque();
 			return;
 		}
-		// Un fichier illisible est écarté jusqu'au prochain choix du dossier.
-		fichiers.splice(index, 1);
+		if (!echecDeChargement) {
+			passerAuSuivant();
+			return;
+		}
+		liberer();
+		// Un fichier qui ne se charge pas est écarté jusqu'au prochain choix du dossier.
+		const [ecarte] = fichiers.splice(index, 1);
 		if (index === fichiers.length) index = 0;
 		position = 0;
-		if (fichiers.length) void jouer();
-		else surMorceauxEpuises();
+		surMorceauEcarte(ecarte, fichiers.length);
+		void jouer();
 	}
 
 	async function jouer() {
@@ -42,17 +54,11 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 			if (tentative === lecture) annoncer(fichiers[index]);
 		} catch (erreur) {
 			if (tentative !== lecture) return;
-			traiterErreur(erreur);
+			traiterErreur(erreur, !tentative.chargee);
 		}
 	}
 
-	const retirerFin = lecteur.surFin(() => {
-		if (!lecture) return;
-		liberer();
-		index = (index + 1) % fichiers.length;
-		position = 0;
-		void jouer();
-	});
+	const retirerFin = lecteur.surFin(passerAuSuivant);
 	const retirerErreur = lecteur.surErreur(erreur => { if (lecture) traiterErreur(erreur); });
 
 	return {

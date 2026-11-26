@@ -311,7 +311,9 @@ test('une absence décidée pendant une coupure ne part pas si une autre fenêtr
 });
 
 // Une page `ecran.html` réduite à sa zone audio, avec de faux éléments média et les vrais Web Locks de Node.
-function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, soireeId = 'soiree', bibliotheque = CATALOGUE_VIDE } = {}) {
+function ecranDeSalle(t, ouverteA, {
+	verrous = navigator.locks, soireeId = 'soiree', bibliotheque = CATALOGUE_VIDE, urlsIllisibles = [],
+} = {}) {
 	const document = creerDocument(), creer = document.createElement;
 	let lecture = Promise.withResolvers();
 	document.createElement = tag => {
@@ -321,7 +323,10 @@ function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, soireeId = 'soir
 		Object.assign(element, { currentTime: 0, paused: true, load() {}, pause() { element.paused = true; } });
 		Object.defineProperty(element, 'src', { get: () => source, set(valeur) {
 			source = valeur;
-			if (/^(blob:|\/bibliotheque\/)/.test(valeur)) queueMicrotask(() => element.dispatchEvent({ type: 'loadedmetadata' }));
+			if (/^(blob:|\/bibliotheque\/)/.test(valeur)) {
+				const type = urlsIllisibles.includes(valeur) ? 'error' : 'loadedmetadata';
+				queueMicrotask(() => element.dispatchEvent({ type }));
+			}
 		} });
 		const retirer = element.removeAttribute.bind(element);
 		element.removeAttribute = nom => { if (nom === 'src') source = ''; retirer(nom); };
@@ -521,4 +526,55 @@ test('une fenêtre qui n’a que la Bibliothèque de base ne prend pas la Musiqu
 	const relais = nouvelle.attendreLecture();
 	await lieu.audio.detruire();
 	assert.deepEqual(await relais, libre);
+});
+
+test('l’Écran de salle indique quand le dossier choisi ne fournit aucun morceau lisible dans Attente', { timeout: 3000 }, async t => {
+	const ecran = ecranDeSalle(t, 100, { verrous: null, urlsIllisibles: ['blob:Abîmé.ogg'] });
+	ecran.activer.click();
+	await ecran.sonActive();
+	ecran.choisirDossier([morceauAttente('Abîmé')]);
+	assert.equal(ecran.aide.textContent, '1 fichier audio');
+	await terminerMicrotaches();
+	assert.equal(ecran.aide.textContent, 'Aucun morceau lisible dans Attente');
+
+	ecran.choisirDossier([{ name: 'Chanson.ogg', webkitRelativePath: 'Musique/Chanson.ogg' }]);
+	assert.equal(ecran.aide.textContent, 'Aucun morceau lisible dans Attente');
+
+	const lecture = ecran.attendreLecture();
+	ecran.choisirDossier([morceauAttente('Ambiance')]);
+	assert.equal(await lecture, 'blob:Ambiance.ogg');
+	assert.equal(ecran.aide.textContent, '1 fichier audio');
+});
+
+test('la Bibliothèque de base reste disponible quand le dossier du Lieu n’a plus d’Attente lisible', { timeout: 3000 }, async t => {
+	const ecran = ecranDeSalle(t, 100, { verrous: null, bibliotheque: CATALOGUE,
+		urlsIllisibles: ['blob:Abîmé.ogg', 'blob:Kevin MacLeod - Ambiance.ogg'] });
+	ecran.activer.click();
+	await ecran.sonActive();
+
+	const disponibilites = [];
+	ecran.salle.surChangement(({ morceauxDisponibles }) => disponibilites.push(morceauxDisponibles));
+	const aide = 'Aucun morceau lisible dans Attente du dossier · Bibliothèque de base';
+	for (const nom of ['Abîmé', 'Kevin MacLeod - Ambiance']) {
+		ecran.choisirDossier([morceauAttente(nom)]);
+		assert.equal(ecran.aide.textContent, '1 fichier audio en plus de la Bibliothèque de base');
+		await terminerMicrotaches();
+		// Si la bibliothèque joue en premier, avancer jusqu’au fichier du Lieu.
+		if (ecran.aide.textContent !== aide) {
+			ecran.audio.dispatchEvent({ type: 'ended' });
+			await terminerMicrotaches();
+		}
+		assert.equal(ecran.aide.textContent, aide);
+		assert.equal(ecran.audio.src, libre.url, 'la bibliothèque joue même si le fichier illisible lui était homonyme');
+		assert.equal(ecran.credit.hidden, false);
+	}
+
+	ecran.choisirDossier([{ name: 'Chanson.ogg', webkitRelativePath: 'Musique/Chanson.ogg' }]);
+	assert.equal(ecran.aide.textContent, aide);
+	assert.ok(disponibilites.every(disponible => disponible === true));
+
+	const lecture = ecran.attendreLecture();
+	ecran.choisirDossier([morceauAttente('Ambiance')]);
+	assert.equal(await lecture, 'blob:Ambiance.ogg');
+	assert.equal(ecran.aide.textContent, '1 fichier audio en plus de la Bibliothèque de base');
 });
