@@ -148,7 +148,7 @@ x-stomp:
   sousProtocole: v12.stomp
   connect:
     Authorization: Bearer <jetonJoueur ou cleEcran> ; sinon session Animateur par cookie du handshake
-    X-CSRF-TOKEN: Jeton obtenu par HTTP dans ce navigateur ; il rattache CONNECT à la session Animateur du handshake, ignorée sans lui
+    X-CSRF-TOKEN: Jeton obtenu par GET /api/csrf avant chaque CONNECT de la Console en session ; il rattache CONNECT à la session Animateur du handshake, ignorée sans lui
   subscribe:
     id: UUID neuf ; utilisé comme abonnementId pour la capture HTTP cohérente
     destination: Adresse autorisée du canal

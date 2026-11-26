@@ -26,7 +26,8 @@ paths:
       operationId: obtenirCsrf
       summary: Obtenir le jeton CSRF de la session navigateur
       description: Accessible avant connexion. Peut créer une session anonyme et son cookie JSESSIONID. Le jeton
-        reste dans le navigateur ; ne jamais le publier dans un événement.
+        reste dans le navigateur ; ne jamais le publier dans un événement. La Console en session appelle cette
+        opération avant chaque CONNECT STOMP et avant l’unique nouvelle tentative d’une mutation refusée avec 403 CSRF_INVALIDE.
       tags:
       - Accès
       security: []

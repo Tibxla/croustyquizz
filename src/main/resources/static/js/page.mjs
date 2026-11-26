@@ -10,7 +10,7 @@ import { monterProgramme } from './programme-console.mjs';
 import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
-import { appeler, appelerAvecCsrf, memoire } from './api.js';
+import { appeler, memoire } from './api.js';
 import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -47,19 +47,22 @@ function afficherCommun(vue) {
 	zoneErreur.hidden = true;
 }
 
-function activerDeconnexion(arreter) {
+function activerDeconnexion(envoyer, arreter) {
 	const bouton = element('deconnexion');
 	bouton.hidden = false;
 	bouton.addEventListener('click', async () => {
 		bouton.disabled = true;
+		const erreur = 'Impossible de confirmer la déconnexion. Réessaie.';
 		try {
-			const sortie = await appelerAvecCsrf('DELETE', ROUTE_SESSION);
-			if (sortie.ok || sortie.statut === 401) {
+			const { statut, corps } = await envoyer('DELETE', ROUTE_SESSION);
+			if (statut === 204 || statut === 401) {
 				arreter();
 				renvoyerVersConnexion();
 			} else {
-				afficherErreur(sortie.detail ?? 'Impossible de confirmer la déconnexion. Réessaie.');
+				afficherErreur(corps?.detail ?? erreur);
 			}
+		} catch {
+			afficherErreur(erreur);
 		} finally {
 			bouton.disabled = false;
 		}
@@ -77,7 +80,6 @@ async function demarrer() {
 	const jetonEnMemoire = accesManette?.jeton ?? cleEnMemoire ?? (ecran === 'console' && !demoConsole ? null : memorise);
 	const consoleConnectee = ecran === 'console' && !jetonEnMemoire;
 	let identite;
-	let csrf;
 	let suivi;
 	let arreterTout;
 	let arreterMaintien;
@@ -86,7 +88,6 @@ async function demarrer() {
 		if (session.statut === 401) return;
 		if (!session.ok || !session.corps?.id) throw new Error(session.detail ?? 'Impossible de vérifier ta session. Recharge la Console.');
 		identite = session.corps;
-		activerDeconnexion(() => arreterTout?.());
 		if (soireeId === null) {
 			location.replace('/preparer-soiree.html');
 			return;
@@ -94,6 +95,7 @@ async function demarrer() {
 	}
 	const { cleEcran, ...acces } = lireAcces(ecran, location.search, jetonEnMemoire, accesManette?.joueurId, location.hash);
 	const jeton = cleEcran ?? jetonEnMemoire;
+	const transport = creerTransport({ jeton, sessionAnimateur: consoleConnectee });
 	if (cleEcran !== null) {
 		memoire.ecrire('croustyquizz.cleEcran', cleEcran);
 		memoire.ecrire('croustyquizz.soireeEcran', soireeId);
@@ -107,13 +109,10 @@ async function demarrer() {
 			return;
 		}
 		if (!soiree.ok) throw new Error(soiree.detail ?? 'Impossible d’ouvrir la Soirée. Recharge la Console.');
-		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
-		if (reponse.statut !== 200 || !reponse.corps?.token) throw new Error(reponse.corps?.detail ?? 'Impossible d’obtenir le jeton de session. Recharge la Console.');
-		csrf = reponse.corps.token;
+		activerDeconnexion(transport.envoyer, () => arreterTout?.());
 		arreterMaintien = maintenirSession();
 	}
 
-	const transport = creerTransport({ jeton, csrf });
 	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
 	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
 		stockageManette.oublier(acces.soireeId);

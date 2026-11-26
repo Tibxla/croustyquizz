@@ -55,7 +55,7 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 		var animateur = ResolveurAnimateurConnecte.resoudre(requete);
 		UUID soireeId = soireeDeLaRoute(requete);
 		if (soireeId == null) {
-			throw soireeIntrouvable();
+			throw soireeIntrouvable().exception();
 		}
 		return resoudre(animateur, soireeId);
 	}
@@ -69,7 +69,7 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 	@Override
 	public Acteur resoudre(AnimateurConnecte animateur, UUID soireeId) {
 		if (!soirees.existsByIdAndLieuId(soireeId, animateur.lieuId())) {
-			throw soireeIntrouvable();
+			throw soireeIntrouvable().exception();
 		}
 		return new Acteur(Acteur.Type.ANIMATEUR, animateur.animateurId(), soireeId);
 	}
@@ -83,7 +83,14 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 
 	private static UUID soireeDeLaRoute(HttpServletRequest requete) {
 		Map<?, ?> variables = (Map<?, ?>) requete.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
-		return variables != null && variables.get("soireeId") instanceof String id ? UUID.fromString(id) : null;
+		if (variables == null || !(variables.get("soireeId") instanceof String id)) {
+			return null;
+		}
+		try {
+			return UUID.fromString(id);
+		} catch (IllegalArgumentException invalide) {
+			throw soireeIntrouvable().exception(invalide);
+		}
 	}
 
 	/**
@@ -112,7 +119,7 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 		return acteur;
 	}
 
-	private static RuntimeException soireeIntrouvable() {
-		return new Refuse(404, "RESSOURCE_INTROUVABLE", "Soirée introuvable.").exception();
+	private static Refuse soireeIntrouvable() {
+		return new Refuse(404, "RESSOURCE_INTROUVABLE", "Soirée introuvable.");
 	}
 }

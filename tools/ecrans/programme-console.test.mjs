@@ -118,16 +118,20 @@ test('les trois mutations de la Console passent par le transport de la session e
 		{ status: 200, texte: '{"vue":{"programme":[]}}' },
 		{ status: 204, texte: '' },
 	];
-	const transport = creerTransport({ csrf: 'csrf-session' }, {
+	const transport = creerTransport({ sessionAnimateur: true }, {
 		adresse: 'https://exemple.test/console.html?soiree=s',
 		requete: async (url, options) => {
+			const headers = new Headers({ 'Content-Type': 'application/json' });
+			if (url.pathname === '/api/csrf') {
+				return { status: 200, headers, text: async () => '{"token":"csrf-session"}' };
+			}
 			requetes.push({
 				chemin: url.pathname, methode: options.method, credentials: options.credentials,
 				csrf: options.headers['X-CSRF-TOKEN'], autorisation: options.headers.Authorization,
 				corps: options.body === undefined ? undefined : JSON.parse(options.body),
 			});
 			const { status, texte } = reponses.shift();
-			return { status, headers: new Headers({ 'Content-Type': 'application/json' }), text: async () => texte };
+			return { status, headers, text: async () => texte };
 		},
 	});
 	const b = banc({ envoyer: transport.envoyer, surEnvoi: etat => etats.push(etat) });
