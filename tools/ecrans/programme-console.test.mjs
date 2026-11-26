@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { creerContexte } from '../../src/main/resources/static/js/contexte.mjs';
 import { monterProgramme } from '../../src/main/resources/static/js/programme-console.mjs';
 import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
@@ -7,37 +8,166 @@ function banc() {
 	const document = creerDocument();
 	const panneau = document.createElement('section');
 	document.body.append(panneau);
-	const creer = (nom, balise) => {
+	const creer = (nom, balise, parent = panneau) => {
 		const element = document.createElement(balise);
 		element.setAttribute('data-' + nom, '');
-		panneau.append(element);
+		parent.append(element);
 		return element;
 	};
 	const formulaire = creer('ajout-manche', 'form');
-	const mode = creer('mode-manche', 'select');
-	const communs = creer('reglages-communs', 'fieldset');
-	const nombre = creer('nombre-etapes', 'input');
-	const temps = creer('temps-par-etape', 'input');
-	const ajout = creer('soumettre-manche', 'button');
+	const mode = creer('mode-manche', 'select', formulaire);
+	const communs = creer('reglages-communs', 'fieldset', formulaire);
+	const nombre = creer('nombre-etapes', 'input', communs);
+	const temps = creer('temps-par-etape', 'input', communs);
+	const erreurs = {};
+	for (const [nom, champ] of [['mode-manche', mode], ['nombre-etapes', nombre], ['temps-par-etape', temps]]) {
+		const zone = creer(`${nom}-erreur`, 'p', champ.parentNode);
+		zone.id = `${nom}-erreur`;
+		zone.hidden = true;
+		champ.setAttribute('aria-describedby', zone.id);
+		erreurs[nom] = zone;
+	}
+	nombre.setAttribute('min', '1');
+	nombre.setAttribute('max', '100');
+	temps.setAttribute('min', '1');
+	temps.setAttribute('max', '3600');
+	const erreurAjout = creer('ajout-manche-erreur', 'p', formulaire);
+	erreurAjout.id = 'ajout-manche-erreur';
+	erreurAjout.hidden = true;
+	const ajout = creer('soumettre-manche', 'button', formulaire);
+	ajout.setAttribute('aria-describedby', erreurAjout.id);
+	const ailleurs = creer('ailleurs', 'button', document.body);
 	const liste = creer('programme', 'ol');
 	const programmeFige = creer('programme-fige', 'p');
 	creer('programme-vide', 'p');
 	const appels = [];
-	let rappel, captures = 0;
-	const programme = monterProgramme(panneau, {
+	const annonces = [];
+	let captures = 0;
+	const contexteCree = creerContexte({
 		soireeId: 's',
 		envoyer: (...args) => new Promise((resoudre, rejeter) => appels.push({ args, resoudre, rejeter })),
 		resynchroniser: () => captures++,
-		surEtatConnexion: f => { rappel = f; f('synchronisation'); return () => { rappel = null; }; },
+		surEnvoi: etat => annonces.push(etat),
 	});
+	const { contexte, changerEtat } = contexteCree;
+	const programme = monterProgramme(panneau, contexte);
 	return {
-		ajout, appels, communs, formulaire, liste, mode, nombre, programmeFige, temps, programme,
-		captures: () => captures, connecter: etat => rappel?.(etat),
+		ailleurs, ajout, annonces, appels, communs, contexte, document, erreurAjout, erreurs, formulaire, liste, mode, nombre,
+		programmeFige, temps, programme, captures: () => captures, connecter: changerEtat,
 		afficher: (manches, etat = 'PREPARATION') => programme.afficher({ soiree: { etat }, programme: manches }),
 	};
 }
 
 const manche = (id, ordre, mode = 'QUIZ') => ({ id, ordre, mode, etat: 'EN_ATTENTE', reglages: {} });
+
+test('guide la correction des réglages du Quiz avant tout envoi', () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'QUIZ';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.nombre.value = '0';
+	b.temps.value = '2.5';
+
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	const erreurNombre = b.erreurs['nombre-etapes'];
+	assert.equal(b.appels.length, 0);
+	assert.equal(erreurNombre.hidden, false);
+	assert.equal(erreurNombre.textContent, 'Indique un nombre entier d’étapes entre 1 et 100.');
+	assert.equal(b.nombre.getAttribute('aria-describedby'), erreurNombre.id);
+	assert.equal(b.nombre.getAttribute('aria-invalid'), 'true');
+	assert.equal(b.document.activeElement === b.nombre, true);
+
+	b.nombre.value = '100';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	const erreurTemps = b.erreurs['temps-par-etape'];
+	assert.equal(b.appels.length, 0);
+	assert.equal(erreurNombre.hidden, true);
+	assert.equal(b.nombre.getAttribute('aria-invalid'), null);
+	assert.equal(erreurTemps.hidden, false);
+	assert.equal(erreurTemps.textContent, 'Indique une durée entière entre 1 et 3600 secondes.');
+	assert.equal(b.temps.getAttribute('aria-describedby'), erreurTemps.id);
+	assert.equal(b.temps.getAttribute('aria-invalid'), 'true');
+	assert.equal(b.document.activeElement === b.temps, true);
+
+	b.temps.value = '3600';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
+	assert.equal(erreurTemps.hidden, true);
+	assert.equal(b.temps.getAttribute('aria-invalid'), null);
+});
+
+test('affiche un refus HTTP 400 de l’ajout sous le formulaire, sans marquer de champ', async () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'QUIZ';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.nombre.value = '5';
+	b.temps.value = '25';
+	const detail = 'Le Mode de jeu ou les réglages de la Manche sont invalides.';
+
+	b.ajout.focus();
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	b.appels[0].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail } });
+	await terminerMicrotaches();
+	assert.equal(b.erreurAjout.hidden, false);
+	assert.equal(b.erreurAjout.textContent, detail);
+	assert.equal(b.ajout.getAttribute('aria-describedby'), b.erreurAjout.id);
+	for (const [nom, champ] of [['mode-manche', b.mode], ['nombre-etapes', b.nombre], ['temps-par-etape', b.temps]]) {
+		assert.equal(b.erreurs[nom].hidden, true, nom);
+		assert.equal(champ.getAttribute('aria-invalid'), null, nom);
+	}
+	assert.equal(b.document.activeElement === b.ajout, true, 'le focus reste sur le bouton d’ajout');
+	assert.deepEqual(b.annonces, ['en-cours', null]);
+	assert.equal(b.captures(), 0);
+
+	b.mode.value = 'KARAOKE';
+	b.mode.dispatchEvent({ type: 'change' });
+	assert.equal(b.erreurAjout.hidden, true);
+	assert.equal(b.erreurAjout.textContent, '');
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	b.appels[1].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE' } });
+	await terminerMicrotaches();
+	assert.equal(b.erreurAjout.hidden, false);
+	assert.equal(b.erreurAjout.textContent, 'Vérifie le Mode de jeu et les réglages de la Manche.');
+	assert.equal(b.mode.getAttribute('aria-invalid'), null);
+});
+
+test('un refus HTTP 400 tardif ne ramène pas le focus dans le formulaire', async () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'KARAOKE';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.ajout.focus();
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	b.ailleurs.focus();
+	b.appels[0].resoudre({ statut: 400, corps: { code: 'REQUETE_INVALIDE', detail: 'Refusé.' } });
+	await terminerMicrotaches();
+	assert.equal(b.erreurAjout.textContent, 'Refusé.');
+	assert.equal(b.document.activeElement === b.ailleurs, true);
+});
+
+test('une saisie refusée avant l’envoi efface le bandeau laissé par l’envoi précédent', async () => {
+	const b = banc();
+	const a = manche('a', 0);
+	const c = manche('c', 1);
+	b.afficher([a, c]);
+	b.connecter('synchronisee');
+	b.liste.querySelectorAll('[data-action-programme="monter"]')[1].click();
+	b.appels[0].resoudre({ statut: 409, corps: { code: 'ETAT_INCOMPATIBLE', detail: 'Envoi refusé.' } });
+	await terminerMicrotaches();
+	assert.deepEqual(b.annonces, ['en-cours', 'refuse']);
+
+	b.mode.value = 'QUIZ';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.nombre.value = '0';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
+	assert.equal(b.erreurs['nombre-etapes'].hidden, false);
+	assert.deepEqual(b.annonces, ['en-cours', 'refuse', null]);
+});
 
 test('ajoute les réglages communs du Quiz, puis laisse la vue synchronisée afficher la Manche', async () => {
 	const b = banc();

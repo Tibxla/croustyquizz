@@ -1,10 +1,12 @@
 package fr.croustyquizz.tempsreel;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -54,11 +56,12 @@ class VueSynchroniseeTest {
 		var canal = new ExecutorSubscribableChannel();
 		CountDownLatch captureCommencee = new CountDownLatch(1);
 		CountDownLatch terminerCapture = new CountDownLatch(1);
+		var verrous = new VerrousSoiree();
 		var diffuseur = new DiffuseurStomp(new SimpMessagingTemplate(canal),
-				Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), new VerrousSoiree(), soiree -> {
+				Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), verrous, soiree -> {
 					captureCommencee.countDown();
 					try {
-						assertThat(terminerCapture.await(5, TimeUnit.SECONDS)).isTrue();
+						assertThat(terminerCapture.await(RETENUE_SECONDES, TimeUnit.SECONDS)).isTrue();
 					} catch (InterruptedException interruption) {
 						Thread.currentThread().interrupt();
 						throw new IllegalStateException(interruption);
@@ -71,16 +74,16 @@ class VueSynchroniseeTest {
 		try (var executeur = Executors.newFixedThreadPool(2)) {
 			try {
 				var capture = executeur.submit(() -> diffuseur.capturerSalle(soiree, null));
-				assertThat(captureCommencee.await(2, TimeUnit.SECONDS)).isTrue();
+				assertThat(captureCommencee.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 				var envoi = executeur.submit(() -> {
 					publication.set(Thread.currentThread());
 					diffuseur.diffuserSalle(soiree, vue);
 				}, new CaptureSalleFactice());
-				await().atMost(Duration.ofSeconds(2)).until(() -> publication.get() != null
-						&& publication.get().getState() == Thread.State.WAITING);
+				await().atMost(PLAFOND).until(() -> publication.get() != null
+						&& verrous.estAttenduPar(soiree, publication.get()));
 				terminerCapture.countDown();
-				assertThat(capture.get(2, TimeUnit.SECONDS).revision()).isZero();
-				envoi.get(2, TimeUnit.SECONDS);
+				assertThat(capture.get(PLAFOND_SECONDES, TimeUnit.SECONDS).revision()).isZero();
+				envoi.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 				assertThat(diffuseur.capturerSalle(soiree, null)).isEqualTo(new VueSynchronisee(1, Instant.EPOCH, null, vue));
 			} finally {
 				terminerCapture.countDown();
