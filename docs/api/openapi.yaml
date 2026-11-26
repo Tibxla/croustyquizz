@@ -52,7 +52,8 @@ paths:
         de casse (409 EMAIL_DEJA_UTILISE). Ce 409 révèle qu’un compte existe pour cet e-mail : sans confirmation
         par e-mail, l’inscription ne peut pas répondre de façon neutre. Le mot de passe est haché côté serveur et
         absent des réponses. L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une
-        extension de #5.
+        extension de #5. Au-delà de la limite d’inscription par adresse IP, 429 TROP_DE_REQUETES avec
+        Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Accès
       security: []
@@ -82,6 +83,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -104,8 +107,8 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe. Limite connue : le nombre d’essais n’est pas encore limité ; une
-        limite est à ajouter avant toute exposition publique.'
+        sans distinguer e-mail et mot de passe. Au-delà de la limite de connexion par e-mail normalisé ou par
+        adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
       tags:
       - Accès
       security: []
@@ -134,6 +137,8 @@ paths:
           $ref: '#/components/responses/Erreur403'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -3452,9 +3457,9 @@ components:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur429:
       description: 'TROP_DE_REQUETES : la limite de requêtes de la route est atteinte pour ce jeton, cette clé
-        d’Écran ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé : aucun
-        reçu, aucune mutation. Un nouvel essai, décidé par la personne et jamais automatique, passe après
-        Retry-After.'
+        d’Écran, cet e-mail ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé :
+        aucun reçu, aucune mutation. Retry-After indique quand le seuil atteint permet un nouvel essai, décidé
+        par la personne et jamais automatique.'
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.
@@ -3462,7 +3467,7 @@ components:
             type: string
             const: no-store
         Retry-After:
-          description: Secondes à attendre avant qu’un nouvel essai puisse passer, arrondies à l’entier supérieur.
+          description: Secondes à attendre avant de réessayer selon le seuil atteint, arrondies à l’entier supérieur.
           required: true
           schema:
             type: integer

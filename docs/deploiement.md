@@ -124,8 +124,12 @@ conditions sont remplies (issue #4) :
 
 1. la Console d'animation est protégée par un compte (#5) ;
 2. les routes `/api/test/` du prototype temps réel sont coupées en profil `prod` ;
-3. le Buzz, les Réponses et l'accès à une Soirée ont une limite de requêtes (section
-   « Limite de requêtes », à vérifier derrière Funnel avant la première démo publique).
+3. le Buzz, les Réponses et l'accès à une Soirée ont une limite de requêtes ;
+4. la connexion de l'Animateur est limitée par e-mail normalisé et par adresse IP,
+   et l'inscription par adresse IP (#238).
+
+Vérifier les limites par adresse derrière Funnel avant la première démo publique
+(section « Limite de requêtes »).
 
 Tant qu'elles ne le sont pas, `tools/demo.sh demarrer --public` refuse d'ouvrir
 l'adresse. Une fois vérifiées, écrire `CROUSTYQUIZZ_PUBLIC=autorise` dans `.env`, puis :
@@ -168,9 +172,9 @@ Vérifié le 10/11 sur une installation d'essai : écriture refusée dans `/app`
 
 ## Limite de requêtes
 
-Le filtre `LimiteDeRequetes` (package `tempsreel`) protège le Buzz, les Réponses et
-l'accès à une Soirée d'un client qui martèle une route ou essaie des codes d'accès
-(#4). Chaque route a un seau à jetons par clé, en mémoire : une seule instance tourne,
+`LimiteDeRequetes` (package `tempsreel`) protège le Buzz, les Réponses, l'accès à une
+Soirée (#4), ainsi que la connexion et l'inscription de l'Animateur (#238). Chaque
+seuil a un seau à jetons par clé, en mémoire : une seule instance tourne,
 la mémoire locale suffit. Un seau accepte une rafale, puis regagne un jeton à chaque
 intervalle. Au-delà, le serveur répond `429 TROP_DE_REQUETES` avec `Retry-After`, sans
 exécuter la requête ; la Manette affiche le message, rien ne réessaie tout seul.
@@ -183,6 +187,9 @@ exécuter la requête ; la Manette affiche le message, rien ne réessaie tout se
 | Arrivée par code, toutes | adresse IP | 120 | 1 toutes les 3 s | Deux salles de 60 Joueurs derrière le même Wi-Fi arrivent d'un coup ; les retardataires passent ensuite à 20 par minute, et un script qui crée des Joueurs en boucle est freiné. C'est aussi ce seuil qui borne un script qui cherche un code : à 20 essais par minute parmi 32⁶ codes (10⁹), une adresse mettrait en moyenne une dizaine d'années à tomber sur l'une de dix Soirées ouvertes. |
 | Accès de l'Écran de salle | adresse IP | 10 | 1 toutes les 6 s | L'Animateur ouvre un ou deux Écrans par Soirée. |
 | QR code | clé d'Écran | 10 | 1 par seconde | L'Écran ne le charge qu'au changement de code. |
+| Connexion de l'Animateur | adresse IP | 20 | 1 toutes les 3 s | Borne les calculs BCrypt depuis un réseau, même si les e-mails changent à chaque essai. |
+| Connexion de l'Animateur | e-mail normalisé | 5 | 1 toutes les 30 s | Borne les essais sur le même e-mail, même depuis plusieurs réseaux. |
+| Inscription de l'Animateur | adresse IP | 10 | 1 toutes les 60 s | Freine la création en série de comptes et les essais d'e-mails déjà inscrits. |
 
 Le seuil des codes est plus large que 10 par minute : dans un lieu, tous les téléphones
 sur le Wi-Fi sortent par la même adresse IP, et une salle de 60 se trompe de code plus
@@ -195,7 +202,7 @@ les essais du réseau. Comme le bon code n'est jamais refusé, un `429` sur un c
 n'apprend rien de plus qu'un `404` à un script : c'est la limite de toutes les arrivées qui
 le freine. Une requête sans jeton compte
 sur son adresse IP. Une adresse IPv6 compte par bloc de 64 bits, qu'un abonné reçoit en
-entier. Les seaux redevenus pleins sont oubliés une fois par minute. Chaque route a sa
+entier. Les seaux redevenus pleins sont oubliés une fois par minute. Chaque seuil a sa
 propre table, plafonnée à 20 000 clés : des jetons inventés ne remplissent que la table de
 leur route, et les arrivées ne comptent que des adresses. Au plafond, une nouvelle clé
 passe sans être comptée, sauf un code inconnu, qui reçoit `429` ; le journal l'avertit.
