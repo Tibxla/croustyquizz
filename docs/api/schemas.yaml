@@ -225,8 +225,10 @@ $defs:
         minLength: 1
       connecte:
         type: boolean
-        description: Vrai dès l’arrivée, même avant toute connexion STOMP ; faux une fois fermée la dernière connexion
-          STOMP de la Manette, jusqu’à son retour. Plus suivi après la fin de la Soirée (README, « Vues par blocs »).
+        description: Vrai dès l’arrivée, même avant toute connexion STOMP. Passe à faux à la fermeture de la dernière
+          connexion STOMP de la Manette, jusqu’à son retour sur une connexion encore ouverte. Chaque changement
+          est diffusé à la salle et à la Console. La Manette le lit dans sa prochaine vue publiée pour une autre cause.
+          Le suivi cesse à la fin de la Soirée (README, « Vues par blocs »).
     required:
     - id
     - pseudo

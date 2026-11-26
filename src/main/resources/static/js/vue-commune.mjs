@@ -25,6 +25,7 @@ export function decrireVue(vue) {
 		manche: terminee ? 'Soirée terminée' :
 			vue.mancheActive ? `${modes[vue.modeEnCours] ?? vue.modeEnCours} · Manche ${vue.mancheActive.ordre + 1} · ${etats[vue.mancheActive.etat] ?? vue.mancheActive.etat}` : 'En attente de la prochaine Manche',
 		attente: !terminee && vue.modeEnCours === null ? 'La prochaine Manche s’affichera ici.' : '',
+		titreJoueurs: `Joueurs (${vue.joueurs.length}) · ${vue.joueurs.filter(j => j.connecte).length} en ligne`,
 		joueurs: vue.joueurs.map(j => `${j.pseudo} · ${j.connecte ? 'connecté' : 'déconnecté'}`),
 		classement: vue.classement.map(decrireLigne),
 		buzz: vue.dernierBuzz ? `Dernier Buzz : ${vue.dernierBuzz.pseudo}` : 'Aucun Buzz reçu',

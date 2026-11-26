@@ -28,6 +28,14 @@ test('la salle affiche dix lignes entre deux Manches et retire le classement pen
 	assert.equal(decrireClassementDeSalle({ ...vue, soiree: { etat: 'OUVERTE' }, classement: [] }), null);
 });
 
+test('le titre des Joueurs compte la présence du cinquième Joueur, même quand sa ligne est masquée', () => {
+	const joueurs = ['Léa', 'Sam', 'Lou', 'Jo', 'Maé'].map(pseudo => ({ pseudo, connecte: true }));
+	const vue = { soiree: { etat: 'OUVERTE' }, joueurs, classement: [] };
+	assert.equal(decrireVue(vue).titreJoueurs, 'Joueurs (5) · 5 en ligne');
+	joueurs[4].connecte = false;
+	assert.equal(decrireVue(vue).titreJoueurs, 'Joueurs (5) · 4 en ligne');
+});
+
 test('le podium garde tous les ex æquo aux rangs donnés par le serveur', () => {
 	const vue = { soiree: { etat: 'TERMINEE' }, mancheActive: null, classement: [
 		{ rang: 1, nom: 'Lou', points: 10 }, { rang: 1, nom: 'Sam', points: 10 },

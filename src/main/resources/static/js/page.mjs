@@ -42,7 +42,7 @@ function afficherCommun(vue) {
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
-	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
+	texte('nombre-joueurs', ecran === 'manette' ? `Joueurs (${vue.joueurs.length})` : description.titreJoueurs);
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
