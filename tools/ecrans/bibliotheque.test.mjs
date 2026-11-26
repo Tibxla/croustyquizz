@@ -11,7 +11,7 @@ const catalogue = {
 		'CC-BY-4.0': { nom: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/deed.fr' },
 		'CC-BY-SA-4.0': { nom: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/deed.fr' },
 	},
-	morceaux: [
+	entrees: [
 		{ type: 'attente', titre: 'Ambiance', artiste: 'Kevin MacLeod', dureeMs: 3000, licence: 'CC-BY-4.0',
 			source: 'https://example.org/ambiance', fichier: 'attente/kevin-macleod-ambiance.mp3', tailleOctets: 1200 },
 		{ type: 'attente', titre: 'Crépuscule', artiste: 'Kevin MacLeod', dureeMs: 3000, licence: 'CC-BY-4.0',
@@ -31,7 +31,7 @@ test('la Bibliothèque de base donne ses morceaux d’attente comme des fichiers
 			urlLicence: 'https://creativecommons.org/licenses/by/4.0/deed.fr' },
 	});
 	assert.equal(attente.length, 2);
-	assert.deepEqual(morceauxDeLaBibliotheque({ version: 1, licences: {}, morceaux: [] }, 'attente'), []);
+	assert.deepEqual(morceauxDeLaBibliotheque({ version: 1, licences: {}, entrees: [] }, 'attente'), []);
 });
 
 test('les morceaux d’Attente du dossier s’ajoutent à ceux de la bibliothèque et remplacent leurs homonymes', () => {
@@ -81,7 +81,7 @@ test('la page des crédits reprend chaque entrée du catalogue avec sa licence, 
 		paroles: '/bibliotheque/chansons/les-lucioles-la-lanterne.lrc', parolesPartagees: true,
 	});
 	assert.equal(credits[0].entrees[0].paroles, null);
-	assert.deepEqual(decrireCredits({ version: 1, licences: {}, morceaux: [] }), []);
+	assert.deepEqual(decrireCredits({ version: 1, licences: {}, entrees: [] }), []);
 });
 
 test('le catalogue se charge depuis le serveur, et son absence laisse une bibliothèque vide', async () => {
@@ -92,8 +92,8 @@ test('le catalogue se charge depuis le serveur, et son absence laisse une biblio
 	};
 	assert.deepEqual(await chargerBibliotheque(chercher), catalogue);
 	assert.deepEqual(demandes, [['/bibliotheque/catalogue.json', { cache: 'no-cache' }]]);
-	const vide = { version: 1, licences: {}, morceaux: [] };
+	const vide = { version: 1, licences: {}, entrees: [] };
 	assert.deepEqual(await chargerBibliotheque(async () => ({ ok: false, status: 404 })), vide);
 	assert.deepEqual(await chargerBibliotheque(async () => { throw new TypeError('réseau'); }), vide);
-	assert.deepEqual(await chargerBibliotheque(async () => ({ ok: true, json: async () => ({ morceaux: 'faux' }) })), vide);
+	assert.deepEqual(await chargerBibliotheque(async () => ({ ok: true, json: async () => ({ entrees: 'faux' }) })), vide);
 });

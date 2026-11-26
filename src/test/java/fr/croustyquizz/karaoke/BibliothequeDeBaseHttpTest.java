@@ -66,7 +66,7 @@ class BibliothequeDeBaseHttpTest {
         assertThat(lrc.getHeaders().getCacheControl()).isEqualTo("max-age=31536000, public");
         ResponseEntity<String> catalogue = client.get().uri("/bibliotheque/catalogue.json").retrieve().toEntity(String.class);
         assertThat(catalogue.getHeaders().getCacheControl()).isEqualTo("no-cache");
-        assertThat(catalogue.getBody()).contains("\"morceaux\"");
+        assertThat(catalogue.getBody()).contains("\"entrees\"");
         assertThat(client.get().uri("/bibliotheque/absent.mp3").retrieve().onStatus(s -> true, (q, r) -> { })
                 .toBodilessEntity().getStatusCode().value()).isEqualTo(404);
     }

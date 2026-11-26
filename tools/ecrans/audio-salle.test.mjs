@@ -44,12 +44,12 @@ test('le même lecteur joue la Musique d’attente pendant la préparation puis 
 // Préfixe des verrous de présence de `coordination-son.mjs` ; chaque test vérifie d'abord qu'il trouve la fenêtre qui joue.
 const PRESENCE = 'croustyquizz:son:fenetre:';
 const morceauAttente = nom => ({ name: `${nom}.ogg`, webkitRelativePath: `Musique/Attente/${nom}.ogg` });
-const CATALOGUE_VIDE = { version: 1, licences: {}, morceaux: [] };
+const CATALOGUE_VIDE = { version: 1, licences: {}, entrees: [] };
 const CATALOGUE = { version: 1,
 	licences: { 'CC-BY-4.0': { nom: 'CC BY 4.0', url: 'https://creativecommons.org/licenses/by/4.0/deed.fr' } },
-	morceaux: [{ type: 'attente', titre: 'Ambiance', artiste: 'Kevin MacLeod', dureeMs: 3000, licence: 'CC-BY-4.0',
+	entrees: [{ type: 'attente', titre: 'Ambiance', artiste: 'Kevin MacLeod', dureeMs: 3000, licence: 'CC-BY-4.0',
 		source: 'https://example.org/ambiance', fichier: 'attente/kevin-macleod-ambiance.mp3', tailleOctets: 1200 }] };
-const AVEC_CHANSON = { ...CATALOGUE, morceaux: [...CATALOGUE.morceaux, { type: 'chanson', numero: 1, titre: 'La lanterne',
+const AVEC_CHANSON = { ...CATALOGUE, entrees: [...CATALOGUE.entrees, { type: 'chanson', numero: 1, titre: 'La lanterne',
 	artiste: 'Les Lucioles', dureeMs: 4000, licence: 'CC-BY-4.0', source: 'https://example.org/la-lanterne',
 	fichier: 'chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, lrc: 'chansons/les-lucioles-la-lanterne.lrc' }] };
 const libre = { name: 'kevin-macleod-ambiance.mp3', size: 1200, url: '/bibliotheque/attente/kevin-macleod-ambiance.mp3',

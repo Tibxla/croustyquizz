@@ -36,23 +36,24 @@ public final class CatalogueDeBase {
     private static final Pattern NOM = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]*");
     private static final Pattern FICHIER = Pattern.compile("(attente|instrumentales|chansons)/" + NOM + "\\.(mp3|m4a|ogg|wav)");
     private static final Pattern LRC = Pattern.compile("chansons/" + NOM + "\\.lrc");
-    private static final Set<String> CHAMPS_RACINE = Set.of("version", "licences", "morceaux");
-    private static final Set<String> CHAMPS_COMMUNS = Set.of("type", "titre", "artiste", "album", "dureeMs", "licence",
+    private static final String ALBUM = "album";
+    private static final String URL = "url";
+    private static final Set<String> CHAMPS_RACINE = Set.of("version", "licences", "entrees");
+    private static final Set<String> CHAMPS_LICENCE = Set.of("nom", URL);
+    private static final Set<String> CHAMPS_COMMUNS = Set.of("type", "titre", "artiste", ALBUM, "dureeMs", "licence",
             "source", "fichier", "tailleOctets");
 
-    private final List<MorceauDeBibliotheque> morceaux;
-    private final Map<String, String> nomsDeLicence;
+    private final List<EntreeDeBibliotheque> entreesLues;
     private final Map<Long, ContenuKaraoke> contenus;
     private final Map<String, ChansonDeBibliotheque> parChansonId;
 
-    private CatalogueDeBase(List<MorceauDeBibliotheque> morceaux, Map<String, String> nomsDeLicence,
+    private CatalogueDeBase(List<EntreeDeBibliotheque> morceaux, Map<String, String> nomsDeLicence,
             Map<Long, ContenuKaraoke> contenus) {
-        this.morceaux = List.copyOf(morceaux);
-        this.nomsDeLicence = Map.copyOf(nomsDeLicence);
+        this.entreesLues = List.copyOf(morceaux);
         this.contenus = new LinkedHashMap<>(contenus);
         Map<String, ChansonDeBibliotheque> index = new LinkedHashMap<>();
-        for (MorceauDeBibliotheque morceau : morceaux) {
-            if (morceau.type() != TypeDeMorceau.CHANSON) { continue; }
+        for (EntreeDeBibliotheque morceau : morceaux) {
+            if (morceau.type() != TypeDEntree.CHANSON) { continue; }
             index.put(IdentifiantsChanson.encoderBibliotheque(morceau.numero()), new ChansonDeBibliotheque(morceau.url(),
                     morceau.tailleOctets(), nomsDeLicence.get(morceau.licence()), LICENCES_ACCEPTEES.get(morceau.licence()),
                     morceau.source()));
@@ -60,7 +61,7 @@ public final class CatalogueDeBase {
         this.parChansonId = Map.copyOf(index);
     }
 
-    public List<MorceauDeBibliotheque> morceaux() { return morceaux; }
+    public List<EntreeDeBibliotheque> entrees() { return entreesLues; }
 
     /** Chansons du catalogue avec leurs paroles, dans l'ordre du catalogue. */
     public List<ContenuKaraoke> chansons() { return List.copyOf(contenus.values()); }
@@ -99,14 +100,14 @@ public final class CatalogueDeBase {
                 throw new CatalogueDeBaseInvalide("catalogue : version 1 attendue");
             }
             Map<String, String> noms = licences(catalogue.path("licences"));
-            JsonNode entrees = catalogue.path("morceaux");
-            if (!entrees.isArray()) { throw new CatalogueDeBaseInvalide("catalogue : tableau morceaux attendu"); }
-            List<MorceauDeBibliotheque> morceaux = new ArrayList<>();
+            JsonNode lues = catalogue.path("entrees");
+            if (!lues.isArray()) { throw new CatalogueDeBaseInvalide("catalogue : tableau entrees attendu"); }
+            List<EntreeDeBibliotheque> morceaux = new ArrayList<>();
             int rang = 0;
-            for (JsonNode entree : entrees) {
+            for (JsonNode entree : lues) {
                 rang++;
-                String contexte = "morceau " + rang;
-                try { morceaux.add(morceau(entree, noms, contexte)); }
+                String contexte = "entrée " + rang;
+                try { morceaux.add(entree(entree, noms, contexte)); }
                 catch (IllegalArgumentException erreur) {
                     throw new CatalogueDeBaseInvalide(contexte + " : " + erreur.getMessage(), erreur);
                 }
@@ -123,33 +124,35 @@ public final class CatalogueDeBase {
             for (var licence : licences.properties()) {
                 String code = licence.getKey();
                 URI officielle = LICENCES_ACCEPTEES.get(code);
-                if (officielle == null) { throw new CatalogueDeBaseInvalide("licence « " + code + " » refusée"); }
+                String nommee = "licence « " + code + " »";
+                if (officielle == null) { throw new CatalogueDeBaseInvalide(nommee + " refusée"); }
                 JsonNode fiche = licence.getValue();
-                if (!fiche.isObject()) { throw new CatalogueDeBaseInvalide("licence « " + code + " » : objet attendu"); }
-                verifierChamps("licence « " + code + " »", fiche, Set.of("nom", "url"), Set.of("nom", "url"));
-                if (!fiche.path("url").isString() || !officielle.toString().equals(fiche.path("url").asString())) {
-                    throw new CatalogueDeBaseInvalide("licence « " + code + " » : lien officiel attendu, " + officielle);
+                if (!fiche.isObject()) { throw new CatalogueDeBaseInvalide(nommee + " : objet attendu"); }
+                verifierChamps(nommee, fiche, CHAMPS_LICENCE, CHAMPS_LICENCE);
+                if (!fiche.path(URL).isString() || !officielle.toString().equals(fiche.path(URL).asString())) {
+                    throw new CatalogueDeBaseInvalide(nommee + " : lien officiel attendu, " + officielle);
                 }
                 noms.put(code, texteRequis(fiche, "nom"));
             }
             return noms;
         }
 
-        private MorceauDeBibliotheque morceau(JsonNode entree, Map<String, String> licences, String contexte) {
+        private EntreeDeBibliotheque entree(JsonNode entree, Map<String, String> licences, String contexte) {
             if (!entree.isObject()) { throw new IllegalArgumentException("objet attendu"); }
-            TypeDeMorceau type = type(entree.path("type"));
+            TypeDEntree type = type(entree.path("type"));
             Set<String> permis = new HashSet<>(CHAMPS_COMMUNS);
             Set<String> requis = new HashSet<>(permis);
-            requis.remove("album");
-            if (type == TypeDeMorceau.CHANSON) { permis.addAll(Set.of("numero", "lrc")); requis.addAll(Set.of("numero", "lrc")); }
-            if (type == TypeDeMorceau.INSTRUMENTALE) {
+            requis.remove(ALBUM);
+            if (type == TypeDEntree.CHANSON) { permis.addAll(Set.of("numero", "lrc")); requis.addAll(Set.of("numero", "lrc")); }
+            if (type == TypeDEntree.INSTRUMENTALE) {
                 permis.addAll(Set.of("tempoBpm", "departBeatMs"));
                 requis.addAll(Set.of("tempoBpm", "departBeatMs"));
             }
             verifierChamps(contexte, entree, permis, requis);
             String titre = texteRequis(entree, "titre");
             String artiste = texteRequis(entree, "artiste");
-            String album = entree.path("album").isNull() || entree.path("album").isMissingNode() ? null : texteRequis(entree, "album");
+            JsonNode champAlbum = entree.path(ALBUM);
+            String album = champAlbum.isNull() || champAlbum.isMissingNode() ? null : texteRequis(entree, ALBUM);
             long dureeMs = entier(entree, "dureeMs", 1, ENTIER_MAX);
             String licence = texteRequis(entree, "licence");
             if (!licences.containsKey(licence)) { throw new IllegalArgumentException("licence « " + licence + " » non déclarée"); }
@@ -166,7 +169,7 @@ public final class CatalogueDeBase {
             String lrc = null;
             Integer tempo = null;
             Long depart = null;
-            if (type == TypeDeMorceau.CHANSON) {
+            if (type == TypeDEntree.CHANSON) {
                 numero = entier(entree, "numero", 1, ENTIER_MAX);
                 lrc = texteRequis(entree, "lrc");
                 if (!LRC.matcher(lrc).matches()) { throw new IllegalArgumentException("lrc « " + lrc + " » invalide"); }
@@ -177,11 +180,11 @@ public final class CatalogueDeBase {
                     throw new IllegalArgumentException("numero " + numero + " en double");
                 }
             }
-            if (type == TypeDeMorceau.INSTRUMENTALE) {
+            if (type == TypeDEntree.INSTRUMENTALE) {
                 tempo = (int) entier(entree, "tempoBpm", 40, 300);
                 depart = entier(entree, "departBeatMs", 0, dureeMs - 1);
             }
-            return new MorceauDeBibliotheque(type, titre, artiste, album, dureeMs, licence, source, fichier, taille,
+            return new EntreeDeBibliotheque(type, titre, artiste, album, dureeMs, licence, source, fichier, taille,
                     numero, lrc, tempo, depart);
         }
 
@@ -202,8 +205,8 @@ public final class CatalogueDeBase {
             }
         }
 
-        private static TypeDeMorceau type(JsonNode champ) {
-            for (TypeDeMorceau type : TypeDeMorceau.values()) {
+        private static TypeDEntree type(JsonNode champ) {
+            for (TypeDEntree type : TypeDEntree.values()) {
                 if (champ.isString() && type.nom().equals(champ.asString())) { return type; }
             }
             throw new IllegalArgumentException("type « " + (champ.isString() ? champ.asString() : champ.toString()) + " » inconnu");

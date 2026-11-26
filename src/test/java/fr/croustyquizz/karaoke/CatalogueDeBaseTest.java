@@ -34,15 +34,19 @@ class CatalogueDeBaseTest {
     @Test
     void leCatalogueLivreAvecLApplicationEstValide() {
         var catalogue = CatalogueDeBase.charger(new DefaultResourceLoader(), "classpath:static/bibliotheque/", json);
-        assertThat(catalogue.morceaux()).allSatisfy(morceau ->
+        assertThat(catalogue.entrees()).allSatisfy(morceau ->
                 assertThat(CatalogueDeBase.LICENCES_ACCEPTEES).containsKey(morceau.licence()));
+        // Sans dossier, l'Écran de salle a toujours une Musique d'attente et des Chansons à proposer.
+        assertThat(catalogue.entrees()).extracting(EntreeDeBibliotheque::type)
+                .contains(TypeDEntree.ATTENTE, TypeDEntree.CHANSON);
+        assertThat(catalogue.chansons()).allSatisfy(contenu -> assertThat(contenu.lignes()).isNotEmpty());
     }
 
     @Test
     void leCatalogueDEssaiDonneSesMorceauxSesChansonsEtLeurCredit() {
         var catalogue = essai();
-        assertThat(catalogue.morceaux()).extracting(MorceauDeBibliotheque::type)
-                .containsExactly(TypeDeMorceau.ATTENTE, TypeDeMorceau.CHANSON);
+        assertThat(catalogue.entrees()).extracting(EntreeDeBibliotheque::type)
+                .containsExactly(TypeDEntree.ATTENTE, TypeDEntree.CHANSON);
         var contenu = catalogue.contenu(1).orElseThrow();
         assertThat(contenu.chanson()).isEqualTo(new Chanson(CHANSON_ID, 1, "La lanterne", "Les Lucioles", null, 4000L,
                 EtatParoles.SYNCHRONISEES));
@@ -105,8 +109,8 @@ class CatalogueDeBaseTest {
         Files.createDirectories(dossier.resolve("instrumentales"));
         Files.move(dossier.resolve("attente/essai-attente.wav"), dossier.resolve("instrumentales/essai-attente.wav"));
         var catalogue = CatalogueDeBase.charger(new DefaultResourceLoader(), dossier.toUri().toString(), json);
-        assertThat(catalogue.morceaux().getFirst()).satisfies(m -> {
-            assertThat(m.type()).isEqualTo(TypeDeMorceau.INSTRUMENTALE);
+        assertThat(catalogue.entrees().getFirst()).satisfies(m -> {
+            assertThat(m.type()).isEqualTo(TypeDEntree.INSTRUMENTALE);
             assertThat(m.tempoBpm()).isEqualTo(92);
             assertThat(m.departBeatMs()).isEqualTo(250L);
         });

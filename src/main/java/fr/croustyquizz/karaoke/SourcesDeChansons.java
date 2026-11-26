@@ -9,17 +9,17 @@ import java.util.Optional;
  * désigne la source avant toute consultation : une Chanson du catalogue ne consulte jamais LRCLIB.
  */
 public final class SourcesDeChansons {
-    private final CatalogueDeBase catalogue;
+    private final CatalogueDeBase catalogueDeBase;
     private final SourceDeParoles bibliotheque;
     private final SourceDeParoles lrclib;
 
     public SourcesDeChansons(CatalogueDeBase catalogue, SourceDeParoles lrclib) {
-        this.catalogue = catalogue;
+        this.catalogueDeBase = catalogue;
         this.bibliotheque = new SourceDeParolesDuCatalogue(catalogue);
         this.lrclib = lrclib;
     }
 
-    public CatalogueDeBase catalogue() { return catalogue; }
+    public CatalogueDeBase catalogue() { return catalogueDeBase; }
 
     /** LRCLIB en panne : les Chansons du catalogue suffisent, sauf s'il n'en a aucune. */
     public List<Chanson> rechercher(String rechercheNettoyee) {

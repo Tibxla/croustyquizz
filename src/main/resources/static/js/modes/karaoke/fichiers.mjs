@@ -32,6 +32,8 @@ export function choisirFichierDeChanson(fichiers, chanson) {
 	const local = trouverFichierDeChanson(fichiers ?? [], chanson);
 	const libre = chanson.bibliotheque;
 	if (local.etat === 'unique' || !libre) return local;
-	return { etat: 'unique', bibliotheque: true,
-		fichier: { name: libre.fichier.split('/').at(-1), size: libre.tailleOctets, url: libre.fichier } };
+	return { etat: 'unique', bibliotheque: true, fichier: fichierParUrl(libre.fichier, libre.tailleOctets) };
 }
+
+// Un fichier de la Bibliothèque de base, décrit comme un File du dossier : nom sans chemin, taille, et l'URL qui le lit.
+export const fichierParUrl = (url, tailleOctets) => ({ name: url.split('/').at(-1), size: tailleOctets, url });

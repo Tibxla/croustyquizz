@@ -852,7 +852,7 @@ test('Salle : « Aucun vote » seul à la clôture, en Atkinson et sans aplat ci
 });
 
 const AVEC_CHANSON = { version: 1, licences: { 'CC-BY-SA-4.0': { nom: 'CC BY-SA 4.0',
-	url: 'https://creativecommons.org/licenses/by-sa/4.0/deed.fr' } }, morceaux: [{ type: 'chanson', numero: 1, titre: 'La lanterne',
+	url: 'https://creativecommons.org/licenses/by-sa/4.0/deed.fr' } }, entrees: [{ type: 'chanson', numero: 1, titre: 'La lanterne',
 	artiste: 'Les Lucioles', dureeMs: 4000, licence: 'CC-BY-SA-4.0', source: 'https://example.org/la-lanterne',
 	fichier: 'chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, lrc: 'chansons/les-lucioles-la-lanterne.lrc' }] };
 

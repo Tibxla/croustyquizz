@@ -1,12 +1,10 @@
 import { creerCoordinationSon } from './coordination-son.mjs';
 import { creerLecteurDePassage } from './lecteur-de-passage.mjs';
 import { creerMusiqueDAttente } from './musique-attente.mjs';
-import { chargerBibliotheque, fusionnerMorceauxDAttente, morceauxDeLaBibliotheque, texteCredit } from './bibliotheque.mjs';
+import { CATALOGUE_VIDE, chargerBibliotheque, fusionnerMorceauxDAttente, morceauxDeLaBibliotheque, texteCredit } from './bibliotheque.mjs';
 import { creerUuid } from './modes/karaoke/commun.mjs';
 import { estFichierAudio } from './modes/karaoke/fichiers.mjs';
 import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
-
-const CATALOGUE_VIDE = { version: 1, licences: {}, morceaux: [] };
 
 // `dossier` garde les fichiers du Lieu (null sans dossier). `fichiers` est ce que lisent les modules : null tant que la
 // fenêtre n'est pas prête, [] quand « Activer le son » la rend prête avec les seules Chansons de la Bibliothèque de base.
@@ -18,7 +16,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 		morceauxDisponibles, morceauEnCours });
 	function lireCatalogue(nouveau) {
 		bibliotheque = morceauxDeLaBibliotheque(nouveau, 'attente');
-		chansonsLibres = nouveau.morceaux.some(morceau => morceau.type === 'chanson');
+		chansonsLibres = nouveau.entrees.some(morceau => morceau.type === 'chanson');
 		if (chansonsLibres && sonDebloque) fichiers ??= [];
 	}
 	function notifier() { for (const rappel of abonnes) rappel(etat()); }

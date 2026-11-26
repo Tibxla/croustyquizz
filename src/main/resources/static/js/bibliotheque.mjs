@@ -1,18 +1,18 @@
 // Bibliothèque de base (ADR 0011) : musique libre livrée avec l'application, décrite par son catalogue.
-import { estFichierAudio, fichiersDeMusiqueDAttente, normaliserNomAudio } from './modes/karaoke/fichiers.mjs';
+import { estFichierAudio, fichierParUrl, fichiersDeMusiqueDAttente, normaliserNomAudio } from './modes/karaoke/fichiers.mjs';
 
-const VIDE = Object.freeze({ version: 1, licences: {}, morceaux: [] });
+export const CATALOGUE_VIDE = Object.freeze({ version: 1, licences: {}, entrees: Object.freeze([]) });
 const SECTIONS = [['attente', 'Musique d’attente'], ['instrumentale', 'Instrumentales du Freestyle'], ['chanson', 'Chansons du Karaoké']];
 
 // Le catalogue est revalidé à chaque chargement ; sans lui, la bibliothèque est vide et le dossier du Lieu suffit.
 export async function chargerBibliotheque(chercher = globalThis.fetch) {
 	try {
 		const reponse = await chercher('/bibliotheque/catalogue.json', { cache: 'no-cache' });
-		if (!reponse.ok) return VIDE;
+		if (!reponse.ok) return CATALOGUE_VIDE;
 		const catalogue = await reponse.json();
-		return Array.isArray(catalogue?.morceaux) && catalogue.licences && typeof catalogue.licences === 'object' ? catalogue : VIDE;
+		return Array.isArray(catalogue?.entrees) && catalogue.licences && typeof catalogue.licences === 'object' ? catalogue : CATALOGUE_VIDE;
 	} catch {
-		return VIDE;
+		return CATALOGUE_VIDE;
 	}
 }
 
@@ -23,9 +23,8 @@ function credit(catalogue, morceau) {
 
 // Chaque entrée devient un fichier lisible par son URL, comme un fichier du dossier l'est par son objet File.
 export function morceauxDeLaBibliotheque(catalogue, type) {
-	return catalogue.morceaux.filter(morceau => morceau.type === type).map(morceau => ({
-		name: morceau.fichier.split('/').at(-1), size: morceau.tailleOctets, url: `/bibliotheque/${morceau.fichier}`,
-		credit: credit(catalogue, morceau),
+	return catalogue.entrees.filter(morceau => morceau.type === type).map(morceau => ({
+		...fichierParUrl(`/bibliotheque/${morceau.fichier}`, morceau.tailleOctets), credit: credit(catalogue, morceau),
 	}));
 }
 
@@ -43,7 +42,7 @@ export const texteCredit = ({ titre, artiste, licence }) => `« ${titre} », ${a
 
 // Données de la page des crédits, section par section, dans l'ordre du catalogue.
 export function decrireCredits(catalogue) {
-	return SECTIONS.map(([type, titre]) => ({ type, titre, entrees: catalogue.morceaux.filter(m => m.type === type).map(morceau => {
+	return SECTIONS.map(([type, titre]) => ({ type, titre, entrees: catalogue.entrees.filter(m => m.type === type).map(morceau => {
 		const { licence, urlLicence } = credit(catalogue, morceau);
 		return { titre: morceau.titre, artiste: morceau.artiste, licence, urlLicence, source: morceau.source,
 			paroles: morceau.lrc ? `/bibliotheque/${morceau.lrc}` : null, parolesPartagees: /BY-SA/.test(morceau.licence) };
