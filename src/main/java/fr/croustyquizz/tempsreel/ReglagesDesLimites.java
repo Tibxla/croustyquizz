@@ -27,10 +27,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *                       couvre l'arrivée d'une salle entière ; les retardataires passent ensuite à 20 par minute
  * @param accesEcran     par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle
  * @param qrCode         par clé d'Écran : l'Écran de salle ne le charge qu'au changement de code
+ * @param connexionAdresse par adresse IP : borne le nombre de vérifications BCrypt, même avec des e-mails différents
+ * @param connexionEmail par e-mail normalisé : borne les essais sur un compte même depuis plusieurs réseaux
+ * @param inscriptionAdresse par adresse IP : freine la création de comptes et l'énumération des e-mails connus
  */
 @ConfigurationProperties("croustyquizz.limites")
 public record ReglagesDesLimites(boolean actif, int plafondCles, Seuil buzz, Seuil reponses, Seuil codesInconnus,
-		Seuil arrivees, Seuil accesEcran, Seuil qrCode) {
+		Seuil arrivees, Seuil accesEcran, Seuil qrCode, Seuil connexionAdresse, Seuil connexionEmail, Seuil inscriptionAdresse) {
 
 	public ReglagesDesLimites {
 		if (plafondCles <= 0) {
@@ -42,6 +45,9 @@ public record ReglagesDesLimites(boolean actif, int plafondCles, Seuil buzz, Seu
 		Objects.requireNonNull(arrivees, "croustyquizz.limites.arrivees manquant");
 		Objects.requireNonNull(accesEcran, "croustyquizz.limites.acces-ecran manquant");
 		Objects.requireNonNull(qrCode, "croustyquizz.limites.qr-code manquant");
+		Objects.requireNonNull(connexionAdresse, "croustyquizz.limites.connexion-adresse manquant");
+		Objects.requireNonNull(connexionEmail, "croustyquizz.limites.connexion-email manquant");
+		Objects.requireNonNull(inscriptionAdresse, "croustyquizz.limites.inscription-adresse manquant");
 	}
 
 	/** Rafale acceptée d'un coup, puis un jeton regagné à chaque intervalle. */

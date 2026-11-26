@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.manche.ReponsesDeCommande;
+import fr.croustyquizz.tempsreel.LimiteDeRequetes;
 
 @RestController
 class AnimateurControleur {
@@ -36,13 +37,15 @@ class AnimateurControleur {
 	static final String SESSION = "/api/animateurs/session";
 
 	private final ComptesAnimateur comptes;
+	private final LimiteDeRequetes limites;
 	private final HttpSessionSecurityContextRepository sessions;
 	private final SessionAuthenticationStrategy renouvellement;
 	private final LogoutHandler fermeture;
 
-	AnimateurControleur(ComptesAnimateur comptes, HttpSessionSecurityContextRepository sessions,
+	AnimateurControleur(ComptesAnimateur comptes, LimiteDeRequetes limites, HttpSessionSecurityContextRepository sessions,
 			SessionAuthenticationStrategy renouvellement) {
 		this.comptes = comptes;
+		this.limites = limites;
 		this.sessions = sessions;
 		this.renouvellement = renouvellement;
 		// Invalider la session suffit : le cookie restant ne désigne plus aucune session.
@@ -64,9 +67,14 @@ class AnimateurControleur {
 	}
 
 	@PostMapping(SESSION)
-	ResponseEntity<ComptesAnimateur.IdentiteAnimateur> connecterAnimateur(@Valid @RequestBody SaisiesAnimateur.Connexion saisie,
+	ResponseEntity<?> connecterAnimateur(@Valid @RequestBody SaisiesAnimateur.Connexion saisie,
 			HttpServletRequest requete, HttpServletResponse reponse) {
-		var identite = comptes.reconnaitre(saisie);
+		String emailNormalise = ComptesAnimateur.normaliser(saisie.email());
+		var refus = limites.compterEssaiDeConnexion(emailNormalise, requete);
+		if (refus.isPresent()) {
+			return refus.orElseThrow();
+		}
+		var identite = comptes.reconnaitre(emailNormalise, saisie.motDePasse());
 		var authentification = UsernamePasswordAuthenticationToken.authenticated(identite, null, List.of());
 		renouvellement.onAuthentication(authentification, requete, reponse);
 		var contexte = SecurityContextHolder.createEmptyContext();

@@ -40,7 +40,7 @@ croustyquizz:
   # Justification de chaque seuil dans ReglagesDesLimites ; réglage dans docs/deploiement.md.
   limites:
     actif: true
-    # Par route : chacune a sa table. Environ 200 octets par clé : au pire, 9 routes × 20 000 clés font 40 Mo.
+    # Par seuil : chacun a sa table. Environ 200 octets par clé : au pire, 12 tables × 20 000 clés font 48 Mo.
     plafond-cles: 20000
     # Par jeton. La Manette attend la réponse avant un nouveau Buzz : 5 par seconde reste hors de portée d'un doigt.
     buzz:
@@ -67,6 +67,15 @@ croustyquizz:
     qr-code:
       rafale: 10
       intervalle: 1s
+    connexion-adresse:
+      rafale: 20
+      intervalle: 3s
+    connexion-email:
+      rafale: 5
+      intervalle: 30s
+    inscription-adresse:
+      rafale: 10
+      intervalle: 60s
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30

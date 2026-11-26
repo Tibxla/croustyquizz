@@ -373,7 +373,8 @@ class LimiteDeRequetesTest {
 	private static ReglagesDesLimites reglages(boolean actif, int plafond, ReglagesDesLimites.Seuil arrivees) {
 		return new ReglagesDesLimites(actif, plafond, DEUX_PAR_SECONDE, DEUX_PAR_SECONDE,
 				new ReglagesDesLimites.Seuil(2, Duration.ofSeconds(3)), arrivees,
-				new ReglagesDesLimites.Seuil(2, Duration.ofSeconds(6)), DEUX_PAR_SECONDE);
+				new ReglagesDesLimites.Seuil(2, Duration.ofSeconds(6)), DEUX_PAR_SECONDE,
+				DEUX_PAR_SECONDE, DEUX_PAR_SECONDE, DEUX_PAR_SECONDE);
 	}
 
 }

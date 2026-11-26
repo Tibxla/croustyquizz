@@ -48,11 +48,11 @@ class ComptesAnimateur {
 		return new CompteCree(animateur, lieu);
 	}
 
-	IdentiteAnimateur reconnaitre(SaisiesAnimateur.Connexion saisie) {
+	IdentiteAnimateur reconnaitre(String emailNormalise, String motDePasse) {
 		var compte = jdbc.sql("""
 				select id, nom, lieu_id, mot_de_passe_hache from animateur where lower(email) = :email
 				""")
-				.param("email", normaliser(saisie.email()))
+				.param("email", emailNormalise)
 				.query((ligne, numero) -> new Compte(
 						new IdentiteAnimateur(ligne.getObject("id", UUID.class), ligne.getString("nom"),
 								ligne.getObject("lieu_id", UUID.class)),
@@ -60,7 +60,7 @@ class ComptesAnimateur {
 				.optional();
 		// Un e-mail inconnu passe lui aussi par une vérification BCrypt.
 		String hachage = compte.map(Compte::hachage).orElse(hachageSansCompte);
-		boolean correspond = encodeur.matches(empreinte(saisie.motDePasse()), hachage);
+		boolean correspond = encodeur.matches(empreinte(motDePasse), hachage);
 		if (!correspond || compte.isEmpty()) {
 			throw new Refuse(401, "IDENTIFIANTS_INVALIDES", "L’e-mail ou le mot de passe est invalide.").exception();
 		}
@@ -68,7 +68,7 @@ class ComptesAnimateur {
 	}
 
 	/** La casse est repliée en Java : le lower() de PostgreSQL dépend de la locale de la base. */
-	private static String normaliser(String email) {
+	static String normaliser(String email) {
 		return email.toLowerCase(Locale.ROOT);
 	}
 
