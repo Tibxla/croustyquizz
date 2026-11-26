@@ -173,8 +173,12 @@ Page affichée sur la télévision ou le projecteur du lieu, visible par toute l
 _Éviter_ : écran principal, TV, affichage
 
 **Musique d'attente** :
-Musique que l'Écran de salle joue entre les Manches et entre les Passages, prise dans les fichiers de l'ordinateur qui l'affiche. Elle se tait pendant tout son de Manche, et l'Animateur peut la couper.
+Musique que l'Écran de salle joue entre les Manches et entre les Passages, prise dans la Bibliothèque de base et dans les fichiers de l'ordinateur qui l'affiche. Elle se tait pendant tout son de Manche, et l'Animateur peut la couper.
 _Éviter_ : playlist, fond sonore, ambiance
+
+**Bibliothèque de base** :
+Musique libre livrée avec l'application (Musique d'attente, Instrumentales, Chansons avec leurs paroles synchronisées), décrite par un catalogue et créditée pendant sa lecture. Le dossier de musique du Lieu s'y ajoute (ADR 0011).
+_Éviter_ : playlist par défaut, banque de sons, catalogue (réservé au fichier qui la décrit)
 
 **Console d'animation** :
 Page web ouverte par l'Animateur sur un ordinateur ou une tablette, depuis laquelle il crée une Soirée, lance les Manches et intervient en cours de jeu.
