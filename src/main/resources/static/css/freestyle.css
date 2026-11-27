@@ -115,3 +115,6 @@
 @media (prefers-reduced-motion: reduce) {
   .freestyle__balle { transform: translateX(-50%); }
 }
+
+/* Inscription sur la Manette : le champ de l'Instrumentale, les invités, puis l'envoi. */
+.freestyle__inscription { display: grid; gap: var(--espace-3); }

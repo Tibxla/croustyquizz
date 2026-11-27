@@ -34,8 +34,11 @@ export function monter(zones, contexte) {
 	const statut = e('p'); statut.setAttribute('role', 'status');
 	const reessayer = bouton('Réessayer le même envoi', () => ui.reessayer(ui.dernierEchec(inscription)?.cle));
 	const aide = e('p');
-	const panneau = e('div', 'champ');
-	panneau.append(label, choix, invites.element, aide, envoyer, statut, reessayer);
+	// Seul le choix de l'Instrumentale est un champ : « .champ input » grossirait les cases des invités.
+	const champ = e('div', 'champ');
+	champ.append(label, choix);
+	const panneau = e('div', 'freestyle__inscription');
+	panneau.append(champ, invites.element, aide, envoyer, statut, reessayer);
 	const file = e('div', 'karaoke__personnels');
 	ui.principale.append(titre, panneau, e('h2', '', 'Tes Passages en attente'), file);
 
@@ -49,6 +52,7 @@ export function monter(zones, contexte) {
 		invitations.rendre(titre);
 		const couplets = bloc.courant?.couplets;
 		const interprete = bloc.courant?.interpretes.some(i => i.joueurId === moi);
+		const enScene = interprete && ['APPELE', 'EN_COURS', 'EN_PAUSE'].includes(bloc.courant.etat);
 		const texteAnnonce = bloc.monCoupletAnnonce ? 'À toi dans une mesure !' : '';
 		if (annonce.textContent !== texteAnnonce) annonce.textContent = texteAnnonce;
 		couplet.hidden = !couplets || !interprete;
@@ -79,7 +83,8 @@ export function monter(zones, contexte) {
 		// Sans confirmation, un nouvel envoi pourrait doubler l'inscription : seul le réessai du même envoi reste permis.
 		const aConfirmer = ['inconnu', 'indisponible'].includes(envoi?.etat);
 		envoyer.disabled = choix.disabled = !ui.mutationsPermises || !bloc.peutInscrire || enCours || aConfirmer;
-		invites.rendre({ vider: viderInvites, desactiver: envoyer.disabled });
+		// En scène, le Joueur rappe : la liste d'invitation revient après son Passage.
+		invites.rendre({ vider: viderInvites, desactiver: envoyer.disabled, masquer: enScene });
 		aide.textContent = disponibles.length ? (bloc.peutInscrire ? '' : 'Tu ne peux pas ajouter de Passage pour le moment.')
 			: 'Aucune Instrumentale disponible pour le moment.';
 		const texte = texteEnvoi(envoi);

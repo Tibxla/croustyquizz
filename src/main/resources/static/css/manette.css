@@ -114,3 +114,10 @@
   30% { transform: translate(0, 2px) rotate(-0.4deg); }
   100% { transform: translate(-4px, 14px) rotate(-3deg); box-shadow: var(--ombre); }
 }
+
+/* Invités d'un Passage à plusieurs (#138, #74) : une ligne par Joueur, la case à
+   gauche du pseudo. Commun au Karaoké et au Freestyle, hors de tout « .champ ». */
+.karaoke__invites { display: grid; gap: var(--espace-2); margin: 0; padding: 0; border: 0; }
+.karaoke__invites legend { padding: 0; font-weight: 700; }
+.karaoke__invite { display: flex; gap: var(--espace-2); align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+.karaoke__invite input { width: 1.25rem; height: 1.25rem; flex: none; accent-color: var(--citron); }
