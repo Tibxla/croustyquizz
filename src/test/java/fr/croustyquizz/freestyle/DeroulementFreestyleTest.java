@@ -214,6 +214,39 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
         assertThat(vue(Destination.CONSOLE)).containsEntry("passagesEnAttente", List.of()).containsEntry("nombreEnAttente", 0);
     }
 
+    @Test
+    void leDepartEnPauseTransmetLePassageAuPremierInterpreteQuiAAccepte() {
+        deroulement.demarrer();
+        var premierAccepte = new UUID(0, 51);
+        var secondAccepte = new UUID(0, 52);
+        var silencieux = new UUID(0, 53);
+        var maintenant = horloge.maintenant();
+        var inscription = new InscrireFreestyle(joueur(JOUEUR), maintenant, UUID.randomUUID(), PASSAGE, 1,
+                INSTRUMENTALE.instrumentaleId(), List.of(INSTRUMENTALE), DictionnaireDeRimesFactice.MOTS_DE_VILLE,
+                List.of(secondAccepte, premierAccepte, silencieux), true);
+        assertThat(deroulement.recevoir(inscription)).isInstanceOf(Accepte.class);
+        assertThat(deroulement.recevoir(new RepondreInvitation(joueur(premierAccepte), maintenant, UUID.randomUUID(),
+                cible(0), true))).isInstanceOf(Accepte.class);
+        assertThat(deroulement.recevoir(new RepondreInvitation(joueur(secondAccepte), maintenant, UUID.randomUUID(),
+                cible(1), true))).isInstanceOf(Accepte.class);
+        assertThat(deroulement.mettreEnPause(pilotage())).isInstanceOf(Accepte.class);
+
+        var freestyle = (DeroulementFreestyle) deroulement;
+        assertThat(freestyle.retirerJoueurParti(JOUEUR, maintenant)).isInstanceOfSatisfying(Accepte.class, depart -> {
+            assertThat(depart.accuse()).isNull();
+            assertThat(depart.typeEvenement()).isEqualTo("file-attente-modifiee");
+            assertThat(depart.aRepublier()).isEqualTo(ECRANS);
+        });
+        assertThat(courant().etat()).isEqualTo(EtatPassage.EN_ATTENTE);
+        assertThat(courant().inscripteurId()).isEqualTo(premierAccepte);
+        assertThat(courant().interpretes()).containsExactly(premierAccepte, secondAccepte);
+        var apresDepart = instantane();
+        assertThat(apresDepart.etat().file().invitations()).extracting(InvitationPassage::etat)
+                .containsExactly(InvitationPassage.Etat.ACCEPTEE, InvitationPassage.Etat.ACCEPTEE, InvitationPassage.Etat.EXPIREE);
+        assertThat(freestyle.retirerJoueurParti(JOUEUR, maintenant)).isInstanceOf(Refuse.class);
+        assertThat(instantane()).isEqualTo(apresDepart);
+    }
+
     private ContexteDeManche contexte(boolean automatique) {
         return new ContexteDeManche(SOIREE, MANCHE, fabrique.reglagesCommuns(REGLAGES), horloge,
                 () -> finsSignalees++, automatique);

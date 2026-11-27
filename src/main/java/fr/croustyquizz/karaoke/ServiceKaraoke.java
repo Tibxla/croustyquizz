@@ -4,6 +4,7 @@ import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.*;
 import fr.croustyquizz.tempsreel.AccesAuxVues;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -69,6 +70,12 @@ public class ServiceKaraoke extends ServiceDePassages<ReglagesKaraoke, EtatKarao
             });
         });
     }
+
+    @Override public void retirerJoueurParti(UUID soireeId, UUID mancheId, UUID joueurId) {
+        appliquer(soireeId, mancheId, d -> ((DeroulementKaraoke) d).retirerJoueurParti(joueurId,
+                socle.horloge().maintenant().truncatedTo(ChronoUnit.MICROS)));
+    }
+
     public ResultatDeCommande designerLecteurChanson(UUID mancheId, EnvoiDeCommande envoi, CorpsKaraoke.DesignationLecteur corps) {
         return commander(mancheId, envoi, Acteur.Type.ECRAN, maintenant -> new DesignerLecteurChanson(
                 envoi.acteur(), maintenant, envoi.envoiId(), corps.lecteurId()));

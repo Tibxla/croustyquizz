@@ -58,6 +58,11 @@ public class ServiceFreestyle extends ServiceDePassages<ReglagesFreestyle, EtatF
         return ((InstantaneFreestyle) instantane).etatManche();
     }
 
+    @Override public void retirerJoueurParti(UUID soireeId, UUID mancheId, UUID joueurId) {
+        appliquer(soireeId, mancheId, d -> ((DeroulementFreestyle) d).retirerJoueurParti(joueurId,
+                socle.horloge().maintenant().truncatedTo(MICROS)));
+    }
+
     @Override public ResultatDeCommande inscrire(UUID mancheId, EnvoiDeCommande envoi, CorpsPassage.Inscription corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
         UUID soireeId = envoi.acteur().soireeId();

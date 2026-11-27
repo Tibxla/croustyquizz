@@ -9,6 +9,7 @@ import static org.springframework.http.HttpMethod.PUT;
 import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.HorlogeFactice;
+import fr.croustyquizz.manche.RegistreServicesDeManche;
 import fr.croustyquizz.manche.SocleDeManche;
 import fr.croustyquizz.tempsreel.Canaux;
 import fr.croustyquizz.tempsreel.RegistreAbonnements;
@@ -52,6 +53,7 @@ class FreestyleTempsReelTest {
     @Autowired HorlogeFactice horloge;
     @Autowired SocleDeManche socle;
     @Autowired ServiceFreestyle service;
+    @Autowired RegistreServicesDeManche modes;
     @Autowired RegistreAbonnements abonnements;
 
     @Test void uneSoireeEnregistreeJoueDeuxPassagesEtPublieLeurPalmaresSansPoints() throws Exception {
@@ -283,6 +285,87 @@ class FreestyleTempsReelTest {
             var lignes = appeler(GET, racine + "/etat/console", animateur, null, "retrouverEtatConsole", 200).at("/vue/palmaresFreestyle");
             assertThat(lignes.findValuesAsString("pseudo")).containsExactly("Zoé", "Inès", "Maël");
             assertThat(lignes.at("/1/rang").isNull()).isTrue();
+        } finally {
+            if (session != null && session.isConnected()) { session.disconnect(); }
+            stomp.stop();
+            executeur.close();
+        }
+    }
+
+    @Test void leDepartTransmetLePassageEtPublieLaFileMiseAJour() throws Exception {
+        var soiree = appeler(POST, "/api/soirees", null,
+                Map.of("titre", "Freestyle après un Départ", "format", "SOLO", "pilotage", "MANUEL"), "creerSoiree", 201);
+        UUID soireeId = UUID.fromString(soiree.path("id").asString());
+        String racine = "/api/soirees/" + soireeId;
+        String animateur = "demo:ANIMATEUR:" + soireeId + ":" + UUID.randomUUID();
+        String lecteur = appeler(POST, racine + "/acces-ecran", animateur, null, "creerAccesEcran", 200).path("cleEcran").asString();
+        String code = appeler(POST, racine + "/ouverture", animateur, null, "ouvrirSoiree", 200).path("codeAcces").asString();
+        var inscrivant = acces(code, "Inès");
+        var invite = acces(code, "Maël");
+        var silencieuse = acces(code, "Zoé");
+        UUID fiche = UUID.randomUUID();
+        appeler(PUT, racine + "/freestyle/instrumentales", lecteur, Map.of("lecteurId", UUID.randomUUID(), "instrumentales",
+                List.of(Map.of("instrumentaleId", fiche, "titre", "Pavés mouillés", "tempoBpm", 120, "departBeatMs", 250,
+                        "dureeMs", 95_000))), "declarerInstrumentales", 200);
+        var reglages = Map.of("theme", "VILLE", "schemaDeRimes", "ABAB", "difficulte", "TOUS", "nombreMesures", 8,
+                "instrumentaleIds", List.of(fiche));
+        var manche = appeler(POST, racine + "/manches", animateur, Map.of("mode", "FREESTYLE", "reglages", reglages), "ajouterManche", 201);
+        UUID mancheId = UUID.fromString(manche.path("id").asString());
+        appeler(POST, racine + "/commandes", animateur, Map.of("action", "LANCER"), "piloterSoiree", 200);
+        String passages = racine + "/manches/" + mancheId + "/passages";
+        String passageId = appeler(POST, passages, inscrivant.jeton(), Map.of("envoiId", UUID.randomUUID(), "instrumentaleId", fiche,
+                "invitesIds", List.of(invite.id(), silencieuse.id())), "inscrirePassage", 201).path("passageId").asString();
+        appeler(POST, passages + "/" + passageId + "/invitation", invite.jeton(), Map.of("envoiId", UUID.randomUUID(),
+                "numeroModification", 0, "reponse", "ACCEPTER"), "repondreInvitation", 200);
+        var avant = appeler(GET, racine + "/etat/manette", silencieuse.jeton(), null, "retrouverEtatManette", 200);
+        assertThat(avant.at("/vue/freestyle/invitationsRecues/0/passage/passageId").asString()).isEqualTo(passageId);
+
+        var websocket = new StandardWebSocketClient();
+        var executeur = new SimpleAsyncTaskExecutor("freestyle-depart-");
+        websocket.setTaskExecutor(executeur);
+        var stomp = new WebSocketStompClient(websocket);
+        stomp.setMessageConverter(new JacksonJsonMessageConverter());
+        StompSession session = null;
+        try {
+            var connexion = new StompHeaders();
+            connexion.set("Authorization", "Bearer " + lecteur);
+            session = stomp.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), connexion,
+                    new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+            var messages = new LinkedBlockingQueue<JsonNode>();
+            String destination = Canaux.salle(soireeId);
+            UUID abonnementId = UUID.randomUUID();
+            var abonnement = new StompHeaders();
+            abonnement.setId(abonnementId.toString());
+            abonnement.setDestination(destination);
+            session.subscribe(abonnement, new StompFrameHandler() {
+                @Override public Type getPayloadType(StompHeaders entetes) { return Map.class; }
+                @Override public void handleFrame(StompHeaders entetes, Object corps) { messages.add(json.valueToTree(corps)); }
+            });
+            await().atMost(Duration.ofSeconds(3)).until(() -> abonnements.estInstalle(abonnementId, destination));
+
+            modes.retirerJoueurParti(soireeId, inscrivant.id());
+
+            var publication = evenement(messages, "file-attente-modifiee");
+            var passage = publication.at("/donnees/freestyle/passagesEnAttente/0");
+            assertThat(passage.path("passageId").asString()).isEqualTo(passageId);
+            assertThat(passage.path("interpretes").findValuesAsString("joueurId")).containsExactly(invite.id().toString());
+            var salle = appeler(GET, racine + "/etat/salle", lecteur, null, "retrouverEtatSalle", 200);
+            assertThat(salle.path("vue")).isEqualTo(publication.path("donnees"));
+            assertThat(salle.path("revision")).isEqualTo(publication.path("revision"));
+            var console = appeler(GET, racine + "/etat/console", animateur, null, "retrouverEtatConsole", 200);
+            assertThat(console.at("/vue/freestyle/invitationsEnAttente").isEmpty()).isTrue();
+            var invitationsRecues = appeler(GET, racine + "/etat/manette", silencieuse.jeton(), null, "retrouverEtatManette", 200);
+            assertThat(invitationsRecues.at("/vue/freestyle/invitationsRecues").isEmpty()).isTrue();
+            var nouvelInscripteur = appeler(GET, racine + "/etat/manette", invite.jeton(), null, "retrouverEtatManette", 200);
+            var invitationsEmises = nouvelInscripteur.at("/vue/freestyle/invitationsEmises");
+            assertThat(invitationsEmises.findValuesAsString("passageId")).containsExactly(passageId);
+            assertThat(invitationsEmises.at("/0/numero")).isEqualTo(passage.path("numero"));
+            assertThat(invitationsEmises.findValuesAsString("etat")).containsExactly("EXPIREE");
+            assertThat(invitationsEmises.findValuesAsString("joueurId")).containsExactly(silencieuse.id().toString());
+
+            var transmis = service.instantane(soireeId, mancheId);
+            socle.registre().retirer(mancheId);
+            assertThat(service.instantane(soireeId, mancheId)).isEqualTo(transmis);
         } finally {
             if (session != null && session.isConnected()) { session.disconnect(); }
             stomp.stop();
