@@ -461,6 +461,20 @@ test('le style des cases d’invités est commun à la Manette, hors de la feuil
 	assert.doesNotMatch(karaoke, /\.karaoke__invites?\b/);
 });
 
+test('sur la Manette du Freestyle, un pseudo ne se tronque qu’au-delà de deux lignes, et aucun ne disparaît (#283)', async () => {
+	const css = await lireStatique('css/freestyle.css');
+	// Un Interprète par ligne : la ligne entière n'est jamais coupée, sinon un quatuor perdrait ses derniers noms.
+	const ligne = regle(css, '.freestyle .mon-ticket .karaoke__interpretes');
+	assert.match(ligne, /flex-direction: column;/);
+	assert.doesNotMatch(ligne, /line-clamp|overflow: hidden/);
+	assert.match(regle(css, '.freestyle .mon-ticket .karaoke__separateur'), /display: none;/);
+	const pseudo = regle(css, '.freestyle .mon-ticket .karaoke__pseudo');
+	assert.match(pseudo, /display: -webkit-box;/);
+	assert.match(pseudo, /-webkit-line-clamp: 2;/);
+	assert.match(pseudo, /max-width: none;/);
+	assert.match(pseudo, /white-space: normal;/);
+});
+
 test('seule la Manette annoncée vibre, une fois, à l’événement d’annonce', () => {
 	const vibrations = [];
 	const banc = creerBanc(monterManette);
