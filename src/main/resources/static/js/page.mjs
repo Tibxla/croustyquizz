@@ -5,6 +5,7 @@ import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { afficherClassementDeSalle, decrireBarre, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterMenu } from './menu.mjs';
+import { creerAnnonceBuzz, creerArrivees, estAccueil } from './salle-accueil.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -62,6 +63,7 @@ function afficherCommun(vue) {
 	texte('titre-palmares', vue.palmaresFreestyle != null ? 'Palmarès du Freestyle' : 'Palmarès du Karaoké');
 	afficherPalmares(ecran === 'ecran' ? decrirePalmaresDeSalle(vue) : description.palmares);
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
+	texte('titre-pied', vue.soiree.titre);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	if (element('barre-mode')) {
 		// La barre de la Console dit d'un coup d'œil l'étape, le code d'accès et le nombre de Joueurs (#282).
@@ -103,6 +105,25 @@ async function demarrer() {
 		return;
 	}
 	const zoneTalon = element('talon');
+	// Salle : hors Manche, le talon passe au centre avec les arrivées ; en Manche, il revient en bas de colonne (#281).
+	const accueil = element('accueil');
+	const arrivees = accueil ? creerArrivees(element('arrivees')) : null;
+	const annonceBuzz = element('annonce-buzz') ? creerAnnonceBuzz(element('annonce-buzz')) : null;
+	const colonneTalon = zoneTalon?.parentNode;
+	function afficherScene(vue, origine) {
+		if (!accueil) return;
+		const enAccueil = estAccueil(vue, { photo: element('photos')?.hidden === false });
+		document.body.classList.toggle('salle--accueil', enAccueil);
+		document.body.classList.toggle('salle--manche', Boolean(vue.modeEnCours));
+		accueil.hidden = !enAccueil;
+		const place = enAccueil ? element('accueil-talon') : colonneTalon;
+		if (zoneTalon.parentNode !== place) place.append(zoneTalon);
+		arrivees.afficher(vue.joueurs, origine);
+		element('arrivees-vide').hidden = vue.joueurs.length > 0;
+		texte('arrivees-titre', vue.joueurs.length ? `Déjà là · ${vue.joueurs.length}` : 'Déjà là');
+		if (enAccueil) texte('attente', '');
+		annonceBuzz.afficher(vue, origine);
+	}
 	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
 	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
@@ -154,6 +175,7 @@ async function demarrer() {
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
 			musiqueSalle?.afficher(vue, modeAffiche);
+			afficherScene(vue, origine);
 		},
 		surEtat(etat) {
 			changerEtat(etat);
@@ -165,7 +187,7 @@ async function demarrer() {
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		talon?.demonter();
+		talon?.demonter(); annonceBuzz?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
 		pilotage?.demonter(); menu?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter(); catalogueInstrumentales?.demonter();

@@ -94,7 +94,7 @@ export function decrireClassementDeSalle(vue) {
 		return { titre: 'Podium final', podium: true, lignes: vue.classement.filter(ligne => ligne.rang <= 3).map(decrireLigne) };
 	}
 	if (vue.palmaresKaraoke != null || vue.palmaresFreestyle != null) return null;
-	if (vue.mancheActive || (vue.soiree.etat !== 'EN_COURS' && vue.classement.length === 0)) return null;
+	if (vue.mancheActive || vue.classement.length === 0) return null;
 	return { titre: 'Classement général · Top 10', podium: false, lignes: vue.classement.slice(0, 10).map(decrireLigne) };
 }
 

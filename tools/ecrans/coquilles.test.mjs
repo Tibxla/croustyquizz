@@ -114,3 +114,26 @@ test('Manette : aucun texte sous 16 px (#280, M1)', async () => {
 	}
 	assert.match(regle[2], /font-size:\s*1rem/);
 });
+
+test('Écran de salle : l’accueil invite à jouer au centre, le pied porte le titre, le son et la connexion (#281)', async () => {
+	const html = await lire('ecran.html');
+	const principal = bloc(html, 'class="salle__principal"');
+	const accueil = bloc(principal, 'data-accueil');
+	assert.match(accueil, /data-accueil-talon/);
+	assert.match(accueil, /data-arrivees/);
+	assert.match(principal, /data-annonce-buzz/);
+	const talon = bloc(html, 'data-talon');
+	assert.match(talon, /Scanne pour jouer/);
+	assert.doesNotMatch(talon, /Code d’accès de la Soirée/);
+	const pied = bloc(html, 'class="salle__pied"');
+	for (const attribut of ['data-titre-pied', 'data-connexion', 'data-audio-salle', 'data-son-etat']) assert.match(pied, new RegExp(attribut), attribut);
+	// Les commandes de mise en route quittent la scène pour le pied.
+	assert.doesNotMatch(principal.replace(pied, ''), /data-choisir-dossier|data-activer-son/);
+});
+
+test('Écran de salle : en Manche, la scène commence par le mode ; à l’accueil, la colonne s’efface (#281, #283)', async () => {
+	const css = await lire('css/ecran-de-salle.css');
+	assert.match(css, /\.salle--manche \.salle__principal > \.coquille__commun \{[^}]*display:\s*none/);
+	assert.match(css, /\.salle--accueil \.salle__scene \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+	assert.match(css, /\.salle--accueil \.salle__cote \{[^}]*display:\s*none/);
+});

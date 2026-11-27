@@ -27,7 +27,8 @@ test('la salle affiche dix lignes entre deux Manches et retire le classement pen
 	assert.equal(description.lignes.length, 10);
 	assert.equal(description.lignes.at(-1), '10. Joueur 10 · 6 points');
 	assert.equal(decrireClassementDeSalle({ ...vue, mancheActive: { ordre: 1, etat: 'EN_PAUSE' } }), null);
-	assert.deepEqual(decrireClassementDeSalle({ ...vue, classement: [] }).lignes, []);
+	// Sans aucun point, la salle accueille les arrivées plutôt qu'un classement vide (#281, I11).
+	assert.equal(decrireClassementDeSalle({ ...vue, classement: [] }), null);
 	assert.equal(decrireClassementDeSalle({ ...vue, soiree: { etat: 'OUVERTE' }, classement: [] }), null);
 });
 
