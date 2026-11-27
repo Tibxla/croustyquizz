@@ -3,7 +3,7 @@ import { creerCycleLecture } from './cycle-lecture.mjs';
 import { determinerLignes, fenetreParoles, positionChronologique } from './paroles.mjs';
 import { formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes, votesVisiblesSalle } from './vote.mjs';
-import { creerAppelSalle } from '../passage/salle.mjs';
+import { creerAppelSalle, creerVoteSalle, voteAuCentre } from '../passage/salle.mjs';
 
 const designations = new WeakMap();
 
@@ -25,8 +25,8 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	const ui = creerInterface(zones, contexte, { annoncerConnexion: false }), { e, ecouter } = ui;
 	const invitation = e('h2', 'karaoke__invitation'), prochain = e('div', 'karaoke__prochain');
 	const paroles = e('div', 'karaoke__paroles');
-	const appelSalle = creerAppelSalle(ui);
-	ui.principale.append(appelSalle.element, invitation, prochain, paroles);
+	const appelSalle = creerAppelSalle(ui), voteSalle = creerVoteSalle(ui);
+	ui.principale.append(appelSalle.element, voteSalle.element, invitation, prochain, paroles);
 	const listeVotes = e('div', 'karaoke__bandeaux-vote');
 	const bandeaux = new Map();
 	listeVotes.hidden = true;
@@ -38,7 +38,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	autreLecteur.hidden = true;
 	ui.principale.append(autreLecteur);
 	let cycle, requetes, ticketCourant, descriptionCourant, etiquetteCourant, blocAffiche, trame, versionParoles, lignes = [], indexAffiche;
-	let votesChronometres = false;
+	let votesChronometres = false, voteCentre = null;
 	function actualiserDossier({ fichiers, sonDebloque } = audio.etat()) {
 		if (ui.synchronisee && fichiers !== designation.fichiers) {
 			designation.fichiers = fichiers;
@@ -93,9 +93,14 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		return { bandeau, numero, chanson, interpretes, invitationVote, moyenne, nombre, temps };
 	}
 	function rendreVotes(bloc, maintenant) {
-		const visibles = votesVisiblesSalle(bloc, maintenant);
+		// Le vote montré au centre (#278) ne se répète pas dans la colonne.
+		const visibles = votesVisiblesSalle(bloc, maintenant).filter(vote => vote.passageId !== voteCentre?.passageId);
 		const pause = bloc.etat === 'EN_PAUSE';
 		votesChronometres = false;
+		if (voteCentre) {
+			voteSalle.decompter(voteCentre, { enPause: pause, maintenant });
+			votesChronometres = !pause && delaiVoteRestant(voteCentre, maintenant, pause) > 0;
+		}
 		for (const id of bandeaux.keys()) {
 			if (!visibles.some(vote => vote.passageId === id)) bandeaux.delete(id);
 		}
@@ -212,12 +217,18 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		}
 		actualiserDossier();
 		const enErreur = lecture?.etat === 'EN_ERREUR';
-		if (!actif) invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
+		// Pendant le vote (#278), sans Passage en scène, la zone principale montre le vote ; le Passage suivant attend.
+		voteCentre = voteAuCentre(bloc.votes, actif);
+		const chansonVote = voteCentre?.chanson;
+		voteSalle.rendre(voteCentre, { enPause: pause, maintenant: contexte.maintenantServeur(),
+			contenu: chansonVote ? [chansonVote.titre, chansonVote.artiste].filter(Boolean).join(' · ') : '' });
+		if (voteCentre) invitation.textContent = '';
+		else if (!actif) invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
 		else if (enErreur) invitation.textContent = "La musique ne se lance pas. L'Animateur choisit la suite.";
 		else if (appel) invitation.textContent = '';
 		else invitation.textContent = pause ? 'Pause' : '';
 		invitation.hidden = !invitation.textContent;
-		prochain.hidden = Boolean(actif) || !passages.length;
+		prochain.hidden = Boolean(actif) || Boolean(voteCentre) || !passages.length;
 		prochain.replaceChildren(...(prochain.hidden ? [] : [creerTicket(ui, passages[0])]));
 		// À l'appel (#277), la zone principale nomme les Interprètes et la Chanson ; le temps passe en second.
 		const chanson = actif?.chanson;
@@ -230,11 +241,16 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		}
 
 		rendreCourant(courant, origine);
-		const suivants = actif ? passages : passages.slice(1);
+		// Dans la colonne, un bandeau de vote prend la place d'un ticket ; deux bandeaux prennent celle du rouleau,
+		// résumé par « et N autres », pour garder le talon entier.
+		const enTete = actif || voteCentre ? passages : passages.slice(1);
+		const bandeauxColonne = votesVisiblesSalle(bloc, contexte.maintenantServeur()).filter(vote => vote !== voteCentre).length;
+		const suivants = enTete.slice(0, [3, 2][bandeauxColonne] ?? 0);
 		file.hidden = !suivants.length; titre.hidden = !suivants.length && !bloc.nombreAutresPassages;
 		file.replaceChildren(...suivants.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }));
-		autres.hidden = !bloc.nombreAutresPassages;
-		autres.textContent = texteAutresPassages(bloc.nombreAutresPassages);
+		const nombreAutres = bloc.nombreAutresPassages + enTete.length - suivants.length;
+		autres.hidden = !nombreAutres;
+		autres.textContent = texteAutresPassages(nombreAutres);
 		actualiserTemps();
 		planifier();
 	};

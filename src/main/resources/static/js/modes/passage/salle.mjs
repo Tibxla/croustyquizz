@@ -1,7 +1,10 @@
 // Zone principale de l'Écran de salle, commune aux Modes à Passages (Karaoké, Freestyle).
 // À l'appel (#277), la salle écrit en grand qui monte sur scène ; le compte à rebours passe en second.
+// Pendant le vote (#278), elle montre le vote, puis seulement le Passage suivant.
 import { formaterTempsRestant, teintePassage } from '../karaoke/presentation.mjs';
 import { delaiAppelRestant } from '../karaoke/paroles.mjs';
+import { delaiVoteRestant } from '../karaoke/vote.mjs';
+import { formaterNombreVotes } from '../../vue-commune.mjs';
 
 const enumeration = new Intl.ListFormat('fr', { type: 'conjunction' });
 
@@ -53,6 +56,48 @@ export function creerAppelSalle(ui) {
 			const texte = enPause ? 'Pause' : sansDelai ? '' : formaterTempsRestant(delaiAppelRestant({ ...courant, maintenant, enPause }));
 			separateur.hidden = reste.hidden = !texte;
 			if (reste.textContent !== texte) reste.textContent = texte;
+		},
+	};
+}
+
+/** Vote montré au centre de la salle (#278) : le plus récent encore ouvert, tant qu'aucun Passage n'est en scène. */
+export function voteAuCentre(votes, passageEnScene) {
+	return passageEnScene ? null : (votes ?? []).find(vote => vote.etat === 'OUVERT') ?? null;
+}
+
+export const invitationVote = vote => vote.scrutin === 'MEILLEUR_INTERPRETE'
+	? 'Désigne le meilleur Interprète sur ta Manette' : 'Note ce Passage sur ta Manette';
+
+/** Bloc de vote : l'invitation, les Interprètes, la Chanson ou l'Instrumentale, le temps restant en grand et les votes. */
+export function creerVoteSalle(ui) {
+	const { e } = ui;
+	const element = e('div', 'passage-salle passage-salle--vote');
+	const titre = e('h2', 'passage-salle__invitation');
+	const noms = e('p', 'passage-salle__noms passage-salle__qui');
+	const quoi = e('p', 'passage-salle__quoi');
+	const compte = e('p', 'passage-salle__compte');
+	const secondes = e('span', 'passage-salle__secondes chiffres'), votes = e('span', 'passage-salle__votes');
+	compte.append(secondes, votes);
+	element.append(titre, noms, quoi, compte);
+	element.hidden = true;
+	return {
+		element,
+		rendre(vote, { contenu, enPause, maintenant }) {
+			element.hidden = !vote;
+			if (!vote) return;
+			const listeNoms = enumeration.format(vote.interpretes.map(i => i.pseudo));
+			// Comme à l'appel, des noms longs passent en corps réduit : aucun Interprète ne disparaît.
+			element.classList.toggle('passage-salle--noms-longs', listeNoms.length > 48);
+			const textes = [[titre, invitationVote(vote)], [noms, listeNoms],
+				[quoi, contenu], [votes, formaterNombreVotes(vote.nombreVotes)]];
+			for (const [cible, texte] of textes) if (cible.textContent !== texte) cible.textContent = texte;
+			element.style.setProperty('--teinte-passage', `var(--${teintePassage(vote.numero)})`);
+			this.decompter(vote, { enPause, maintenant });
+		},
+		decompter(vote, { enPause, maintenant }) {
+			if (!vote) return;
+			const texte = (enPause ? 'Pause · ' : '') + formaterTempsRestant(delaiVoteRestant(vote, maintenant, enPause));
+			if (secondes.textContent !== texte) secondes.textContent = texte;
 		},
 	};
 }

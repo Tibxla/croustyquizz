@@ -104,11 +104,14 @@ Vérification navigateur à réaliser à 1920 × 1080 puis à 1280 × 720, avec 
 visible à cinq mètres. Reprendre la Soirée de démonstration et ouvrir deux Manettes de votants
 en plus de celle de l’Interprète.
 
-1. Terminer un Passage et envoyer les notes 4 et 5. La salle affiche le numéro, la Chanson,
-   les Interprètes, le nombre de votes et le temps restant dans le bandeau au-dessus du rouleau.
-   Pendant le vote, vérifier l’absence de moyenne sur les trois écrans et de nombre de votes
-   sur la Manette. Le changement du nombre garde le bandeau en place et l’appel ou les paroles
-   restent dans la zone principale.
+1. Terminer un Passage et envoyer les notes 4 et 5. Tant qu’aucun Passage n’est appelé, la zone
+   principale de la salle montre le vote (#278) : « Note ce Passage sur ta Manette », les
+   Interprètes, la Chanson, le temps restant en chiffres géants et le nombre de votes ; le Passage
+   suivant n’y apparaît qu’à la clôture. Sur la Manette, la note touchée reste lisible (encre sur
+   la teinte du ticket), même sous le doigt. Pendant le vote, vérifier l’absence de moyenne sur
+   les trois écrans et de nombre de votes sur la Manette. Si un Passage est appelé pendant le
+   vote, l’appel prend la zone principale et le vote passe dans le bandeau au-dessus du rouleau,
+   en texte de 1,6vw au moins ; le changement du nombre garde le bandeau en place.
 2. Laisser le vote se clore. Vérifier « 4,5 sur 5 » et « 2 votes » sur les trois écrans, la note
    personnelle sur la Manette et une seule annonce du résultat au lecteur d’écran. Recharger
    la Manette et vérifier que le résultat reste lisible sans nouvelle annonce. Refaire la
@@ -120,9 +123,11 @@ en plus de celle de l’Interprète.
    et recharger la salle. Le bandeau échu reste masqué. Refaire en sautant le Passage dès
    l’appel, avant « Je suis prêt ». Ce saut laisse la moyenne affichée.
 4. Terminer deux Passages en moins de trente secondes pour obtenir deux votes ouverts et
-   mettre la Manche en pause. Vérifier les deux bandeaux au-dessus du rouleau, le plus récent
-   en haut, les temps figés sous « Pause », les textes lisibles, le talon visible et la colonne
-   latérale sans débordement aux deux résolutions. En terminant la Manche pendant un vote,
+   mettre la Manche en pause. Sans Passage en scène, le plus récent est au centre et l’autre en
+   bandeau ; dès qu’un Passage est appelé, vérifier les deux bandeaux au-dessus du rouleau, le
+   plus récent en haut, à la place des tickets suivants (« et N autres »), les temps figés sous
+   « Pause », les textes lisibles, le talon visible et la colonne latérale sans débordement aux
+   deux résolutions. En terminant la Manche pendant un vote,
    vérifier que les bandeaux disparaissent.
 5. En Pilotage Automatique, provoquer une clôture qui appelle le Passage suivant. Vérifier
    que la Manette annonce aussi la moyenne à cette clôture et que la salle garde le bandeau

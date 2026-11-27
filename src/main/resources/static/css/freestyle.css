@@ -142,6 +142,9 @@
 }
 .salle .freestyle .freestyle__suivant { font-size: min(1.6vw, 2.85vh); }
 .salle .freestyle .freestyle__annonce { margin: 0; font-size: min(2.2vw, 3.9vh); }
+/* Colonne de la salle : l'ordre et le Couplet courant à 1,6vw, comme le reste de la colonne (#278). */
+.salle .freestyle .freestyle__ordre,
+.salle .freestyle .freestyle__couplet { font-size: 1.6vw; }
 
 @media (prefers-reduced-motion: reduce) {
   .freestyle__balle { transform: translateX(-50%); }

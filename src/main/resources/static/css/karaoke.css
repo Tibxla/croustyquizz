@@ -15,7 +15,9 @@
 .karaoke__ticket-vote p:empty { margin: 0; padding: 0; }
 .karaoke__notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--espace-1); }
 .karaoke .karaoke__notes .bouton { padding-inline: 0; font-variant-numeric: tabular-nums; }
-.karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"] {
+.karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"],
+.karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"]:hover {
+  border-color: var(--encre);
   background: var(--encre);
   color: var(--teinte);
 }
@@ -81,7 +83,12 @@
 .karaoke__priorite { font-weight: 700; }
 .karaoke .mon-ticket .bouton--lien { color: var(--encre); }
 .karaoke .mon-ticket .bouton { border-color: var(--encre-2); color: var(--encre); }
+/* Sur un ticket, le fond brun du survol commun mettrait l'encre sur du brun : le fond reste celui du ticket.
+   Un téléphone garde le survol sur le bouton touché ; seule la souris voit la bordure s'encrer (#278). */
 .karaoke .mon-ticket .bouton:hover { background: var(--teinte); }
+@media (hover: hover) {
+  .karaoke .mon-ticket .bouton:hover:not(:disabled) { border-color: var(--encre); }
+}
 .karaoke .mon-ticket .bouton:disabled { opacity: 0.65; }
 .karaoke__scene-manette { display: grid; gap: var(--espace-3); }
 .karaoke__scene-manette .mon-ticket--appele { margin-bottom: var(--espace-5); }
@@ -159,18 +166,64 @@
   font-variant-numeric: tabular-nums;
 }
 .salle .passage-salle__temps [hidden] { display: none; }
+/* Vote au centre de la salle (#278) : l'invitation à voter, qui et quoi, puis le temps restant en chiffres géants
+   à côté du nombre de votes. Aucun aplat citron : la salle ne touche pas l'écran. */
+.salle .karaoke .passage-salle__invitation {
+  margin: 0;
+  font: 700 min(3.4vw, 6vh)/1.1 var(--police-texte);
+  letter-spacing: normal;
+  text-transform: none;
+  text-wrap: balance;
+}
+.salle .passage-salle__qui {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin: 0;
+  font-size: min(2.8vw, 5vh);
+  font-weight: 700;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.salle .passage-salle--noms-longs .passage-salle__qui { -webkit-line-clamp: 3; line-clamp: 3; font-size: min(2vw, 3.6vh); }
+.salle .passage-salle__compte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4vw 1.6vw;
+  margin: 0;
+}
+.salle .passage-salle__secondes {
+  color: var(--texte);
+  font: 800 min(7vw, 12.5vh)/0.9 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+.salle .passage-salle__votes {
+  color: var(--texte-2);
+  font-size: min(2.4vw, 4.3vh);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 .salle .karaoke__paroles { display: grid; gap: 0.4vw; overflow-wrap: anywhere; }
 /* Le courant et trois prochains Passages laissent au talon sa place à 1080 px. */
 .salle__cote .karaoke { gap: 0.5vw; }
-.salle__cote .karaoke .ticket { min-height: 4.1vw; }
-.salle__cote .karaoke .ticket__corps { gap: 0; padding: 0.3vw 0.7vw; }
+.salle__cote .karaoke h2 { font-size: 1.6vw; }
+.salle__cote .karaoke .ticket { min-height: 4.6vw; }
+.salle__cote .karaoke .ticket__corps { gap: 0; padding: 0.35vw 0.7vw; }
 .salle__cote .karaoke .ticket p { line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .salle__cote .karaoke .ticket__numero { font-size: 2.8vw; }
-.salle__cote .karaoke .ticket__qui { font-size: 1.32vw; }
-.salle__cote .karaoke .ticket__quoi { font-size: 1.07vw; }
-.salle__cote .karaoke .karaoke__priorite { font-size: 1.1vw; }
+/* À 5 m, le texte de la colonne ne descend pas sous 1,6vw (#278) : le ticket du rouleau garde qui et quoi,
+   l'artiste reste sur la Console et la Manette. */
+.salle__cote .karaoke .ticket__qui { font-size: 1.75vw; }
+.salle__cote .karaoke .ticket__quoi { font-size: 1.6vw; }
+.salle__cote .karaoke .ticket__corps > .ticket__quoi + .ticket__quoi { display: none; }
+/* Sur une seule ligne tronquée, les pseudos d'un Passage à plusieurs se suivent : « Léa, Bartholo… » plutôt que « Léa, … ». */
+.salle__cote .karaoke .ticket .karaoke__pseudo { display: inline; max-width: none; }
+.salle__cote .karaoke .karaoke__priorite { font-size: 1.6vw; }
 .salle__cote .karaoke__courant-salle { margin: 0 0.8vw 0.4vw 0; }
-.salle__cote .karaoke__etat-ticket { font-size: 1.1vw; font-weight: 700; }
+.salle__cote .karaoke__etat-ticket { font-size: 1.6vw; font-weight: 700; }
 .karaoke__bandeaux-vote { display: grid; gap: 0.5vw; }
 .bandeau-vote {
   display: grid;
@@ -180,7 +233,7 @@
   border-radius: var(--rayon);
   background: var(--fond-2);
   color: var(--texte);
-  font: 400 1.15vw/1.12 var(--police-texte);
+  font: 400 1.6vw/1.12 var(--police-texte);
 }
 .bandeau-vote__numero {
   display: grid;

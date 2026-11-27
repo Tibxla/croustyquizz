@@ -30,6 +30,8 @@
 
 .salle__cote {
   display: flex;
+  /* Lisible à 5 m (#278) : rien sous 1,6vw dans la colonne. */
+  font-size: 1.6vw;
   flex-direction: column;
   gap: 1.2vw;
   padding: 2.4vw 2.2vw;
@@ -39,7 +41,7 @@
 }
 
 .salle__cote h2 {
-  font: 800 1.5vw/1 var(--police-chiffres);
+  font: 800 1.6vw/1 var(--police-chiffres);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--texte-2);
@@ -102,11 +104,11 @@
   font-size: 3.4vw;
 }
 .salle .talon__aide {
-  font-size: 1.5vw;
+  font-size: 1.6vw;
 }
 .salle .talon__adresse {
   display: block;
-  font-size: 1.5vw;
+  font-size: 1.6vw;
   font-weight: 700;
 }
 /* Chaque segment reste insécable. La page place les coupures avec <wbr>. */

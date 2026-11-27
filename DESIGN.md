@@ -307,7 +307,7 @@ Un fond chaud et sourd, quatre teintes de ticket vives et une couleur d'action u
 - **Corps** (Atkinson 400, 1rem, 1.45): texte courant ; la Manette monte à 1.125rem.
 - **Libellé** (Atkinson 700, 1rem, 1.1): libellé des boutons ordinaires.
 
-L'Écran de salle a sa propre échelle, entièrement en largeur d'écran (base 1.15vw, titres de colonne 1.5vw, numéro de souche 3.6vw), pour rester lisible à 5 m quelle que soit la télé.
+L'Écran de salle a sa propre échelle, entièrement en largeur d'écran (base 1.15vw, texte et titres de la colonne 1.6vw au moins, numéro de souche 3.6vw), pour rester lisible à 5 m quelle que soit la télé. Pendant un vote sans Passage en scène, la zone principale montre le vote : invitation, Interprètes, Chanson, temps restant en chiffres géants et nombre de votes.
 
 ### Named Rules
 **La règle du Ticket imprimé.** Barlow Condensed 800 sert aux chiffres et aux libellés courts imprimés comme sur un ticket : boutons grand format, Mode de jeu, titres de colonne de l'Écran de salle, état d'un ticket, lettres des Réponses, mot-symbole. Jamais au texte courant, jamais à une phrase, jamais à un surtitre posé au-dessus d'un titre.

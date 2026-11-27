@@ -2,7 +2,7 @@ import { creerInterface, creerTicket, texteAutresPassages } from '../karaoke/com
 import { formaterNombreVotes } from '../../vue-commune.mjs';
 import { positionDansGrille } from './grille.mjs';
 import { pseudos, texteAnnonce, texteCouplet, texteOrdre } from './couplets.mjs';
-import { creerAppelSalle } from '../passage/salle.mjs';
+import { creerAppelSalle, creerVoteSalle, voteAuCentre } from '../passage/salle.mjs';
 
 // Écart toléré entre le lecteur et la position estimée par le serveur avant de recaler la lecture.
 const ECART_DE_RECALAGE_MS = 300;
@@ -42,13 +42,16 @@ export function monter(zones, contexte) {
 	annonceSuivant.setAttribute('role', 'status');
 	// La Grille doit rester entière à 1080 px : l'ordre et le Couplet courant vont dans la zone latérale.
 	// À l'appel (#277), la salle nomme les Interprètes en grand, avec l'Instrumentale et le temps restant.
-	const appelSalle = creerAppelSalle(ui);
-	ui.principale.append(appelSalle.element, interprete, phase, annonceSuivant, rythme, etatLecture);
-	let decompte;
+	// Pendant le vote (#278), sans Passage en scène, la salle montre le vote au centre.
+	const appelSalle = creerAppelSalle(ui), voteSalle = creerVoteSalle(ui);
+	ui.principale.append(appelSalle.element, voteSalle.element, interprete, phase, annonceSuivant, rythme, etatLecture);
+	let decompte, voteCentre = null;
 	function decompter() {
 		const bloc = ui.bloc;
 		const appele = bloc?.courant?.etat === 'APPELE' ? bloc.courant : null;
-		appelSalle.decompter(appele, { maintenant: contexte.maintenantServeur(), enPause: bloc?.etat === 'EN_PAUSE' });
+		const temps = { maintenant: contexte.maintenantServeur(), enPause: bloc?.etat === 'EN_PAUSE' };
+		appelSalle.decompter(appele, temps);
+		voteSalle.decompter(voteCentre, temps);
 	}
 	function suivreDecompte(actif) {
 		if (actif && decompte === undefined) decompte = setInterval(decompter, 250);
@@ -249,8 +252,12 @@ export function monter(zones, contexte) {
 		const appele = courant?.etat === 'APPELE' ? courant : null;
 		appelSalle.rendre(appele, { contenu: appele?.instrumentale.titre ?? '', enPause: bloc.etat === 'EN_PAUSE',
 			maintenant: contexte.maintenantServeur() });
-		suivreDecompte(Boolean(appele) && bloc.etat !== 'EN_PAUSE');
-		interprete.hidden = !courant || Boolean(appele);
+		const enScene = ['APPELE', 'EN_COURS', 'EN_PAUSE'].includes(courant?.etat);
+		voteCentre = voteAuCentre(bloc.votes, enScene);
+		voteSalle.rendre(voteCentre, { contenu: voteCentre?.instrumentale.titre ?? '', enPause: bloc.etat === 'EN_PAUSE',
+			maintenant: contexte.maintenantServeur() });
+		suivreDecompte(Boolean(appele || voteCentre) && bloc.etat !== 'EN_PAUSE');
+		interprete.hidden = !courant || Boolean(appele || voteCentre);
 		interprete.textContent = couplets ? couplets.courant.interprete.pseudo : pseudos(courant?.interpretes);
 		for (const [element, texte] of [[ordreCouplets, texteOrdre(couplets)], [coupletCourant, texteCouplet(couplets)],
 			[annonceSuivant, texteAnnonce(couplets)]]) {
@@ -260,10 +267,10 @@ export function monter(zones, contexte) {
 		phase.textContent = bloc.etat === 'EN_PAUSE' ? 'Manche en pause' :
 			({ APPELE: 'Monte sur scène', EN_COURS: courant?.instrumentale.titre, TERMINE: 'Passage terminé',
 				SAUTE: 'Passage sauté' })[courant?.etat] ?? 'En attente d’un Passage';
-		phase.hidden = Boolean(appele);
+		phase.hidden = Boolean(appele || voteCentre);
 		rythme.hidden = !grille;
 		if (grille) afficherPosition(positionConnue);
-		votes.replaceChildren(...bloc.votes.filter(vote => vote.etat === 'OUVERT').map(vote =>
+		votes.replaceChildren(...bloc.votes.filter(vote => vote.etat === 'OUVERT' && vote !== voteCentre).map(vote =>
 			e('li', '', `${pseudos(vote.interpretes)} · ${formaterNombreVotes(vote.nombreVotes)}`)));
 		titresVotes.hidden = !votes.childElementCount;
 		file.replaceChildren(...bloc.passagesEnAttente.map(passage => {
