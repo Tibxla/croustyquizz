@@ -1656,10 +1656,11 @@ paths:
         chiffre Unicode ou trop longue : REQUETE_INVALIDE. rechercheId client renvoyé tel quel, sans
         reçu, pour ignorer les réponses tardives. Classement et déduplication déterministes selon le
         README ; interprétations distinctes et Chansons non inscriptibles conservées, seul le malformé
-        est exclu. Le catalogue de la Bibliothèque de base est consulté avant LRCLIB et ses Chansons
-        portent origine BIBLIOTHEQUE (ADR 0011). LRCLIB indisponible : 200 avec les seules Chansons du
-        catalogue qui correspondent, SOURCE_PAROLES_INDISPONIBLE s’il n’y en a aucune. Aucun résultat :
-        200 chansons:[]. Aucune publication. Animateur du Lieu ou Joueur
+        est exclu. Le catalogue de la Bibliothèque de base est consulté avant LRCLIB ; ses Chansons
+        portent origine BIBLIOTHEQUE et passent en tête des résultats (ADR 0011). LRCLIB
+        indisponible : 200 avec les seules Chansons du catalogue qui correspondent,
+        SOURCE_PAROLES_INDISPONIBLE s’il n’y en a aucune. Aucun résultat : 200 chansons:[]. Aucune
+        publication. Animateur du Lieu ou Joueur
         présent, retardataire compris. Refus (groupes N, V, T, S) : 400 REQUETE_INVALIDE, 401
         AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 503
         SERVICE_INDISPONIBLE, 503 SOURCE_PAROLES_INDISPONIBLE ; aucun 422. Conditions de chaque code :
