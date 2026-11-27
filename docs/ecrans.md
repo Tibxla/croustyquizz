@@ -6,6 +6,38 @@ Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent 
 
 Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les WebJars à chaque chargement (`Cache-Control: no-cache` et `Last-Modified`) : après un déploiement, il ne mélange pas un module ancien et un module neuf (#132). Un fichier inchangé coûte une réponse `304`. La page `/test/identite.html` reste en `no-store`. Cette revalidation repose sur la date des fichiers dans le JAR : ne pas ajouter `project.build.outputTimestamp` au `pom.xml` (builds reproductibles) sans passer à un ETag calculé sur le contenu, sinon tous les fichiers garderaient la même date et le navigateur resservirait d'anciens modules.
 
+## Recette de bout en bout avant une livraison
+
+Ce parcours se joue sur `develop` déployée (recette Render) après chaque vague de fusions, et en entier avant toute fusion vers `main`. Il ne remplace pas les recettes de chaque fonctionnalité : il vérifie que tout tient ensemble, et que chaque écran se comprend sans explication. Prévoir un ordinateur pour la Console, un deuxième écran ou une télé pour l'Écran de salle, et deux téléphones. Compter de 30 à 45 minutes.
+
+### Le parcours
+
+1. **Le Lieu.** Créer un compte depuis `/inscription.html`, se connecter, créer une Soirée, puis « Ouvrir aux Joueurs ». Ouvrir la Console et l'Écran de salle depuis la préparation.
+2. **L'arrivée.** Sur chaque téléphone, scanner le QR code de l'Écran de salle et choisir un pseudo. Les Joueurs apparaissent en direct sur la Console et l'Écran de salle, avec le nombre de Joueurs en ligne.
+3. **Le Buzz.** Buzzer depuis un téléphone : le dernier Buzz s'affiche sur les trois écrans.
+4. **La Musique d'attente.** Sur l'Écran de salle, « Activer le son » : un morceau de la Bibliothèque de base joue, avec son crédit en bas de l'écran. Couper puis relancer la musique depuis la Console. Ouvrir un second Écran de salle : la musique ne se dédouble pas.
+5. **Le Karaoké.** Ajouter une Manche de Karaoké au programme et la lancer. Sur un téléphone, chercher et inscrire une Chanson de la Bibliothèque de base, en duo avec l'autre Joueur. L'appeler depuis la Console, confirmer « Je suis prêt » : la musique joue, les paroles défilent en mesure, le crédit reste affiché. Noter le Passage depuis le second téléphone, puis terminer la Manche : le Palmarès s'affiche.
+6. **Le Freestyle.** Lancer une Manche de Freestyle à plusieurs, sur une Instrumentale, puis le vote du meilleur Interprète.
+7. **La fin.** Terminer la Soirée : le Podium final s'affiche sur l'Écran de salle, puis le Palmarès.
+8. **Les coupures.** À n'importe quel moment, fermer puis rouvrir un téléphone : le Joueur passe hors ligne puis revient. Recharger l'Écran de salle : il retrouve son état.
+
+### À vérifier à chaque étape
+
+**Lisibilité et placement**
+- Aucun texte n'est coupé, ne déborde de son cadre et ne chevauche un autre élément. Un texte long, comme un pseudo de 30 caractères ou un titre de Chanson, se termine par « … » ou passe proprement à la ligne.
+- Rien ne demande de défiler sur l'Écran de salle, en 1920 × 1080 comme en 1280 × 720. Le code d'accès et le QR code restent visibles en entier.
+- Sur un téléphone de 390 px de large, aucun défilement horizontal, et les boutons se touchent sans viser.
+- L'Écran de salle se lit à 5 m dans une salle sombre : titres, paroles, notes, Palmarès.
+
+**Compréhension sans explication**
+- Sur chaque écran, on sait ce qui se passe et ce qu'il faut faire ensuite, sans avoir lu de consigne : quel bouton presser, qui doit agir, ce qu'on attend.
+- Les libellés emploient les mots du glossaire et disent l'action (« Je suis prêt », « Appeler le suivant »), jamais un terme technique.
+- Un refus ou une erreur dit ce qui bloque et comment s'en sortir, au bon endroit.
+- Une action n'est jamais annoncée réussie avant la réponse du serveur. Une attente se voit (« Envoi en cours… »).
+- Les trois écrans racontent la même chose au même moment.
+
+Noter chaque écart avec une capture, l'écran, la taille et l'étape, puis ouvrir une issue par écart.
+
 ## Recette du compte du Lieu (#5)
 
 Avec l’application sur le port 8080, `playwright-cli run-code --filename=tools/ecrans/compte-recette-navigateur.mjs` (après `playwright-cli open`) joue l’inscription, le refus du mot de passe, la connexion, la création, la synchronisation de la Console et la déconnexion dans un contexte isolé. Le script crée un compte et une Soirée fictifs dans la base de développement.
