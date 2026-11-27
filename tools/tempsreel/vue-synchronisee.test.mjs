@@ -24,6 +24,18 @@ test('la recapture demandée annule l’ancien flux et livre une capture puis de
 	assert.equal(p.connexions.length, 2);
 });
 
+test('une reconnexion accepte une capture à la Révision 0 après éviction', async () => {
+	const p = demarrer();
+	await repondre(p, 0, 42, { phase: 'podium' });
+	p.connexions[0].surDeconnexion();
+	await p.avancer(2000);
+	p.connexions[1].surConnexion();
+	await repondre(p, 1, 0, { phase: 'podium reconstruit' });
+	assert.deepEqual(p.vues.at(-1), { vue: { phase: 'podium reconstruit' }, source: 'capture', type: 'capture' });
+	assert.equal(p.etats.at(-1), 'synchronisee');
+	p.suivi.arreter();
+});
+
 const exemples = parse(await readFile(new URL('../../docs/api/exemples/parcours-quiz.yaml', import.meta.url), 'utf8'));
 
 test('rejouer la capture retardée, les Révisions déjà couvertes et le doublon du parcours Quiz', async () => {

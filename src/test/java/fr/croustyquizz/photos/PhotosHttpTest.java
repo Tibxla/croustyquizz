@@ -9,6 +9,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -92,6 +93,12 @@ class PhotosHttpTest {
 		@Primary
 		HorlogeFactice horlogePhotos() {
 			return new HorlogeFactice();
+		}
+
+		@Bean
+		@Primary
+		Clock clock(HorlogeFactice horloge) {
+			return horloge.commeClock();
 		}
 	}
 
