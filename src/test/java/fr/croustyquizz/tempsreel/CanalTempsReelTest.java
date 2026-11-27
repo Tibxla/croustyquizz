@@ -12,6 +12,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,12 +41,20 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompDecoder;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.WebSocketHttpHeaders;
@@ -92,6 +103,10 @@ class CanalTempsReelTest {
 	@MockitoBean
 	private CaptureVuePrototype repli;
 
+	// Espion plutôt que simulacre : l'horloge réelle sert au démarrage du contexte (LimiteDeRequetes la lit déjà).
+	@MockitoSpyBean
+	private Clock horloge;
+
 	private final HttpClient http = HttpClient.newHttpClient();
 	private final JsonMapper json = JsonMapper.builder().build();
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
@@ -134,6 +149,61 @@ class CanalTempsReelTest {
 		diffuseur.diffuserSalle(demonstration, new EvenementDeTest("Vue de démonstration"));
 		assertThat(temoin.poll(PLAFOND_SECONDES, TimeUnit.SECONDS)).isNotNull();
 		assertThat(recus).isEmpty();
+	}
+
+	@Test
+	void unConnectRefuseRecoitUneTrameErrorAvecSonMotifPuisLaFermeture() throws Exception {
+		UUID soiree = soirees.creer("Soirée enregistrée", Format.SOLO, Pilotage.MANUEL).getId();
+		assertThat(motifDuConnectRefuse("demo:ECRAN:" + soiree + ":" + UUID.randomUUID())).isEqualTo(
+				"Cette Soirée n'accepte pas d'Écran de démonstration : ouvre l'Écran de salle avec la clé créée depuis la Console.");
+	}
+
+	@Test
+	void uneCleDEcranExpireeInviteARouvrirLEcranDepuisLaPreparation() throws Exception {
+		when(horloge.instant()).thenReturn(Instant.parse("2026-11-26T19:30:00Z"));
+		UUID soiree = soirees.creer("Soirée avec Écran", Format.SOLO, Pilotage.MANUEL).getId();
+		var ouverture = acces.ouvrirEcran(soiree);
+		when(horloge.instant()).thenReturn(ouverture.acces().getExpireLe());
+		String consigne = "Rouvre l'Écran de salle depuis la préparation de la Soirée pour obtenir une nouvelle clé";
+
+		assertThat(motifDuConnectRefuse(ouverture.cle())).contains(consigne);
+		acces.ouvrirEcran(soiree); // La création d'une clé purge les clés expirées.
+		assertThat(motifDuConnectRefuse(ouverture.cle())).contains(consigne);
+	}
+
+	private String motifDuConnectRefuse(String jeton) throws Exception {
+		BlockingQueue<String> trames = new ArrayBlockingQueue<>(4);
+		CompletableFuture<CloseStatus> fermeture = new CompletableFuture<>();
+		var entetes = new WebSocketHttpHeaders();
+		entetes.setSecWebSocketProtocol("v12.stomp");
+		WebSocketSession connexion = clientWebSocket().execute(new TextWebSocketHandler() {
+			@Override
+			protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+				trames.add(message.getPayload());
+			}
+
+			@Override
+			public void afterConnectionClosed(WebSocketSession session, CloseStatus statut) {
+				fermeture.complete(statut);
+			}
+		}, entetes, URI.create("ws://localhost:" + port + ConfigurationTempsReel.POINT_DE_CONNEXION)).get(5, TimeUnit.SECONDS);
+		try {
+			connexion.sendMessage(new TextMessage("CONNECT\naccept-version:1.2\nhost:localhost\n"
+					+ "Authorization:Bearer " + jeton + "\n\n\0"));
+
+			String trame = trames.poll(5, TimeUnit.SECONDS);
+			assertThat(trame).as("réponse au CONNECT refusé").isNotNull();
+			var erreur = StompHeaderAccessor.wrap(new StompDecoder()
+					.decode(ByteBuffer.wrap(trame.getBytes(StandardCharsets.UTF_8))).getFirst());
+			assertThat(erreur.getCommand()).isEqualTo(StompCommand.ERROR);
+			assertThat(fermeture.get(5, TimeUnit.SECONDS)).isEqualTo(CloseStatus.PROTOCOL_ERROR);
+			assertThat(trames).isEmpty();
+			return erreur.getMessage();
+		} finally {
+			if (connexion.isOpen()) {
+				connexion.close();
+			}
+		}
 	}
 
 	@Test

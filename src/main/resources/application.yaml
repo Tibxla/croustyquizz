@@ -36,6 +36,8 @@ server:
         same-site: lax
 
 croustyquizz:
+  tempsreel:
+    delai-eviction-vues: 24h
   # Limite de requêtes (#4, #238) : une rafale, puis un jeton regagné à chaque intervalle, par seuil et par clé.
   # Justification de chaque seuil dans ReglagesDesLimites ; réglage dans docs/deploiement.md.
   limites:

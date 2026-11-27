@@ -4,6 +4,8 @@ status: accepted
 
 # Les Révisions et la dernière Vue synchronisée appartiennent à `tempsreel`
 
+L’[ADR 0012](0012-eviction-des-vues-des-soirees-terminees.md) fixe la durée de conservation après la fin d’une Soirée.
+
 Le contrat de `docs/api/` impose à chaque écran une reprise sans fenêtre de perte : abonnement vérifié, capture d'une Vue synchronisée et de sa Révision au même point cohérent, puis application des seuls événements de Révision supérieure. Chaque événement STOMP transporte déjà la vue complète de sa destination (« remplacement atomique de la vue, pas un delta », `docs/api/schemas.yaml`). Il restait à décider qui numérote les Révisions et qui fournit la capture.
 
 Nous confions les deux au package `tempsreel`. Le diffuseur numérote les Révisions par destination et garde en mémoire la dernière vue publiée sur chacune. La route d'état d'une destination rend cette vue et sa Révision sous le même verrou par Soirée que la publication : la capture est cohérente par construction, sans coordination avec `soiree`, `quiz`, `blindtest` ou `karaoke`. Côté navigateur, un module de Vue synchronisée applique la séquence du contrat et ne livre aux pages que des vues complètes.

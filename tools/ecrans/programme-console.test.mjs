@@ -19,6 +19,10 @@ function banc() {
 	const communs = creer('reglages-communs', 'fieldset', formulaire);
 	const nombre = creer('nombre-etapes', 'input', communs);
 	const temps = creer('temps-par-etape', 'input', communs);
+	const blindTest = creer('reglages-blindtest', 'fieldset', formulaire);
+	const source = creer('source-blindtest', 'select', blindTest);
+	const idDeezer = creer('id-deezer', 'input', blindTest);
+	const nombreMorceaux = creer('nombre-morceaux', 'input', blindTest);
 	const erreurs = {};
 	for (const [nom, champ] of [['mode-manche', mode], ['nombre-etapes', nombre], ['temps-par-etape', temps]]) {
 		const zone = creer(`${nom}-erreur`, 'p', champ.parentNode);
@@ -53,7 +57,8 @@ function banc() {
 	const programme = monterProgramme(panneau, contexte);
 	return {
 		ailleurs, ajout, annonces, appels, communs, contexte, document, erreurAjout, erreurs, formulaire, liste, mode, nombre,
-		programmeFige, temps, programme, captures: () => captures, connecter: changerEtat,
+		programmeFige, temps, programme, blindTest, source, idDeezer, nombreMorceaux,
+		captures: () => captures, connecter: changerEtat,
 		afficher: (manches, etat = 'PREPARATION') => programme.afficher({ soiree: { etat }, programme: manches }),
 	};
 }
@@ -192,6 +197,33 @@ test('ajoute les réglages communs du Quiz, puis laisse la vue synchronisée aff
 	assert.equal(b.liste.childElementCount, 0);
 	b.afficher([manche('a', 0)]);
 	assert.match(b.liste.textContent, /Quiz/);
+});
+
+test('le Blind test envoie sa source Deezer et son nombre de Morceaux, puis les décrit dans le programme', async () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'BLIND_TEST';
+	b.mode.dispatchEvent({ type: 'change' });
+	assert.equal(b.communs.hidden, true);
+	assert.equal(b.blindTest.hidden, false);
+	assert.equal(b.blindTest.disabled, false);
+	b.source.value = 'GENRE';
+	b.idDeezer.value = '132';
+	b.nombreMorceaux.value = '12';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.deepEqual(b.appels[0].args.slice(0, 3), ['POST', '/api/soirees/s/manches',
+		{ mode: 'BLIND_TEST', reglages: { source: { type: 'GENRE', idDeezer: 132 }, nombreMorceaux: 12 } }]);
+	b.appels[0].resoudre({ statut: 201 });
+	await terminerMicrotaches();
+	b.afficher([{ ...manche('b', 0, 'BLIND_TEST'), reglages: { source: { type: 'GENRE', idDeezer: 132 }, nombreMorceaux: 12 } }]);
+	assert.match(b.liste.textContent, /12 Morceaux · genre Deezer 132/);
+
+	b.mode.value = 'QUIZ';
+	b.mode.dispatchEvent({ type: 'change' });
+	assert.equal(b.blindTest.hidden, true);
+	assert.equal(b.blindTest.disabled, true, 'Les champs cachés ne bloquent pas la validation du formulaire.');
+	b.programme.demonter();
 });
 
 test('le Karaoké envoie un objet de réglages vide et le démontage annule l’envoi', async () => {
