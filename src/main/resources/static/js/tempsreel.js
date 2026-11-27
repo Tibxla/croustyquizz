@@ -2,9 +2,14 @@ import { transportStomp } from './transport.mjs';
 import { creerUuid } from './uuid.mjs';
 export { creerTransport, transportStomp } from './transport.mjs';
 
+export const motifRefusParDefaut = 'Le serveur a refusé la connexion en temps réel.';
+
 // Module ES sans dépendance. Le client STOMP réel est chargé par la page.
 // Les pages ne manipulent que des vues complètes, jamais les Révisions.
-export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }, adaptations = {}) {
+// surRefus(motif) : le serveur a refusé CONNECT (trame ERROR avant CONNECTED) ; aucune reconnexion
+// automatique ne suit. Le rappel précède l'état « coupure » ; seule
+// resynchroniser({ explicite: true }) relance la connexion.
+export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {}, surRefus = () => {} }, adaptations = {}) {
 	const {
 		transport = transportStomp,
 		nouvelIdentifiant = creerUuid,
@@ -18,6 +23,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 		delaiCapture = 10000,
 	} = adaptations;
 	let arrete = false;
+	let connexionRefusee = false;
 	let courant;
 	let minuterie;
 	let heureCapture;
@@ -40,6 +46,20 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 		nettoyer();
 		surEtat('coupure');
 		if (!arrete) minuterie = programmer(ouvrir, delaiReconnexion);
+	}
+
+	// Un refus du CONNECT ne change pas en se reconnectant : on affiche le motif au lieu de boucler.
+	// Après CONNECTED, une trame ERROR reste une coupure ordinaire.
+	function refuser(suivi, motif) {
+		if (!actif(suivi)) return;
+		if (suivi.connecte) {
+			recommencer(suivi);
+			return;
+		}
+		connexionRefusee = true;
+		nettoyer();
+		surRefus(motif || motifRefusParDefaut);
+		surEtat('coupure');
 	}
 
 	function verifierRevision(revision) {
@@ -107,6 +127,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 			suivi.connexion = transport.ouvrir({
 				surConnexion() {
 					if (!actif(suivi)) return;
+					suivi.connecte = true;
 					try {
 						suivi.connexion.abonner(destination, suivi.id);
 						if (actif(suivi)) void capturer(suivi);
@@ -117,6 +138,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 				surMessage: (message) => recevoir(suivi, message),
 				surDeconnexion: () => recommencer(suivi),
 				surErreur: () => recommencer(suivi),
+				surTrameErreur: (motif) => refuser(suivi, motif),
 			});
 		} catch {
 			recommencer(suivi);
@@ -129,8 +151,9 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 			arrete = true;
 			nettoyer();
 		},
-		resynchroniser() {
-			if (arrete) return;
+		resynchroniser({ explicite = false } = {}) {
+			if (arrete || (connexionRefusee && !explicite)) return;
+			connexionRefusee = false;
 			nettoyer();
 			ouvrir();
 		},

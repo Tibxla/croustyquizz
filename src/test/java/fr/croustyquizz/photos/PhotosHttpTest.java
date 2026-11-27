@@ -1,5 +1,7 @@
 package fr.croustyquizz.photos;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -320,7 +322,8 @@ class PhotosHttpTest {
 		}
 		var poigneeDeMain = jeton == null ? proprietaire.poigneeDeMain() : new WebSocketHttpHeaders();
 		var session = client.connectAsync("ws://localhost:" + port + "/ws", poigneeDeMain,
-				connexion, new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+				connexion, new StompSessionHandlerAdapter() { })
+				.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		String destination = "/topic/soirees/" + soireeId + "/" + ecran;
 		UUID id = UUID.randomUUID();
@@ -334,12 +337,12 @@ class PhotosHttpTest {
 			@Override
 			public void handleFrame(StompHeaders headers, Object corps) { messages.add(json.valueToTree(corps)); }
 		});
-		await().atMost(Duration.ofSeconds(3)).until(() -> abonnements.estInstalle(id, destination));
+		await().atMost(PLAFOND).until(() -> abonnements.estInstalle(id, destination));
 		return new Abonnement(id, messages);
 	}
 
 	private static JsonNode publication(Abonnement abonnement, String type) throws InterruptedException {
-		JsonNode message = abonnement.messages().poll(3, TimeUnit.SECONDS);
+		JsonNode message = abonnement.messages().poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		assertThat(message).isNotNull();
 		assertThat(message.path("type").asString()).isEqualTo(type);
 		return message.path("donnees");

@@ -11,9 +11,12 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 	let musiqueAutorisee = false, attenteAutorisee = false;
 	const etat = () => ({ fichiers, sonDebloque, morceauxDisponibles });
 	function notifier() { for (const rappel of abonnes) rappel(etat()); }
+	// Seule une fenêtre qui a des morceaux dans Attente candidate : sans eux, elle ferait taire celle qui en a.
+	// Le son activé sert aussi au son de Manche, qui se passe de dossier.
+	function actualiserCandidature() { coordination.activer(sonDebloque && !suspendu && morceauxDisponibles === true); }
 	const musique = creerMusiqueDAttente({ lecteur, surSonBloque() {
 		sonDebloque = false;
-		coordination.activer(false);
+		actualiserCandidature();
 		notifier();
 	} });
 	function actualiserMusique() { musique.autoriserLecture(musiqueAutorisee && attenteAutorisee); }
@@ -31,6 +34,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 			const morceaux = fichiersDeMusiqueDAttente(fichiers);
 			morceauxDisponibles = morceaux.length > 0;
 			musique.choisirFichiers(morceaux);
+			actualiserCandidature();
 			notifier();
 		},
 		reglerMusiqueDAttente(autorisee) {
@@ -43,7 +47,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 			catch { if (!detruit) notifier(); return; }
 			if (detruit) return;
 			sonDebloque = true;
-			coordination.activer(!suspendu);
+			actualiserCandidature();
 			notifier();
 		},
 		signalerSonDeManche(actif) {
@@ -52,7 +56,7 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		},
 		suspendre(valeur) {
 			suspendu = valeur;
-			coordination.activer(sonDebloque && !suspendu);
+			actualiserCandidature();
 		},
 		detruire() {
 			detruit = true;
@@ -66,7 +70,9 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 
 function coordonnerDans(navigateur, id, surAttente) {
 	if (!navigateur.navigator.locks || !navigateur.BroadcastChannel) {
-		return { activer() {}, signalerSonDeManche() {}, attendreSonDeManche: async () => true, detruire() {} };
+		// Sans Web Locks (page en http:// hors localhost), la fenêtre se croit seule : elle joue dès qu'elle candidate.
+		return { activer: candidate => surAttente(candidate), signalerSonDeManche() {}, attendreSonDeManche: async () => true,
+			detruire() {} };
 	}
 	return creerCoordinationSon({ verrous: navigateur.navigator.locks,
 		canal: new navigateur.BroadcastChannel('croustyquizz:son'),
@@ -101,6 +107,8 @@ export function monterAudioSalle(zone) {
 		const nombre = fichiers?.length;
 		aide.textContent = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
 	});
+	// Le Blind test joue sans dossier de musique : le geste qui active le son doit être proposé dès le chargement.
+	activer.hidden = audio.etat().sonDebloque;
 	zone.hidden = false;
 	return audio;
 }

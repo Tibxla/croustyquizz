@@ -1,5 +1,7 @@
 package fr.croustyquizz.tempsreel;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -71,7 +73,7 @@ class BuzzDeSoireeHttpTest {
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final WebSocketStompClient stomp = new WebSocketStompClient(new StandardWebSocketClient(conteneur));
 	private final List<StompSession> sessions = new ArrayList<>();
-	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(PLAFOND).build();
 	private final RestClient http = clientHttp(clientHttp);
 	/** Animateur du Lieu qui crée les Soirées : ses requêtes partent sans Bearer, avec sa session. */
 	private SessionAnimateurHttp proprietaire;
@@ -118,7 +120,7 @@ class BuzzDeSoireeHttpTest {
 		assertThat(recu.path("recuLe").asString()).isEqualTo(horloge.maintenant().toString());
 		assertThat(recu.path("rang").asLong()).isEqualTo(1);
 		for (var ecran : List.of(salle, console, manette)) {
-			JsonNode evenement = ecran.poll(2, TimeUnit.SECONDS);
+			JsonNode evenement = ecran.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 			assertThat(evenement).isNotNull();
 			assertThat(evenement.path("type").asString()).isEqualTo("buzz-recu");
 			assertThat(evenement.path("soireeId").asString()).isEqualTo(soiree.id().toString());
@@ -159,7 +161,7 @@ class BuzzDeSoireeHttpTest {
 		var salle = abonner(soiree, "salle", soiree.cleEcran(), Canaux.salle(soiree.id()));
 		UUID envoi = UUID.randomUUID();
 		JsonNode recu = verifier(ENVOYER_BUZZ, buzzer(soiree, lea.jeton(), null, envoi), 200);
-		assertThat(salle.poll(2, TimeUnit.SECONDS)).isNotNull();
+		assertThat(salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS)).isNotNull();
 		JsonNode quiz = verifier("ajouterManche", envoyer(HttpMethod.POST, soiree.route() + "/manches", soiree.animateur(),
 				Map.of("mode", "QUIZ", "reglages", Map.of("nombreEtapes", 1, "tempsParEtapeSecondes", 10)), null), 201);
 		UUID mancheId = UUID.fromString(quiz.path("id").asString());
@@ -177,7 +179,7 @@ class BuzzDeSoireeHttpTest {
 
 		JsonNode suivant = verifier(ENVOYER_BUZZ, buzzer(soiree, lea.jeton(), null, UUID.randomUUID()), 200);
 		assertThat(suivant.path("rang").asLong()).isEqualTo(2);
-		JsonNode evenement = salle.poll(2, TimeUnit.SECONDS);
+		JsonNode evenement = salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		assertThat(evenement).isNotNull();
 		assertThat(evenement.path("donnees").path("dernierBuzz")).isEqualTo(suivant);
 	}
@@ -215,12 +217,13 @@ class BuzzDeSoireeHttpTest {
 			for (var envoi : envois) {
 				reponses.add(executeur.submit(() -> {
 					prets.countDown();
-					if (!depart.await(3, TimeUnit.SECONDS)) { throw new IllegalStateException("Départ des Manettes manqué."); }
+					if (!depart.await(PLAFOND_SECONDES, TimeUnit.SECONDS)) { throw new IllegalStateException("Départ des Manettes manqué."); }
 					return buzzer(soiree, envoi.joueur().jeton(), null, envoi.id());
 				}));
 			}
-			assertThat(prets.await(3, TimeUnit.SECONDS)).isTrue();
+			assertThat(prets.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 			depart.countDown();
+			// Soixante Buzz concurrents : ce délai, comme celui de lecture du client, dépasse déjà le plafond commun.
 			for (int i = 0; i < envois.size(); i++) {
 				JsonNode recu = verifier(ENVOYER_BUZZ, reponses.get(i).get(15, TimeUnit.SECONDS), 200);
 				assertThat(recu.path("envoiId").asString()).isEqualTo(envois.get(i).id().toString());
@@ -235,7 +238,7 @@ class BuzzDeSoireeHttpTest {
 			throws InterruptedException {
 		long revisionPrecedente = -1;
 		for (long rang = 1; rang <= recus.size(); rang++) {
-			BuzzDiffuse evenement = destination.poll(2, TimeUnit.SECONDS);
+			BuzzDiffuse evenement = destination.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 			assertThat(evenement).as("Buzz de rang %s", rang).isNotNull();
 			assertThat(evenement.type()).isEqualTo("buzz-recu");
 			assertThat(evenement.buzz()).isEqualTo(recus.get(rang));
@@ -282,7 +285,8 @@ class BuzzDeSoireeHttpTest {
 		if (secret != null) { connexion.set("Authorization", "Bearer " + secret); }
 		var poigneeDeMain = secret == null ? proprietaire.poigneeDeMain() : new WebSocketHttpHeaders();
 		StompSession session = stomp.connectAsync("ws://localhost:" + port + "/ws", poigneeDeMain,
-				connexion, new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+				connexion, new StompSessionHandlerAdapter() { })
+				.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		StompHeaders abonnement = new StompHeaders();
 		abonnement.setDestination(destination);
@@ -293,7 +297,7 @@ class BuzzDeSoireeHttpTest {
 			@Override public void handleFrame(StompHeaders entetes, Object contenu) { recus.add(projection.apply((JsonNode) contenu)); }
 		});
 		String capture = soiree.route() + "/etat/" + ecran + "?abonnementId=" + abonnement.getId();
-		await().pollDelay(Duration.ZERO).pollInterval(Duration.ofMillis(10)).atMost(Duration.ofSeconds(3))
+		await().pollDelay(Duration.ZERO).pollInterval(Duration.ofMillis(10)).atMost(PLAFOND)
 				.until(() -> envoyer(HttpMethod.GET, capture, secret, null, null)
 				.getStatusCode().value() == 200);
 		return recus;

@@ -2,6 +2,7 @@ package fr.croustyquizz.tempsreel;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.Message;
@@ -30,6 +31,7 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 	static final String PREFIXE_ACTIONS = "/app";
 	private final RegistreAbonnements abonnements;
 	private TaskScheduler ordonnanceur;
+	private MessageChannel sortant;
 	private final ObjectProvider<ControleAccesStomp> acces;
 	private final ObjectProvider<PoigneeDeMainAnimateur> animateurs;
 
@@ -51,7 +53,8 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 				return message;
 			}
 		});
-		acces.ifAvailable(controle -> canal.interceptors(controle));
+		// Un CONNECT refusé reçoit ERROR puis la fermeture, au lieu d'un silence.
+		acces.ifAvailable(controle -> canal.interceptors(new RefusDeConnexionStomp(controle, sortant)));
 		canal.interceptors(abonnements);
 	}
 
@@ -66,6 +69,11 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 	@Override
 	public void configureWebSocketTransport(WebSocketTransportRegistration transport) {
 		animateurs.ifAvailable(poignee -> transport.addDecoratorFactory(poignee::decorer));
+	}
+
+	@Autowired
+	void definirCanalSortant(@Lazy @Qualifier("clientOutboundChannel") MessageChannel clientOutboundChannel) {
+		this.sortant = clientOutboundChannel;
 	}
 
 	@Autowired
