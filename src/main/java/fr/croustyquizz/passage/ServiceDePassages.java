@@ -154,7 +154,7 @@ public abstract class ServiceDePassages<R, E> extends ServiceDeManche<R, E> {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche ou Joueur introuvable.").exception();
         }
     }
-    /** Vérifie la portée avant tout reçu pour un Passage connu. La réponse à une Invitation exige d’en être le destinataire. */
+    /** Vérifie la portée sur un Passage connu avant tout reçu : invité, ou Interprète pour la désinscription. */
     private void verifierPortee(UUID mancheId, UUID passageId, Acteur acteur, boolean invitationRequise) {
         EtatFileAttente file = passages.charger(mancheId);
         UUID joueur = acteur.identifiant();

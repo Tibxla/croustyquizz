@@ -97,12 +97,12 @@ class ServiceKaraokeTest {
         UUID passage = inscrire(manche, 1).passageId();
         UUID envoiId = UUID.randomUUID();
         String route = "/passages/" + passage + "/invitation";
-        var ancienCorps = new CorpsKaraoke.ReponseInvitation(envoiId, 0L, "ACCEPTER");
+        var ancienCorps = new CorpsPassage.ReponseInvitation(envoiId, 0L, "ACCEPTER");
         var ancienEnvoi = envoi(joueur, envoiId, "POST", route, ancienCorps);
         banc.socle.envois().enregistrer(ancienEnvoi, new Refuse(404, "RESSOURCE_INTROUVABLE", "Invitation introuvable."),
                 banc.horloge.maintenant());
 
-        var corps = new CorpsKaraoke.ReponseInvitation(envoiId, 0L, "REFUSER");
+        var corps = new CorpsPassage.ReponseInvitation(envoiId, 0L, "REFUSER");
         var tentative = envoi(joueur, envoiId, "POST", route, corps);
         assertThatThrownBy(() -> banc.service.repondreInvitation(manche, passage, tentative, corps))
                 .isInstanceOfSatisfying(RefusDeCommande.class, e -> {

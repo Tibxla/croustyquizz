@@ -11,7 +11,7 @@ export function installerInvitations(ui, { verbe = 'chanter' } = {}) {
 	ui.principale.append(titreInvitations, invitations);
 	function rendre(titre) {
 		const recues = ui.bloc.invitationsRecues ?? [];
-		titreInvitations.hidden = invitations.hidden = !recues.length;
+		const titreAvaitFocus = ui.document.activeElement === titreInvitations;
 		const fiches = recues.map((invitation, rang) => {
 			const cible = invitation.passage;
 			const ticket = creerTicket(ui, { ...invitation, passageId: cible.passageId }, { personnel: true, courant: true });
@@ -41,7 +41,10 @@ export function installerInvitations(ui, { verbe = 'chanter' } = {}) {
 			if (ui.reessaiPossible(envoi)) bas.append(bouton('Réessayer le même envoi', () => ui.reessayer(envoi.cle)));
 			return ticket;
 		});
-		ui.remplacerListe(invitations, fiches, titre);
+		const enReste = recues.length > 0;
+		ui.remplacerListe(invitations, fiches, enReste ? titreInvitations : titre);
+		titreInvitations.hidden = invitations.hidden = !enReste;
+		if (!enReste && titreAvaitFocus) titre.focus();
 	}
 	return { rendre };
 }

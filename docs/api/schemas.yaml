@@ -3325,7 +3325,7 @@ $defs:
     type: object
     additionalProperties: false
     description: Dernier état d’une Invitation suivie par l’inscripteur. REFUSEE couvre aussi l’invité qui a quitté
-      le Passage après avoir accepté. EXPIREE reste visible si le Passage sort de la File ou si l’invité part.
+      le Passage après avoir accepté. Au Karaoké, EXPIREE reste visible si le Passage sort de la File ou si l’invité part.
       Le pseudo d’un invité absent de la Soirée est remplacé par « Joueur parti ».
     properties:
       passageId:

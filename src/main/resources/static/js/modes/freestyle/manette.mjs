@@ -1,4 +1,4 @@
-import { creerChoixInvites, creerInterface, creerTicket, invitesPossibles, texteEnvoi } from '../karaoke/commun.mjs';
+import { creerChoixInvites, creerInterface, creerTicket, texteEnvoi } from '../karaoke/commun.mjs';
 import { estInscripteur, lignesInvitations } from '../karaoke/invitations.mjs';
 import { installerScene } from '../passage/scene-manette.mjs';
 import { installerVotes } from '../passage/votes-manette.mjs';
@@ -22,10 +22,10 @@ export function monter(zones, contexte) {
 	const label = e('label', '', 'Instrumentale'); label.setAttribute('for', choix.id);
 	const inscription = envoi => envoi.commande.type === 'INSCRIRE_FREESTYLE';
 	const moi = contexte.acteur.identifiant;
-	let invites, signatureInvites, inscriptionVidee;
-	const zoneInvites = e('div');
+	let inscriptionVidee;
+	const invites = creerChoixInvites(ui, moi, { verbe: 'Rapper' });
 	const envoyer = bouton('M’inscrire', () => {
-		const invitesIds = invites?.choisis() ?? [];
+		const invitesIds = invites.choisis();
 		// Sans invité, le corps reste celui d'une inscription seule.
 		ui.commande({ methode: 'POST', chemin: ui.racine() + '/passages',
 			acteurType: 'JOUEUR', mancheId: ui.bloc.mancheId, type: 'INSCRIRE_FREESTYLE',
@@ -35,7 +35,7 @@ export function monter(zones, contexte) {
 	const reessayer = bouton('Réessayer le même envoi', () => ui.reessayer(ui.dernierEchec(inscription)?.cle));
 	const aide = e('p');
 	const panneau = e('div', 'champ');
-	panneau.append(label, choix, zoneInvites, aide, envoyer, statut, reessayer);
+	panneau.append(label, choix, invites.element, aide, envoyer, statut, reessayer);
 	const file = e('div', 'karaoke__personnels');
 	ui.principale.append(titre, panneau, e('h2', '', 'Tes Passages en attente'), file);
 
@@ -62,13 +62,6 @@ export function monter(zones, contexte) {
 		// Une inscription acceptée a déjà invité ces Joueurs : la suivante repart sans invité coché.
 		const viderInvites = envoi?.etat === 'accepte' && envoi.cle !== inscriptionVidee;
 		if (viderInvites) inscriptionVidee = envoi.cle;
-		const candidats = invitesPossibles(ui.joueurs, moi).map(j => `${j.id}:${j.pseudo}`).join();
-		if (candidats !== signatureInvites || viderInvites) {
-			const choisis = viderInvites ? [] : invites?.choisis() ?? [];
-			invites = creerChoixInvites(ui, moi, { verbe: 'Rapper', choisis });
-			zoneInvites.replaceChildren(...(invites ? [invites.element] : []));
-			signatureInvites = candidats;
-		}
 		const disponibles = bloc.instrumentales;
 		const signature = JSON.stringify(disponibles);
 		if (signature !== choixPrecedents) {
@@ -86,7 +79,7 @@ export function monter(zones, contexte) {
 		// Sans confirmation, un nouvel envoi pourrait doubler l'inscription : seul le réessai du même envoi reste permis.
 		const aConfirmer = ['inconnu', 'indisponible'].includes(envoi?.etat);
 		envoyer.disabled = choix.disabled = !ui.mutationsPermises || !bloc.peutInscrire || enCours || aConfirmer;
-		if (invites) invites.element.disabled = envoyer.disabled;
+		invites.rendre({ vider: viderInvites, desactiver: envoyer.disabled });
 		aide.textContent = disponibles.length ? (bloc.peutInscrire ? '' : 'Tu ne peux pas ajouter de Passage pour le moment.')
 			: 'Aucune Instrumentale disponible pour le moment.';
 		const texte = texteEnvoi(envoi);
