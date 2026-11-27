@@ -1,9 +1,46 @@
+/* Pages de l'Animateur hors Console (accueil, compte, Soirées du Lieu, préparation) : une colonne centrée,
+   l'entête porte le mot-symbole (retour à l'accueil) et, une fois connecté, le menu du compte. */
+
+.icone--compte { --icone: url("../icones/user.svg"); }
+.icone--deplier { --icone: url("../icones/chevron-down.svg"); }
+.icone--telephone { --icone: url("../icones/smartphone.svg"); }
+.icone--retour { --icone: url("../icones/arrow-left.svg"); }
+
+.entete {
+  --largeur: 48rem;
+  width: min(100% - 2 * var(--espace-4), var(--largeur));
+  margin: 0 auto;
+  padding-top: var(--espace-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-3);
+}
+.entete--seule {
+  --largeur: 33rem;
+}
+.entete .marque {
+  flex: none;
+  min-height: 44px;
+  align-items: center;
+}
+
 .compte {
   width: min(100% - 2 * var(--espace-4), 33rem);
   margin: 0 auto;
-  padding-block: var(--espace-6);
+  padding-block: var(--espace-5) var(--espace-7);
   display: grid;
+  align-content: start;
   gap: var(--espace-5);
+}
+
+/* Un lien habillé en bouton se lit comme un bouton : pas de soulignement. */
+a.bouton {
+  text-decoration: none;
+}
+
+.compte__intro {
+  color: var(--texte-2);
 }
 
 .compte h1 {
@@ -40,6 +77,10 @@
 
 .compte__navigation {
   color: var(--texte-2);
+}
+nav.compte__navigation {
+  display: grid;
+  gap: var(--espace-2);
 }
 
 .compte__navigation a {
@@ -99,4 +140,319 @@
 .soirees__ligne small,
 .soirees__vide {
   color: var(--texte-2);
+}
+
+.soirees__entete .bouton,
+.soirees__ligne .bouton {
+  flex: none;
+}
+
+/* ---------- Menu du compte : un bouton qui déplie un panneau, posé sur la page sans ombre. ---------- */
+
+.menu-compte {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.menu-compte__bouton {
+  max-width: min(18rem, 100%);
+  padding-inline: var(--espace-3);
+}
+.menu-compte__nom {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-compte__bouton[aria-expanded="true"] {
+  border-color: var(--texte-3);
+  background: var(--fond-2);
+}
+.menu-compte__bouton .icone--deplier {
+  transition: transform 160ms var(--sortie);
+}
+.menu-compte__bouton[aria-expanded="true"] .icone--deplier {
+  transform: rotate(180deg);
+}
+.menu-compte__panneau {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + var(--espace-2));
+  right: 0;
+  width: max-content;
+  min-width: 15rem;
+  max-width: min(22rem, calc(100vw - 2 * var(--espace-4)));
+  display: grid;
+  gap: var(--espace-1);
+  padding: var(--espace-2);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon-grand);
+  background: var(--fond-2);
+}
+.menu-compte__qui {
+  padding: var(--espace-2) var(--espace-3) var(--espace-3);
+  border-bottom: 1px solid var(--fond-3);
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}
+.menu-compte__qui strong {
+  color: var(--texte);
+}
+.menu-compte__liens {
+  display: grid;
+  margin: 0;
+  padding: var(--espace-1) 0;
+  list-style: none;
+}
+.menu-compte__lien {
+  display: flex;
+  align-items: center;
+  gap: var(--espace-2);
+  min-height: 44px;
+  padding: 0 var(--espace-3);
+  border-radius: var(--rayon);
+  text-decoration: none;
+  font-weight: 700;
+}
+.menu-compte__lien:hover {
+  background: var(--fond-3);
+}
+/* La page en cours se dit par une coche et par aria-current, jamais par la seule couleur. */
+.menu-compte__lien[aria-current="page"] {
+  color: var(--texte-2);
+}
+.menu-compte__lien[aria-current="page"]::after {
+  content: "";
+  width: 1.25em;
+  height: 1.25em;
+  margin-left: auto;
+  background: currentColor;
+  mask: url("../icones/check.svg") center / contain no-repeat;
+}
+.menu-compte__sortie {
+  justify-content: flex-start;
+  width: 100%;
+  padding-inline: var(--espace-3);
+}
+
+/* ---------- Accueil : deux entrées en tickets, l'une pour l'Animateur, l'autre pour le Joueur. ---------- */
+
+body:has(> .accueil) {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.accueil {
+  width: min(100% - 2 * var(--espace-4), 48rem);
+  margin: 0 auto;
+  padding-block: var(--espace-7);
+  display: grid;
+  align-content: center;
+  gap: var(--espace-6);
+}
+.accueil__texte {
+  display: grid;
+  gap: var(--espace-4);
+}
+.accueil h1 {
+  max-width: 18ch;
+  font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.accueil__texte p {
+  max-width: 58ch;
+  color: var(--texte-2);
+  font-size: 1.125rem;
+}
+.accueil__entrees {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: var(--espace-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.entree {
+  --fond-encoche: var(--fond-0);
+  --perforation: 4.5rem;
+  height: 100%;
+  min-height: 7rem;
+  border-radius: var(--rayon);
+  text-decoration: none;
+}
+.entree .ticket__numero .icone {
+  width: 2rem;
+  height: 2rem;
+}
+.entree .ticket__corps {
+  gap: var(--espace-1);
+  padding: var(--espace-4) var(--espace-5) var(--espace-4) var(--espace-4);
+  transition: transform 220ms var(--sortie), box-shadow 220ms var(--sortie);
+}
+.entree__titre {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.entree__aide {
+  color: var(--encre-2);
+  line-height: 1.4;
+}
+/* Le ticket commence à se détacher le long de la perforation : on sait qu'on va le prendre. */
+.entree:hover .ticket__corps,
+.entree:focus-visible .ticket__corps {
+  transform: rotate(-1.5deg) translate(3px, -2px);
+  box-shadow: var(--ombre);
+}
+.entree:active .ticket__corps {
+  transform: rotate(-0.5deg) translate(1px, 0);
+}
+.accueil__inscription {
+  color: var(--texte-2);
+}
+.accueil__inscription a {
+  color: var(--citron);
+}
+
+/* ---------- Préparation ---------- */
+
+.compte__retour {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espace-2);
+  min-height: 44px;
+  color: var(--texte-2);
+  text-underline-offset: 0.2em;
+}
+.compte__retour:hover {
+  color: var(--texte);
+}
+.preparation__entete {
+  display: grid;
+  gap: var(--espace-2);
+}
+.preparation__entete h1:focus {
+  outline: none;
+}
+.preparation__statut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espace-2) var(--espace-3);
+  color: var(--texte-2);
+}
+.etiquette {
+  padding: var(--espace-1) var(--espace-2);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  color: var(--texte);
+  font: 800 0.8125rem/1 var(--police-chiffres);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.compte__formulaire .choix-groupe {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--espace-3);
+  padding: 0;
+  border: 0;
+}
+.compte__formulaire .choix-groupe legend {
+  margin-bottom: var(--espace-2);
+  font-size: 1rem;
+}
+.choix {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espace-3);
+  min-height: 44px;
+  padding: var(--espace-3) var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  cursor: pointer;
+  transition: border-color 120ms var(--sortie), background-color 120ms var(--sortie);
+}
+.choix:hover {
+  border-color: var(--texte-3);
+  background: var(--fond-2);
+}
+.choix:has(input:checked) {
+  border-color: var(--citron);
+}
+.choix:has(input:focus-visible) {
+  outline: 3px solid var(--citron);
+  outline-offset: 3px;
+}
+.choix input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--citron);
+}
+.choix input:focus-visible {
+  outline: none;
+}
+.choix__texte {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.choix__nom {
+  font-weight: 700;
+  line-height: 22px;
+}
+.choix__aide {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+
+.etapes {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.etape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espace-3) var(--espace-5);
+  padding-block: var(--espace-4);
+  border-top: 1px solid var(--fond-3);
+}
+.etape__texte {
+  flex: 1 1 18rem;
+  display: grid;
+  gap: var(--espace-1);
+  min-width: 0;
+}
+.etape__texte h2 {
+  font-size: 1.125rem;
+}
+.etape__texte p {
+  color: var(--texte-2);
+}
+.etape__texte p:focus {
+  outline: none;
+}
+.etape__texte .etape__code {
+  margin-block: var(--espace-1);
+  color: var(--texte);
+  font-size: 3rem;
+  line-height: 0.95;
+  letter-spacing: 0.06em;
+}
+.etape > .bouton {
+  flex: none;
+}
+@media (max-width: 40rem) {
+  .etape > .bouton {
+    width: 100%;
+  }
 }

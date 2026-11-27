@@ -1,6 +1,7 @@
 // Soirées du Lieu de l'Animateur connecté (listerSoirees, #9) : rubriques et liens, sans règle de jeu.
 import { appeler } from './api.js';
 import { consulterSession, renvoyerVersConnexion } from './compte.mjs';
+import { monterMenuCompte } from './menu-compte.mjs';
 
 const ETATS = { PREPARATION: 'En préparation', OUVERTE: 'Ouverte', EN_COURS: 'En cours', TERMINEE: 'Terminée' };
 const FORMATS = { SOLO: 'Solo', EQUIPE: 'Équipe' };
@@ -92,6 +93,8 @@ async function chargerSoirees(document, zone) {
 	const statut = document.querySelector('[data-statut-soirees]');
 	const session = await consulterSession();
 	if (session.statut === 401) return;
+	const menu = document.querySelector('[data-menu-compte]');
+	if (menu && session.ok && session.corps?.nom) monterMenuCompte(menu, { nom: session.corps.nom });
 	const liste = session.ok ? await appeler('GET', '/api/soirees') : session;
 	if (liste.statut === 401) {
 		renvoyerVersConnexion();

@@ -9,11 +9,13 @@
 	<script type="module" src="/js/formulaire-compte.mjs"></script>
 </head>
 <body>
+	<header class="entete entete--seule"><a class="marque" href="/" aria-label="CroustyQuizz, accueil">Crousty<span class="marque__accent">Quizz</span></a></header>
+
 	<main class="compte">
-		<header><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
 		<section class="panneau" aria-labelledby="titre">
 			<h1 id="titre">Connexion à la Console</h1>
-			<p id="compte-cree" role="status" hidden>Ton compte est créé. Connecte-toi pour préparer ta Soirée.</p>
+			<p class="compte__intro">Pour préparer et animer les Soirées de ton Lieu.</p>
+			<p id="compte-cree" class="envoi envoi--accepte" role="status" hidden><span class="icone icone--ok" aria-hidden="true"></span>Ton compte est créé. Connecte-toi pour préparer ta Soirée.</p>
 			<form class="compte__formulaire" data-compte="connexion" method="post" novalidate>
 				<div class="champ">
 					<label for="email">Ton e-mail</label>
@@ -31,7 +33,10 @@
 			</form>
 			<noscript>Active JavaScript pour te connecter.</noscript>
 		</section>
-		<p class="compte__navigation">Première Soirée au Lieu ? <a data-autre-page href="/inscription.html">Créer un compte</a></p>
+		<nav class="compte__navigation" aria-label="Autres accès">
+			<p>Pas encore de compte pour ton Lieu ? <a data-autre-page href="/inscription.html">Créer un compte</a></p>
+			<p>Tu viens jouer ? Pas besoin de compte : <a href="/rejoindre.html">Rejoindre une Soirée</a></p>
+		</nav>
 	</main>
 </body>
 </html>

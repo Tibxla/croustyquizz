@@ -9,10 +9,12 @@
 	<script type="module" src="/js/formulaire-compte.mjs"></script>
 </head>
 <body>
+	<header class="entete entete--seule"><a class="marque" href="/" aria-label="CroustyQuizz, accueil">Crousty<span class="marque__accent">Quizz</span></a></header>
+
 	<main class="compte">
-		<header><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
 		<section class="panneau" aria-labelledby="titre">
 			<h1 id="titre">Créer le compte du Lieu</h1>
+			<p class="compte__intro">Ce compte te sert à préparer et animer les Soirées. Les Joueurs, eux, n’en ont pas besoin.</p>
 			<form class="compte__formulaire" data-compte="inscription" method="post" novalidate>
 				<fieldset>
 					<legend>Ton Lieu</legend>
@@ -49,7 +51,10 @@
 			</form>
 			<noscript>Active JavaScript pour créer ton compte.</noscript>
 		</section>
-		<p class="compte__navigation">Tu as déjà un compte ? <a data-autre-page href="/connexion.html">Te connecter</a></p>
+		<nav class="compte__navigation" aria-label="Autres accès">
+			<p>Tu as déjà un compte ? <a data-autre-page href="/connexion.html">Te connecter</a></p>
+			<p>Tu viens jouer ? <a href="/rejoindre.html">Rejoindre une Soirée</a></p>
+		</nav>
 	</main>
 </body>
 </html>
