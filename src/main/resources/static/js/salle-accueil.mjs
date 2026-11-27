@@ -12,19 +12,31 @@ export function estAccueil(vue, { photo = false } = {}) {
  * Les arrivées, dans l'ordre : les derniers arrivés restent visibles, les autres se résument (« et 36 autres »).
  * Un Joueur déjà affiché n'est pas recréé ; une arrivée reçue par événement s'anime, une capture restaure sans animer.
  */
-export function creerArrivees(liste, { maximum = 24 } = {}) {
+/**
+ * Combien d'arrivées montrer pour que la liste ne tienne que des rangées complètes dans sa hauteur.
+ * Quand tout ne tient pas, une place va au résumé « et N autres ».
+ */
+export function placesArrivees({ hauteurListe, hauteurRangee, ecart, colonnes, total }) {
+	const rangees = hauteurRangee > 0 ? Math.max(0, Math.floor((hauteurListe + ecart) / (hauteurRangee + ecart))) : 0;
+	const places = rangees * colonnes;
+	return total <= places ? total : Math.max(0, places - 1);
+}
+
+export function creerArrivees(liste, { maximum: maximumParDefaut = 24 } = {}) {
 	const document = liste.ownerDocument;
 	const lignes = new Map();
 	const resume = document.createElement('li');
 	resume.className = 'arrivee arrivee--autres';
 	return {
-		afficher(joueurs, origine) {
-			const visibles = joueurs.slice(-maximum);
+		afficher(joueurs, origine, { maximum = maximumParDefaut } = {}) {
+			const visibles = maximum > 0 ? joueurs.slice(-maximum) : [];
 			const presents = new Set(visibles.map(joueur => joueur.id));
 			for (const id of [...lignes.keys()]) if (!presents.has(id)) lignes.delete(id);
 			const enfants = visibles.map(joueur => {
 				let ligne = lignes.get(joueur.id);
-				if (!ligne) {
+				// Déjà affichée : son animation d'arrivée ne se rejoue pas quand la liste est réécrite.
+				if (ligne) ligne.classList.remove('arrivee--nouvelle');
+				else {
 					ligne = document.createElement('li');
 					ligne.className = 'arrivee';
 					if (origine?.source === 'evenement') ligne.classList.add('arrivee--nouvelle');

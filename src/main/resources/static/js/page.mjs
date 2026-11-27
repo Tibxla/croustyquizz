@@ -5,7 +5,7 @@ import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
 import { afficherClassementDeSalle, decrireBarre, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterMenu } from './menu.mjs';
-import { creerAnnonceBuzz, creerArrivees, estAccueil } from './salle-accueil.mjs';
+import { creerAnnonceBuzz, creerArrivees, estAccueil, placesArrivees } from './salle-accueil.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -107,8 +107,23 @@ async function demarrer() {
 	const zoneTalon = element('talon');
 	// Salle : hors Manche, le talon passe au centre avec les arrivées ; en Manche, il revient en bas de colonne (#281).
 	const accueil = element('accueil');
-	// Seize arrivées sur deux colonnes tiennent en 720 p ; au-delà, « et N autres » (#281, M9).
-	const arrivees = accueil ? creerArrivees(element('arrivees'), { maximum: 16 }) : null;
+	const arrivees = accueil ? creerArrivees(element('arrivees')) : null;
+	// Les arrivées ne montrent que des rangées complètes : leur nombre suit la hauteur de l'écran (#281, M9).
+	function afficherArrivees(joueurs, origine) {
+		const liste = element('arrivees'), colonne = liste.parentNode;
+		if (accueil.hidden) { arrivees.afficher(joueurs, origine); return; }
+		const sonde = document.createElement('li');
+		sonde.className = 'arrivee';
+		sonde.textContent = 'M';
+		liste.append(sonde);
+		const styleListe = getComputedStyle(liste), styleColonne = getComputedStyle(colonne);
+		const titre = element('arrivees-titre');
+		const maximum = placesArrivees({ total: joueurs.length, hauteurRangee: sonde.offsetHeight,
+			ecart: parseFloat(styleListe.rowGap) || 0, colonnes: styleListe.gridTemplateColumns.split(' ').length,
+			hauteurListe: colonne.clientHeight - titre.offsetHeight - (parseFloat(styleColonne.rowGap) || 0) });
+		sonde.remove();
+		arrivees.afficher(joueurs, origine, { maximum });
+	}
 	const annonceBuzz = element('annonce-buzz') ? creerAnnonceBuzz(element('annonce-buzz')) : null;
 	const colonneTalon = zoneTalon?.parentNode;
 	function afficherScene(vue, origine) {
@@ -119,9 +134,9 @@ async function demarrer() {
 		accueil.hidden = !enAccueil;
 		const place = enAccueil ? element('accueil-talon') : colonneTalon;
 		if (zoneTalon.parentNode !== place) place.append(zoneTalon);
-		arrivees.afficher(vue.joueurs, origine);
 		element('arrivees-vide').hidden = vue.joueurs.length > 0;
 		texte('arrivees-titre', vue.joueurs.length ? `Déjà là · ${vue.joueurs.length}` : 'Déjà là');
+		afficherArrivees(vue.joueurs, origine);
 		if (enAccueil) texte('attente', '');
 		annonceBuzz.afficher(vue, origine);
 	}
@@ -158,8 +173,10 @@ async function demarrer() {
 	const zonePhotos = element('photos');
 	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
 		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
-	// Une photo de la salle s'affiche une fois décodée, après la vue : l'accueil se réévalue à ce moment-là.
 	let derniereVue;
+	// Une autre taille d'écran change le nombre de rangées d'arrivées.
+	if (accueil) addEventListener('resize', () => { if (derniereVue && !accueil.hidden) afficherArrivees(derniereVue.joueurs, null); });
+	// Une photo de la salle s'affiche une fois décodée, après la vue : l'accueil se réévalue à ce moment-là.
 	if (accueil && zonePhotos) new MutationObserver(() => { if (derniereVue) afficherScene(derniereVue, null); })
 		.observe(zonePhotos, { attributes: true, attributeFilter: ['hidden'] });
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;

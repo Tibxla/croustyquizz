@@ -137,3 +137,11 @@ test('Écran de salle : en Manche, la scène commence par le mode ; à l’accue
 	assert.match(css, /\.salle--accueil \.salle__scene \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
 	assert.match(css, /\.salle--accueil \.salle__cote \{[^}]*display:\s*none/);
 });
+
+test('Écran de salle : la colonne des arrivées prend toute la hauteur de l’accueil et ne coupe jamais son titre (#281)', async () => {
+	const css = await lire('css/ecran-de-salle.css');
+	assert.match(css, /\.salle__principal > \.salle__accueil:not\(\[hidden\]\) \{[^}]*grid-template-rows:\s*minmax\(0, 1fr\)/);
+	const colonne = css.match(/\.salle__arrivees \{([^}]*)\}/)?.[1] ?? '';
+	assert.match(colonne, /align-self:\s*stretch/);
+	assert.match(colonne, /align-content:\s*safe center/);
+});

@@ -1,7 +1,7 @@
 // Écran de salle hors Passage (#281) : accueillir les arrivées, annoncer le Buzz en grand, sortir la mise en route du son.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { creerAnnonceBuzz, creerArrivees, decrireSon, estAccueil } from '../../src/main/resources/static/js/salle-accueil.mjs';
+import { creerAnnonceBuzz, creerArrivees, decrireSon, estAccueil, placesArrivees } from '../../src/main/resources/static/js/salle-accueil.mjs';
 import { creerDocument } from './karaoke-dom-factice.mjs';
 
 const capture = { source: 'capture', type: 'capture' };
@@ -34,6 +34,9 @@ test('les arrivées s’ajoutent une par une ; seul un événement les anime', (
 	assert.equal(liste.children[2].textContent, 'Inès');
 	assert.ok(liste.children[2].classList.contains('arrivee--nouvelle'));
 	assert.ok(!liste.children[0].classList.contains('arrivee--nouvelle'));
+	// Réaffichée (autre vue, autre taille d'écran), une arrivée déjà animée ne rejoue pas son animation.
+	arrivees.afficher([joueur('a', 'Léa'), joueur('b', 'Max'), joueur('c', 'Inès')], capture);
+	assert.ok(liste.children.every(li => !li.classList.contains('arrivee--nouvelle')));
 });
 
 test('à soixante Joueurs, la liste garde les derniers arrivés et dit combien d’autres sont là (#281, M9)', () => {
@@ -73,4 +76,28 @@ test('la mise en route du son est un panneau d’installation, puis une pastille
 	assert.deepEqual(decrireSon({ fichiers: [], sonDebloque: true }), { etat: 'pret', pastille: 'Paroles seules' });
 	assert.deepEqual(decrireSon({ fichiers: [{}], sonDebloque: true }), { etat: 'pret', pastille: 'Son activé · 1 morceau' });
 	assert.deepEqual(decrireSon({ fichiers: [{}, {}, {}], sonDebloque: true }), { etat: 'pret', pastille: 'Son activé · 3 morceaux' });
+});
+
+test('le nombre d’arrivées visibles suit la hauteur : seulement des rangées complètes, « et N autres » compte le reste', () => {
+	const mesure = { hauteurListe: 400, hauteurRangee: 40, ecart: 10, colonnes: 2 };
+	// 8 rangées de 2 places : 16 places.
+	assert.equal(placesArrivees({ ...mesure, total: 0 }), 0);
+	assert.equal(placesArrivees({ ...mesure, total: 5 }), 5);
+	assert.equal(placesArrivees({ ...mesure, total: 16 }), 16, 'tout tient : pas de résumé');
+	assert.equal(placesArrivees({ ...mesure, total: 17 }), 15, 'une place va au résumé');
+	assert.equal(placesArrivees({ ...mesure, total: 60 }), 15);
+	assert.equal(placesArrivees({ ...mesure, hauteurListe: 39, total: 60 }), 0, 'pas même une rangée : rien');
+	assert.equal(placesArrivees({ ...mesure, hauteurListe: 40, colonnes: 1, total: 60 }), 0, 'une seule place : seul le résumé');
+});
+
+test('l’affichage accepte un maximum calculé à chaque vue', () => {
+	const document = creerDocument();
+	const liste = document.createElement('ul');
+	const arrivees = creerArrivees(liste);
+	const joueurs = Array.from({ length: 60 }, (_, i) => joueur(`j${i}`, `Joueur ${i}`));
+	arrivees.afficher(joueurs, capture, { maximum: 15 });
+	assert.equal(liste.children.length, 16);
+	assert.equal(liste.children[0].textContent, 'et 45 autres');
+	arrivees.afficher(joueurs, capture, { maximum: 0 });
+	assert.deepEqual(liste.children.map(li => li.textContent), ['et 60 autres']);
 });
