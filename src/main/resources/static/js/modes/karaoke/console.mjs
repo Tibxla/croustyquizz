@@ -2,7 +2,7 @@ import { appelerSuivant, piloter, prochainPassage } from '../passage/pilotage.mj
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
 import { joindrePseudos } from './invitations.mjs';
 import { preparerPlacement } from './placement.mjs';
-import { formaterDecalage, formaterTempsRestant } from './presentation.mjs';
+import { formaterDecalage, formaterTempsRestant, passageActif } from './presentation.mjs';
 import { delaiAppelRestant, tempsAvantFinPrevue } from './paroles.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes } from './vote.mjs';
 
@@ -42,7 +42,8 @@ function installerPassage(ui, commande) {
 	const listeVotes = e('ul', 'karaoke__liste-votes');
 	votes.hidden = true;
 	votes.append(titreVotes, listeVotes);
-	ui.principale.append(barre, fiche, votes);
+	// Le Passage courant ouvre la colonne, ses commandes juste dessous (#282).
+	ui.principale.append(fiche, barre, votes);
 	let delaisVote = [];
 
 	const prochain = () => prochainPassage(ui.bloc);
@@ -53,7 +54,8 @@ function installerPassage(ui, commande) {
 		const mancheId = ui.bloc.mancheId;
 		const d = ui.dialogue({ titre: 'Terminer la Manche ?', declencheur: terminer, valide: () => ui.bloc.mancheId === mancheId,
 			confirmation: { libelle: 'Terminer la Manche', permise: () => ui.mutationsPermises, executer: () => envoyerPilotage('TERMINER') } });
-		d.contenu.append(e('p', '', 'Le Passage en cours s’arrête. Le Palmarès s’affiche sur l’Écran de salle.'));
+		const palmares = 'Le Palmarès s’affiche sur l’Écran de salle.';
+		d.contenu.append(e('p', '', passageActif(ui.bloc.courant) ? `Le Passage en cours s’arrête. ${palmares}` : palmares));
 	});
 	const appeler = bouton('Appeler le suivant', () => appelerSuivant(ui, commande), 'bouton bouton--action');
 	const appelAutomatique = e('span', 'console__note', 'Appel automatique');
@@ -190,8 +192,9 @@ export function monter(zones, contexte) {
 	limite.append(label, champ, appliquer, erreur, valeurSoumise);
 	const file = e('ol', 'rouleau a-venir'), vide = e('p', '', 'Aucun Passage en attente.');
 	const commandes = e('div', 'karaoke__commandes'), message = e('p'); message.setAttribute('role', 'status');
-	ui.principale.append(titre, limite, file, vide, commandes, message);
-	const catalogue = creerCatalogue(ui, ui.laterale);
+	// La File suit le Passage courant ; la limite, réglée une fois pour la Manche, passe après (#282).
+	ui.principale.append(titre, file, vide, commandes, message, limite);
+	const catalogue = creerCatalogue(ui, ui.laterale, { replie: true });
 	let selection = null;
 	ui.messageInvalidation = () => { message.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
 	const passages = () => ui.bloc.passagesEnAttente;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireClassementDeSalle, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { decrireBarre, decrireClassementDeSalle, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
 	const vue1 = { soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
@@ -175,4 +175,19 @@ test('en fin de Soirée, le Podium final passe aussi avant le Palmarès du Frees
 	const enCours = { ...terminee, soiree: { etat: 'EN_COURS' } };
 	assert.equal(decrireClassementDeSalle(enCours), null);
 	assert.deepEqual(decrirePalmaresDeSalle(enCours).map(ligne => ligne.texte), ['1. n° 3 · Boom bap · Lou · 4,5 sur 5 (2 votes)']);
+});
+
+test('la barre de pilotage dit où en est la Soirée, le code et le nombre de Joueurs (#282)', () => {
+	const joueurs = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+	const base = { soiree: { etat: 'OUVERTE', codeAcces: 'K7P2QX' }, joueurs, mancheActive: null, modeEnCours: null };
+	assert.deepEqual(decrireBarre(base), { mode: 'Avant le lancement', code: 'K7P2QX', joueurs: '3 Joueurs' });
+	assert.deepEqual(decrireBarre({ ...base, soiree: { etat: 'PREPARATION', codeAcces: 'K7P2QX' }, joueurs: [] }),
+		{ mode: 'Soirée pas encore ouverte', code: null, joueurs: 'Aucun Joueur' });
+	assert.deepEqual(decrireBarre({ ...base, soiree: { etat: 'EN_COURS', codeAcces: 'K7P2QX' }, joueurs: [{ id: 'a' }],
+		mancheActive: { ordre: 1, etat: 'EN_COURS' }, modeEnCours: 'KARAOKE' }), { mode: 'Karaoké · Manche 2', code: 'K7P2QX', joueurs: '1 Joueur' });
+	assert.equal(decrireBarre({ ...base, soiree: { etat: 'EN_COURS' }, mancheActive: { ordre: 0, etat: 'EN_PAUSE' }, modeEnCours: 'QUIZ' }).mode,
+		'Quiz · Manche 1 · En pause');
+	assert.equal(decrireBarre({ ...base, soiree: { etat: 'EN_COURS' } }).mode, 'Entre deux Manches');
+	assert.deepEqual(decrireBarre({ ...base, soiree: { etat: 'TERMINEE', codeAcces: 'K7P2QX' } }),
+		{ mode: 'Soirée terminée', code: null, joueurs: '3 Joueurs' });
 });

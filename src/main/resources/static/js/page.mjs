@@ -3,7 +3,8 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
-import { afficherClassementDeSalle, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
+import { afficherClassementDeSalle, decrireBarre, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
+import { monterMenu } from './menu.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -62,6 +63,14 @@ function afficherCommun(vue) {
 	afficherPalmares(ecran === 'ecran' ? decrirePalmaresDeSalle(vue) : description.palmares);
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
+	if (element('barre-mode')) {
+		// La barre de la Console dit d'un coup d'œil l'étape, le code d'accès et le nombre de Joueurs (#282).
+		const barre = decrireBarre(vue);
+		texte('barre-mode', barre.mode);
+		texte('barre-code-valeur', barre.code ?? '');
+		element('barre-code').hidden = !barre.code;
+		texte('barre-joueurs', barre.joueurs);
+	}
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
@@ -130,7 +139,8 @@ async function demarrer() {
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
-	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
+	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte, { raison: element('raison-lancer') }) : null;
+	const menu = element('menu-bouton') ? monterMenu(element('menu-bouton'), element('menu')) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
@@ -157,7 +167,7 @@ async function demarrer() {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
-		pilotage?.demonter();
+		pilotage?.demonter(); menu?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter(); catalogueInstrumentales?.demonter();
 		void audioSalle?.detruire();
 	});

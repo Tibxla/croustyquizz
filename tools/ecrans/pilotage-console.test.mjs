@@ -21,6 +21,9 @@ function banc() {
 	const annuler = creer(dialogue, 'button', 'data-annuler-fin');
 	annuler.setAttribute('autofocus', '');
 	const confirmer = creer(dialogue, 'button', 'data-confirmer-fin');
+	const raison = document.createElement('p');
+	raison.id = 'raison-lancer';
+	document.body.append(raison);
 	const appels = [];
 	const annonces = [];
 	let captures = 0;
@@ -30,9 +33,9 @@ function banc() {
 		surEnvoi: (etat, detail) => annonces.push({ etat, detail }),
 		resynchroniser: () => { captures++; changerEtat('synchronisation'); },
 	});
-	const pilotage = monterPilotage(barre, contexte);
+	const pilotage = monterPilotage(barre, contexte, { raison });
 	return {
-		document, lancer, suivante, terminer, dialogue, annuler, confirmer, appels, annonces, pilotage, changerEtat,
+		document, lancer, suivante, terminer, dialogue, annuler, confirmer, raison, appels, annonces, pilotage, changerEtat,
 		captures: () => captures,
 		afficher: (etat, mancheActive = null, programme = [{ id: 'm', etat: 'EN_ATTENTE' }]) =>
 			pilotage.afficher({ soiree: { etat }, mancheActive, programme }),
@@ -122,4 +125,27 @@ test('ne montre que les commandes de l’étape de la Soirée', () => {
 	assert.deepEqual([b.lancer.hidden, b.suivante.hidden, b.terminer.hidden], [true, false, false]);
 	b.afficher('TERMINEE', null, [{ id: 'm', etat: 'TERMINEE' }]);
 	assert.deepEqual([b.lancer.hidden, b.suivante.hidden, b.terminer.hidden], [true, true, true]);
+});
+
+test('un seul citron : « Lancer la Soirée » ne l’est que s’il peut partir, et dit sinon pourquoi (#282)', () => {
+	const b = banc();
+	b.changerEtat('synchronisee');
+	b.afficher('OUVERTE', null, []);
+	assert.equal(b.lancer.getAttribute('aria-disabled'), 'true');
+	assert.doesNotMatch(b.lancer.className, /bouton--action/);
+	assert.equal(b.raison.textContent, 'Ajoute une Manche au programme pour lancer la Soirée.');
+	assert.equal(b.raison.hidden, false);
+	assert.equal(b.lancer.getAttribute('aria-describedby'), 'raison-lancer');
+	b.afficher('PREPARATION', null, [{ id: 'm', etat: 'EN_ATTENTE' }]);
+	assert.equal(b.raison.textContent, 'Ouvre la Soirée aux Joueurs depuis la préparation pour la lancer.');
+	b.afficher('OUVERTE');
+	assert.equal(b.lancer.getAttribute('aria-disabled'), 'false');
+	assert.match(b.lancer.className, /bouton--action/);
+	assert.equal(b.raison.hidden, true);
+	assert.equal(b.lancer.getAttribute('aria-describedby'), null);
+	b.afficher('EN_COURS', { id: 'm', etat: 'EN_COURS' }, [{ id: 'm', etat: 'EN_COURS' }, { id: 'n', etat: 'EN_ATTENTE' }]);
+	assert.doesNotMatch(b.suivante.className, /bouton--action/, 'Manche suivante n’est pas l’action tant qu’une Manche tourne');
+	b.afficher('EN_COURS', null, [{ id: 'm', etat: 'TERMINEE' }, { id: 'n', etat: 'EN_ATTENTE' }]);
+	assert.match(b.suivante.className, /bouton--action/);
+	b.pilotage.demonter();
 });

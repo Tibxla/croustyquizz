@@ -111,3 +111,20 @@ export function afficherClassementDeSalle(zone, vue) {
 	}));
 	return true;
 }
+
+const nombreJoueurs = n => (n === 0 ? 'Aucun Joueur' : `${n} Joueur${n > 1 ? 's' : ''}`);
+
+/** Ce que la barre de pilotage de la Console montre d'un coup d'œil (#282) : l'étape, le code d'accès, les Joueurs. */
+export function decrireBarre(vue) {
+	const { etat, codeAcces } = vue.soiree;
+	const manche = vue.mancheActive;
+	let mode;
+	if (etat === 'TERMINEE') mode = 'Soirée terminée';
+	else if (manche) mode = [modes[vue.modeEnCours] ?? vue.modeEnCours, `Manche ${manche.ordre + 1}`,
+		...(manche.etat === 'EN_PAUSE' ? ['En pause'] : [])].join(' · ');
+	else if (etat === 'PREPARATION') mode = 'Soirée pas encore ouverte';
+	else if (etat === 'OUVERTE') mode = 'Avant le lancement';
+	else mode = 'Entre deux Manches';
+	const ouverte = etat === 'OUVERTE' || etat === 'EN_COURS';
+	return { mode, code: ouverte ? codeAcces ?? null : null, joueurs: nombreJoueurs(vue.joueurs.length) };
+}

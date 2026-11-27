@@ -354,9 +354,9 @@ export function creerChoixInvites(ui, moi, { verbe = 'Chanter' } = {}) {
 	return { element, rendre, choisis };
 }
 
-export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
+export function creerCatalogue(ui, parent, { inscrire = false, replie = false } = {}) {
 	const { e, bouton, ecouter } = ui;
-	const titre = e('h2', '', 'Catalogue'); titre.tabIndex = -1;
+	const titre = e('h2', '', replie ? 'Catalogue des Chansons' : 'Catalogue'); titre.tabIndex = -1;
 	const formulaire = e('form', inscrire ? 'champ' : 'recherche');
 	const label = e('label', '', 'Titre ou artiste'), champ = e('input'); champ.id = `karaoke-recherche-${inscrire ? 'joueur' : 'animateur'}`;
 	label.setAttribute('for', champ.id); champ.type = 'search';
@@ -368,7 +368,13 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	const etatLecture = e('p'); etatLecture.setAttribute('role', 'status');
 	const CONSULTATION = 'Consultation en cours…';
 	const resultats = e(inscrire ? 'ul' : 'table', `karaoke__resultats${inscrire ? '' : ' resultats'}`);
-	parent.append(titre, formulaire, etatLecture, resultats);
+	if (replie) {
+		// Rarement utile à l'Animateur : la Console le replie sous son titre (#282).
+		const repli = e('details', 'catalogue-replie'), resume = e('summary');
+		resume.append(titre);
+		repli.append(resume, formulaire, etatLecture, resultats);
+		parent.append(repli);
+	} else parent.append(titre, formulaire, etatLecture, resultats);
 	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur, invitations;
 	const machine = creerMachineRecherche({ envoyer: (...args) => ui.contexte.envoyer(...args), creerUuid,
 		programmerDelai: (f, ms) => setTimeout(f, ms), annulerDelai: clearTimeout,

@@ -141,6 +141,9 @@ export function monterProgramme(panneau, contexte) {
 			element('programme-fige').hidden = modifiable;
 			element('programme-vide').hidden = programme.length > 0;
 			liste.replaceChildren(...programme.map((manche, index) => ligne(manche, index, programme)));
+			// Programme vide : ajouter une Manche est l'action du moment ; ensuite, c'est le lancement (#282).
+			ajout.classList.toggle('bouton--action', programme.length === 0);
+			if (!ajout.classList.contains('bouton')) ajout.classList.add('bouton');
 			actualiserCommandes();
 
 			if (!modifiable && (focusListe || focusFormulaire)) {
