@@ -62,7 +62,7 @@ async page => {
 		// Pour ces deux rôles, l'UUID est choisi par le formulaire ; utiliser celui réellement déposé.
 		await page.locator('button[type=submit]').click();
 		await page.waitForURL(`**/${ecran}.html?**`);
-		await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'Vue synchronisée');
+		await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'En direct');
 		verifier(await page.locator('[data-principale]').innerText().then(t => t.includes('Mode factice')), 'Module factice monté');
 		for (const [width, height] of tailles) {
 			await page.setViewportSize({ width, height });
@@ -78,7 +78,7 @@ async page => {
 		await page.waitForFunction(() => document.querySelector('[data-principale]').textContent.includes('EN_PAUSE'));
 		connexion.close();
 		await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent.includes('Connexion perdue'));
-		await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'Vue synchronisée');
+		await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'En direct');
 		publier({ ...vue, modeEnCours: null, mancheActive: null, quiz: null }, 'manche-terminee');
 		await page.waitForFunction(() => document.querySelector('[data-principale]').childElementCount === 0);
 		verifier(await page.locator('[data-titre]').innerText() === 'Soirée de démonstration', 'Partie commune conservée');

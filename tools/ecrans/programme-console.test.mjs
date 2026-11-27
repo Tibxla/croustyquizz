@@ -144,3 +144,12 @@ test('le programme ajoute une Manche de Freestyle avec les fiches cochées aprè
 	]);
 	b.programme.demonter();
 });
+
+test('les réglages d’une Manche se lisent sans jargon (#279)', () => {
+	const b = banc();
+	b.afficher([{ ...manche('k', 0, 'KARAOKE'), reglages: { limitePassagesEnAttente: 1 } },
+		{ ...manche('l', 1, 'KARAOKE'), reglages: { limitePassagesEnAttente: 3 } }]);
+	assert.match(b.liste.textContent, /1 Passage en attente au plus par Joueur/);
+	assert.match(b.liste.textContent, /3 Passages en attente au plus par Joueur/);
+	assert.doesNotMatch(b.liste.textContent, /Jusqu’à/);
+});

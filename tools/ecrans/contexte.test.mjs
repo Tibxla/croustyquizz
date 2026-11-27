@@ -64,7 +64,7 @@ test('un envoi annoncer: false n’écrit rien dans le bandeau et ne rend pas p�
 	assert.deepEqual(appels[1].args[3], { entetes: { 'Idempotency-Key': 'k' } }, 'annoncer ne part pas vers le transport');
 	appels[1].resolve({ statut: 409, corps: { detail: 'Refus du module' } }); await muet;
 	appels[0].resolve({ statut: 204, corps: null }); await annonce;
-	assert.deepEqual(etats, [['en-cours', 'Envoi en cours…'], ['accepte', 'Envoi accepté par le serveur.']]);
+	assert.deepEqual(etats, [['en-cours', 'Envoi en cours…'], ['accepte', 'C’est enregistré.']]);
 	const panne = contexte.envoyer('POST', '/c', {}, { annoncer: false });
 	appels[2].reject(new Error('Hors ligne')); await assert.rejects(panne, /Hors ligne/);
 	const annule = contexte.envoyer('POST', '/d', {}, { annoncer: false });
@@ -96,4 +96,17 @@ test('le contexte expose l’heure serveur recalée sans figer sa valeur', () =>
 	assert.equal(contexte.maintenantServeur(), 1000);
 	maintenant = 2600;
 	assert.equal(contexte.maintenantServeur(), 2600);
+});
+
+test('le reçu dit ce qui est enregistré, sans jargon de serveur (#279)', async () => {
+	const etats = [];
+	const { contexte } = creerContexte({ envoyer: async () => ({ statut: 200, corps: {} }), surEnvoi: (...e) => etats.push(e) });
+	await contexte.envoyer('POST', '/buzz', {}, { recu: 'Buzz envoyé.' });
+	assert.deepEqual(etats.at(-1), ['accepte', 'Buzz envoyé.']);
+	await contexte.envoyer('POST', '/autre', {});
+	assert.deepEqual(etats.at(-1), ['accepte', 'C’est enregistré.']);
+	assert.ok(etats.every(([, texte]) => !/serveur/.test(texte ?? '')));
+	// Un reçu vide efface le bandeau : la vue qui change d'elle-même suffit.
+	await contexte.envoyer('POST', '/lancer', {}, { recu: '' });
+	assert.deepEqual(etats.at(-1), [null]);
 });

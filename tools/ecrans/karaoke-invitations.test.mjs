@@ -57,7 +57,8 @@ test('Manette : l’invité accepte son Invitation, qui laisse place au ticket e
 	assert.equal(bouton(b.principale, 'Accepter'), undefined);
 	assert.ok(bouton(b.principale, 'Quitter ce Passage'));
 	assert.equal(bouton(b.principale, 'Me désinscrire'), undefined);
-	assert.match(b.principale.textContent, /Envoi accepté par le serveur/);
+	assert.match(b.principale.textContent, /C’est noté : tu es dans ce Passage./);
+	assert.doesNotMatch(b.principale.textContent, /serveur/);
 });
 
 test('Manette : un refus de limite garde l’Invitation ouverte avec son motif, puis Refuser part', async t => {
@@ -131,7 +132,7 @@ test('Manette : l’inscripteur voit l’état de chaque Invitation et sa confir
 	assert.equal(b.principale.querySelector('.karaoke__interpretes').textContent, 'Jo, Basile');
 	bouton(b.principale, 'Me désinscrire').click();
 	assert.match(b.principale.querySelector('dialog').textContent, /Basile perd aussi ce Passage/);
-	bouton(b.principale, 'Confirmer la désinscription').click();
+	bouton(b.principale.querySelector('dialog'), 'Me désinscrire').click();
 	assert.match(b.appels[0].args[1], /\/passages\/duo\/desinscription$/);
 });
 
@@ -143,7 +144,7 @@ test('Manette : l’invité accepté quitte le Passage par la désinscription, s
 	assert.equal(b.principale.querySelector('.karaoke__etat-invitations'), null);
 	bouton(b.principale, 'Quitter ce Passage').click();
 	assert.match(b.principale.querySelector('dialog').textContent, /Il reste dans la File pour Basile/);
-	bouton(b.principale, 'Confirmer le départ').click();
+	bouton(b.principale.querySelector('dialog'), 'Quitter ce Passage').click();
 	assert.match(b.appels[0].args[1], /\/passages\/duo\/desinscription$/);
 	assert.equal(b.appels[0].args[2].numeroModification, 2);
 });

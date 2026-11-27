@@ -230,7 +230,7 @@ async page => {
 			};
 		});
 		await onglet.goto(`${base}/${ecran}.html?soiree=${soireeId}`);
-		await onglet.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'Vue synchronisée');
+		await onglet.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'En direct');
 		await onglet.locator('.karaoke').first().waitFor(); return c;
 	}
 	const consoleClient = await installer(page, 'ANIMATEUR', ids[0], 'console');
@@ -245,7 +245,7 @@ async page => {
 	await page.getByRole('button', { name: 'Priorité', exact: true }).click();
 	await page.keyboard.press('Escape');
 	verifier(await page.evaluate(() => document.activeElement?.textContent === 'Priorité'), 'Échap rend le focus');
-	await page.getByRole('button', { name: 'Priorité', exact: true }).click(); await page.getByRole('button', { name: 'Confirmer', exact: true }).click();
+	await page.getByRole('button', { name: 'Priorité', exact: true }).click(); await page.getByRole('button', { name: 'Donner la priorité', exact: true }).click();
 	await page.waitForFunction(() => document.querySelector('button[aria-pressed=true]')?.textContent.includes('Prioritaire'));
 	verifier(await page.evaluate(() => document.activeElement?.isConnected && document.activeElement !== document.body), 'Retour de focus après confirmation');
 	await page.getByRole('button', { name: 'Retirer', exact: true }).focus(); limite = 4; publier('limite-passages-modifiee');
@@ -256,7 +256,7 @@ async page => {
 	await page.getByRole('button', { name: 'Appliquer', exact: true }).click();
 	await page.locator('[data-laterale] input').fill('panne'); await page.getByRole('button', { name: 'Chercher', exact: true }).click();
 	await page.getByText('La recherche est indisponible.', { exact: true }).waitFor();
-	await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'Vue synchronisée');
+	await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'En direct');
 	await page.locator('[data-laterale] input').fill('métro'); await page.getByRole('button', { name: 'Chercher', exact: true }).click();
 	await page.getByRole('button', { name: chanson.titre, exact: true }).click();
 	verifier((await page.locator('dialog').innerText()).includes('Consultation uniquement'), 'Fiche Animateur sans inscription');
@@ -270,7 +270,7 @@ async page => {
 	verifier(await manette.locator('.mon-ticket').count() === 3, '201 tardif sans ticket dupliqué');
 	const avant = consoleClient.captures;
 	await page.getByRole('button', { name: 'Resynchroniser', exact: true }).click();
-	await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'Vue synchronisée');
+	await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'En direct');
 	verifier(consoleClient.captures > avant, 'Recapture effective');
 	for (const [client, nom, tailles] of [[manettes[0], 'manette', [[390, 844]]], [consoleClient, 'console', [[1440, 900], [1200, 900], [1024, 768], [860, 900]]], [salle, 'ecran', [[1920, 1080]]]]) {
 		for (const [width, height] of tailles) {
@@ -347,7 +347,7 @@ async page => {
 	await tactile.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 	await tactile.send('Emulation.setTouchEmulationEnabled', { enabled: false });
 	await tactile.detach();
-	await attendreTexte(page, 'Paroles seules : Écran lecteur pas prêt');
+	await attendreTexte(page, 'Paroles seules : l’Écran de salle n’était pas prêt');
 	for (const width of [1440, 1200, 1024, 860]) {
 		await page.setViewportSize({ width, height: 900 });
 		verifier(await page.locator('.karaoke__barre-passage').evaluate(barre => barre.scrollWidth <= barre.clientWidth && document.documentElement.scrollWidth <= innerWidth),
@@ -363,7 +363,7 @@ async page => {
 	await ongletSalle.emulateMedia({ reducedMotion: 'no-preference' });
 
 	const suivant = await appeler();
-	await attendreTexte(page, 'Fichier local : ' + nomFichier);
+	await attendreTexte(page, 'Musique : ton dossier');
 	verifier(fichierLocal.dureeMs === 6000, 'Métadonnées du WAV local');
 	verifier(await ongletSalle.evaluate(() => window.recetteAudio.fichiers.length === 0), 'Aucun fichier joué pendant l’appel');
 	verifier(!(await ongletSalle.locator('.karaoke').first().innerText()).includes(nomFichier), 'Pas de nom de fichier sur la salle');
@@ -390,12 +390,12 @@ async page => {
 	verifier(await positionAudio() === positionFigee, 'Pause locale sans remise à zéro');
 	await action(page, 'Reprendre').click();
 	await ongletSalle.waitForFunction(position => window.recetteAudio.fichiers.at(-1)?.currentTime > position, positionFigee);
-	await action(animateur2.onglet, 'Ça commence').click();
+	await action(animateur2.onglet, 'Les paroles commencent').click();
 	await page.waitForFunction(() => !document.querySelector('.karaoke__passage-courant').textContent.includes('Mesure en attente') &&
 		!document.querySelector('.karaoke__passage-courant').textContent.includes('Décalage : 0,0 s'));
 	const decalageMesure = lecture.decalageMs;
 	verifier(signaux.filter(s => s.operation === 'position').length === 1, 'Relevé local unique depuis une autre Console');
-	await action(animateur2.onglet, 'Retarder les paroles de 0,1 s').click();
+	await action(animateur2.onglet, 'Paroles en avance').click();
 	await page.waitForFunction(() => !document.querySelector('.karaoke__barre-passage').textContent.includes('Envoi en cours'));
 	verifier(lecture.decalageMs === decalageMesure + 100, 'Correction appliquée par la vue');
 	await attendreTexte(ongletSalle, 'La ville écoute encore');
@@ -429,8 +429,8 @@ async page => {
 	verifier(finLocale.c === salle && finLocale.corps.positionMs === 6000 && finLocale.signaleLe < finLocale.finPrevueLe,
 		'Le lecteur d’origine joue jusqu’au bout et clôt avant la fin prévue');
 
-	for (const [dossier, nombre, texte] of [[dossiers.absent, '1 fichier audio', 'Paroles seules : aucun fichier trouvé'],
-		[dossiers.ambigu, '2 fichiers audio', 'Paroles seules : plusieurs fichiers correspondent']]) {
+	for (const [dossier, nombre, texte] of [[dossiers.absent, '1 fichier audio', 'Paroles seules : cette Chanson n’est pas dans ton dossier de musique'],
+		[dossiers.ambigu, '2 fichiers audio', 'Paroles seules : plusieurs morceaux de ton dossier portent ce titre']]) {
 		await choisirDossier(salle2.onglet, dossier);
 		await attendreTexte(salle2.onglet, nombre);
 		const joueur = await appeler();
@@ -442,21 +442,21 @@ async page => {
 	}
 	await choisirDossier(salle2.onglet, dossiers.unique);
 	const dernier = await appeler();
-	await attendreTexte(page, 'Fichier local : ' + nomFichier);
+	await attendreTexte(page, 'Musique : ton dossier');
 	await salle2.onglet.evaluate(() => { window.recetteAudio.refuserFichier = true; });
 	await confirmerPresence(dernier);
 	await attendreTexte(salle2.onglet, "La musique ne se lance pas. L'Animateur choisit la suite.");
 	await attendreTexte(page, 'Erreur de lecture : reprends en paroles seules ou passe le Passage.');
 	verifier(await action(page, 'Reprendre').isDisabled(), 'Reprise musicale désactivée après une erreur');
 	await action(page, 'Paroles seules').click();
-	await attendreTexte(page, 'Paroles seules après une erreur du fichier');
+	await attendreTexte(page, 'Paroles seules après une erreur de lecture');
 	await salle2.onglet.locator('.paroles__ligne').first().waitFor();
 	verifier(signaux.filter(s => s.operation === 'erreur-lecture').length === 1, 'Signal d’erreur unique');
 	const lecteurSuivant = lecteurDesigneId;
 	const mancheSuivante = '00000009-0000-4000-8000-000000000000';
 	mancheId = mancheSuivante; courant = lecture = fichierLocal = lecteurDesigneId = null;
 	publier('manche-demarree');
-	await attendreTexte(page, 'Écran lecteur désigné');
+	await attendreTexte(page, 'La télé joue la musique');
 	verifier(lecteurDesigneId === lecteurSuivant && commandes.filter(e => e.chemin.endsWith(`/manches/${mancheSuivante}/lecteur`)).length === 1,
 		'Seule la fenêtre lectrice se redésigne sans choisir de dossier');
 	const clesSalle = commandes.filter(e => e.c.type === 'ECRAN').map(e => e.cle);
@@ -464,7 +464,7 @@ async page => {
 	verifier(await ongletSalle.locator('[data-envoi]').isHidden() && await salle2.onglet.locator('[data-envoi]').isHidden(), 'Aucun bandeau d’envoi sur la salle');
 	verifier(await salle.onglet.locator('[data-talon]').innerText().then(t => t.includes('DEMO01')), 'Talon intact');
 	await action(page, 'Terminer la Manche').click();
-	await action(page, 'Confirmer').click();
+	await page.locator('dialog').getByRole('button', { name: 'Terminer la Manche', exact: true }).click();
 	for (const c of clients) {
 		await c.onglet.waitForFunction(() => document.querySelectorAll('link[data-mode=karaoke]').length === 0);
 		verifier(await c.onglet.locator('[data-principale]').innerText() === '', 'Démontage des zones');

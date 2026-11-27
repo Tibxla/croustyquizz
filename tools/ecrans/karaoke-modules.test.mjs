@@ -102,7 +102,7 @@ test('une fermeture native différée après confirmation ne produit pas une fau
 	b.principale.querySelector('button.ticket').click(); bouton(b.principale, 'Retirer').click();
 	const dialog = b.principale.querySelector('dialog');
 	dialog.close = () => { dialog.open = false; }; // Le navigateur émet close après le geste.
-	bouton(b.principale, 'Confirmer').click();
+	bouton(b.principale, 'Retirer ce Passage').click();
 	b.module.afficher(vue({ passagesEnAttente: [] }), evenement);
 	assert.doesNotMatch(b.principale.textContent, /Le Passage a changé/); b.module.demonter();
 });
@@ -120,8 +120,8 @@ test('une priorité apparue pendant la confirmation et un changement de Manche i
 });
 
 for (const [nom, monter, acteur, action, confirmation] of [
-	['Console', consoleKaraoke, 'ANIMATEUR', 'Retirer', 'Confirmer'],
-	['Manette', manette, 'JOUEUR', 'Me désinscrire', 'Confirmer la désinscription'],
+	['Console', consoleKaraoke, 'ANIMATEUR', 'Retirer', 'Retirer ce Passage'],
+	['Manette', manette, 'JOUEUR', 'Me désinscrire', 'Me désinscrire'],
 ]) {
 	test(`${nom} : la confirmation reste désactivée pendant une coupure quel que soit son libellé`, t => {
 		const b = creerBanc(monter, acteur), p = passage();
@@ -172,7 +172,7 @@ test('Console : limite sous focus, valeur soumise conservée pendant l’envoi e
 
 test('Console : un seul réessai manuel après capture puis synchronisée, contenu inchangé et double appui unique', async () => {
 	const p = passage(), b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue({ passagesEnAttente: [p] }), evenement); b.connecter('synchronisee');
-	b.principale.querySelector('button.ticket').click(); bouton(b.principale, 'Retirer').click(); bouton(b.principale, 'Confirmer').click();
+	b.principale.querySelector('button.ticket').click(); bouton(b.principale, 'Retirer').click(); bouton(b.principale, 'Retirer ce Passage').click();
 	b.appels[0].resolve({ statut: 503, corps: { detail: 'Panne de démonstration' } }); await terminerMicrotaches();
 	assert.equal(b.captures(), 1); assert.ok(bouton(b.principale, 'Réessayer le même envoi') === undefined);
 	b.connecter('synchronisation'); b.module.afficher(vue({ passagesEnAttente: [{ ...p, numeroModification: 4 }] }), capture);
@@ -223,7 +223,7 @@ test('Manette : deux tickets, désinscription confirmée en pause, refus sans di
 	const retirer = b.principale.querySelector('button[data-passage-id=p]'); retirer.focus(); retirer.click();
 	assert.match(b.principale.querySelector('dialog').textContent, /14 · Titre de démonstration/);
 	bouton(b.principale, 'Annuler').click(); assert.equal(b.appels.length, 0);
-	bouton(b.principale, 'Me désinscrire').click(); bouton(b.principale, 'Confirmer la désinscription').click();
+	bouton(b.principale, 'Me désinscrire').click(); bouton(b.principale.querySelector('dialog'), 'Me désinscrire').click();
 	assert.equal(b.appels[0].args[2].numeroModification, 2); assert.ok(b.appels[0].args[2].envoiId);
 	b.appels[0].reject(new Error()); await terminerMicrotaches(); assert.equal(b.captures(), 1);
 	b.module.afficher(vue({ mesPassagesEnAttente: [p, q] }), capture);
@@ -263,7 +263,7 @@ test('Manette : l’inscription inconnue se réessaie après capture, puis un ti
 	b.appels[3].resolve({ statut: 503, corps: { detail: 'Panne' } }); await terminerMicrotaches();
 	b.module.afficher(vue({ mesPassagesEnAttente: [{ ...passage(), chanson }] }), capture);
 	assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
-	assert.match(b.principale.querySelector('dialog').textContent, /Envoi accepté/);
+	assert.match(b.principale.querySelector('dialog').textContent, /C’est noté/);
 	assert.equal(bouton(b.principale, "M'inscrire").disabled, true);
 	assert.doesNotMatch(b.principale.textContent, /Consultation en cours/);
 	b.module.afficher(vue(), capture); assert.equal(bouton(b.principale, "M'inscrire").disabled, false);
@@ -370,7 +370,7 @@ test('les mutations Karaoké se taisent dans le bandeau de la coquille : un seul
 	console_.module.demonter();
 	const p = passage(), manetteBanc = creerBanc(manette);
 	manetteBanc.module.afficher(vue({ mesPassagesEnAttente: [p] }), capture); manetteBanc.connecter('synchronisee');
-	bouton(manetteBanc.principale, 'Me désinscrire').click(); bouton(manetteBanc.principale, 'Confirmer la désinscription').click();
+	bouton(manetteBanc.principale, 'Me désinscrire').click(); bouton(manetteBanc.principale.querySelector('dialog'), 'Me désinscrire').click();
 	assert.notEqual(manetteBanc.appels[0].args[0], 'GET'); assert.equal(manetteBanc.appels[0].args[3].annoncer, false);
 	manetteBanc.module.demonter();
 });
@@ -443,21 +443,27 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	b.module.afficher(vue({ passagesEnAttente: [p], peutAppeler: true }), capture);
 	assert.equal(bouton(b.principale, 'Passer').disabled, true);
 	assert.equal(bouton(b.principale, 'Pause').disabled, false);
-	assert.equal(bouton(b.principale, 'Ça commence').parentNode.hidden, true);
+	assert.equal(bouton(b.principale, 'Les paroles commencent').parentNode.hidden, true);
 	bouton(b.principale, 'Appeler le suivant').click();
 	assert.deepEqual(b.appels[0].args.slice(0, 3), ['POST', '/api/soirees/s/manches/m/passages/premier/appel', { numeroModification: 2 }]);
 	const lecture = { lectureId: 'lecture', etat: 'DEMARREE', source: 'FICHIER_LOCAL', numeroModificationCalage: 3, decalageMs: -300 };
 	const v = vue({ courant: courant('EN_COURS'), lecture, fichierLocal: { nom: 'A.wav' }, peutCaler: true, peutPasser: true, lecteurDesigne: true });
 	b.module.afficher(v, evenement);
 	assert.match(b.principale.textContent, /Fin prévue dans 27 s/);
-	assert.match(b.principale.textContent, /Fichier local : A.wav/);
+	// La Console parle de musique, pas de fichier (#279, M10).
+	assert.match(b.principale.textContent, /Musique : ton dossier/);
+	assert.match(b.principale.textContent, /La télé joue la musique/);
+	assert.doesNotMatch(b.principale.textContent, /A\.wav|Écran lecteur|Fichier local/);
 	bouton(b.principale, 'Pause').click();
 	assert.deepEqual(b.appels[1].args[2], { action: 'METTRE_EN_PAUSE', etapeId: 'etape' });
-	bouton(b.principale, 'Ça commence').click();
+	// Le calage se lit sans légende : un titre, puis ce que l'Animateur constate (#279).
+	const calage = bouton(b.principale, 'Les paroles commencent').parentNode;
+	assert.match(calage.textContent, /^Caler les paroles/);
+	assert.match(calage.textContent, /Décalage : −0,3 s/);
+	bouton(b.principale, 'Les paroles commencent').click();
 	assert.deepEqual(b.appels[2].args[2], { etapeId: 'etape', lectureId: 'lecture' });
-	for (const [libelle, sens, nom] of [['−0,1 s', 'AVANCER', 'Avancer'], ['+0,1 s', 'RETARDER', 'Retarder']]) {
+	for (const [libelle, sens] of [['Paroles en retard', 'AVANCER'], ['Paroles en avance', 'RETARDER']]) {
 		const action = bouton(b.principale, libelle);
-		assert.equal(action.getAttribute('aria-label'), nom + ' les paroles de 0,1 s');
 		action.click();
 		assert.deepEqual(b.appels.at(-1).args[2], { etapeId: 'etape', lectureId: 'lecture', numeroModificationCalage: 3, sens });
 	}
@@ -472,7 +478,13 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	bouton(b.principale, 'Paroles seules').click();
 	assert.deepEqual(b.appels.at(-1).args[2], { etapeId: 'etape', lectureId: 'lecture' });
 	bouton(b.principale, 'Terminer la Manche').click();
-	bouton(b.principale, 'Confirmer').click();
+	// Le dialogue dit ce qui va se passer ; l'action porte son nom, « Annuler » à côté (#279, M3).
+	const dialogue = b.principale.querySelector('dialog');
+	assert.match(dialogue.textContent, /Le Palmarès s’affiche sur l’Écran de salle\./);
+	const actions = dialogue.querySelector('.dialogue__actions');
+	assert.deepEqual(actions.children.map(b => b.textContent), ['Annuler', 'Terminer la Manche']);
+	assert.match(actions.children[1].className, /bouton--action/);
+	actions.children[1].click();
 	assert.deepEqual(b.appels.at(-1).args[2], { action: 'TERMINER', etapeId: 'etape' });
 });
 

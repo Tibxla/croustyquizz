@@ -17,7 +17,7 @@ export function monterBuzz(bouton, contexte) {
 		requete = new AbortController();
 		actualiser();
 		try {
-			const { statut, corps } = await contexte.envoyer('POST', route, { envoiId }, { signal: requete.signal });
+			const { statut, corps } = await contexte.envoyer('POST', route, { envoiId }, { signal: requete.signal, recu: 'Buzz envoyé.' });
 			if (statut === 503 || (statut >= 500 && !corps?.code)) contexte.resynchroniser();
 			else envoiId = undefined;
 		} catch (erreur) {

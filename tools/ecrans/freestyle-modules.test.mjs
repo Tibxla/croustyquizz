@@ -47,7 +47,8 @@ test('la Console appelle le premier Passage et attend le reçu', async () => {
 		assert.match(banc.principale.textContent, /Envoi en cours/);
 		banc.appels[0].resolve({ statut: 200, corps: {} });
 		await terminerMicrotaches();
-		assert.match(banc.principale.textContent, /Envoi accepté/);
+		// L’appel change la vue d’elle-même : le reçu se tait, plus rien n’est « en cours » (#279).
+		assert.doesNotMatch(banc.principale.textContent, /Envoi en cours|serveur/);
 	} finally { banc.module.demonter(); }
 	assert.equal(banc.abonnee(), false);
 });
@@ -304,7 +305,7 @@ test('la Console retire un Passage en attente après confirmation', async () => 
 		bouton(banc, 'Retirer').click();
 		const dialogue = banc.principale.querySelector('dialog');
 		assert.match(dialogue.textContent, /Retirer le Passage 1 · Jo · À la lueur/);
-		dialogue.querySelectorAll('button').find(b => b.textContent === 'Retirer').click();
+		dialogue.querySelectorAll('button').find(b => b.textContent === 'Retirer ce Passage').click();
 		assert.equal(banc.appels[0].args[0], 'POST');
 		assert.equal(banc.appels[0].args[1], '/api/soirees/s/manches/m/passages/p/retrait');
 		assert.deepEqual(banc.appels[0].args[2], { numeroModification: 4 });

@@ -544,6 +544,25 @@ a {
   color: var(--texte);
 }
 
+/* Pastille de connexion : discrète tant que tout va bien, le bandeau ne revient qu'en cas de coupure (#279). */
+.connexion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espace-2);
+  color: var(--texte-2);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+.connexion::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--texte-3);
+}
+.connexion--synchronisee::before { background: var(--eau); }
+
 /* ---------- Mot-symbole ---------- */
 
 .marque {
@@ -683,6 +702,8 @@ a {
 }
 .dialogue::backdrop { background: rgb(28 20 16 / 0.8); }
 .dialogue > * + * { margin-top: var(--espace-4); }
+/* Confirmation : « Annuler » puis l'action nommée, côte à côte (#279). */
+.dialogue__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--espace-2); }
 
 /* Coquilles : seules les zones de mode sont remplacées. */
 [hidden] { display: none !important; }

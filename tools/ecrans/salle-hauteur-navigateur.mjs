@@ -18,7 +18,7 @@ const scenario = JSON.parse(new URLSearchParams(location.search).get('s'));
 const $ = s => document.querySelector(s);
 const ecrire = (s, t) => { $(s).textContent = t; };
 ecrire('[data-titre]', 'Grande Soirée Karaoké du Jeudi'); ecrire('[data-resume]', 'En cours · Solo · Pilotage manuel');
-ecrire('[data-manche]', scenario.manche); ecrire('[data-connexion]', 'Vue synchronisée');
+ecrire('[data-manche]', scenario.manche); ecrire('[data-connexion]', 'En direct');
 $('[data-attente]').hidden = true; $('[data-audio-salle]').hidden = false;
 const joueurs = ['Léa', 'Bartholoméo Croustillant-Dupré', 'Max', 'Inès'];
 ecrire('[data-nombre-joueurs]', 'Joueurs (4)');

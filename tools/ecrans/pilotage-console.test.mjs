@@ -54,7 +54,8 @@ test('envoie le lancement seulement avec une vue synchronisée et attend le reç
 	assert.equal(b.annonces.at(-1).etat, 'en-cours');
 	resoudre({ statut: 200, corps: { envoiId: args[3].entetes['Idempotency-Key'] } });
 	await terminerMicrotaches();
-	assert.equal(b.annonces.at(-1).etat, 'accepte');
+	// Le lancement se voit sur les trois écrans : le bandeau s'efface au lieu d'un reçu de serveur (#279).
+	assert.equal(b.annonces.at(-1).etat, null);
 	assert.equal(b.captures(), 1);
 	assert.equal(b.lancer.getAttribute('aria-disabled'), 'true');
 });

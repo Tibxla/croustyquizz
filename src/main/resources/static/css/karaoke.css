@@ -41,6 +41,10 @@
   align-items: center;
 }
 .karaoke__commandes > p { flex-basis: 100%; }
+/* Calage des paroles (#279) : un titre, les trois constats de l'Animateur, puis le décalage en cours. */
+.karaoke__calage { padding-top: var(--espace-2); border-top: 1px solid var(--fond-3); }
+.karaoke__calage-titre { flex-basis: 100%; font-size: 1rem; color: var(--texte-2); }
+.karaoke__decalage { color: var(--texte-2); font-variant-numeric: tabular-nums; }
 .karaoke__limite { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--espace-2); }
 .karaoke__limite label, .karaoke__limite p { grid-column: 1 / -1; }
 .karaoke__limite input { width: 100%; min-width: 0; }

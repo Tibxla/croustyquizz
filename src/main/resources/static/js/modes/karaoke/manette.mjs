@@ -28,13 +28,12 @@ export function monter(zones, contexte) {
 		const valide = () => ui.bloc.mancheId === mancheId && ui.bloc.mesPassagesEnAttente.some(p =>
 			p.passageId === cible.passageId && p.numeroModification === cible.numeroModification && p.tour === cible.tour);
 		const dialogue = ui.dialogue({ titre: inscripteur ? 'Me désinscrire' : 'Quitter ce Passage', declencheur, valide, confirmation: {
-			libelle: inscripteur ? 'Confirmer la désinscription' : 'Confirmer le départ',
+			libelle: inscripteur ? 'Me désinscrire' : 'Quitter ce Passage',
 			permise: () => ui.mutationsPermises,
 			executer: () => ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages/${encodeURIComponent(cible.passageId)}/desinscription`,
 				corps: { numeroModification: cible.numeroModification }, mancheId, acteurType: 'JOUEUR', passageId: cible.passageId }),
 		} });
-		dialogue.annuler.textContent = 'Annuler';
-		dialogue.contenu.append(e('p', '', texteDesinscription(cible, moi)), dialogue.confirmer);
+		dialogue.contenu.append(e('p', '', texteDesinscription(cible, moi)));
 	}
 	const horloge = setInterval(() => { scene.decompter(); votes.decompter(); }, 1000);
 	ui.surRendu = origine => {

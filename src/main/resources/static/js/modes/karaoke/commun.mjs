@@ -18,10 +18,25 @@ const styles = new WeakMap();
 const paroles = { SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',
 	ABSENTES: 'Sans paroles', SANS_VOIX: 'Sans voix', INCONNU: 'Paroles à vérifier' };
 
+// Ce qu'un envoi accepté a enregistré (#279). Quand la vue change d'elle-même (Passage appelé, File réordonnée,
+// ticket retiré), le reçu se tait : la vue suffit.
+function texteRecu({ type, chemin = '', corps, acteurType, chansonId, passageId }) {
+	switch (type) {
+		case 'VOTER': return chemin.endsWith('/meilleur-interprete') ? 'Choix envoyé.' : 'Note envoyée.';
+		case 'REPONDRE_INVITATION': return corps?.reponse === 'ACCEPTER' ? 'C’est noté : tu es dans ce Passage.' : 'Invitation refusée.';
+		case 'MARQUER_DEBUT': case 'CORRIGER_CALAGE': return 'Paroles recalées.';
+		case 'INSCRIRE_FREESTYLE': return 'C’est noté.';
+		case 'PILOTER': case 'APPELER': case 'CONFIRMER_PRESENCE': case 'REPRENDRE_EN_PAROLES_SEULES': return '';
+	}
+	if (chemin.endsWith('/limite')) return 'Limite enregistrée.';
+	if (acteurType === 'JOUEUR' && chansonId && !passageId) return 'C’est noté.';
+	return '';
+}
+
 export function texteEnvoi(e) {
 	if (!e) return '';
 	if (e.etat === 'en-cours') return 'Envoi en cours…';
-	if (e.etat === 'accepte') return 'Envoi accepté par le serveur.';
+	if (e.etat === 'accepte') return texteRecu(e.commande ?? {});
 	if (e.etat === 'inconnu') return 'Confirmation à vérifier.';
 	return e.detail ?? (e.etat === 'indisponible' ? 'Service indisponible.' : 'Envoi refusé.');
 }
@@ -147,22 +162,28 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 			const titreElement = e('h3', '', titre); titreElement.id = `karaoke-dialogue-${++ordre}`;
 			dialog.setAttribute('aria-labelledby', titreElement.id); dialog.setAttribute('tabindex', '-1');
 			const contenu = e('div', 'karaoke__fiche');
-			const annuler = bouton('Fermer', () => dialog.close());
+			// Une confirmation se ferme par « Annuler », une fiche par « Fermer » (#279).
+			const annuler = bouton(confirmation ? 'Annuler' : 'Fermer', () => dialog.close());
 			const d = { element: dialog, contenu, annuler, valide, fermer: () => { if (dialog.open) dialog.close(); terminer(); } };
+			let pied = annuler;
 			if (confirmation) {
 				d.confirmationPermise = confirmation.permise;
+				// Le bouton dit l'action et porte le citron ; « Annuler » est à côté, avec le focus initial (M3).
 				d.confirmer = bouton(confirmation.libelle, () => {
 					if ((valide && !valide()) || !confirmation.permise()) return;
 					d.fermer(); confirmation.executer();
-				});
+				}, 'bouton bouton--action');
 				d.confirmer.disabled = !confirmation.permise();
+				annuler.setAttribute('autofocus', '');
+				pied = e('div', 'dialogue__actions');
+				pied.append(annuler, d.confirmer);
 			}
 			function terminer() {
 				if (!dialogues.delete(d)) return;
 				fermer(); dialog.remove();
 				if (!d.sansRetour && !declencheur?.isConnected) (principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
 			}
-			dialog.append(titreElement, contenu, annuler); principale.append(dialog);
+			dialog.append(titreElement, contenu, pied); principale.append(dialog);
 			dialogues.add(d); ecouter(dialog, 'close', terminer);
 			const ouverture = ouvrirDialogue(dialog, declencheur);
 			d.oublierDeclencheur = () => { d.sansRetour = true; ouverture?.oublierDeclencheur(); };

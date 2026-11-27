@@ -9,13 +9,14 @@ const ouverte = { soiree: { etat: 'OUVERTE' }, modeEnCours: null };
 function monter() {
 	const bouton = new EventTarget();
 	const envois = [];
-	const { contexte, changerEtat } = creerContexte({ soireeId: 's1', resynchroniser() {},
+	const annonces = [];
+	const { contexte, changerEtat } = creerContexte({ soireeId: 's1', resynchroniser() {}, surEnvoi: (...a) => annonces.push(a),
 		envoyer: (methode, route, corps, { signal }) => new Promise((resoudre, rejeter) => {
 			envois.push({ methode, route, corps, signal, resoudre, rejeter });
 		}),
 	});
 	const buzz = monterBuzz(bouton, contexte);
-	return { bouton, buzz, envois, changerEtat, cliquer: () => bouton.dispatchEvent(new Event('click')) };
+	return { bouton, buzz, envois, annonces, changerEtat, cliquer: () => bouton.dispatchEvent(new Event('click')) };
 }
 
 test('le Buzz apparaît hors Manche et attend une vue synchronisée', () => {
@@ -60,4 +61,15 @@ test('la Manette réessaie sur demande avec le même envoi après une confirmati
 	assert.notEqual(envois[2].corps.envoiId, id);
 	buzz.demonter();
 	assert.equal(envois[2].signal.aborted, true);
+});
+
+test('un Buzz accepté s’annonce comme tel, sans jargon (#279)', async () => {
+	const { buzz, changerEtat, cliquer, envois, annonces } = monter();
+	buzz.afficher(ouverte);
+	changerEtat('synchronisee');
+	cliquer();
+	envois[0].resoudre({ statut: 200, corps: {} });
+	await setImmediate();
+	assert.deepEqual(annonces.at(-1), ['accepte', 'Buzz envoyé.']);
+	buzz.demonter();
 });

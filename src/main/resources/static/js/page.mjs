@@ -3,7 +3,7 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
-import { afficherClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
+import { afficherClassementDeSalle, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -52,8 +52,10 @@ function afficherPalmares(palmares) {
 	}));
 }
 function afficherCommun(vue) {
-	const description = decrireVue(vue);
+	const description = decrireVue(vue, { ecran });
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
+	// Une ligne vide ne prend pas de place : le Buzz, le résumé ou le rang ne parlent que s'ils ont quelque chose à dire.
+	for (const nom of ['resume', 'buzz', 'personnel']) { const cible = element(nom); if (cible) cible.hidden = !description[nom]; }
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
 	texte('titre-palmares', vue.palmaresFreestyle != null ? 'Palmarès du Freestyle' : 'Palmarès du Karaoké');
@@ -145,10 +147,10 @@ async function demarrer() {
 		},
 		surEtat(etat) {
 			changerEtat(etat);
-			etatConnexion.textContent = {
-				synchronisation: 'Synchronisation…', synchronisee: 'Vue synchronisée',
-				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',
-			}[etat];
+			// Une pastille discrète tant que tout va bien ; un bandeau seulement en cas de coupure (#279).
+			const { texte: libelle, coupure } = decrireConnexion(etat);
+			etatConnexion.textContent = libelle;
+			etatConnexion.className = coupure ? 'coupure' : `connexion connexion--${etat}`;
 		},
 	}, { transport });
 	addEventListener('pagehide', evenement => {
@@ -168,6 +170,6 @@ async function demarrer() {
 }
 
 demarrer().catch(erreur => {
-	etatConnexion.textContent = 'Connexion indisponible';
+	etatConnexion.textContent = 'Connexion indisponible'; etatConnexion.className = 'coupure';
 	afficherErreur(erreur.message);
 });

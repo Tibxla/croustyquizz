@@ -59,7 +59,7 @@ export function monterPilotage(barre, contexte) {
 		actualiser();
 		try {
 			const { statut, corps } = await contexte.envoyer('POST', route, { action },
-				{ entetes: { 'Idempotency-Key': cle }, signal: annulation.signal });
+				{ entetes: { 'Idempotency-Key': cle }, signal: annulation.signal, recu: '' });
 			if (annulation.signal.aborted) return;
 			const inconnu = statut === 503 || (statut >= 500 && !corps?.code);
 			if (!inconnu) reessai = undefined;
