@@ -53,7 +53,7 @@ export function creerAnnonceBuzz(element, { programmer = (f, ms) => setTimeout(f
 			dernier = buzz?.envoiId ?? null;
 			if (vue.modeEnCours) { if (minuteur !== undefined) annuler(minuteur); effacer(); return; }
 			if (!nouveau || origine?.source !== 'evenement') return;
-			element.textContent = `${buzz.pseudo} a buzzé !`;
+			element.textContent = `${buzz.pseudo} a buzzé\u202f!`;
 			element.hidden = false;
 			// Relancer l'animation d'entrée pour un Buzz qui suit de près le précédent.
 			element.classList.remove('annonce-buzz--entree');

@@ -449,9 +449,18 @@
   to { opacity: 1; transform: translateY(-50%) scale(1); }
 }
 
-/* Talon de colonne, en Manche : la phrase d'invitation, puis le code. */
+/* Talon de colonne, en Manche : la phrase d'invitation sur toute la largeur, puis le QR code et le code. */
 .salle .talon__texte { display: grid; gap: 0.3vw; min-width: 0; }
 .salle .talon__invitation { font-weight: 700; font-size: 1.9vw; line-height: 1.1; }
+.salle__cote .talon { grid-template-columns: auto minmax(0, 1fr); }
+.salle__cote .talon__texte { display: contents; }
+.salle__cote .talon__invitation { grid-column: 1 / -1; grid-row: 1; }
+.salle__cote .talon__qr { grid-column: 1; grid-row: 2 / span 2; }
+.salle__cote .talon__aide { grid-column: 2; grid-row: 2; align-self: end; }
+.salle__cote .talon__code { grid-column: 2; grid-row: 3; align-self: start; }
+.salle__cote .talon__adresse { grid-row: 4; }
+/* En Manche, le pied ne garde que des pastilles : le dossier se choisit entre deux Manches. */
+.salle--manche .salle__audio[data-etat="pret"] [data-choisir-dossier] { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .arrivee--nouvelle, .annonce-buzz--entree { animation-duration: 1ms; }
 }

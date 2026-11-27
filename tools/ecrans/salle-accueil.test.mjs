@@ -56,7 +56,7 @@ test('le Buzz s’annonce en grand sur un événement, puis s’efface ; une cap
 	assert.equal(element.hidden, true, 'un Buzz déjà là à l’ouverture ne s’annonce pas');
 	annonce.afficher(vue('b2', 'Bartholoméo'), evenement('buzz-recu'));
 	assert.equal(element.hidden, false);
-	assert.equal(element.textContent, 'Bartholoméo a buzzé !');
+	assert.equal(element.textContent, 'Bartholoméo a buzzé\u202f!', 'espace insécable avant le point d’exclamation');
 	assert.equal(minuteurs.at(-1).ms, 4000);
 	minuteurs.at(-1).f();
 	assert.equal(element.hidden, true);

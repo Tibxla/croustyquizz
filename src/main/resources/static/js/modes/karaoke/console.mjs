@@ -146,7 +146,9 @@ function installerPassage(ui, commande) {
 			else source.textContent = lecture ? motifsLecture[lecture.motifParolesSeules]
 				: p?.etat === 'APPELE' && bloc.lecteurDesigne ? 'Préparation de la musique…' : '';
 			if (lecture?.origineParoles === 'REPLI_INSCRIPTION') source.textContent += ' · Paroles d’origine : aucune version calée sur ta musique';
-			lecteur.textContent = bloc.lecteurDesigne ? 'La télé joue la musique' : 'Pas de musique sur l’Écran : paroles seules';
+			// Un motif de paroles seules suffit : la ligne de l'Écran ne le répète pas.
+			lecteur.textContent = bloc.lecteurDesigne ? 'La télé joue la musique'
+				: source.textContent.startsWith('Paroles seules') ? '' : 'Pas de musique sur l’Écran : paroles seules';
 			decalage.textContent = lecture ? `Décalage : ${formaterDecalage(lecture.decalageMs)}` : '';
 			mesure.textContent = lecture?.demandePosition ? 'Calage en attente de l’Écran de salle' : '';
 			const messageErreur = lecture?.etat === 'EN_ERREUR' ? 'Erreur de lecture : reprends en paroles seules ou passe le Passage.' : '';
