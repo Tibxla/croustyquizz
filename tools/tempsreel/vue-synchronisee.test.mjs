@@ -219,3 +219,53 @@ test('borner une capture HTTP qui ne répond jamais', async () => {
 	assert.equal(p.etats.at(-1), 'coupure');
 	p.suivi.arreter();
 });
+
+function demarrerSansConnexion() {
+	const pilote = creerAdaptateurPilotable();
+	const vues = [];
+	const etats = [];
+	const refus = [];
+	const suivi = suivreVue({ destination: '/topic/salle', routeEtat: '/etat/salle',
+		surVue: (vue, contexte) => vues.push({ vue, ...contexte }),
+		surEtat: etat => etats.push(etat), surRefus: motif => refus.push(motif),
+	}, pilote.adaptations);
+	return { ...pilote, vues, etats, refus, suivi };
+}
+
+test('un CONNECT refusé affiche son motif et attend une reprise explicite malgré les demandes de capture', async () => {
+	const p = demarrerSansConnexion();
+	p.connexions[0].surTrameErreur('Cette Soirée n’accepte pas d’Écran de démonstration.');
+	p.connexions[0].surDeconnexion();
+	p.suivi.resynchroniser();
+	await p.avancer(60000);
+	assert.deepEqual(p.refus, ['Cette Soirée n’accepte pas d’Écran de démonstration.']);
+	assert.equal(p.etats.at(-1), 'coupure');
+	assert.equal(p.connexions.length, 1);
+	assert.equal(p.connexions[0].fermee, true);
+	assert.equal(p.minuteries.size, 0);
+	p.suivi.resynchroniser({ explicite: true });
+	assert.equal(p.connexions.length, 2);
+	assert.equal(p.etats.at(-1), 'synchronisation');
+	p.connexions[1].surConnexion();
+	await repondre(p);
+	assert.equal(p.etats.at(-1), 'synchronisee');
+	p.suivi.arreter();
+});
+
+test('un refus sans motif affiche un motif générique', () => {
+	const p = demarrerSansConnexion();
+	p.connexions[0].surTrameErreur(undefined);
+	assert.deepEqual(p.refus, ['Le serveur a refusé la connexion en temps réel.']);
+	p.suivi.arreter();
+});
+
+test('une trame ERROR après CONNECTED reste une coupure suivie de la reconnexion', async () => {
+	const p = demarrerSansConnexion();
+	p.connexions[0].surConnexion();
+	p.connexions[0].surTrameErreur('Trame illisible.');
+	assert.deepEqual(p.refus, []);
+	assert.equal(p.etats.at(-1), 'coupure');
+	await p.avancer(2000);
+	assert.equal(p.connexions.length, 2);
+	p.suivi.arreter();
+});

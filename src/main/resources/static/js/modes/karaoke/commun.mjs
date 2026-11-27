@@ -55,7 +55,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 				d.fermer(); ui.messageInvalidation();
 			} else if (d.confirmer) d.confirmer.disabled = !d.confirmationPermise();
 		}
-		connexion.hidden = etatConnexion !== 'coupure'; connexion.textContent = 'Connexion perdue, on réessaie.';
+		connexion.hidden = etatConnexion !== 'coupure'; connexion.textContent = 'Connexion perdue.';
 		ui.surRendu(origine);
 		// Les listes réécrites ne gardent pas leurs anciens écouteurs en mémoire.
 		for (let i = ecouteurs.length - 1; i >= 0; i--) if (!ecouteurs[i][0].isConnected) {
