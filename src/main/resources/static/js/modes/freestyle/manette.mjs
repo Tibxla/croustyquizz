@@ -6,7 +6,7 @@ import { installerInvitations } from '../passage/invitations-manette.mjs';
 import { cleVibration, texteCouplet } from './couplets.mjs';
 
 export function monter(zones, contexte) {
-	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
+	const ui = creerInterface(zones, contexte, { mode: 'freestyle' });
 	const { e, bouton } = ui;
 	const votes = installerVotes(ui, { afficheMoyenne: false });
 	const scene = installerScene(ui, 'À toi d’improviser !');

@@ -42,7 +42,7 @@ export function texteEnvoi(e) {
 }
 
 // Adaptateur commun aux trois modules : cycle de vie, connexion, reçus et DOM sûr.
-export function creerInterface(zones, contexte, { annoncerConnexion = true, mode = 'karaoke' } = {}) {
+export function creerInterface(zones, contexte, { mode = 'karaoke' } = {}) {
 	const document = zones.principale.ownerDocument;
 	const ecouteurs = [], dialogues = new Set();
 	let detruite = false, machine, quitter, bloc, joueurs = [], rendue = false, etatConnexion = 'synchronisation';
@@ -73,9 +73,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 	const classe = mode === 'karaoke' ? mode : `karaoke ${mode}`;
 	const principale = e('section', classe), laterale = zones.laterale ? e('section', classe) : null;
 	zones.principale.replaceChildren(principale); if (laterale) zones.laterale.replaceChildren(laterale);
-	const connexion = e('p', 'coupure');
-	if (annoncerConnexion) connexion.setAttribute('role', 'status');
-	connexion.hidden = true; principale.append(connexion);
+	// La coupure s'annonce une seule fois, par le bandeau de la coquille (#279).
 	function rendre(origine) {
 		if (detruite || suspendre) return;
 		for (const d of [...dialogues]) {
@@ -83,7 +81,6 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 				d.fermer(); ui.messageInvalidation();
 			} else if (d.confirmer) d.confirmer.disabled = !d.confirmationPermise();
 		}
-		connexion.hidden = etatConnexion !== 'coupure'; connexion.textContent = 'Connexion perdue, on réessaie.';
 		ui.surRendu(origine);
 		// Les listes réécrites ne gardent pas leurs anciens écouteurs en mémoire.
 		for (let i = ecouteurs.length - 1; i >= 0; i--) if (!ecouteurs[i][0].isConnected) {
@@ -358,6 +355,7 @@ export function creerChoixInvites(ui, moi, { verbe = 'Chanter' } = {}) {
 const refusParoles = { NON_SYNCHRONISEES: 'Paroles non synchronisées : impossible de la chanter ici.',
 	ABSENTES: 'Sans paroles : impossible de la chanter ici.', SANS_VOIX: 'Version sans voix : impossible de la chanter ici.' };
 const RESULTATS_PAR_PAGE = 10;
+let ordreCartes = 0;
 
 export function creerCatalogue(ui, parent, { inscrire = false, replie = false, surInscription = () => {} } = {}) {
 	const { e, bouton, ecouter } = ui;
@@ -415,9 +413,16 @@ export function creerCatalogue(ui, parent, { inscrire = false, replie = false, s
 				const ligne = e('li'), carte = bouton('', () => consulter(chanson.chansonId, carte), 'karaoke__carte');
 				carte.setAttribute('data-chanson-id', chanson.chansonId);
 				const refus = refusParoles[chanson.etatParoles];
-				carte.append(e('strong', 'karaoke__carte-titre', chanson.titre), e('span', 'karaoke__carte-duree chiffres', formaterDuree(chanson.dureeMs)),
-					e('span', 'karaoke__carte-artiste', [chanson.artiste, chanson.album].filter(Boolean).join(' · ')),
-					e('span', 'karaoke__carte-paroles', refus ?? paroles[chanson.etatParoles] ?? ''));
+				// Le titre nomme la carte ; l'artiste, la durée et l'état des paroles la décrivent.
+				const base = `karaoke-carte-${++ordreCartes}`;
+				const morceaux = [['strong', 'karaoke__carte-titre', chanson.titre], ['span', 'karaoke__carte-duree chiffres', formaterDuree(chanson.dureeMs)],
+					['span', 'karaoke__carte-artiste', [chanson.artiste, chanson.album].filter(Boolean).join(' · ')],
+					['span', 'karaoke__carte-paroles', refus ?? paroles[chanson.etatParoles] ?? '']].map(([balise, classe, texte], i) => {
+					const element = e(balise, classe, texte); element.id = `${base}-${i}`; return element;
+				});
+				carte.append(...morceaux);
+				carte.setAttribute('aria-labelledby', morceaux[0].id);
+				carte.setAttribute('aria-describedby', morceaux.slice(1).map(m => m.id).join(' '));
 				carte.disabled = Boolean(refus);
 				ligne.append(carte); lignes.push(ligne);
 				continue;

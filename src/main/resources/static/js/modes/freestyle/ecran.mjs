@@ -8,7 +8,7 @@ import { creerAppelSalle, creerVoteSalle, voteAuCentre } from '../passage/salle.
 const ECART_DE_RECALAGE_MS = 300;
 
 export function monter(zones, contexte) {
-	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
+	const ui = creerInterface(zones, contexte, { mode: 'freestyle' });
 	const { e } = ui;
 	const fenetre = ui.document.defaultView;
 	const audio = contexte.audioSalle;

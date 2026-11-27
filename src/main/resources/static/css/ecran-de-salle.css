@@ -367,11 +367,21 @@
 .salle__audio[data-etat="pret"] .salle__son::before { background: var(--eau); }
 .salle--coquille .salle__pied .connexion { font-size: inherit; }
 
+/* Coupure : le bandeau descend du pied en haut de la scène, sans pousser le pied (#279). */
+.salle__pied .coupure { position: absolute; z-index: 5; top: 2vw; left: 5vw; right: 5vw; white-space: normal; }
+
 /* En Manche, la scène commence par le mode ; le titre de la Soirée passe dans le pied (#281, #283). */
 .salle--manche .salle__principal > .coquille__commun { display: none; }
 .salle__pied-titre { color: var(--texte-2); }
+/* Hors Manche, l'étape de la Soirée se lit à 5 m comme le reste de la salle. */
+.salle--coquille .coquille__commun [data-manche] { font-size: 1.6vw; color: var(--texte-2); }
 
-/* Accueil (#281, I7) : hors Manche, le talon passe au centre, à côté des arrivées ; la colonne s'efface. */
+/* Accueil (#281, I7) : hors Manche, le talon passe au centre, à côté des arrivées ; la colonne s'efface.
+   Le panneau de mise en route monte alors en haut à droite, à côté du titre, pour ne jamais couvrir le talon. */
+.salle--accueil .salle__installation { top: 1.6vw; right: 5vw; bottom: auto; left: auto; max-width: 44vw; padding: 0.8vw 1.2vw; gap: 0.5vw; }
+.salle--accueil .salle__installation > p { display: none; }
+.salle--accueil .salle__installation-commandes { flex-wrap: nowrap; }
+.salle--accueil:has(.salle__audio[data-etat="installation"]) .salle__principal > .coquille__commun h1 { max-width: 46vw; }
 .salle--accueil .salle__scene { grid-template-columns: minmax(0, 1fr); }
 .salle--accueil .salle__cote { display: none; }
 .salle--accueil .salle__principal > .coquille__commun h1 { font-size: 3.6vw; }
@@ -399,7 +409,7 @@
 .salle__arrivees { display: grid; align-content: center; gap: 1.2vw; min-width: 0; max-height: 100%; overflow: hidden; }
 .salle__arrivees h2 { margin: 0; font: 800 2vw/1 var(--police-chiffres); letter-spacing: 0.12em; text-transform: uppercase; color: var(--texte-2); }
 .salle__personne { margin: 0; font-size: 2vw; color: var(--texte-2); }
-.salle__liste-arrivees { display: flex; flex-wrap: wrap; gap: 0.8vw; margin: 0; padding: 0; list-style: none; }
+.salle__liste-arrivees { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8vw; margin: 0; padding: 0; list-style: none; }
 .arrivee {
   max-width: 100%;
   overflow: hidden;
@@ -407,8 +417,9 @@
   border-radius: 0.5vw;
   background: var(--teinte, var(--eau));
   color: var(--encre);
-  font-size: 1.8vw;
+  font-size: 1.7vw;
   font-weight: 700;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -459,8 +470,8 @@
 .salle__cote .talon__aide { grid-column: 2; grid-row: 2; align-self: end; }
 .salle__cote .talon__code { grid-column: 2; grid-row: 3; align-self: start; }
 .salle__cote .talon__adresse { grid-row: 4; }
-/* En Manche, le pied ne garde que des pastilles : le dossier se choisit entre deux Manches. */
-.salle--manche .salle__audio[data-etat="pret"] [data-choisir-dossier] { display: none; }
+/* Sans QR code (Soirée de démonstration), le texte reprend toute la largeur. */
+.salle__cote .talon:has(> [data-qr][hidden]) :is(.talon__aide, .talon__code) { grid-column: 1 / -1; }
 @media (prefers-reduced-motion: reduce) {
   .arrivee--nouvelle, .annonce-buzz--entree { animation-duration: 1ms; }
 }

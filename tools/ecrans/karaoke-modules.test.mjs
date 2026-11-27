@@ -327,7 +327,8 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 
 test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async () => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue({ passagesEnAttente: [passage()] }), capture); b.connecter('synchronisee');
-	b.connecter('coupure'); assert.match(b.principale.textContent, /Connexion perdue, on réessaie/);
+	// Un seul bandeau de coupure, celui de la coquille (#279) : le module ne le répète pas.
+	b.connecter('coupure'); assert.doesNotMatch(b.principale.textContent, /Connexion perdue/);
 	assert.equal(bouton(b.principale, 'Appliquer').disabled, true); assert.equal(bouton(b.laterale, 'Chercher').disabled, false);
 	const champ = b.laterale.querySelector('input'); champ.value = 'titre'; b.laterale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.connecter('synchronisee'); b.appels[0].resolve({ statut: 503, corps: { code: 'SOURCE_PAROLES_INDISPONIBLE', detail: 'Source indisponible.' } }); await terminerMicrotaches();

@@ -107,7 +107,8 @@ async function demarrer() {
 	const zoneTalon = element('talon');
 	// Salle : hors Manche, le talon passe au centre avec les arrivées ; en Manche, il revient en bas de colonne (#281).
 	const accueil = element('accueil');
-	const arrivees = accueil ? creerArrivees(element('arrivees')) : null;
+	// Seize arrivées sur deux colonnes tiennent en 720 p ; au-delà, « et N autres » (#281, M9).
+	const arrivees = accueil ? creerArrivees(element('arrivees'), { maximum: 16 }) : null;
 	const annonceBuzz = element('annonce-buzz') ? creerAnnonceBuzz(element('annonce-buzz')) : null;
 	const colonneTalon = zoneTalon?.parentNode;
 	function afficherScene(vue, origine) {
@@ -157,6 +158,10 @@ async function demarrer() {
 	const zonePhotos = element('photos');
 	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
 		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
+	// Une photo de la salle s'affiche une fois décodée, après la vue : l'accueil se réévalue à ce moment-là.
+	let derniereVue;
+	if (accueil && zonePhotos) new MutationObserver(() => { if (derniereVue) afficherScene(derniereVue, null); })
+		.observe(zonePhotos, { attributes: true, attributeFilter: ['hidden'] });
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
@@ -175,6 +180,7 @@ async function demarrer() {
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
 			musiqueSalle?.afficher(vue, modeAffiche);
+			derniereVue = vue;
 			afficherScene(vue, origine);
 		},
 		surEtat(etat) {

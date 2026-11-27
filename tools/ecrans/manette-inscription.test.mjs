@@ -86,3 +86,13 @@ test('la limite se dit avant l’envoi, avec sa raison, et les invitations se d�
 	assert.equal(bouton(fiche, "M'inscrire").disabled, true);
 	assert.equal(fiche.querySelector('fieldset').disabled, true);
 });
+
+test('une carte est nommée par son titre et décrite par l’artiste, la durée et les paroles', async t => {
+	const b = creerBanc(manette); t.after(() => b.module.demonter());
+	b.module.afficher(vue(), capture); b.connecter('synchronisee');
+	await chercher(b, [chansons[0]]);
+	const carte = b.principale.querySelector('.karaoke__carte');
+	const nom = b.principale.querySelectorAll('strong').find(s => s.id === carte.getAttribute('aria-labelledby'));
+	assert.equal(nom.textContent, 'Titre 0');
+	assert.equal(carte.getAttribute('aria-describedby').split(' ').length, 3);
+});

@@ -121,7 +121,7 @@ export function monterAudioSalle(zone) {
 		activer.hidden = etat.sonDebloque;
 		if (pastille && pastille.textContent !== texte) pastille.textContent = texte;
 		const nombre = etat.fichiers?.length;
-		aide.textContent = nombre === undefined || etape === 'pret' ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
+		aide.textContent = nombre === undefined || etape === 'pret' ? '' : `${nombre} morceau${nombre > 1 ? 'x' : ''} trouvé${nombre > 1 ? 's' : ''}`;
 		if (avaitFocus && etape === 'pret') choisir.focus();
 	}
 	audio.surChangement(rendre);

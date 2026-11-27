@@ -4,7 +4,7 @@ import { formaterNombreVotes } from '../../vue-commune.mjs';
 import { pseudos, texteAnnonce, texteCouplet, texteOrdre } from './couplets.mjs';
 
 export function monter(zones, contexte) {
-	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
+	const ui = creerInterface(zones, contexte, { mode: 'freestyle' });
 	const { e, bouton } = ui;
 	const commande = (methode, chemin, corps, options) => ({ methode, chemin: ui.racine() + chemin, corps,
 		mancheId: ui.bloc.mancheId, acteurType: 'ANIMATEUR', ...options });

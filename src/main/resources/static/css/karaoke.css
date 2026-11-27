@@ -140,7 +140,7 @@ ul.karaoke__resultats > li { padding: 0; border: 0; }
 .karaoke__scene-manette .mon-ticket--appele { margin-bottom: var(--espace-5); }
 .karaoke__scene-manette .mon-ticket__etiquette { max-width: 24ch; line-height: 1.15; text-align: right; }
 .karaoke__scene-manette .mon-ticket__etiquette--texte {
-  font: 700 0.95rem/1.15 var(--police-texte);
+  font: 700 1rem/1.15 var(--police-texte); /* 16 px au moins sur la Manette (#280, M1). */
   letter-spacing: normal;
   text-transform: none;
 }
