@@ -70,6 +70,10 @@ Recette exécutée en Chromium sans interface graphique sur le port 18113, avec 
 
 Le test constate le décodage, la progression et la fin du WAV dans Chromium. L’audibilité sur le matériel du Lieu, la lecture à cinq mètres, le tactile physique et l’intégration des routes #99 et #100 restent à vérifier en situation.
 
+**Écran de salle sans débordement (#276).** Ouvrir l’Écran de salle en 1280 × 720 puis en 1920 × 1080 et dérouler un Passage avec une Chanson dont une ligne passe sur deux lignes, puis une ligne de plus de 48 caractères. À chaque étape (appel, paroles, fin, vote), vérifier que la page ne défile pas (`document.documentElement.scrollHeight` égal à la hauteur de la fenêtre), que la ligne chantée est entière, et que le talon (QR code, code, adresse) reste entier en bas de la colonne, même avec trois Passages dans « Ensuite » et un bandeau de vote. Une ligne chantée longue ne garde qu’une voisine avant et une après ; au-delà de deux lignes, elle passe en corps réduit. Le bouton « Choisir le dossier de musique » et le pied restent visibles sous la zone du mode ; un crédit de Chanson placé dans le pied tient sur une ligne, tronqué par « … ». Si la colonne manque de place, elle retire le dernier Buzz, puis la liste des Joueurs, sans couper une ligne.
+
+La même vérification est automatisée sur les vraies feuilles et les vrais modules, sans serveur : `node tools/ecrans/servir-recette.mjs`, `playwright-cli open http://127.0.0.1:18080/index.html`, puis `playwright-cli run-code --filename=tools/ecrans/salle-hauteur-navigateur.mjs`. Le script monte le Karaoké (ligne longue, ligne très longue avec crédit, appel, vote) et le Freestyle (Passage à plusieurs, désignation) à 1280 × 720 et 1920 × 1080, et lève une erreur si la page dépasse la fenêtre ou si la zone principale, le pied, le bouton de dossier ou le talon sont coupés.
+
 ### Recette du Vote du public (#115)
 
 Reprendre la Soirée de démonstration du ticket #114 avec la Console, l’Écran de salle et deux
@@ -299,6 +303,11 @@ dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
 7. Termine la Soirée juste après une Manche de Freestyle notée. Vérifie
    que la salle affiche le « Podium final » sans le Palmarès, et que la
    Console affiche toujours le Palmarès du Freestyle (#224).
+
+8. **Écran de salle sans débordement (#276).** En 1280 × 720 puis en 1920 × 1080,
+   pendant un Passage à plusieurs, vérifie que la page ne défile pas et que le nom de
+   l’Interprète, la mesure, les quatre temps, le mot, « Ensuite : … » et le talon (QR code,
+   code, adresse) restent entiers, ordre des Couplets compris dans la colonne.
 
 Sur l'Écran de salle, le mot de chaque mesure reste affiché toute la mesure, pour qu'il
 se lise à 5 m. Il s'allume sur son temps, et le mot de la mesure suivante est annoncé

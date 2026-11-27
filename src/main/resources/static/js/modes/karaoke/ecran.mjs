@@ -1,6 +1,6 @@
 import { creerInterface, creerTicket, creerUuid, texteAutresPassages } from './commun.mjs';
 import { creerCycleLecture } from './cycle-lecture.mjs';
-import { delaiAppelRestant, determinerLignes, positionChronologique } from './paroles.mjs';
+import { delaiAppelRestant, determinerLignes, fenetreParoles, positionChronologique } from './paroles.mjs';
 import { formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes, votesVisiblesSalle } from './vote.mjs';
 
@@ -167,10 +167,11 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		paroles.style.setProperty('--teinte-passage', `var(--${teintePassage(courant.numero)})`);
 		if (indexEnCours === indexAffiche) return;
 		indexAffiche = indexEnCours;
-		const debut = avantPremiere ? 0 : Math.max(0, indexEnCours - 1);
-		const fin = avantPremiere ? 3 : indexEnCours + 3;
+		// Une ligne chantée longue laisse moins de voisines, pour que la zone principale ne déborde pas (#276).
+		const { debut, fin, longueur } = fenetreParoles(lignes, indexEnCours, avantPremiere);
+		const enCours = `paroles__ligne paroles__ligne--en-cours paroles__chante${longueur === 'tres-longue' ? ' paroles__ligne--longue' : ''}`;
 		paroles.replaceChildren(...lignes.slice(debut, fin).map((ligne, i) => e('p',
-			debut + i === indexEnCours ? 'paroles__ligne paroles__ligne--en-cours paroles__chante' : 'paroles__ligne', ligne.texte)));
+			debut + i === indexEnCours ? enCours : 'paroles__ligne', ligne.texte)));
 	}
 	function actualiserTemps() {
 		const bloc = ui.bloc;
