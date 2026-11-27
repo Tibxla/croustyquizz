@@ -18,16 +18,31 @@ const styles = new WeakMap();
 const paroles = { SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',
 	ABSENTES: 'Sans paroles', SANS_VOIX: 'Sans voix', INCONNU: 'Paroles à vérifier' };
 
+// Ce qu'un envoi accepté a enregistré (#279). Quand la vue change d'elle-même (Passage appelé, File réordonnée,
+// ticket retiré), le reçu se tait : la vue suffit.
+function texteRecu({ type, chemin = '', corps, acteurType, chansonId, passageId }) {
+	switch (type) {
+		case 'VOTER': return chemin.endsWith('/meilleur-interprete') ? 'Choix envoyé.' : 'Note envoyée.';
+		case 'REPONDRE_INVITATION': return corps?.reponse === 'ACCEPTER' ? 'C’est noté : tu es dans ce Passage.' : 'Invitation refusée.';
+		case 'MARQUER_DEBUT': case 'CORRIGER_CALAGE': return 'Paroles recalées.';
+		case 'INSCRIRE_FREESTYLE': return 'C’est noté.';
+		case 'PILOTER': case 'APPELER': case 'CONFIRMER_PRESENCE': case 'REPRENDRE_EN_PAROLES_SEULES': return '';
+	}
+	if (chemin.endsWith('/limite')) return 'Limite enregistrée.';
+	if (acteurType === 'JOUEUR' && chansonId && !passageId) return 'C’est noté.';
+	return '';
+}
+
 export function texteEnvoi(e) {
 	if (!e) return '';
 	if (e.etat === 'en-cours') return 'Envoi en cours…';
-	if (e.etat === 'accepte') return 'Envoi accepté par le serveur.';
+	if (e.etat === 'accepte') return texteRecu(e.commande ?? {});
 	if (e.etat === 'inconnu') return 'Confirmation à vérifier.';
 	return e.detail ?? (e.etat === 'indisponible' ? 'Service indisponible.' : 'Envoi refusé.');
 }
 
 // Adaptateur commun aux trois modules : cycle de vie, connexion, reçus et DOM sûr.
-export function creerInterface(zones, contexte, { annoncerConnexion = true, mode = 'karaoke' } = {}) {
+export function creerInterface(zones, contexte, { mode = 'karaoke' } = {}) {
 	const document = zones.principale.ownerDocument;
 	const ecouteurs = [], dialogues = new Set();
 	let detruite = false, machine, quitter, bloc, joueurs = [], rendue = false, etatConnexion = 'synchronisation';
@@ -58,9 +73,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 	const classe = mode === 'karaoke' ? mode : `karaoke ${mode}`;
 	const principale = e('section', classe), laterale = zones.laterale ? e('section', classe) : null;
 	zones.principale.replaceChildren(principale); if (laterale) zones.laterale.replaceChildren(laterale);
-	const connexion = e('p', 'coupure');
-	if (annoncerConnexion) connexion.setAttribute('role', 'status');
-	connexion.hidden = true; principale.append(connexion);
+	// La coupure s'annonce une seule fois, par le bandeau de la coquille (#279).
 	function rendre(origine) {
 		if (detruite || suspendre) return;
 		for (const d of [...dialogues]) {
@@ -68,7 +81,6 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 				d.fermer(); ui.messageInvalidation();
 			} else if (d.confirmer) d.confirmer.disabled = !d.confirmationPermise();
 		}
-		connexion.hidden = etatConnexion !== 'coupure'; connexion.textContent = 'Connexion perdue, on réessaie.';
 		ui.surRendu(origine);
 		// Les listes réécrites ne gardent pas leurs anciens écouteurs en mémoire.
 		for (let i = ecouteurs.length - 1; i >= 0; i--) if (!ecouteurs[i][0].isConnected) {
@@ -147,22 +159,28 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 			const titreElement = e('h3', '', titre); titreElement.id = `karaoke-dialogue-${++ordre}`;
 			dialog.setAttribute('aria-labelledby', titreElement.id); dialog.setAttribute('tabindex', '-1');
 			const contenu = e('div', 'karaoke__fiche');
-			const annuler = bouton('Fermer', () => dialog.close());
+			// Une confirmation se ferme par « Annuler », une fiche par « Fermer » (#279).
+			const annuler = bouton(confirmation ? 'Annuler' : 'Fermer', () => dialog.close());
 			const d = { element: dialog, contenu, annuler, valide, fermer: () => { if (dialog.open) dialog.close(); terminer(); } };
+			let pied = annuler;
 			if (confirmation) {
 				d.confirmationPermise = confirmation.permise;
+				// Le bouton dit l'action et porte le citron ; « Annuler » est à côté, avec le focus initial (M3).
 				d.confirmer = bouton(confirmation.libelle, () => {
 					if ((valide && !valide()) || !confirmation.permise()) return;
 					d.fermer(); confirmation.executer();
-				});
+				}, 'bouton bouton--action');
 				d.confirmer.disabled = !confirmation.permise();
+				annuler.setAttribute('autofocus', '');
+				pied = e('div', 'dialogue__actions');
+				pied.append(annuler, d.confirmer);
 			}
 			function terminer() {
 				if (!dialogues.delete(d)) return;
 				fermer(); dialog.remove();
 				if (!d.sansRetour && !declencheur?.isConnected) (principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
 			}
-			dialog.append(titreElement, contenu, annuler); principale.append(dialog);
+			dialog.append(titreElement, contenu, pied); principale.append(dialog);
 			dialogues.add(d); ecouter(dialog, 'close', terminer);
 			const ouverture = ouvrirDialogue(dialog, declencheur);
 			d.oublierDeclencheur = () => { d.sansRetour = true; ouverture?.oublierDeclencheur(); };
@@ -333,9 +351,15 @@ export function creerChoixInvites(ui, moi, { verbe = 'Chanter' } = {}) {
 	return { element, rendre, choisis };
 }
 
-export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
+// Une Chanson qu'on ne peut pas chanter ici reste visible, grisée, avec la raison (#280).
+const refusParoles = { NON_SYNCHRONISEES: 'Paroles non synchronisées : impossible de la chanter ici.',
+	ABSENTES: 'Sans paroles : impossible de la chanter ici.', SANS_VOIX: 'Version sans voix : impossible de la chanter ici.' };
+const RESULTATS_PAR_PAGE = 10;
+let ordreCartes = 0;
+
+export function creerCatalogue(ui, parent, { inscrire = false, replie = false, surInscription = () => {} } = {}) {
 	const { e, bouton, ecouter } = ui;
-	const titre = e('h2', '', 'Catalogue'); titre.tabIndex = -1;
+	const titre = e('h2', '', replie ? 'Catalogue des Chansons' : 'Catalogue'); titre.tabIndex = -1;
 	const formulaire = e('form', inscrire ? 'champ' : 'recherche');
 	const label = e('label', '', 'Titre ou artiste'), champ = e('input'); champ.id = `karaoke-recherche-${inscrire ? 'joueur' : 'animateur'}`;
 	label.setAttribute('for', champ.id); champ.type = 'search';
@@ -347,12 +371,22 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	const etatLecture = e('p'); etatLecture.setAttribute('role', 'status');
 	const CONSULTATION = 'Consultation en cours…';
 	const resultats = e(inscrire ? 'ul' : 'table', `karaoke__resultats${inscrire ? '' : ' resultats'}`);
-	parent.append(titre, formulaire, etatLecture, resultats);
+	// Dix résultats d'abord sur la Manette, puis « Voir plus » : la liste a une fin visible (#280).
+	let visibles = RESULTATS_PAR_PAGE;
+	const voirPlus = bouton('Voir plus', () => { visibles += RESULTATS_PAR_PAGE; dessinerResultats(); }, 'bouton karaoke__voir-plus');
+	voirPlus.hidden = true;
+	if (replie) {
+		// Rarement utile à l'Animateur : la Console le replie sous son titre (#282).
+		const repli = e('details', 'catalogue-replie'), resume = e('summary');
+		resume.append(titre);
+		repli.append(resume, formulaire, etatLecture, resultats);
+		parent.append(repli);
+	} else parent.append(titre, formulaire, etatLecture, resultats, ...(inscrire ? [voirPlus] : []));
 	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur, invitations;
 	const machine = creerMachineRecherche({ envoyer: (...args) => ui.contexte.envoyer(...args), creerUuid,
 		programmerDelai: (f, ms) => setTimeout(f, ms), annulerDelai: clearTimeout,
 		surEtat(etat) {
-			if (etat.genre === 'recherche') { recherche = etat; dessinerResultats(); }
+			if (etat.genre === 'recherche') { if (etat !== recherche) visibles = RESULTATS_PAR_PAGE; recherche = etat; dessinerResultats(); }
 			else {
 				fiche = etat;
 				if (etat.etat !== 'chargement') { etatLecture.textContent = ''; ouvrirFiche(); }
@@ -370,7 +404,29 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		etatLecture.textContent = !recherche ? '' : recherche.etat === 'chargement' ? 'Recherche en cours…' :
 			recherche.etat === 'vide' ? 'Aucune Chanson trouvée.' : recherche.etat === 'erreur' && erreur.hidden ? (recherche.detail ?? 'La recherche est indisponible.') : '';
 		const lignes = [];
-		for (const chanson of recherche?.donnees?.chansons ?? []) {
+		const toutes = recherche?.donnees?.chansons ?? [];
+		const montrees = inscrire ? toutes.slice(0, visibles) : toutes;
+		voirPlus.hidden = !inscrire || montrees.length >= toutes.length;
+		for (const chanson of montrees) {
+			if (inscrire) {
+				// Toute la carte s'ouvre : le titre en gras, l'artiste dessous, la durée à droite (#280).
+				const ligne = e('li'), carte = bouton('', () => consulter(chanson.chansonId, carte), 'karaoke__carte');
+				carte.setAttribute('data-chanson-id', chanson.chansonId);
+				const refus = refusParoles[chanson.etatParoles];
+				// Le titre nomme la carte ; l'artiste, la durée et l'état des paroles la décrivent.
+				const base = `karaoke-carte-${++ordreCartes}`;
+				const morceaux = [['strong', 'karaoke__carte-titre', chanson.titre], ['span', 'karaoke__carte-duree chiffres', formaterDuree(chanson.dureeMs)],
+					['span', 'karaoke__carte-artiste', [chanson.artiste, chanson.album].filter(Boolean).join(' · ')],
+					['span', 'karaoke__carte-paroles', refus ?? paroles[chanson.etatParoles] ?? '']].map(([balise, classe, texte], i) => {
+					const element = e(balise, classe, texte); element.id = `${base}-${i}`; return element;
+				});
+				carte.append(...morceaux);
+				carte.setAttribute('aria-labelledby', morceaux[0].id);
+				carte.setAttribute('aria-describedby', morceaux.slice(1).map(m => m.id).join(' '));
+				carte.disabled = Boolean(refus);
+				ligne.append(carte); lignes.push(ligne);
+				continue;
+			}
 			const ligne = e(inscrire ? 'li' : 'tr');
 			const cellule = inscrire ? ligne : e('td');
 			const ouvrir = bouton(chanson.titre, () => consulter(chanson.chansonId, ouvrir), 'bouton bouton--lien titre');
@@ -415,6 +471,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			contenu.append(invitations.element);
 			boutonInscription = bouton("M'inscrire", () => {
 				if (!fiche?.donnees || !etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises).possible) return;
+				surInscription(fiche.chansonId);
 				const invitesIds = invitations.choisis();
 				// Sans invité, le corps reste celui d'une inscription seule.
 				const corps = invitesIds.length ? { chansonId: fiche.chansonId, invitesIds } : { chansonId: fiche.chansonId };
@@ -433,9 +490,10 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		const etat = etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises);
 		motif.textContent = etat.motif ?? '';
 		if (inscrire) {
-			invitations.rendre();
 			const cle = ui.inscription(fiche.chansonId), envoi = ui.envoiInscription(fiche.chansonId);
 			boutonInscription.disabled = !etat.possible || Boolean(cle);
+			// Les cases d'invitation suivent le bouton : on n'invite pas à un Passage qu'on ne peut pas créer (#280).
+			invitations.rendre({ desactiver: boutonInscription.disabled });
 			etatAction.textContent = texteEnvoi(envoi);
 			reessai.hidden = !ui.reessaiPossible(envoi);
 		}
@@ -448,6 +506,8 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	ecouter(champ, 'compositionstart', () => { composition = true; }); ecouter(champ, 'compositionend', () => { composition = false; });
 	ecouter(champ, 'input', () => { if (!champ.value) { machine.invalider(); recherche = null; dessinerResultats(); } });
 	return { rendre,
+		// Fermée par la page (#280) : le focus ne revient pas à la carte, la page le place elle-même.
+		fermerFiche() { dialogue?.oublierDeclencheur(); dialogue?.fermer(); },
 		// Une fiche encore en chargement ne s'ouvrira plus (#277) : l'appel du Joueur passe avant.
 		annulerConsultation() {
 			if (fiche?.etat === 'chargement') { machine.fermerFiche(); fiche = null; }

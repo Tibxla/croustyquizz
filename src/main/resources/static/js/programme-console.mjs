@@ -8,7 +8,7 @@ function decrireReglages({ reglages }) {
 	}
 	if (reglages.limitePassagesEnAttente !== undefined) {
 		const limite = reglages.limitePassagesEnAttente;
-		return `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`;
+		return `${limite} Passage${limite === 1 ? '' : 's'} en attente au plus par Joueur`;
 	}
 	if (reglages.nombreMesures !== undefined) return `${reglages.nombreMesures} mesures · ${reglages.schemaDeRimes}`;
 	return '';
@@ -46,7 +46,7 @@ export function monterProgramme(panneau, contexte) {
 		envoi = annulation;
 		actualiserCommandes();
 		try {
-			const { statut } = await contexte.envoyer(methode, route + chemin, corps, { signal: annulation.signal });
+			const { statut } = await contexte.envoyer(methode, route + chemin, corps, { signal: annulation.signal, recu: '' });
 			// Récupère l’état courant avant une autre édition, même si la Console a manqué l’événement.
 			if (!annulation.signal.aborted && statut !== 400) contexte.resynchroniser();
 		} catch {
@@ -141,6 +141,9 @@ export function monterProgramme(panneau, contexte) {
 			element('programme-fige').hidden = modifiable;
 			element('programme-vide').hidden = programme.length > 0;
 			liste.replaceChildren(...programme.map((manche, index) => ligne(manche, index, programme)));
+			// Programme vide : ajouter une Manche est l'action du moment ; ensuite, c'est le lancement (#282).
+			ajout.classList.toggle('bouton--action', programme.length === 0);
+			if (!ajout.classList.contains('bouton')) ajout.classList.add('bouton');
 			actualiserCommandes();
 
 			if (!modifiable && (focusListe || focusFormulaire)) {

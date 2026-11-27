@@ -3,7 +3,9 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
-import { afficherClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
+import { afficherClassementDeSalle, decrireBarre, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
+import { monterMenu } from './menu.mjs';
+import { creerAnnonceBuzz, creerArrivees, estAccueil, placesArrivees } from './salle-accueil.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -52,14 +54,25 @@ function afficherPalmares(palmares) {
 	}));
 }
 function afficherCommun(vue) {
-	const description = decrireVue(vue);
-	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
+	const description = decrireVue(vue, { ecran });
+	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel', 'pseudo']) texte(nom, description[nom]);
+	// Une ligne vide ne prend pas de place : le Buzz, le résumé ou le rang ne parlent que s'ils ont quelque chose à dire.
+	for (const nom of ['resume', 'buzz', 'personnel']) { const cible = element(nom); if (cible) cible.hidden = !description[nom]; }
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
 	texte('titre-palmares', vue.palmaresFreestyle != null ? 'Palmarès du Freestyle' : 'Palmarès du Karaoké');
 	afficherPalmares(ecran === 'ecran' ? decrirePalmaresDeSalle(vue) : description.palmares);
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
+	texte('titre-pied', vue.soiree.titre);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
+	if (element('barre-mode')) {
+		// La barre de la Console dit d'un coup d'œil l'étape, le code d'accès et le nombre de Joueurs (#282).
+		const barre = decrireBarre(vue);
+		texte('barre-mode', barre.mode);
+		texte('barre-code-valeur', barre.code ?? '');
+		element('barre-code').hidden = !barre.code;
+		texte('barre-joueurs', barre.joueurs);
+	}
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
@@ -92,6 +105,41 @@ async function demarrer() {
 		return;
 	}
 	const zoneTalon = element('talon');
+	// Salle : hors Manche, le talon passe au centre avec les arrivées ; en Manche, il revient en bas de colonne (#281).
+	const accueil = element('accueil');
+	const arrivees = accueil ? creerArrivees(element('arrivees')) : null;
+	// Les arrivées ne montrent que des rangées complètes : leur nombre suit la hauteur de l'écran (#281, M9).
+	function afficherArrivees(joueurs, origine) {
+		const liste = element('arrivees'), colonne = liste.parentNode;
+		if (accueil.hidden) { arrivees.afficher(joueurs, origine); return; }
+		const sonde = document.createElement('li');
+		sonde.className = 'arrivee';
+		sonde.textContent = 'M';
+		liste.append(sonde);
+		const styleListe = getComputedStyle(liste), styleColonne = getComputedStyle(colonne);
+		const titre = element('arrivees-titre');
+		const maximum = placesArrivees({ total: joueurs.length, hauteurRangee: sonde.offsetHeight,
+			ecart: parseFloat(styleListe.rowGap) || 0, colonnes: styleListe.gridTemplateColumns.split(' ').length,
+			hauteurListe: colonne.clientHeight - titre.offsetHeight - (parseFloat(styleColonne.rowGap) || 0) });
+		sonde.remove();
+		arrivees.afficher(joueurs, origine, { maximum });
+	}
+	const annonceBuzz = element('annonce-buzz') ? creerAnnonceBuzz(element('annonce-buzz')) : null;
+	const colonneTalon = zoneTalon?.parentNode;
+	function afficherScene(vue, origine) {
+		if (!accueil) return;
+		const enAccueil = estAccueil(vue, { photo: element('photos')?.hidden === false });
+		document.body.classList.toggle('salle--accueil', enAccueil);
+		document.body.classList.toggle('salle--manche', Boolean(vue.modeEnCours));
+		accueil.hidden = !enAccueil;
+		const place = enAccueil ? element('accueil-talon') : colonneTalon;
+		if (zoneTalon.parentNode !== place) place.append(zoneTalon);
+		element('arrivees-vide').hidden = vue.joueurs.length > 0;
+		texte('arrivees-titre', vue.joueurs.length ? `Déjà là · ${vue.joueurs.length}` : 'Déjà là');
+		afficherArrivees(vue.joueurs, origine);
+		if (enAccueil) texte('attente', '');
+		annonceBuzz.afficher(vue, origine);
+	}
 	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
 	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
@@ -125,10 +173,17 @@ async function demarrer() {
 	const zonePhotos = element('photos');
 	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
 		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
+	let derniereVue;
+	// Une autre taille d'écran change le nombre de rangées d'arrivées.
+	if (accueil) addEventListener('resize', () => { if (derniereVue && !accueil.hidden) afficherArrivees(derniereVue.joueurs, null); });
+	// Une photo de la salle s'affiche une fois décodée, après la vue : l'accueil se réévalue à ce moment-là.
+	if (accueil && zonePhotos) new MutationObserver(() => { if (derniereVue) afficherScene(derniereVue, null); })
+		.observe(zonePhotos, { attributes: true, attributeFilter: ['hidden'] });
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
-	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
+	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte, { raison: element('raison-lancer') }) : null;
+	const menu = element('menu-bouton') ? monterMenu(element('menu-bouton'), element('menu')) : null;
 	boutonReprise?.addEventListener('click', contexte.resynchroniser);
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
@@ -142,20 +197,22 @@ async function demarrer() {
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
 			musiqueSalle?.afficher(vue, modeAffiche);
+			derniereVue = vue;
+			afficherScene(vue, origine);
 		},
 		surEtat(etat) {
 			changerEtat(etat);
-			etatConnexion.textContent = {
-				synchronisation: 'Synchronisation…', synchronisee: 'Vue synchronisée',
-				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',
-			}[etat];
+			// Une pastille discrète tant que tout va bien ; un bandeau seulement en cas de coupure (#279).
+			const { texte: libelle, coupure } = decrireConnexion(etat);
+			etatConnexion.textContent = libelle;
+			etatConnexion.className = coupure ? 'coupure' : `connexion connexion--${etat}`;
 		},
 	}, { transport });
 	addEventListener('pagehide', evenement => {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
-		talon?.demonter();
+		talon?.demonter(); annonceBuzz?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
-		pilotage?.demonter();
+		pilotage?.demonter(); menu?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter(); catalogueInstrumentales?.demonter();
 		void audioSalle?.detruire();
 	});
@@ -168,6 +225,6 @@ async function demarrer() {
 }
 
 demarrer().catch(erreur => {
-	etatConnexion.textContent = 'Connexion indisponible';
+	etatConnexion.textContent = 'Connexion indisponible'; etatConnexion.className = 'coupure';
 	afficherErreur(erreur.message);
 });

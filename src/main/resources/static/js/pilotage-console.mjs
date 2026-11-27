@@ -1,7 +1,7 @@
 import { nouvelleCle } from './api.js';
 import { ouvrirDialogue } from './dialogue.mjs';
 
-export function monterPilotage(barre, contexte) {
+export function monterPilotage(barre, contexte, { raison } = {}) {
 	const boutons = [...barre.querySelectorAll('[data-piloter-soiree]')];
 	const actionDe = bouton => bouton.getAttribute('data-piloter-soiree');
 	const dialogue = barre.querySelector('[data-dialogue-fin]');
@@ -39,11 +39,32 @@ export function monterPilotage(barre, contexte) {
 		return etat === 'EN_COURS';
 	}
 
+	// Un bouton désactivé dit pourquoi : la Soirée ne se lance qu'ouverte, avec au moins une Manche (#282).
+	function raisonLancement() {
+		const etat = vue?.soiree?.etat;
+		if (!etat || peutEnvoyer('LANCER') || !visible('LANCER') || envoi || !synchronisee) return '';
+		if (etat === 'PREPARATION') return 'Ouvre la Soirée aux Joueurs depuis la préparation pour la lancer.';
+		if (!suivante()) return 'Ajoute une Manche au programme pour lancer la Soirée.';
+		return '';
+	}
+
 	function actualiser() {
 		const focus = barre.ownerDocument.activeElement;
 		for (const bouton of boutons) {
-			bouton.setAttribute('aria-disabled', String(!peutEnvoyer(actionDe(bouton))));
-			bouton.hidden = !visible(actionDe(bouton));
+			const action = actionDe(bouton);
+			const possible = peutEnvoyer(action);
+			bouton.setAttribute('aria-disabled', String(!possible));
+			bouton.hidden = !visible(action);
+			// Un seul citron à l'écran : celui de la commande qui peut faire avancer la Soirée maintenant.
+			if (action !== 'TERMINER') bouton.classList.toggle('bouton--action', possible);
+		}
+		if (raison) {
+			const texte = raisonLancement();
+			if (raison.textContent !== texte) raison.textContent = texte;
+			raison.hidden = !texte;
+			const lancer = boutons.find(bouton => actionDe(bouton) === 'LANCER');
+			if (texte && raison.id) lancer?.setAttribute('aria-describedby', raison.id);
+			else lancer?.removeAttribute('aria-describedby');
 		}
 		if (focus && boutons.includes(focus) && focus.hidden) boutons.find(bouton => !bouton.hidden)?.focus();
 		if (dialogue.open && !peutEnvoyer('TERMINER')) dialogue.close();
@@ -59,7 +80,7 @@ export function monterPilotage(barre, contexte) {
 		actualiser();
 		try {
 			const { statut, corps } = await contexte.envoyer('POST', route, { action },
-				{ entetes: { 'Idempotency-Key': cle }, signal: annulation.signal });
+				{ entetes: { 'Idempotency-Key': cle }, signal: annulation.signal, recu: '' });
 			if (annulation.signal.aborted) return;
 			const inconnu = statut === 503 || (statut >= 500 && !corps?.code);
 			if (!inconnu) reessai = undefined;

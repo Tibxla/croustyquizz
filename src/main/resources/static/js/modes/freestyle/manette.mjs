@@ -6,7 +6,7 @@ import { installerInvitations } from '../passage/invitations-manette.mjs';
 import { cleVibration, texteCouplet } from './couplets.mjs';
 
 export function monter(zones, contexte) {
-	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
+	const ui = creerInterface(zones, contexte, { mode: 'freestyle' });
 	const { e, bouton } = ui;
 	const votes = installerVotes(ui, { afficheMoyenne: false });
 	const scene = installerScene(ui, 'À toi d’improviser !');
@@ -50,7 +50,8 @@ export function monter(zones, contexte) {
 		votes.rendre(titre, origine);
 		scene.rendre(origine, titre);
 		invitations.rendre(titre);
-		const couplets = bloc.courant?.couplets;
+		// Le Couplet ne se dit que pendant le Passage : une fois terminé, la ligne disparaît (#283).
+		const couplets = ['EN_COURS', 'EN_PAUSE'].includes(bloc.courant?.etat) ? bloc.courant.couplets ?? null : null;
 		const interprete = bloc.courant?.interpretes.some(i => i.joueurId === moi);
 		const enScene = interprete && ['APPELE', 'EN_COURS', 'EN_PAUSE'].includes(bloc.courant.etat);
 		const texteAnnonce = bloc.monCoupletAnnonce ? 'À toi dans une mesure !' : '';

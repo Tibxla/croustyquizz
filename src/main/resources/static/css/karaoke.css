@@ -15,6 +15,9 @@
 .karaoke__ticket-vote p:empty { margin: 0; padding: 0; }
 .karaoke__notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--espace-1); }
 .karaoke .karaoke__notes .bouton { padding-inline: 0; font-variant-numeric: tabular-nums; }
+/* Désignation du meilleur Interprète (#283) : un pseudo par ligne, entier, sur deux lignes au besoin. */
+.karaoke__notes--designation { grid-template-columns: minmax(0, 1fr); gap: var(--espace-2); }
+.karaoke .karaoke__notes--designation .bouton { padding-inline: var(--espace-4); white-space: normal; overflow-wrap: anywhere; text-align: center; }
 .karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"],
 .karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"]:hover {
   border-color: var(--encre);
@@ -32,6 +35,45 @@
   overflow-wrap: anywhere;
 }
 .karaoke__resultats > li { padding-block: var(--espace-3); border-bottom: 1px solid var(--fond-3); }
+/* Résultat de la Manette (#280) : une carte entière qu'on touche, titre en gras, artiste dessous, durée à droite. */
+ul.karaoke__resultats { display: grid; gap: var(--espace-2); }
+ul.karaoke__resultats > li { padding: 0; border: 0; }
+.karaoke__carte {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--espace-1) var(--espace-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--espace-3) var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-1);
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms var(--sortie), border-color 120ms var(--sortie), transform 120ms var(--sortie);
+}
+.karaoke__carte:active:not(:disabled) { transform: translateY(1px); }
+@media (hover: hover) { .karaoke__carte:hover:not(:disabled) { background: var(--fond-2); border-color: var(--texte-3); } }
+.karaoke__carte:focus-visible { outline: 3px solid var(--citron); outline-offset: 3px; }
+.karaoke__carte-titre { overflow-wrap: anywhere; font-weight: 700; font-size: 1.125rem; }
+.karaoke__carte-duree { align-self: start; color: var(--texte-2); }
+.karaoke__carte-artiste, .karaoke__carte-paroles { grid-column: 1 / -1; color: var(--texte-2); overflow-wrap: anywhere; }
+.karaoke__carte-paroles { font-size: 1rem; }
+.karaoke__carte:disabled { border-color: var(--fond-3); background: transparent; color: var(--texte-3); cursor: not-allowed; }
+.karaoke__carte:disabled .karaoke__carte-titre { color: var(--texte-2); }
+.karaoke__carte:disabled .karaoke__carte-paroles { color: var(--texte-2); }
+.karaoke__voir-plus { justify-self: stretch; }
+/* Message vrai après une inscription (#280), dans le vert d'eau des envois acceptés. */
+.karaoke__annonce-inscription {
+  padding: var(--espace-3) var(--espace-4);
+  border-radius: var(--rayon);
+  background: var(--eau);
+  color: var(--encre);
+  font-weight: 700;
+  scroll-margin-top: var(--espace-4);
+}
 .karaoke__resultats .titre { text-align: left; }
 .karaoke__resultats td:last-child { width: auto; }
 .karaoke__commandes {
@@ -41,6 +83,10 @@
   align-items: center;
 }
 .karaoke__commandes > p { flex-basis: 100%; }
+/* Calage des paroles (#279) : un titre, les trois constats de l'Animateur, puis le décalage en cours. */
+.karaoke__calage { padding-top: var(--espace-2); border-top: 1px solid var(--fond-3); }
+.karaoke__calage-titre { flex-basis: 100%; font-size: 1rem; color: var(--texte-2); }
+.karaoke__decalage { color: var(--texte-2); font-variant-numeric: tabular-nums; }
 .karaoke__limite { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--espace-2); }
 .karaoke__limite label, .karaoke__limite p { grid-column: 1 / -1; }
 .karaoke__limite input { width: 100%; min-width: 0; }
@@ -94,7 +140,7 @@
 .karaoke__scene-manette .mon-ticket--appele { margin-bottom: var(--espace-5); }
 .karaoke__scene-manette .mon-ticket__etiquette { max-width: 24ch; line-height: 1.15; text-align: right; }
 .karaoke__scene-manette .mon-ticket__etiquette--texte {
-  font: 700 0.95rem/1.15 var(--police-texte);
+  font: 700 1rem/1.15 var(--police-texte); /* 16 px au moins sur la Manette (#280, M1). */
   letter-spacing: normal;
   text-transform: none;
 }

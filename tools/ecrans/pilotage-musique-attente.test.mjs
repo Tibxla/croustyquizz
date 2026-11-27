@@ -44,9 +44,47 @@ test('la Console règle le son depuis le pilotage commun et attend une vue pour 
 	assert.equal(bouton.textContent, 'Relancer la musique');
 	assert.match(statut.textContent, /coupée/);
 	console.afficher(vue('COUPEE', false));
-	assert.equal(statut.textContent, 'Aucun morceau dans Attente');
+	assert.equal(statut.textContent, 'Aucun morceau dans le dossier Attente de l’Écran de salle');
 	changerEtat('coupure');
 	assert.equal(bouton.disabled, true);
+	console.demonter();
+});
+
+test('la Console ne propose la musique que si l’Écran en a, et dit quoi faire sinon (#279, #282)', () => {
+	const bouton = new EventTarget();
+	const statut = {};
+	const envois = [];
+	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree', resynchroniser() {},
+		envoyer: async (...args) => { envois.push(args); return { statut: 200, corps: {} }; } });
+	const console = monterMusiqueDAttenteConsole(bouton, statut, contexte);
+	changerEtat('synchronisee');
+	console.afficher(vue('JOUE', null));
+	assert.equal(statut.textContent, 'Choisis le dossier de musique sur l’Écran de salle');
+	assert.equal(bouton.disabled, true);
+	console.afficher(vue('JOUE', false));
+	assert.equal(bouton.disabled, true);
+	bouton.dispatchEvent(new Event('click'));
+	assert.equal(envois.length, 0);
+	console.afficher(vue('JOUE', true));
+	assert.equal(bouton.disabled, false);
+	console.demonter();
+});
+
+test('le reçu de la musique dit ce qui a changé (#279)', async () => {
+	const bouton = new EventTarget();
+	const annonces = [];
+	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree', resynchroniser() {},
+		envoyer: async () => ({ statut: 200, corps: {} }), surEnvoi: (...a) => annonces.push(a) });
+	const console = monterMusiqueDAttenteConsole(bouton, {}, contexte);
+	changerEtat('synchronisee');
+	console.afficher(vue('JOUE', true));
+	bouton.dispatchEvent(new Event('click'));
+	await terminerMicrotaches();
+	assert.deepEqual(annonces.at(-1), ['accepte', 'Musique coupée.']);
+	console.afficher(vue('COUPEE', true));
+	bouton.dispatchEvent(new Event('click'));
+	await terminerMicrotaches();
+	assert.deepEqual(annonces.at(-1), ['accepte', 'Musique relancée.']);
 	console.demonter();
 });
 

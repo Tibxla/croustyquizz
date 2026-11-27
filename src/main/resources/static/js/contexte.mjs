@@ -1,4 +1,5 @@
 const INCONNU = "Confirmation indisponible : vérifie l'état affiché.";
+const RECU = 'C’est enregistré.';
 
 export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, maintenantServeur, surEnvoi = () => {} }) {
 	let etat = 'synchronisation';
@@ -18,7 +19,8 @@ export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, maint
 			},
 			// surEnvoi(etat, detail) pilote le bandeau de la coquille ; surEnvoi(null) l'efface.
 			// { annoncer: false } : le module affiche son propre statut près de l'action, la coquille se tait.
-			async envoyer(methode, chemin, corps, { annoncer = true, ...options } = {}) {
+			// { recu } : ce que la coquille annonce une fois l'envoi accepté (« Buzz envoyé. ») ; jamais de jargon de serveur.
+			async envoyer(methode, chemin, corps, { annoncer = true, recu = RECU, ...options } = {}) {
 				if (!annoncer || ['GET', 'HEAD'].includes(methode.toUpperCase())) return envoyer(methode, chemin, corps, options);
 				const numero = ++dernierEnvoi;
 				surEnvoi('en-cours', 'Envoi en cours…');
@@ -29,7 +31,7 @@ export function creerContexte({ acteur, soireeId, envoyer, resynchroniser, maint
 						// Même règle qu'envois.mjs : un 503, ou un 5xx sans code du contrat (relais, passerelle),
 						// peut suivre une commande appliquée ; on ne peut donc pas l'annoncer comme un refus.
 						if (statut === 503 || (statut >= 500 && !corps?.code)) surEnvoi('inconnu', INCONNU);
-						else if (statut >= 200 && statut < 300) surEnvoi('accepte', 'Envoi accepté par le serveur.');
+						else if (statut >= 200 && statut < 300) surEnvoi(...(recu ? ['accepte', recu] : [null]));
 						else surEnvoi('refuse', corps?.detail ?? `Envoi refusé (HTTP ${statut}).`);
 					}
 					return reponse;

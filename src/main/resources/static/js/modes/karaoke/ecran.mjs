@@ -22,7 +22,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	const { lecteur, lecteurId } = audio;
 	const designation = designations.get(audio) ?? { fichiers: null, aEteLectrice: false };
 	designations.set(audio, designation);
-	const ui = creerInterface(zones, contexte, { annoncerConnexion: false }), { e, ecouter } = ui;
+	const ui = creerInterface(zones, contexte), { e, ecouter } = ui;
 	const invitation = e('h2', 'karaoke__invitation'), prochain = e('div', 'karaoke__prochain');
 	const paroles = e('div', 'karaoke__paroles');
 	const appelSalle = creerAppelSalle(ui), voteSalle = creerVoteSalle(ui);

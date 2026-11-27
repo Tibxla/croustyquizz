@@ -144,3 +144,22 @@ test('le programme ajoute une Manche de Freestyle avec les fiches cochées aprè
 	]);
 	b.programme.demonter();
 });
+
+test('les réglages d’une Manche se lisent sans jargon (#279)', () => {
+	const b = banc();
+	b.afficher([{ ...manche('k', 0, 'KARAOKE'), reglages: { limitePassagesEnAttente: 1 } },
+		{ ...manche('l', 1, 'KARAOKE'), reglages: { limitePassagesEnAttente: 3 } }]);
+	assert.match(b.liste.textContent, /1 Passage en attente au plus par Joueur/);
+	assert.match(b.liste.textContent, /3 Passages en attente au plus par Joueur/);
+	assert.doesNotMatch(b.liste.textContent, /Jusqu’à/);
+});
+
+test('« Ajouter une Manche » n’est l’action citron que tant que le programme est vide (#282)', () => {
+	const b = banc();
+	b.connecter('synchronisee');
+	b.afficher([]);
+	assert.match(b.ajout.className, /bouton--action/);
+	b.afficher([manche('a', 0)]);
+	assert.doesNotMatch(b.ajout.className, /bouton--action/);
+	assert.match(b.ajout.className, /\bbouton\b/);
+});

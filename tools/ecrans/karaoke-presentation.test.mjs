@@ -37,7 +37,12 @@ test('les motifs de la Chanson priment sur le quota du bloc, dans l’ordre des 
 			{ possible: false, motif: tableMotifsKaraoke[code] }, code);
 	}
 	assert.deepEqual(etatInscription({ inscriptionPossible: true, motifIndisponibilite: null }, quota, true),
-		{ possible: false, motif: 'Ta limite de Passages est atteinte.' });
+		{ possible: false, motif: 'Tu as atteint la limite de Passages en attente : attends ton tour pour t’inscrire à nouveau.' });
+	// La limite se dit avec sa raison (#280) : le nombre de Passages déjà en attente.
+	assert.equal(etatInscription({ inscriptionPossible: true }, { ...quota, limitePassagesEnAttente: 1 }, true).motif,
+		'Tu chantes déjà dans un Passage en attente : attends ton tour pour t’inscrire à nouveau.');
+	assert.equal(etatInscription({ inscriptionPossible: true }, { ...quota, limitePassagesEnAttente: 3 }, true).motif,
+		'Tu chantes déjà dans 3 Passages en attente : attends ton tour pour t’inscrire à nouveau.');
 });
 
 test('les décomptes arrondissent au plafond et le décalage comporte un signe et un dixième', async () => {

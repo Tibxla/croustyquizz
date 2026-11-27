@@ -38,7 +38,8 @@ export function installerVotes(ui, { afficheMoyenne = true } = {}) {
 		const message = e('p', 'karaoke__etat-vote');
 		const notePersonnelle = e('p');
 		const temps = e('span', 'chiffres');
-		const choix = e('div', 'karaoke__notes');
+		// Une désignation porte des pseudos : les boutons s'empilent et passent à la ligne (#283).
+		const choix = e('div', designation ? 'karaoke__notes karaoke__notes--designation' : 'karaoke__notes');
 		choix.setAttribute('role', 'group');
 		choix.setAttribute('aria-label', designation ? `Meilleur Interprète du Passage ${vote.numero}` : `Note du Passage ${vote.numero}`);
 		const fiche = { ticket, temps, vote, note: null, designation };

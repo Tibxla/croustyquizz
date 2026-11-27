@@ -6,6 +6,9 @@ import { monter as consoleKaraoke } from '../../src/main/resources/static/js/mod
 import { estInscripteur, joindrePseudos, lignesInvitations, texteDesinscription, texteInvitation }
 	from '../../src/main/resources/static/js/modes/karaoke/invitations.mjs';
 import { invitesPossibles } from '../../src/main/resources/static/js/modes/karaoke/commun.mjs';
+// Un résultat de la Manette est une carte entière (#280) : son titre est en gras.
+const carteChanson = (zone, titre) => zone.querySelectorAll('button').find(b => b.textContent === titre || b.querySelector('strong')?.textContent === titre);
+
 
 // Passages à plusieurs (#135, #138, #139). Le banc joue le Joueur « j » (Jo).
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'file-attente-modifiee' };
@@ -57,7 +60,8 @@ test('Manette : l’invité accepte son Invitation, qui laisse place au ticket e
 	assert.equal(bouton(b.principale, 'Accepter'), undefined);
 	assert.ok(bouton(b.principale, 'Quitter ce Passage'));
 	assert.equal(bouton(b.principale, 'Me désinscrire'), undefined);
-	assert.match(b.principale.textContent, /Envoi accepté par le serveur/);
+	assert.match(b.principale.textContent, /C’est noté : tu es dans ce Passage./);
+	assert.doesNotMatch(b.principale.textContent, /serveur/);
 });
 
 test('Manette : un refus de limite garde l’Invitation ouverte avec son motif, puis Refuser part', async t => {
@@ -131,7 +135,7 @@ test('Manette : l’inscripteur voit l’état de chaque Invitation et sa confir
 	assert.equal(b.principale.querySelector('.karaoke__interpretes').textContent, 'Jo, Basile');
 	bouton(b.principale, 'Me désinscrire').click();
 	assert.match(b.principale.querySelector('dialog').textContent, /Basile perd aussi ce Passage/);
-	bouton(b.principale, 'Confirmer la désinscription').click();
+	bouton(b.principale.querySelector('dialog'), 'Me désinscrire').click();
 	assert.match(b.appels[0].args[1], /\/passages\/duo\/desinscription$/);
 });
 
@@ -143,7 +147,7 @@ test('Manette : l’invité accepté quitte le Passage par la désinscription, s
 	assert.equal(b.principale.querySelector('.karaoke__etat-invitations'), null);
 	bouton(b.principale, 'Quitter ce Passage').click();
 	assert.match(b.principale.querySelector('dialog').textContent, /Il reste dans la File pour Basile/);
-	bouton(b.principale, 'Confirmer le départ').click();
+	bouton(b.principale.querySelector('dialog'), 'Quitter ce Passage').click();
 	assert.match(b.appels[0].args[1], /\/passages\/duo\/desinscription$/);
 	assert.equal(b.appels[0].args[2].numeroModification, 2);
 });
@@ -169,7 +173,7 @@ test('Manette : la fiche coche trois invités au plus, sans soi, et n’ajoute i
 	const champ = b.principale.querySelector('input'); champ.value = 'titre';
 	b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click();
+	carteChanson(b.principale, chanson.titre).click();
 	b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	const cases = b.principale.querySelector('dialog').querySelectorAll('input');
 	assert.deepEqual(cases.map(c => c.value), ['b', 'c', 'd', 'e']);
@@ -191,7 +195,7 @@ test('Manette : la fiche coche trois invités au plus, sans soi, et n’ajoute i
 	const recherche = seul.principale.querySelector('input'); recherche.value = 'titre';
 	seul.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	seul.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(seul.principale, chanson.titre).click();
+	carteChanson(seul.principale, chanson.titre).click();
 	seul.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	assert.equal(seul.principale.querySelector('fieldset'), null);
 	bouton(seul.principale, "M'inscrire").click();

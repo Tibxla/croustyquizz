@@ -8,6 +8,8 @@
   --arrache-x: 6px;
   --arrache-y: 4px;
   display: grid;
+  /* La colonne unique ne s'élargit pas au contenu de la barre : la barre se resserre, la page ne défile pas de côté. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   min-height: 100vh;
   --fond-encoche: var(--fond-1);
@@ -32,10 +34,12 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  /* Une seule ligne jusqu'à la tablette (#282) : le titre se tronque avant que la barre ne passe à la ligne. */
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--espace-3) var(--espace-6);
+  gap: var(--espace-3) var(--espace-5);
+  min-height: 72px;
   padding: var(--espace-3) var(--espace-5);
   background: var(--fond-2);
   border-bottom: 1px solid var(--fond-3);
@@ -43,56 +47,101 @@
 }
 .pilotage__soiree {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.pilotage__soiree small {
-  color: var(--texte-2);
-  font-size: 0.875rem;
-}
-.pilotage__manche {
-  display: flex;
-  flex: 1 1 240px;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--espace-1) var(--espace-4);
+  gap: var(--espace-3);
+  flex: 0 1 auto;
   min-width: 0;
 }
-.pilotage__mode {
-  font: 800 1.5rem/1 var(--police-chiffres);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.pilotage__soiree .marque { flex: none; }
+.pilotage__titre {
+  min-width: 0;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--texte-2);
 }
-.pilotage__progression {
+.pilotage__etat {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--espace-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   color: var(--texte-2);
   font-size: 0.9375rem;
   white-space: nowrap;
 }
+.pilotage__etat strong { color: var(--texte); font: 800 1.375rem/1 var(--police-chiffres); letter-spacing: 0.06em; }
+.pilotage__mode {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--texte);
+  font: 800 1.375rem/1 var(--police-chiffres);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 .pilotage__commandes {
   margin-left: auto;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: flex-start;
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: var(--espace-2);
 }
-.pilotage__confirmation {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--espace-2);
-  justify-content: flex-end;
+.pilotage__plus { position: relative; }
+.pilotage__plus [data-menu-bouton] { gap: var(--espace-1); }
+.pilotage__plus [aria-expanded="true"] { background: var(--fond-3); border-color: var(--texte-3); }
+
+.libelle-court { display: none; }
+@media (max-width: 1200px) {
+  .pilotage .libelle-court { display: inline; }
 }
 
-.pilotage__musique {
+/* Coupure : le bandeau passe sous la barre, sur toute sa largeur, sans la faire déborder (#279). */
+.pilotage .coupure {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  border-radius: 0;
+  font-size: 1rem;
+  white-space: normal;
+}
+
+/* Menu « Plus » : les commandes rares, sous la barre, à droite. */
+.menu {
+  position: absolute;
+  top: calc(100% + var(--espace-2));
+  right: 0;
+  z-index: 11;
   display: grid;
-  justify-items: start;
-  gap: var(--espace-1);
+  gap: var(--espace-3);
+  width: max-content;
+  min-width: 16rem;
+  max-width: min(22rem, calc(100vw - 2 * var(--espace-4)));
+  padding: var(--espace-4);
+  border: 1px solid var(--fond-4);
+  border-radius: var(--rayon-grand);
+  background: var(--fond-2);
+  box-shadow: var(--ombre);
 }
+.menu .bouton { justify-content: flex-start; width: 100%; }
+.menu__groupe { display: grid; gap: var(--espace-1); padding-bottom: var(--espace-3); border-bottom: 1px solid var(--fond-3); }
+.menu__info { margin: 0; color: var(--texte-2); font-size: 0.9375rem; white-space: normal; }
+.menu__info:empty { display: none; }
 
-.pilotage__musique p {
-  margin: 0;
-  color: var(--texte-2);
-  font-size: 0.875rem;
+/* Raison d'un lancement impossible : la prochaine chose à faire, en tête de colonne (#282). */
+.console__raison {
+  padding: var(--espace-3) var(--espace-4);
+  border: 1px solid var(--fond-4);
+  border-radius: var(--rayon);
+  color: var(--texte);
+  font-weight: 700;
 }
 
 .indicateurs {
@@ -146,8 +195,20 @@
   .indicateurs { gap: var(--espace-3); }
   .resultats .actions { flex-direction: column; align-items: stretch; }
 }
+@media (max-width: 1200px) {
+  .pilotage { gap: var(--espace-3); padding-inline: var(--espace-4); }
+  /* Sur tablette, le mot-symbole laisse sa place au titre de la Soirée et à l'étape en cours. */
+  .pilotage__soiree .marque { display: none; }
+  .pilotage__titre { max-width: 14ch; }
+  .pilotage__etat { gap: var(--espace-3); }
+  .pilotage__etat strong, .pilotage__mode { font-size: 1.125rem; }
+  /* La pastille garde son point et son nom accessible ; son texte s'efface. */
+  .pilotage .connexion { font-size: 0; gap: 0; }
+}
 @media (max-width: 860px) {
   .plan { grid-template-columns: 1fr; }
+  .pilotage { flex-wrap: wrap; }
+  .pilotage__commandes { margin-left: 0; flex-wrap: wrap; }
 }
 
 

@@ -9,6 +9,9 @@ import { creerEcranKaraoke } from '../../src/main/resources/static/js/modes/kara
 import { creerAudioSalle } from '../../src/main/resources/static/js/audio-salle.mjs';
 import { ouvrirDialogue } from '../../src/main/resources/static/js/dialogue.mjs';
 import { texteAppel } from '../../src/main/resources/static/js/modes/passage/salle.mjs';
+// Un résultat de la Manette est une carte entière (#280) : son titre est en gras.
+const carteChanson = (zone, titre) => zone.querySelectorAll('button').find(b => b.textContent === titre || b.querySelector('strong')?.textContent === titre);
+
 
 const capture = { source: 'capture', type: 'capture' };
 const appelEvenement = { source: 'evenement', type: 'passage-appele' };
@@ -22,7 +25,7 @@ async function ouvrirFiche(b) {
 	const champ = b.principale.querySelector('input'), formulaire = b.principale.querySelector('form');
 	champ.value = 'titre'; formulaire.dispatchEvent({ type: 'submit' });
 	b.appels.at(-1).resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click();
+	carteChanson(b.principale, chanson.titre).click();
 	b.appels.at(-1).resolve({ statut: 200, corps: { chanson, paroles: null } }); await terminerMicrotaches();
 	return b.principale.querySelector('dialog');
 }
@@ -75,7 +78,7 @@ test('Manette du Karaoké : une fiche encore en chargement à l’appel ne s’o
 	const champ = b.principale.querySelector('input'), formulaire = b.principale.querySelector('form');
 	champ.value = 'titre'; formulaire.dispatchEvent({ type: 'submit' });
 	b.appels.at(-1).resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click();
+	carteChanson(b.principale, chanson.titre).click();
 	const consultation = b.appels.at(-1);
 	assert.match(b.principale.textContent, /Consultation en cours…/);
 	b.module.afficher(vue({ courant: appele(), peutConfirmerPresence: true }), appelEvenement);

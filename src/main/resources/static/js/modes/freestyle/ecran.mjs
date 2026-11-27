@@ -8,7 +8,7 @@ import { creerAppelSalle, creerVoteSalle, voteAuCentre } from '../passage/salle.
 const ECART_DE_RECALAGE_MS = 300;
 
 export function monter(zones, contexte) {
-	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
+	const ui = creerInterface(zones, contexte, { mode: 'freestyle' });
 	const { e } = ui;
 	const fenetre = ui.document.defaultView;
 	const audio = contexte.audioSalle;
@@ -278,7 +278,9 @@ export function monter(zones, contexte) {
 			ligne.append(creerTicket(ui, passage));
 			return ligne;
 		}));
-		autres.textContent = texteAutresPassages(bloc.nombreEnAttente - bloc.passagesEnAttente.length);
+		// « À venir » ne reste jamais vide sans rien dire (#283).
+		autres.textContent = bloc.passagesEnAttente.length ? texteAutresPassages(bloc.nombreEnAttente - bloc.passagesEnAttente.length)
+			: 'Personne n’est inscrit.';
 		synchroniser();
 	};
 	ui.surDestruction = () => {

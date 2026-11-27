@@ -1,18 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { decrireBarre, decrireClassementDeSalle, decrireConnexion, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
-	const description = decrireVue({ soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
+	const vue1 = { soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
 		modeEnCours: 'BLIND_TEST', mancheActive: { ordre: 2, etat: 'EN_PAUSE' },
 		joueurs: [{ id: 'j1', pseudo: '<script>Joueur</script>', connecte: false }], joueurId: 'j1', eligiblePourMancheActive: false,
 		classement: [{ concurrentId: 'j1', rang: 1, nom: 'Joueur', points: 850 }], dernierBuzz: { pseudo: 'Joueur' },
 		programme: [{ ordre: 2, mode: 'BLIND_TEST', etat: 'EN_PAUSE' }], resultatPersonnel: { pointsGagnes: 850 },
-	});
+	};
+	const description = decrireVue(vue1);
 	assert.equal(description.manche, 'Blind test · Manche 3 · En pause');
-	assert.deepEqual(description.joueurs, ['<script>Joueur</script> · déconnecté']);
+	assert.deepEqual(decrireVue(vue1, { ecran: 'console' }).joueurs, ['<script>Joueur</script> · déconnecté']);
 	assert.deepEqual(description.classement, ['1. Joueur · 850 points']);
-	assert.equal(description.personnel, '<script>Joueur</script> · Rang 1 · 850 points · Tu participeras à la prochaine Manche. · 850 points à la dernière correction');
+	// Le pseudo passe dans l'en-tête de la Manette (#280) : la ligne personnelle ne le répète pas.
+	assert.equal(description.pseudo, '<script>Joueur</script>');
+	assert.equal(description.personnel, 'Rang 1 · 850 points · Tu participeras à la prochaine Manche. · 850 points à la dernière correction');
 	assert.deepEqual(description.programme, ['3. Blind test · En pause']);
 });
 
@@ -24,7 +27,8 @@ test('la salle affiche dix lignes entre deux Manches et retire le classement pen
 	assert.equal(description.lignes.length, 10);
 	assert.equal(description.lignes.at(-1), '10. Joueur 10 · 6 points');
 	assert.equal(decrireClassementDeSalle({ ...vue, mancheActive: { ordre: 1, etat: 'EN_PAUSE' } }), null);
-	assert.deepEqual(decrireClassementDeSalle({ ...vue, classement: [] }).lignes, []);
+	// Sans aucun point, la salle accueille les arrivées plutôt qu'un classement vide (#281, I11).
+	assert.equal(decrireClassementDeSalle({ ...vue, classement: [] }), null);
 	assert.equal(decrireClassementDeSalle({ ...vue, soiree: { etat: 'OUVERTE' }, classement: [] }), null);
 });
 
@@ -44,8 +48,43 @@ test('le podium garde tous les ex æquo aux rangs donnés par le serveur', () =>
 test('la Manette affiche le rang hors du Top 10 et indique les Joueurs encore sans classement', () => {
 	const vue = { soiree: { format: 'SOLO' }, joueurs: [{ id: 'j', pseudo: 'Léa' }], joueurId: 'j',
 		classement: [{ concurrentId: 'j', rang: 12, nom: 'Léa', points: 1 }] };
-	assert.equal(decrireVue(vue).personnel, 'Léa · Rang 12 · 1 point');
-	assert.equal(decrireVue({ ...vue, classement: [] }).personnel, 'Léa · Non classé · 0 point');
+	assert.equal(decrireVue(vue).personnel, 'Rang 12 · 1 point');
+	// Sans classement, la Manette ne dit rien plutôt qu'un « Non classé · 0 point » qui inquiète (#279).
+	assert.equal(decrireVue({ ...vue, classement: [] }).personnel, '');
+});
+
+test('pendant une Manche sans points (Karaoké, Freestyle), la Manette ne montre pas le classement (#279)', () => {
+	const vue = { soiree: { format: 'SOLO' }, joueurs: [{ id: 'j', pseudo: 'Léa' }], joueurId: 'j', mancheActive: { ordre: 0 },
+		eligiblePourMancheActive: true, classement: [{ concurrentId: 'j', rang: 2, nom: 'Léa', points: 5 }] };
+	for (const modeEnCours of ['KARAOKE', 'FREESTYLE']) assert.equal(decrireVue({ ...vue, modeEnCours }).personnel, '', modeEnCours);
+	assert.equal(decrireVue({ ...vue, modeEnCours: 'QUIZ' }).personnel, 'Rang 2 · 5 points');
+});
+
+test('le Format et le Pilotage restent sur la Console, pas sur la Manette ni sur la salle (#279)', () => {
+	const vue = { soiree: { etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL' }, joueurs: [], classement: [] };
+	assert.equal(decrireVue(vue, { ecran: 'console' }).resume, 'En cours · Solo · Pilotage manuel');
+	assert.equal(decrireVue(vue, { ecran: 'manette' }).resume, '');
+	assert.equal(decrireVue(vue, { ecran: 'ecran' }).resume, '');
+});
+
+test('seule la Console voit qui est déconnecté ; ailleurs, les pseudos suffisent (#279)', () => {
+	const vue = { soiree: {}, joueurs: [{ id: 'a', pseudo: 'Léa', connecte: true }, { id: 'b', pseudo: 'Max', connecte: false }], classement: [] };
+	assert.deepEqual(decrireVue(vue, { ecran: 'console' }).joueurs, ['Léa · connecté', 'Max · déconnecté']);
+	assert.deepEqual(decrireVue(vue, { ecran: 'ecran' }).joueurs, ['Léa', 'Max']);
+	assert.deepEqual(decrireVue(vue, { ecran: 'manette' }).joueurs, ['Léa', 'Max']);
+});
+
+test('le Buzz ne s’affiche que hors Manche, et seulement s’il y en a un (#281, M4)', () => {
+	const vue = { soiree: { etat: 'EN_COURS' }, joueurs: [], classement: [], modeEnCours: null, dernierBuzz: null };
+	assert.equal(decrireVue(vue).buzz, '');
+	assert.equal(decrireVue({ ...vue, dernierBuzz: { pseudo: 'Léa' } }).buzz, 'Dernier Buzz : Léa');
+	assert.equal(decrireVue({ ...vue, modeEnCours: 'KARAOKE', dernierBuzz: { pseudo: 'Léa' } }).buzz, '');
+});
+
+test('l’état de connexion ne prend la parole qu’en cas de coupure (#279)', () => {
+	assert.deepEqual(decrireConnexion('synchronisee'), { texte: 'En direct', coupure: false });
+	assert.deepEqual(decrireConnexion('synchronisation'), { texte: 'Connexion…', coupure: false });
+	assert.deepEqual(decrireConnexion('coupure'), { texte: 'Connexion perdue, on se reconnecte…', coupure: true });
 });
 
 test('l’avertissement du retardataire ne dépend que de eligiblePourMancheActive, quel que soit le Mode de jeu', () => {
@@ -53,15 +92,15 @@ test('l’avertissement du retardataire ne dépend que de eligiblePourMancheActi
 	const vue = { soiree: {}, mancheActive: { ordre: 0 }, joueurs: [{ id: 'j', pseudo: 'Jo' }], joueurId: 'j', classement: [] };
 	for (const modeEnCours of ['QUIZ', 'BLIND_TEST', 'KARAOKE', 'FREESTYLE']) {
 		assert.match(decrireVue({ ...vue, modeEnCours, eligiblePourMancheActive: false }).personnel, /Tu participeras/, modeEnCours);
-		assert.equal(decrireVue({ ...vue, modeEnCours, eligiblePourMancheActive: true }).personnel, 'Jo', modeEnCours);
+		assert.equal(decrireVue({ ...vue, modeEnCours, eligiblePourMancheActive: true }).personnel, '', modeEnCours);
 	}
-	assert.equal(decrireVue({ ...vue, mancheActive: null, modeEnCours: null, eligiblePourMancheActive: false }).personnel, 'Jo');
+	assert.equal(decrireVue({ ...vue, mancheActive: null, modeEnCours: null, eligiblePourMancheActive: false }).personnel, '');
 });
 
 test('le résumé de la Console affiche le Pilotage de la Soirée', () => {
 	const vue = { soiree: { etat: 'EN_COURS', format: 'SOLO', pilotage: 'AUTOMATIQUE' }, joueurs: [], classement: [] };
-	assert.equal(decrireVue(vue).resume, 'En cours · Solo · Pilotage automatique');
-	assert.equal(decrireVue({ ...vue, soiree: { ...vue.soiree, pilotage: 'MANUEL' } }).resume,
+	assert.equal(decrireVue(vue, { ecran: 'console' }).resume, 'En cours · Solo · Pilotage automatique');
+	assert.equal(decrireVue({ ...vue, soiree: { ...vue.soiree, pilotage: 'MANUEL' } }, { ecran: 'console' }).resume,
 		'En cours · Solo · Pilotage manuel');
 });
 
@@ -139,4 +178,19 @@ test('en fin de Soirée, le Podium final passe aussi avant le Palmarès du Frees
 	const enCours = { ...terminee, soiree: { etat: 'EN_COURS' } };
 	assert.equal(decrireClassementDeSalle(enCours), null);
 	assert.deepEqual(decrirePalmaresDeSalle(enCours).map(ligne => ligne.texte), ['1. n° 3 · Boom bap · Lou · 4,5 sur 5 (2 votes)']);
+});
+
+test('la barre de pilotage dit où en est la Soirée, le code et le nombre de Joueurs (#282)', () => {
+	const joueurs = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+	const base = { soiree: { etat: 'OUVERTE', codeAcces: 'K7P2QX' }, joueurs, mancheActive: null, modeEnCours: null };
+	assert.deepEqual(decrireBarre(base), { mode: 'Avant le lancement', code: 'K7P2QX', joueurs: '3 Joueurs' });
+	assert.deepEqual(decrireBarre({ ...base, soiree: { etat: 'PREPARATION', codeAcces: 'K7P2QX' }, joueurs: [] }),
+		{ mode: 'Soirée pas encore ouverte', code: null, joueurs: 'Aucun Joueur' });
+	assert.deepEqual(decrireBarre({ ...base, soiree: { etat: 'EN_COURS', codeAcces: 'K7P2QX' }, joueurs: [{ id: 'a' }],
+		mancheActive: { ordre: 1, etat: 'EN_COURS' }, modeEnCours: 'KARAOKE' }), { mode: 'Karaoké · Manche 2', code: 'K7P2QX', joueurs: '1 Joueur' });
+	assert.equal(decrireBarre({ ...base, soiree: { etat: 'EN_COURS' }, mancheActive: { ordre: 0, etat: 'EN_PAUSE' }, modeEnCours: 'QUIZ' }).mode,
+		'Quiz · Manche 1 · En pause');
+	assert.equal(decrireBarre({ ...base, soiree: { etat: 'EN_COURS' } }).mode, 'Entre deux Manches');
+	assert.deepEqual(decrireBarre({ ...base, soiree: { etat: 'TERMINEE', codeAcces: 'K7P2QX' } }),
+		{ mode: 'Soirée terminée', code: null, joueurs: '3 Joueurs' });
 });

@@ -14,10 +14,18 @@
 <main class="salle__scene">
   <section class="salle__principal" aria-label="Soirée et mode en cours">
     <div class="coquille__commun">
-      <h1 data-titre>Soirée</h1><p class="commun__resume" data-resume></p>
+      <h1 data-titre>Soirée</h1>
       <p data-manche>En attente de la prochaine Manche</p>
     </div>
-    <p class="coupure" role="status" data-connexion>Synchronisation…</p><p class="envoi envoi--refuse" role="alert" data-erreur hidden></p><p class="envoi" role="status" data-envoi hidden></p>
+    <p class="envoi envoi--refuse" role="alert" data-erreur hidden></p><p class="envoi" role="status" data-envoi hidden></p>
+    <section class="salle__accueil" data-accueil aria-label="Rejoindre la Soirée" hidden>
+      <div class="salle__accueil-talon" data-accueil-talon></div>
+      <div class="salle__arrivees">
+        <h2 data-arrivees-titre>Déjà là</h2>
+        <ul class="salle__liste-arrivees" role="list" data-arrivees></ul>
+        <p class="salle__personne" data-arrivees-vide>Personne pour l’instant&#8239;: sois le premier&#8239;!</p>
+      </div>
+    </section>
     <div class="coquille__mode" data-principale></div>
     <div class="photos--affiche" data-photos hidden></div>
     <section class="palmares" data-zone-palmares aria-labelledby="titre-palmares" hidden>
@@ -31,30 +39,43 @@
       <p hidden>Aucun point attribué.</p>
     </section>
     <p class="coquille__note" data-attente>La prochaine Manche s’affichera ici.</p>
-    <div class="salle__audio" data-audio-salle hidden>
-      <button class="bouton" type="button" data-choisir-dossier>Choisir le dossier de musique</button>
-      <input type="file" webkitdirectory multiple hidden>
-      <p data-aide-son role="status"></p>
-      <p data-etat-instrumentales role="status"></p>
-      <button class="bouton" type="button" data-redeclarer-instrumentales hidden>Réessayer la déclaration des Instrumentales</button>
-      <p data-son-bloque hidden>Son bloqué</p>
-      <button class="bouton" type="button" data-activer-son hidden>Activer le son</button>
-    </div>
-    <footer class="salle__pied"><span class="marque">Crousty<span class="marque__accent">Quizz</span></span><span>Écran de salle</span></footer>
+    <p class="annonce-buzz" role="status" data-annonce-buzz hidden></p>
+    <footer class="salle__pied">
+      <span class="marque">Crousty<span class="marque__accent">Quizz</span></span>
+      <span class="salle__pied-titre" data-titre-pied></span>
+      <div class="salle__pied-etat">
+        <div class="salle__audio" data-audio-salle data-etat="installation" hidden>
+          <div class="salle__installation">
+            <h2>Mise en route de l’Écran</h2>
+            <p>Pour la musique, touche « Activer le son », puis choisis le dossier de musique du Lieu.</p>
+            <div class="salle__installation-commandes">
+              <button class="bouton" type="button" data-activer-son>Activer le son</button>
+              <button class="bouton" type="button" data-choisir-dossier>Choisir le dossier de musique</button>
+            </div>
+          </div>
+          <input type="file" webkitdirectory multiple hidden>
+          <p class="salle__aide-son" data-aide-son role="status"></p>
+          <p data-etat-instrumentales role="status"></p>
+          <button class="bouton" type="button" data-redeclarer-instrumentales hidden>Réessayer la déclaration des Instrumentales</button>
+          <p class="connexion salle__son" data-son-etat>Son coupé</p>
+        </div>
+        <p class="connexion" role="status" data-connexion>Connexion…</p>
+      </div>
+    </footer>
   </section>
   <aside class="salle__cote" aria-label="La salle">
     <div class="coquille__mode" data-laterale></div>
     <section class="commun" aria-label="Joueurs et Buzz">
       <h2 data-nombre-joueurs>Joueurs</h2><ul class="commun__liste" data-joueurs></ul>
-      <p data-buzz>Aucun Buzz reçu</p>
+      <p data-buzz hidden></p>
     </section>
     <div class="talon" data-talon hidden>
       <div class="talon__qr" data-qr hidden><img alt="QR code pour rejoindre la Soirée"></div>
-      <div><span class="talon__aide">Code d’accès de la Soirée</span><span class="talon__code" data-code></span></div>
+      <div class="talon__texte"><span class="talon__invitation">Scanne pour jouer</span><span class="talon__aide">ou tape le code</span><span class="talon__code" data-code></span></div>
       <span class="talon__adresse" data-adresse hidden></span>
     </div>
   </aside>
 </main>
-<noscript>Active JavaScript pour recevoir la Vue synchronisée.</noscript>
+<noscript>Active JavaScript dans ton navigateur pour suivre la Soirée.</noscript>
 </body>
 </html>

@@ -4,6 +4,7 @@ import { creerMusiqueDAttente } from './musique-attente.mjs';
 import { creerUuid } from './modes/karaoke/commun.mjs';
 import { estFichierAudio, fichiersDeMusiqueDAttente } from './modes/karaoke/fichiers.mjs';
 import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
+import { decrireSon } from './salle-accueil.mjs';
 
 export function creerAudioSalle({ lecteur, sonde, mesureur, coordonner, lecteurId }) {
 	const abonnes = new Set();
@@ -104,20 +105,27 @@ export function monterAudioSalle(zone) {
 	const choix = zone.querySelector('input');
 	const activer = zone.querySelector('[data-activer-son]');
 	const aide = zone.querySelector('[data-aide-son]');
-	const alerte = zone.querySelector('[data-son-bloque]');
+	const pastille = zone.querySelector('[data-son-etat]');
 	choisir.addEventListener('click', () => { void audio.activerSon(); choix.click(); });
 	activer.addEventListener('click', audio.activerSon);
 	choix.addEventListener('change', () => {
 		audio.choisirDossier(Array.from(choix.files));
 		choix.value = '';
 	});
-	audio.surChangement(({ fichiers, sonDebloque }) => {
-		const avaitFocus = document.activeElement === activer;
-		alerte.hidden = activer.hidden = sonDebloque;
-		if (avaitFocus && activer.hidden) choisir.focus();
-		const nombre = fichiers?.length;
-		aide.textContent = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
-	});
+	// Le panneau d'installation reste tant que le son n'est pas activé, puis laisse une pastille dans le pied (#281).
+	function rendre(etat) {
+		const { etat: etape, pastille: texte } = decrireSon(etat);
+		const avaitFocus = zone.contains(document.activeElement);
+		zone.dataset.etat = etape;
+		zone.dataset.dossier = etat.fichiers?.length ? 'choisi' : 'absent';
+		activer.hidden = etat.sonDebloque;
+		if (pastille && pastille.textContent !== texte) pastille.textContent = texte;
+		const nombre = etat.fichiers?.length;
+		aide.textContent = nombre === undefined || etape === 'pret' ? '' : `${nombre} morceau${nombre > 1 ? 'x' : ''} trouvé${nombre > 1 ? 's' : ''}`;
+		if (avaitFocus && etape === 'pret') choisir.focus();
+	}
+	audio.surChangement(rendre);
+	rendre(audio.etat());
 	zone.hidden = false;
 	return audio;
 }

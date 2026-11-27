@@ -41,13 +41,14 @@ function memeFichier(a, b) {
 export function monter(zone, contexte, { cle = () => crypto.randomUUID(), preparer = preparerJpeg } = {}) {
 	const document = zone.ownerDocument;
 	// Sans capture : le téléphone propose l’appareil photo et la photothèque.
+	// Le champ natif reste focalisable mais caché ; son étiquette prend l'allure d'un bouton de la charte (#280, M2).
 	const champ = element(document, 'input', {
-		type: 'file', id: 'photo-a-envoyer', accept: 'image/*', 'aria-describedby': 'etat-photo',
+		type: 'file', id: 'photo-a-envoyer', accept: 'image/*', 'aria-describedby': 'etat-photo', class: 'visuellement-cache',
 	});
-	const etiquette = element(document, 'label', { for: 'photo-a-envoyer' }, 'Envoyer une photo');
+	const etiquette = element(document, 'label', { for: 'photo-a-envoyer', class: 'bouton photos__bouton' }, 'Envoyer une photo');
 	const statut = element(document, 'p', { id: 'etat-photo', role: 'status' });
-	const groupe = element(document, 'div', { class: 'champ photos__champ' });
-	groupe.append(etiquette, champ, statut);
+	const groupe = element(document, 'div', { class: 'photos__champ' });
+	groupe.append(champ, etiquette, statut);
 	zone.replaceChildren(groupe);
 	zone.hidden = true;
 

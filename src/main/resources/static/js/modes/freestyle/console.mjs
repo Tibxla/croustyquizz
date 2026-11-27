@@ -4,7 +4,7 @@ import { formaterNombreVotes } from '../../vue-commune.mjs';
 import { pseudos, texteAnnonce, texteCouplet, texteOrdre } from './couplets.mjs';
 
 export function monter(zones, contexte) {
-	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
+	const ui = creerInterface(zones, contexte, { mode: 'freestyle' });
 	const { e, bouton } = ui;
 	const commande = (methode, chemin, corps, options) => ({ methode, chemin: ui.racine() + chemin, corps,
 		mancheId: ui.bloc.mancheId, acteurType: 'ANIMATEUR', ...options });
@@ -20,10 +20,9 @@ export function monter(zones, contexte) {
 		const mancheId = ui.bloc.mancheId;
 		const dialogue = ui.dialogue({ titre: 'Terminer la Manche', declencheur: terminer,
 			valide: () => ui.bloc.mancheId === mancheId,
-			confirmation: { libelle: 'Terminer', permise: () => ui.mutationsPermises,
+			confirmation: { libelle: 'Terminer la Manche', permise: () => ui.mutationsPermises,
 				executer: () => piloter(ui, commande, 'TERMINER') } });
-		dialogue.annuler.textContent = 'Annuler';
-		dialogue.contenu.append(e('p', '', 'Le Palmarès s’affichera à la fin de la Manche.'), dialogue.confirmer);
+		dialogue.contenu.append(e('p', '', 'Le Palmarès s’affiche sur l’Écran de salle.'));
 	});
 	commandes.append(appeler, pause, passer, terminer);
 	const statut = e('p'); statut.setAttribute('role', 'status');
@@ -49,12 +48,11 @@ export function monter(zones, contexte) {
 			passage.passageId === passageId && passage.numeroModification === cible.numeroModification);
 		message.textContent = '';
 		const dialogue = ui.dialogue({ titre: 'Retirer le Passage', declencheur, valide,
-			confirmation: { libelle: 'Retirer', permise: () => ui.mutationsPermises && ui.bloc.peutGererFile,
+			confirmation: { libelle: 'Retirer ce Passage', permise: () => ui.mutationsPermises && ui.bloc.peutGererFile,
 				executer: () => ui.commande(commande('POST', `/passages/${encodeURIComponent(passageId)}/retrait`,
 					{ numeroModification: cible.numeroModification })) } });
-		dialogue.annuler.textContent = 'Annuler';
 		dialogue.contenu.append(e('p', '',
-			`Retirer le Passage ${cible.numero} · ${pseudos(cible.interpretes)} · ${cible.instrumentale.titre} ?`), dialogue.confirmer);
+			`Retirer le Passage ${cible.numero} · ${pseudos(cible.interpretes)} · ${cible.instrumentale.titre} ?`));
 	}
 
 	let automatique = false;

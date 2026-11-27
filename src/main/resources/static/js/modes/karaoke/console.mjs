@@ -2,7 +2,7 @@ import { appelerSuivant, piloter, prochainPassage } from '../passage/pilotage.mj
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
 import { joindrePseudos } from './invitations.mjs';
 import { preparerPlacement } from './placement.mjs';
-import { formaterDecalage, formaterTempsRestant } from './presentation.mjs';
+import { formaterDecalage, formaterTempsRestant, passageActif } from './presentation.mjs';
 import { delaiAppelRestant, tempsAvantFinPrevue } from './paroles.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes } from './vote.mjs';
 
@@ -10,28 +10,31 @@ import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes } from './vote.m
 const LIMITE_PASSAGES_MAX = 20;
 const phases = { APPELE: 'Appelé', EN_COURS: 'En scène', EN_PAUSE: 'En pause', TERMINE: 'Terminé', SAUTE: 'Sauté' };
 const motifsLecture = {
-	FICHIER_ABSENT: 'Paroles seules : aucun fichier trouvé',
-	FICHIER_AMBIGU: 'Paroles seules : plusieurs fichiers correspondent',
-	FICHIER_ILLISIBLE: 'Paroles seules : fichier illisible',
-	ECRAN_NON_PRET: 'Paroles seules : Écran lecteur pas prêt',
-	ERREUR_LECTURE: 'Paroles seules après une erreur du fichier',
+	FICHIER_ABSENT: 'Paroles seules : cette Chanson n’est pas dans ton dossier de musique',
+	FICHIER_AMBIGU: 'Paroles seules : plusieurs morceaux de ton dossier portent ce titre',
+	FICHIER_ILLISIBLE: 'Paroles seules : le morceau de ton dossier est illisible',
+	ECRAN_NON_PRET: 'Paroles seules : l’Écran de salle n’était pas prêt',
+	ERREUR_LECTURE: 'Paroles seules après une erreur de lecture',
 };
 
 function installerPassage(ui, commande) {
 	const { e, bouton } = ui;
 	const barre = e('div', 'karaoke__barre-passage');
-	const pilotage = e('div', 'karaoke__commandes'), calage = e('div', 'karaoke__commandes');
-	for (const [groupe, nom] of [[pilotage, 'Pilotage du Passage'], [calage, 'Calage des paroles']]) {
-		groupe.setAttribute('role', 'group'); groupe.setAttribute('aria-label', nom);
-	}
+	const pilotage = e('div', 'karaoke__commandes'), calage = e('div', 'karaoke__commandes karaoke__calage');
+	pilotage.setAttribute('role', 'group'); pilotage.setAttribute('aria-label', 'Pilotage du Passage');
+	// Le calage se lit sans légende : un titre, ce que l'Animateur constate, puis le décalage en cours (#279).
+	const titreCalage = e('h3', 'karaoke__calage-titre', 'Caler les paroles');
+	titreCalage.id = 'karaoke-calage-titre';
+	calage.setAttribute('role', 'group'); calage.setAttribute('aria-labelledby', titreCalage.id);
+	calage.append(titreCalage);
 	const statut = e('p'); statut.setAttribute('role', 'status');
 	let reessayer;
 	barre.append(pilotage, calage, statut);
 	const fiche = e('section', 'karaoke__passage-courant'), titre = e('h2', '', 'Passage courant'); titre.tabIndex = -1;
 	const identite = e('p'), phase = e('p'), temps = e('p', 'chiffres'), source = e('p'), lecteur = e('p'),
-		decalage = e('p'), mesure = e('p'), erreur = e('p');
+		decalage = e('p', 'karaoke__decalage'), mesure = e('p'), erreur = e('p');
 	erreur.setAttribute('role', 'status');
-	fiche.append(titre, identite, phase, temps, source, lecteur, decalage, mesure, erreur);
+	fiche.append(titre, identite, phase, temps, source, lecteur, mesure, erreur);
 	const votes = e('section', 'karaoke__votes');
 	const titreVotes = e('h2', '', 'Vote du public');
 	titreVotes.id = 'karaoke-votes-console';
@@ -39,7 +42,8 @@ function installerPassage(ui, commande) {
 	const listeVotes = e('ul', 'karaoke__liste-votes');
 	votes.hidden = true;
 	votes.append(titreVotes, listeVotes);
-	ui.principale.append(barre, fiche, votes);
+	// Le Passage courant ouvre la colonne, ses commandes juste dessous (#282).
+	ui.principale.append(fiche, barre, votes);
 	let delaisVote = [];
 
 	const prochain = () => prochainPassage(ui.bloc);
@@ -48,10 +52,10 @@ function installerPassage(ui, commande) {
 	const passer = bouton('Passer', () => envoyerPilotage('PASSER_ETAPE'));
 	const terminer = bouton('Terminer la Manche', () => {
 		const mancheId = ui.bloc.mancheId;
-		const d = ui.dialogue({ titre: 'Terminer la Manche', declencheur: terminer, valide: () => ui.bloc.mancheId === mancheId,
-			confirmation: { libelle: 'Confirmer', permise: () => ui.mutationsPermises, executer: () => envoyerPilotage('TERMINER') } });
-		d.annuler.textContent = 'Annuler';
-		d.contenu.append(e('p', '', 'Terminer cette Manche de Karaoké ?'), d.confirmer);
+		const d = ui.dialogue({ titre: 'Terminer la Manche ?', declencheur: terminer, valide: () => ui.bloc.mancheId === mancheId,
+			confirmation: { libelle: 'Terminer la Manche', permise: () => ui.mutationsPermises, executer: () => envoyerPilotage('TERMINER') } });
+		const palmares = 'Le Palmarès s’affiche sur l’Écran de salle.';
+		d.contenu.append(e('p', '', passageActif(ui.bloc.courant) ? `Le Passage en cours s’arrête. ${palmares}` : palmares));
 	});
 	const appeler = bouton('Appeler le suivant', () => appelerSuivant(ui, commande), 'bouton bouton--action');
 	const appelAutomatique = e('span', 'console__note', 'Appel automatique');
@@ -65,16 +69,17 @@ function installerPassage(ui, commande) {
 			if (sens) Object.assign(corps, { numeroModificationCalage: lecture.numeroModificationCalage, sens });
 			ui.commande(commande('POST', `/passages/${encodeURIComponent(courant.passageId)}/${suffixe}`, corps, { type }));
 		});
-		if (sens) action.setAttribute('aria-label', `${sens === 'AVANCER' ? 'Avancer' : 'Retarder'} les paroles de 0,1 s`);
 		calage.append(action);
 		return action;
 	}
 	const caler = [
-		actionLecture('Ça commence', 'MARQUER_DEBUT', 'calage/debut'),
-		actionLecture('−0,1 s', 'CORRIGER_CALAGE', 'calage/correction', 'AVANCER'),
-		actionLecture('+0,1 s', 'CORRIGER_CALAGE', 'calage/correction', 'RETARDER'),
+		actionLecture('Les paroles commencent', 'MARQUER_DEBUT', 'calage/debut'),
+		// Des paroles en retard sur la musique s'avancent d'un dixième de seconde, et inversement.
+		actionLecture('Paroles en retard', 'CORRIGER_CALAGE', 'calage/correction', 'AVANCER'),
+		actionLecture('Paroles en avance', 'CORRIGER_CALAGE', 'calage/correction', 'RETARDER'),
 	];
 	const parolesSeules = actionLecture('Paroles seules', 'REPRENDRE_EN_PAROLES_SEULES', 'paroles-seules');
+	calage.append(decalage);
 	function decompter() {
 		const bloc = ui.bloc;
 		const p = bloc?.courant;
@@ -136,12 +141,16 @@ function installerPassage(ui, commande) {
 				: 'Aucun Passage appelé.';
 			phase.textContent = p ? phases[p.etat] : '';
 			if (enPause && p?.etat !== 'EN_PAUSE') phase.textContent = phase.textContent ? phase.textContent + ' · En pause' : 'En pause';
-			if (lecture?.source === 'FICHIER_LOCAL') source.textContent = `Fichier local : ${bloc.fichierLocal.nom}`;
-			else source.textContent = lecture ? motifsLecture[lecture.motifParolesSeules] : p?.etat === 'APPELE' ? 'Préparation de la musique…' : '';
-			if (lecture?.origineParoles === 'REPLI_INSCRIPTION') source.textContent += " · Paroles d'origine : aucune version adaptée au fichier";
-			lecteur.textContent = bloc.lecteurDesigne ? 'Écran lecteur désigné' : 'Aucun Écran lecteur : paroles seules';
+			// La Console parle de musique, pas de fichier (#279, M10).
+			if (lecture?.source === 'FICHIER_LOCAL') source.textContent = 'Musique : ton dossier';
+			else source.textContent = lecture ? motifsLecture[lecture.motifParolesSeules]
+				: p?.etat === 'APPELE' && bloc.lecteurDesigne ? 'Préparation de la musique…' : '';
+			if (lecture?.origineParoles === 'REPLI_INSCRIPTION') source.textContent += ' · Paroles d’origine : aucune version calée sur ta musique';
+			// Un motif de paroles seules suffit : la ligne de l'Écran ne le répète pas.
+			lecteur.textContent = bloc.lecteurDesigne ? 'La télé joue la musique'
+				: source.textContent.startsWith('Paroles seules') ? '' : 'Pas de musique sur l’Écran : paroles seules';
 			decalage.textContent = lecture ? `Décalage : ${formaterDecalage(lecture.decalageMs)}` : '';
-			mesure.textContent = lecture?.demandePosition ? "Mesure en attente de l'Écran lecteur" : '';
+			mesure.textContent = lecture?.demandePosition ? 'Calage en attente de l’Écran de salle' : '';
 			const messageErreur = lecture?.etat === 'EN_ERREUR' ? 'Erreur de lecture : reprends en paroles seules ou passe le Passage.' : '';
 			if (erreur.textContent !== messageErreur) erreur.textContent = messageErreur;
 			delaisVote = [];
@@ -176,7 +185,7 @@ export function monter(zones, contexte) {
 		mancheId: ui.bloc.mancheId, acteurType: 'ANIMATEUR', ...metadata });
 	const passage = installerPassage(ui, commande);
 	const titre = e('h2', '', "File d'attente"); titre.tabIndex = -1;
-	const limite = e('form', 'karaoke__limite champ'), label = e('label', '', 'Passages en attente par Interprète');
+	const limite = e('form', 'karaoke__limite champ'), label = e('label', '', 'Passages en attente au plus par Joueur');
 	const champ = e('input'); champ.id = 'karaoke-limite'; champ.type = 'number'; champ.min = '1'; champ.max = String(LIMITE_PASSAGES_MAX); champ.step = '1';
 	label.setAttribute('for', champ.id);
 	const erreur = e('p', 'champ--erreur'); erreur.id = 'karaoke-limite-erreur'; erreur.hidden = true; champ.setAttribute('aria-describedby', erreur.id);
@@ -185,8 +194,9 @@ export function monter(zones, contexte) {
 	limite.append(label, champ, appliquer, erreur, valeurSoumise);
 	const file = e('ol', 'rouleau a-venir'), vide = e('p', '', 'Aucun Passage en attente.');
 	const commandes = e('div', 'karaoke__commandes'), message = e('p'); message.setAttribute('role', 'status');
-	ui.principale.append(titre, limite, file, vide, commandes, message);
-	const catalogue = creerCatalogue(ui, ui.laterale);
+	// La File suit le Passage courant ; la limite, réglée une fois pour la Manche, passe après (#282).
+	ui.principale.append(titre, file, vide, commandes, message, limite);
+	const catalogue = creerCatalogue(ui, ui.laterale, { replie: true });
 	let selection = null;
 	ui.messageInvalidation = () => { message.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
 	const passages = () => ui.bloc.passagesEnAttente;
@@ -205,14 +215,12 @@ export function monter(zones, contexte) {
 		const cmd = action === 'retirer' ? commande('POST', `/passages/${encodeURIComponent(cible.passageId)}/retrait`, { numeroModification: cible.numeroModification }) :
 			commande('PUT', '/file-attente/priorite', { passage: { passageId: cible.passageId, numeroModification: cible.numeroModification }, prioritaire: !cible.prioritaire });
 		const d = ui.dialogue({ titre: libelle, declencheur, valide, confirmation: {
-			libelle: 'Confirmer',
+			libelle: action === 'retirer' ? 'Retirer ce Passage' : cible.prioritaire ? 'Lever la priorité' : 'Donner la priorité',
 			permise: () => ui.mutationsPermises && ui.bloc.peutGererFile,
 			executer: () => ui.commande(cmd),
 		} });
-		d.annuler.textContent = 'Annuler';
 		d.contenu.append(e('p', '', `${libelle} · Passage ${cible.numero} · ${cible.chanson.titre} ?`));
 		if (ancienne) d.contenu.append(e('p', '', `Remplace la priorité du Passage ${ancienne.numero} · ${ancienne.chanson.titre}.`));
-		d.contenu.append(d.confirmer);
 	}
 	ecouter(limite, 'submit', evenement => {
 		evenement.preventDefault();

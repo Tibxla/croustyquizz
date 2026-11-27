@@ -32,14 +32,22 @@ export const tableMotifsKaraoke = Object.freeze({
 	DUREE_INCONNUE: 'La durée manque.',
 	ANIMATEUR: 'Consultation uniquement',
 	PASSAGE_DEJA_INSCRIT: 'Tu attends déjà cette Chanson.',
-	LIMITE_ATTEINTE: 'Ta limite de Passages est atteinte.',
+	LIMITE_ATTEINTE: 'Tu as atteint la limite de Passages en attente : attends ton tour pour t’inscrire à nouveau.',
 });
+
+// La limite se dit avec sa raison (#280) : le Joueur chante déjà dans autant de Passages en attente.
+function motifLimite(limite) {
+	if (!Number.isInteger(limite)) return tableMotifsKaraoke.LIMITE_ATTEINTE;
+	const passages = limite === 1 ? 'un Passage' : `${limite} Passages`;
+	return `Tu chantes déjà dans ${passages} en attente : attends ton tour pour t’inscrire à nouveau.`;
+}
 
 export function etatInscription(fiche, bloc, synchronisee) {
 	// Ordre des gardes du contrat : la Chanson (sans voix, paroles, durée) avant le doublon et le quota du bloc.
 	const code = fiche.motifIndisponibilite ?? bloc.motifInscriptionRefusee;
-	return { possible: Boolean(!code && fiche.inscriptionPossible && bloc.peutInscrire && synchronisee),
-		motif: code ? (Object.hasOwn(tableMotifsKaraoke, code) ? tableMotifsKaraoke[code] : code) : null };
+	const motif = !code ? null : code === 'LIMITE_ATTEINTE' ? motifLimite(bloc.limitePassagesEnAttente)
+		: Object.hasOwn(tableMotifsKaraoke, code) ? tableMotifsKaraoke[code] : code;
+	return { possible: Boolean(!code && fiche.inscriptionPossible && bloc.peutInscrire && synchronisee), motif };
 }
 
 export const passageActif = courant => courant && ['APPELE', 'EN_COURS', 'EN_PAUSE'].includes(courant.etat) ? courant : null;

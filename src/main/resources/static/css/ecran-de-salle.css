@@ -334,9 +334,149 @@
 .salle__classement--podium .commun__liste { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .salle__classement--podium li { font-weight: 700; }
 .salle__classement p { font-size: 1.65vw; color: var(--texte-2); }
-.salle__audio:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
+/* Mise en route du son (#281, I8) : un panneau d'installation posé au-dessus du pied tant que le son n'est pas
+   activé, sans pousser la scène ; ensuite, une pastille dans le pied. La salle ne touche pas l'écran. */
+.salle__pied-etat { display: flex; align-items: center; justify-content: flex-end; gap: 1.4vw; }
+.salle__audio:not([hidden]) { display: flex; align-items: center; gap: 1vw; min-width: 0; }
 .salle__audio .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
 .salle__audio p:empty { display: none; }
+.salle__audio p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.salle__installation {
+  position: absolute;
+  z-index: 3;
+  left: 5vw;
+  bottom: 6vw;
+  display: grid;
+  gap: 0.8vw;
+  max-width: min(36vw, 34rem);
+  padding: 1.4vw 1.6vw;
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon-grand);
+  background: var(--fond-2);
+  white-space: normal;
+  text-align: left;
+}
+.salle__installation h2 { margin: 0; font-size: clamp(1rem, 1.4vw, 1.5rem); }
+.salle__installation p { margin: 0; color: var(--texte-2); font-size: clamp(0.875rem, 1.1vw, 1.25rem); white-space: normal; }
+.salle__installation-commandes { display: flex; flex-wrap: wrap; gap: 0.6vw; }
+.salle__audio[data-etat="pret"] .salle__installation { display: contents; }
+.salle__audio[data-etat="pret"] .salle__installation > :not(.salle__installation-commandes) { display: none; }
+.salle__audio[data-etat="pret"][data-dossier="choisi"] [data-choisir-dossier] { display: none; }
+.salle__son { font-size: inherit; }
+.salle__audio[data-etat="installation"] .salle__son::before { background: var(--refus); }
+.salle__audio[data-etat="pret"] .salle__son::before { background: var(--eau); }
+.salle--coquille .salle__pied .connexion { font-size: inherit; }
+
+/* Coupure : le bandeau descend du pied en haut de la scène, sans pousser le pied (#279). */
+.salle__pied .coupure { position: absolute; z-index: 5; top: 2vw; left: 5vw; right: 5vw; white-space: normal; }
+
+/* En Manche, la scène commence par le mode ; le titre de la Soirée passe dans le pied (#281, #283). */
+.salle--manche .salle__principal > .coquille__commun { display: none; }
+.salle__pied-titre { color: var(--texte-2); }
+/* Hors Manche, l'étape de la Soirée se lit à 5 m comme le reste de la salle. */
+.salle--coquille .coquille__commun [data-manche] { font-size: 1.6vw; color: var(--texte-2); }
+
+/* Accueil (#281, I7) : hors Manche, le talon passe au centre, à côté des arrivées ; la colonne s'efface.
+   Le panneau de mise en route monte alors en haut à droite, à côté du titre, pour ne jamais couvrir le talon. */
+.salle--accueil .salle__installation { top: 1.6vw; right: 5vw; bottom: auto; left: auto; max-width: 44vw; padding: 0.8vw 1.2vw; gap: 0.5vw; }
+.salle--accueil .salle__installation > p { display: none; }
+.salle--accueil .salle__installation-commandes { flex-wrap: nowrap; }
+.salle--accueil:has(.salle__audio[data-etat="installation"]) .salle__principal > .coquille__commun h1 { max-width: 46vw; }
+.salle--accueil .salle__scene { grid-template-columns: minmax(0, 1fr); }
+.salle--accueil .salle__cote { display: none; }
+.salle--accueil .salle__principal > .coquille__commun h1 { font-size: 3.6vw; }
+.salle--accueil .salle__principal > .coquille__commun [data-manche] { display: none; }
+.salle--coquille .salle__principal > .salle__accueil:not([hidden]) {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 44vw);
+  grid-template-rows: minmax(0, 1fr);
+  justify-content: center;
+  align-items: center;
+  gap: 4vw;
+}
+.salle__accueil .talon {
+  grid-template-columns: auto auto;
+  gap: 1.6vw 2.4vw;
+  padding: 2vw;
+  border-radius: 1.4vw;
+}
+.salle__accueil .talon__qr { width: min(30vh, 26vw); padding: 0.8vh; border-radius: 0.6vw; }
+.salle__accueil .talon .talon__invitation { font-size: 3.2vw; }
+.salle__accueil .talon .talon__aide { font-size: 1.8vw; }
+.salle__accueil .talon .talon__code { font-size: 6.4vw; }
+.salle__accueil .talon .talon__adresse { font-size: 1.8vw; }
+/* La colonne prend toute la hauteur de l'accueil ; la page n'y met que des rangées complètes, le titre reste entier. */
+.salle__arrivees { display: grid; align-self: stretch; align-content: safe center; gap: 1.2vw; min-width: 0; min-height: 0; overflow: hidden; }
+.salle__arrivees h2 { margin: 0; font: 800 2vw/1 var(--police-chiffres); letter-spacing: 0.12em; text-transform: uppercase; color: var(--texte-2); }
+.salle__personne { margin: 0; font-size: 2vw; color: var(--texte-2); }
+.salle__liste-arrivees { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8vw; margin: 0; padding: 0; list-style: none; }
+.arrivee {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.5vw 1vw;
+  border-radius: 0.5vw;
+  background: var(--teinte, var(--eau));
+  color: var(--encre);
+  font-size: 1.7vw;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arrivee:nth-child(4n + 2) { --teinte: var(--bleu); }
+.arrivee:nth-child(4n + 3) { --teinte: var(--rose); }
+.arrivee:nth-child(4n) { --teinte: var(--orange); }
+.arrivee--autres { background: var(--fond-3); color: var(--texte); }
+/* Une arrivée reçue par événement se détache du rouleau, comme un ticket. */
+.arrivee--nouvelle { animation: arrivee 900ms var(--sortie) both; }
+@keyframes arrivee {
+  from { opacity: 0; transform: translateY(1.2vw) rotate(-3deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Le Buzz s'annonce en grand au centre, quelques secondes (#281, M5). */
+.annonce-buzz {
+  position: absolute;
+  z-index: 4;
+  left: 5vw;
+  right: 5vw;
+  top: 50%;
+  margin: 0;
+  padding: 2vw 3vw;
+  transform: translateY(-50%);
+  border-radius: 1.4vw;
+  background: var(--orange);
+  color: var(--encre);
+  font-size: 5vw;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.annonce-buzz--entree { animation: annonce-buzz 600ms var(--sortie) both; }
+@keyframes annonce-buzz {
+  from { opacity: 0; transform: translateY(-50%) scale(0.85); }
+  to { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+/* Talon de colonne, en Manche : la phrase d'invitation sur toute la largeur, puis le QR code et le code. */
+.salle .talon__texte { display: grid; gap: 0.3vw; min-width: 0; }
+.salle .talon__invitation { font-weight: 700; font-size: 1.9vw; line-height: 1.1; }
+.salle__cote .talon { grid-template-columns: auto minmax(0, 1fr); }
+.salle__cote .talon__texte { display: contents; }
+.salle__cote .talon__invitation { grid-column: 1 / -1; grid-row: 1; }
+.salle__cote .talon__qr { grid-column: 1; grid-row: 2 / span 2; }
+.salle__cote .talon__aide { grid-column: 2; grid-row: 2; align-self: end; }
+.salle__cote .talon__code { grid-column: 2; grid-row: 3; align-self: start; }
+.salle__cote .talon__adresse { grid-row: 4; }
+/* Sans QR code (Soirée de démonstration), le texte reprend toute la largeur. */
+.salle__cote .talon:has(> [data-qr][hidden]) :is(.talon__aide, .talon__code) { grid-column: 1 / -1; }
+@media (prefers-reduced-motion: reduce) {
+  .arrivee--nouvelle, .annonce-buzz--entree { animation-duration: 1ms; }
+}
 
 .salle--coquille .palmares h2 {
   margin: 0 0 1vw;

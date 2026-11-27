@@ -6,6 +6,9 @@ import { monter as consoleKaraoke } from '../../src/main/resources/static/js/mod
 import { creerEcranKaraoke } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
 import { creerAudioSalle } from '../../src/main/resources/static/js/audio-salle.mjs';
 import { readFile } from 'node:fs/promises';
+// Un résultat de la Manette est une carte entière (#280) : son titre est en gras.
+const carteChanson = (zone, titre) => zone.querySelectorAll('button').find(b => b.textContent === titre || b.querySelector('strong')?.textContent === titre);
+
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'karaoke-file-modifiee' };
 const bouton = (zone, texte) => zone.querySelectorAll('button').find(b => b.textContent === texte);
 
@@ -102,7 +105,7 @@ test('une fermeture native différée après confirmation ne produit pas une fau
 	b.principale.querySelector('button.ticket').click(); bouton(b.principale, 'Retirer').click();
 	const dialog = b.principale.querySelector('dialog');
 	dialog.close = () => { dialog.open = false; }; // Le navigateur émet close après le geste.
-	bouton(b.principale, 'Confirmer').click();
+	bouton(b.principale, 'Retirer ce Passage').click();
 	b.module.afficher(vue({ passagesEnAttente: [] }), evenement);
 	assert.doesNotMatch(b.principale.textContent, /Le Passage a changé/); b.module.demonter();
 });
@@ -120,8 +123,8 @@ test('une priorité apparue pendant la confirmation et un changement de Manche i
 });
 
 for (const [nom, monter, acteur, action, confirmation] of [
-	['Console', consoleKaraoke, 'ANIMATEUR', 'Retirer', 'Confirmer'],
-	['Manette', manette, 'JOUEUR', 'Me désinscrire', 'Confirmer la désinscription'],
+	['Console', consoleKaraoke, 'ANIMATEUR', 'Retirer', 'Retirer ce Passage'],
+	['Manette', manette, 'JOUEUR', 'Me désinscrire', 'Me désinscrire'],
 ]) {
 	test(`${nom} : la confirmation reste désactivée pendant une coupure quel que soit son libellé`, t => {
 		const b = creerBanc(monter, acteur), p = passage();
@@ -172,7 +175,7 @@ test('Console : limite sous focus, valeur soumise conservée pendant l’envoi e
 
 test('Console : un seul réessai manuel après capture puis synchronisée, contenu inchangé et double appui unique', async () => {
 	const p = passage(), b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue({ passagesEnAttente: [p] }), evenement); b.connecter('synchronisee');
-	b.principale.querySelector('button.ticket').click(); bouton(b.principale, 'Retirer').click(); bouton(b.principale, 'Confirmer').click();
+	b.principale.querySelector('button.ticket').click(); bouton(b.principale, 'Retirer').click(); bouton(b.principale, 'Retirer ce Passage').click();
 	b.appels[0].resolve({ statut: 503, corps: { detail: 'Panne de démonstration' } }); await terminerMicrotaches();
 	assert.equal(b.captures(), 1); assert.ok(bouton(b.principale, 'Réessayer le même envoi') === undefined);
 	b.connecter('synchronisation'); b.module.afficher(vue({ passagesEnAttente: [{ ...p, numeroModification: 4 }] }), capture);
@@ -223,7 +226,7 @@ test('Manette : deux tickets, désinscription confirmée en pause, refus sans di
 	const retirer = b.principale.querySelector('button[data-passage-id=p]'); retirer.focus(); retirer.click();
 	assert.match(b.principale.querySelector('dialog').textContent, /14 · Titre de démonstration/);
 	bouton(b.principale, 'Annuler').click(); assert.equal(b.appels.length, 0);
-	bouton(b.principale, 'Me désinscrire').click(); bouton(b.principale, 'Confirmer la désinscription').click();
+	bouton(b.principale, 'Me désinscrire').click(); bouton(b.principale.querySelector('dialog'), 'Me désinscrire').click();
 	assert.equal(b.appels[0].args[2].numeroModification, 2); assert.ok(b.appels[0].args[2].envoiId);
 	b.appels[0].reject(new Error()); await terminerMicrotaches(); assert.equal(b.captures(), 1);
 	b.module.afficher(vue({ mesPassagesEnAttente: [p, q] }), capture);
@@ -243,7 +246,7 @@ test('Manette : recherche par composition, validation accessible, vidage silenci
 	champ.value = ''; champ.dispatchEvent({ type: 'input' }); assert.equal(champ.getAttribute('aria-invalid'), null); assert.equal(b.appels.length, 0);
 	champ.value = 'titre'; formulaire.dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 404, corps: { detail: 'Source disparue' } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 404, corps: { detail: 'Source disparue' } }); await terminerMicrotaches();
 	assert.match(b.principale.querySelector('dialog').textContent, /Cette Chanson n'est plus disponible/);
 	assert.match(b.principale.querySelector('dialog').textContent, /Source disparue/); assert.ok(bouton(b.principale, "M'inscrire") === undefined);
 	b.module.demonter();
@@ -253,7 +256,7 @@ test('Manette : l’inscription inconnue se réessaie après capture, puis un ti
 	const b = creerBanc(manette); b.module.afficher(vue(), evenement); b.connecter('synchronisee');
 	const champ = b.principale.querySelector('input'); champ.value = 'titre'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	bouton(b.principale, "M'inscrire").click(); b.appels[2].reject(new Error()); await terminerMicrotaches();
 	assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
 	b.module.afficher(vue(), evenement); assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
@@ -262,11 +265,14 @@ test('Manette : l’inscription inconnue se réessaie après capture, puis un ti
 	assert.deepEqual(b.appels[3].args[2], b.appels[2].args[2]);
 	b.appels[3].resolve({ statut: 503, corps: { detail: 'Panne' } }); await terminerMicrotaches();
 	b.module.afficher(vue({ mesPassagesEnAttente: [{ ...passage(), chanson }] }), capture);
-	assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
-	assert.match(b.principale.querySelector('dialog').textContent, /Envoi accepté/);
-	assert.equal(bouton(b.principale, "M'inscrire").disabled, true);
+	// La vue confirme l'inscription : la fiche se ferme et un message vrai dit la position (#280).
+	assert.equal(b.principale.querySelector('dialog'), null);
+	assert.match(b.principale.textContent, /C’est noté : tu passes en position 14\./);
 	assert.doesNotMatch(b.principale.textContent, /Consultation en cours/);
-	b.module.afficher(vue(), capture); assert.equal(bouton(b.principale, "M'inscrire").disabled, false);
+	b.module.afficher(vue(), capture);
+	carteChanson(b.principale, chanson.titre).click();
+	b.appels[4].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	assert.equal(bouton(b.principale, "M'inscrire").disabled, false);
 	b.module.demonter();
 });
 
@@ -284,7 +290,7 @@ test('un refus définitif d’inscription garde le détail près de l’action t
 	const b = creerBanc(manette); b.module.afficher(vue(), capture); b.connecter('synchronisee');
 	const champ = b.principale.querySelector('input'); champ.value = 'titre'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	bouton(b.principale, "M'inscrire").click(); b.appels[2].resolve({ statut: 422, corps: { code: 'DONNEES_INVALIDES', detail: 'La durée manque côté serveur.' } }); await terminerMicrotaches();
 	assert.match(b.principale.querySelector('dialog').textContent, /La durée manque côté serveur/);
 	assert.equal(bouton(b.principale, "M'inscrire").disabled, false); b.module.demonter();
@@ -296,7 +302,7 @@ test('la Manette conserve la recherche au quota, consulte par GET puis attend le
 	b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	assert.equal(b.appels[0].args[0], 'GET');
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	assert.equal(bouton(b.principale, "M'inscrire").disabled, true);
 	b.module.afficher(vue(), capture); b.connecter('synchronisee');
 	bouton(b.principale, "M'inscrire").click(); assert.equal(b.appels.length, 3);
@@ -321,7 +327,8 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 
 test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async () => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue({ passagesEnAttente: [passage()] }), capture); b.connecter('synchronisee');
-	b.connecter('coupure'); assert.match(b.principale.textContent, /Connexion perdue, on réessaie/);
+	// Un seul bandeau de coupure, celui de la coquille (#279) : le module ne le répète pas.
+	b.connecter('coupure'); assert.doesNotMatch(b.principale.textContent, /Connexion perdue/);
 	assert.equal(bouton(b.principale, 'Appliquer').disabled, true); assert.equal(bouton(b.laterale, 'Chercher').disabled, false);
 	const champ = b.laterale.querySelector('input'); champ.value = 'titre'; b.laterale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.connecter('synchronisee'); b.appels[0].resolve({ statut: 503, corps: { code: 'SOURCE_PAROLES_INDISPONIBLE', detail: 'Source indisponible.' } }); await terminerMicrotaches();
@@ -335,7 +342,7 @@ test('changer de Manche ou démonter annule les lectures et ignore toute répons
 	const champ = b.principale.querySelector('input'); champ.value = 'ancien'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.module.afficher(vue({ mancheId: 'nouvelle' }), capture); assert.equal(b.appels[0].args[3].signal.aborted, true); assert.equal(champ.value, '');
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	assert.ok(bouton(b.principale, chanson.titre) === undefined);
+	assert.ok(carteChanson(b.principale, chanson.titre) === undefined);
 	champ.value = 'nouveau'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.module.demonter(); assert.equal(b.appels[1].args[3].signal.aborted, true);
 	b.appels[1].reject(new Error()); await terminerMicrotaches(); assert.equal(b.principale.childElementCount, 0);
@@ -370,7 +377,7 @@ test('les mutations Karaoké se taisent dans le bandeau de la coquille : un seul
 	console_.module.demonter();
 	const p = passage(), manetteBanc = creerBanc(manette);
 	manetteBanc.module.afficher(vue({ mesPassagesEnAttente: [p] }), capture); manetteBanc.connecter('synchronisee');
-	bouton(manetteBanc.principale, 'Me désinscrire').click(); bouton(manetteBanc.principale, 'Confirmer la désinscription').click();
+	bouton(manetteBanc.principale, 'Me désinscrire').click(); bouton(manetteBanc.principale.querySelector('dialog'), 'Me désinscrire').click();
 	assert.notEqual(manetteBanc.appels[0].args[0], 'GET'); assert.equal(manetteBanc.appels[0].args[3].annoncer, false);
 	manetteBanc.module.demonter();
 });
@@ -390,9 +397,9 @@ test('Manette : fermer la fiche pendant une consultation retire « Consultation 
 	const champ = b.principale.querySelector('input'), formulaire = b.principale.querySelector('form');
 	champ.value = 'titre'; formulaire.dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson, { ...chanson, chansonId: 'autre', titre: 'Autre' }] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, paroles: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, paroles: null } }); await terminerMicrotaches();
 	assert.ok(b.principale.querySelector('dialog'));
-	bouton(b.principale, 'Autre').click(); await terminerMicrotaches();
+	carteChanson(b.principale, 'Autre').click(); await terminerMicrotaches();
 	assert.match(b.principale.textContent, /Consultation en cours…/);
 	bouton(b.principale.querySelector('dialog'), 'Fermer').click(); await terminerMicrotaches();
 	assert.doesNotMatch(b.principale.textContent, /Consultation en cours…/); b.module.demonter();
@@ -443,21 +450,27 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	b.module.afficher(vue({ passagesEnAttente: [p], peutAppeler: true }), capture);
 	assert.equal(bouton(b.principale, 'Passer').disabled, true);
 	assert.equal(bouton(b.principale, 'Pause').disabled, false);
-	assert.equal(bouton(b.principale, 'Ça commence').parentNode.hidden, true);
+	assert.equal(bouton(b.principale, 'Les paroles commencent').parentNode.hidden, true);
 	bouton(b.principale, 'Appeler le suivant').click();
 	assert.deepEqual(b.appels[0].args.slice(0, 3), ['POST', '/api/soirees/s/manches/m/passages/premier/appel', { numeroModification: 2 }]);
 	const lecture = { lectureId: 'lecture', etat: 'DEMARREE', source: 'FICHIER_LOCAL', numeroModificationCalage: 3, decalageMs: -300 };
 	const v = vue({ courant: courant('EN_COURS'), lecture, fichierLocal: { nom: 'A.wav' }, peutCaler: true, peutPasser: true, lecteurDesigne: true });
 	b.module.afficher(v, evenement);
 	assert.match(b.principale.textContent, /Fin prévue dans 27 s/);
-	assert.match(b.principale.textContent, /Fichier local : A.wav/);
+	// La Console parle de musique, pas de fichier (#279, M10).
+	assert.match(b.principale.textContent, /Musique : ton dossier/);
+	assert.match(b.principale.textContent, /La télé joue la musique/);
+	assert.doesNotMatch(b.principale.textContent, /A\.wav|Écran lecteur|Fichier local/);
 	bouton(b.principale, 'Pause').click();
 	assert.deepEqual(b.appels[1].args[2], { action: 'METTRE_EN_PAUSE', etapeId: 'etape' });
-	bouton(b.principale, 'Ça commence').click();
+	// Le calage se lit sans légende : un titre, puis ce que l'Animateur constate (#279).
+	const calage = bouton(b.principale, 'Les paroles commencent').parentNode;
+	assert.match(calage.textContent, /^Caler les paroles/);
+	assert.match(calage.textContent, /Décalage : −0,3 s/);
+	bouton(b.principale, 'Les paroles commencent').click();
 	assert.deepEqual(b.appels[2].args[2], { etapeId: 'etape', lectureId: 'lecture' });
-	for (const [libelle, sens, nom] of [['−0,1 s', 'AVANCER', 'Avancer'], ['+0,1 s', 'RETARDER', 'Retarder']]) {
+	for (const [libelle, sens] of [['Paroles en retard', 'AVANCER'], ['Paroles en avance', 'RETARDER']]) {
 		const action = bouton(b.principale, libelle);
-		assert.equal(action.getAttribute('aria-label'), nom + ' les paroles de 0,1 s');
 		action.click();
 		assert.deepEqual(b.appels.at(-1).args[2], { etapeId: 'etape', lectureId: 'lecture', numeroModificationCalage: 3, sens });
 	}
@@ -472,7 +485,13 @@ test('Console : capacités et corps du Passage, calage affiché uniquement aprè
 	bouton(b.principale, 'Paroles seules').click();
 	assert.deepEqual(b.appels.at(-1).args[2], { etapeId: 'etape', lectureId: 'lecture' });
 	bouton(b.principale, 'Terminer la Manche').click();
-	bouton(b.principale, 'Confirmer').click();
+	// Le dialogue dit ce qui va se passer ; l'action porte son nom, « Annuler » à côté (#279, M3).
+	const dialogue = b.principale.querySelector('dialog');
+	assert.match(dialogue.textContent, /Le Palmarès s’affiche sur l’Écran de salle\./);
+	const actions = dialogue.querySelector('.dialogue__actions');
+	assert.deepEqual(actions.children.map(b => b.textContent), ['Annuler', 'Terminer la Manche']);
+	assert.match(actions.children[1].className, /bouton--action/);
+	actions.children[1].click();
 	assert.deepEqual(b.appels.at(-1).args[2], { action: 'TERMINER', etapeId: 'etape' });
 });
 

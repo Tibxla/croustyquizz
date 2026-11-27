@@ -15,8 +15,12 @@ export function monter(zones, contexte) {
 	expirees.setAttribute('aria-label', 'Invitations expirées des Passages sortis de la File');
 	expirees.hidden = true;
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
-	ui.principale.append(titre, personnels, expirees, invalidation);
-	const catalogue = creerCatalogue(ui, ui.principale, { inscrire: true });
+	// Après une inscription, un message vrai dit la position, au-dessus de « Tes Passages » (#280).
+	const annonce = e('p', 'karaoke__annonce-inscription'); annonce.setAttribute('role', 'status'); annonce.hidden = true;
+	ui.principale.append(annonce, titre, personnels, expirees, invalidation);
+	const inscriptionsEnvoyees = new Set();
+	let passagesConnus = null, passageAnnonce = null;
+	const catalogue = creerCatalogue(ui, ui.principale, { inscrire: true, surInscription: chansonId => inscriptionsEnvoyees.add(chansonId) });
 	ui.avantAppel = () => catalogue.annulerConsultation();
 	const ensuite = e('h2', '', 'Ensuite'); ensuite.tabIndex = -1;
 	const file = e('ol', 'rouleau'), autres = e('p'); ui.principale.append(ensuite, file, autres);
@@ -28,15 +32,34 @@ export function monter(zones, contexte) {
 		const valide = () => ui.bloc.mancheId === mancheId && ui.bloc.mesPassagesEnAttente.some(p =>
 			p.passageId === cible.passageId && p.numeroModification === cible.numeroModification && p.tour === cible.tour);
 		const dialogue = ui.dialogue({ titre: inscripteur ? 'Me désinscrire' : 'Quitter ce Passage', declencheur, valide, confirmation: {
-			libelle: inscripteur ? 'Confirmer la désinscription' : 'Confirmer le départ',
+			libelle: inscripteur ? 'Me désinscrire' : 'Quitter ce Passage',
 			permise: () => ui.mutationsPermises,
 			executer: () => ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages/${encodeURIComponent(cible.passageId)}/desinscription`,
 				corps: { numeroModification: cible.numeroModification }, mancheId, acteurType: 'JOUEUR', passageId: cible.passageId }),
 		} });
-		dialogue.annuler.textContent = 'Annuler';
-		dialogue.contenu.append(e('p', '', texteDesinscription(cible, moi)), dialogue.confirmer);
+		dialogue.contenu.append(e('p', '', texteDesinscription(cible, moi)));
 	}
 	const horloge = setInterval(() => { scene.decompter(); votes.decompter(); }, 1000);
+	// Une inscription envoyée d'ici et confirmée par la vue : la fiche se ferme, la page remonte au message (#280).
+	function annoncerInscription() {
+		const mes = ui.bloc.mesPassagesEnAttente;
+		const nouveau = passagesConnus && mes.find(p => !passagesConnus.has(p.passageId) && inscriptionsEnvoyees.has(p.chanson.chansonId));
+		passagesConnus = new Set(mes.map(p => p.passageId));
+		if (nouveau) {
+			inscriptionsEnvoyees.delete(nouveau.chanson.chansonId);
+			passageAnnonce = nouveau.passageId;
+			catalogue.fermerFiche();
+		}
+		const passage = mes.find(p => p.passageId === passageAnnonce);
+		const texte = passage ? `C’est noté : tu passes en position ${passage.position}.` : '';
+		if (annonce.textContent !== texte) annonce.textContent = texte;
+		annonce.hidden = !texte;
+		if (!nouveau) return false;
+		const reduit = ui.document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? true;
+		annonce.scrollIntoView({ block: 'start', behavior: reduit ? 'auto' : 'smooth' });
+		titre.focus({ preventScroll: true });
+		return true;
+	}
 	ui.surRendu = origine => {
 		if (!ui.bloc) return;
 		votes.rendre(titre, origine);
@@ -76,8 +99,10 @@ export function monter(zones, contexte) {
 		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
 		autres.hidden = !ui.bloc.nombreAutresPassages;
 		catalogue.rendre();
+		annoncerInscription();
 	};
 	ui.surManche = () => {
+		passagesConnus = null; passageAnnonce = null; inscriptionsEnvoyees.clear();
 		votes.reinitialiser();
 		scene.reinitialiser();
 		catalogue.reinitialiser(); invalidation.textContent = '';

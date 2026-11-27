@@ -1,9 +1,9 @@
 const route = soireeId => `/api/soirees/${soireeId}/musique-attente`;
 
 function decrireMusique({ etat, morceauxDisponibles }) {
-	if (morceauxDisponibles === false) return 'Aucun morceau dans Attente';
-	if (etat === 'COUPEE') return 'Musique d’attente coupée';
-	return morceauxDisponibles ? 'La musique d’attente joue entre les sons de Manche' : 'Dossier d’attente pas encore signalé';
+	if (morceauxDisponibles === false) return 'Aucun morceau dans le dossier Attente de l’Écran de salle';
+	if (!morceauxDisponibles) return 'Choisis le dossier de musique sur l’Écran de salle';
+	return etat === 'COUPEE' ? 'Musique d’attente coupée' : 'La musique d’attente joue entre les Manches';
 }
 
 export function monterMusiqueDAttenteConsole(bouton, statut, contexte) {
@@ -11,7 +11,8 @@ export function monterMusiqueDAttenteConsole(bouton, statut, contexte) {
 	let musique, synchronisee = false, enCours = false;
 
 	function actualiserBouton() {
-		bouton.disabled = !musique || !synchronisee || enCours;
+		// Rien à couper ni à relancer tant que l'Écran n'a signalé aucun morceau (#282).
+		bouton.disabled = !musique?.morceauxDisponibles || !synchronisee || enCours;
 	}
 	const seDesabonner = contexte.surEtatConnexion(etat => {
 		synchronisee = etat === 'synchronisee';
@@ -24,7 +25,8 @@ export function monterMusiqueDAttenteConsole(bouton, statut, contexte) {
 		enCours = true;
 		actualiserBouton();
 		try {
-			const reponse = await contexte.envoyer('PUT', route(contexte.soireeId), { etat }, { signal: fin.signal });
+			const reponse = await contexte.envoyer('PUT', route(contexte.soireeId), { etat },
+				{ signal: fin.signal, recu: etat === 'COUPEE' ? 'Musique coupée.' : 'Musique relancée.' });
 			if (!fin.signal.aborted && reponse.statut === 200 && musique?.etat !== etat) {
 				contexte.resynchroniser();
 			}
