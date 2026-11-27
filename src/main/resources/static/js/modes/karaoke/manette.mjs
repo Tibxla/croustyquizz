@@ -17,6 +17,7 @@ export function monter(zones, contexte) {
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
 	ui.principale.append(titre, personnels, expirees, invalidation);
 	const catalogue = creerCatalogue(ui, ui.principale, { inscrire: true });
+	ui.avantAppel = () => catalogue.annulerConsultation();
 	const ensuite = e('h2', '', 'Ensuite'); ensuite.tabIndex = -1;
 	const file = e('ol', 'rouleau'), autres = e('p'); ui.principale.append(ensuite, file, autres);
 	ui.messageInvalidation = () => { invalidation.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };

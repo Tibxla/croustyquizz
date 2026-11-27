@@ -38,11 +38,13 @@ export function creerDocument() {
 		dispatchEvent(evenement) { evenement.target ??= this; evenement.preventDefault ??= () => {}; for (const e of [...(this.ecouteurs.get(evenement.type) ?? [])]) { if (e.once) this.removeEventListener(evenement.type, e.rappel); e.rappel(evenement); } return true; }
 		click() { if (!this.disabled) this.dispatchEvent({ type: 'click' }); }
 		focus() { document.activeElement = this; }
+		scrollIntoView(options) { document.defilements.push({ element: this, options }); }
 		showModal() { this.open = true; }
 		close() { this.open = false; this.dispatchEvent({ type: 'close' }); }
 	}
 	const document = { isConnected: true, createElement: tag => new Element(tag), createDocumentFragment: () => new Element('fragment') };
 	document.head = document.createElement('head'); document.body = document.createElement('body'); document.activeElement = document.body;
+	document.defilements = [];
 	const evenementsDocument = document.createElement('document');
 	for (const methode of ['addEventListener', 'removeEventListener', 'dispatchEvent']) {
 		document[methode] = evenementsDocument[methode].bind(evenementsDocument);

@@ -1,8 +1,9 @@
 import { creerInterface, creerTicket, creerUuid, texteAutresPassages } from './commun.mjs';
 import { creerCycleLecture } from './cycle-lecture.mjs';
-import { delaiAppelRestant, determinerLignes, fenetreParoles, positionChronologique } from './paroles.mjs';
+import { determinerLignes, fenetreParoles, positionChronologique } from './paroles.mjs';
 import { formaterTempsRestant, passageActif, teintePassage, libelleEtatTicketPublic } from './presentation.mjs';
 import { delaiVoteRestant, formaterMoyenne, formaterNombreVotes, votesVisiblesSalle } from './vote.mjs';
+import { creerAppelSalle } from '../passage/salle.mjs';
 
 const designations = new WeakMap();
 
@@ -23,8 +24,9 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	designations.set(audio, designation);
 	const ui = creerInterface(zones, contexte, { annoncerConnexion: false }), { e, ecouter } = ui;
 	const invitation = e('h2', 'karaoke__invitation'), prochain = e('div', 'karaoke__prochain');
-	const minutes = e('p', 'karaoke__delai chiffres'), paroles = e('div', 'karaoke__paroles');
-	ui.principale.append(invitation, prochain, minutes, paroles);
+	const paroles = e('div', 'karaoke__paroles');
+	const appelSalle = creerAppelSalle(ui);
+	ui.principale.append(appelSalle.element, invitation, prochain, paroles);
 	const listeVotes = e('div', 'karaoke__bandeaux-vote');
 	const bandeaux = new Map();
 	listeVotes.hidden = true;
@@ -179,11 +181,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		const maintenant = contexte.maintenantServeur();
 		rendreVotes(bloc, maintenant);
 		if (!passageActif(bloc.courant)) return;
-		if (!minutes.hidden) {
-			const restant = delaiAppelRestant({ ...bloc.courant, maintenant, enPause: bloc.etat === 'EN_PAUSE' });
-			const texte = formaterTempsRestant(restant);
-			if (minutes.textContent !== texte) minutes.textContent = texte;
-		}
+		if (!appelSalle.element.hidden) appelSalle.decompter(bloc.courant, { maintenant, enPause: bloc.etat === 'EN_PAUSE' });
 		rendreParoles(bloc);
 	}
 	function animer() {
@@ -216,12 +214,15 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		const enErreur = lecture?.etat === 'EN_ERREUR';
 		if (!actif) invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
 		else if (enErreur) invitation.textContent = "La musique ne se lance pas. L'Animateur choisit la suite.";
-		else if (appel) invitation.textContent = pause ? 'Prépare-toi · Pause' : 'Prépare-toi';
+		else if (appel) invitation.textContent = '';
 		else invitation.textContent = pause ? 'Pause' : '';
 		invitation.hidden = !invitation.textContent;
 		prochain.hidden = Boolean(actif) || !passages.length;
 		prochain.replaceChildren(...(prochain.hidden ? [] : [creerTicket(ui, passages[0])]));
-		minutes.hidden = !appel || enErreur;
+		// À l'appel (#277), la zone principale nomme les Interprètes et la Chanson ; le temps passe en second.
+		const chanson = actif?.chanson;
+		appelSalle.rendre(appel && !enErreur ? actif : null, { enPause: pause, maintenant: contexte.maintenantServeur(),
+			contenu: chanson ? [chanson.titre, chanson.artiste].filter(Boolean).join(' · ') : '' });
 		paroles.hidden = !actif || appel || enErreur || !bloc.paroles;
 		if (paroles.hidden) {
 			paroles.replaceChildren();
