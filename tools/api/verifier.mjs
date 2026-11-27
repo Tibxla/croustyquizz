@@ -67,9 +67,10 @@ function dependances(nom, vues = new Set()) {
 // Le fichier local ne sort que vers la Console. Paroles et lecture restent hors de la Manette pour la
 // légèreté de sa vue, pas pour le secret : la vue salle est lisible par un Joueur.
 const interditsParVue = {
-  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg'],
-  console: ['ParolesDuPassage'],
-  joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg'],
+  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg', 'InvitationEnAttente', 'InvitationEmise', 'InvitationRecue',
+    'InvitationRecueFreestyle'],
+  console: ['ParolesDuPassage', 'InvitationEmise', 'InvitationRecue', 'InvitationRecueFreestyle'],
+  joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg', 'InvitationEnAttente'],
 };
 for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console'], ['VueManette', 'joueur'],
   ['EvenementSalle', 'salle'], ['EvenementConsole', 'console'], ['EvenementJoueur', 'joueur']]) {
@@ -124,7 +125,8 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'freestyle'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'invitations-karaoke',
+  'freestyle', 'freestyle-a-plusieurs'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();
@@ -138,15 +140,60 @@ for (const { nom, exemples } of parcours) {
       ? `/topic/joueurs/${vue.joueurId}`
       : `/topic/soirees/${vue.soiree.id}/${canal}`;
     projections.push({ destination, vue, revision, instant: Date.parse(instant), contexte });
+    // Une Manette ne voit que ses propres Invitations. Au Karaoké, les Invitations
+    // expirées restent visibles après la sortie du Passage de la File.
+    const blocPassages = vue.karaoke ?? vue.freestyle;
+    const courant = blocPassages?.courant;
+    if (canal === 'joueur' && blocPassages) {
+      const siens = new Map(blocPassages.mesPassagesEnAttente.map(p => [p.passageId, p]));
+      for (const invitation of blocPassages.invitationsEmises) {
+        const attente = siens.get(invitation.passageId) ?? vue.karaoke?.prochainsPassages.find(p => p.passageId === invitation.passageId);
+        const passage = attente ?? (courant?.passageId === invitation.passageId ? courant : null);
+        if (!attente) {
+          assert.ok(vue.karaoke, `${contexte} : invitation émise pour le Passage d’autrui ou sorti de la File du Freestyle`);
+          assert.equal(invitation.etat, 'EXPIREE', `${contexte} : invitation encore visible hors de la File`);
+        }
+        if (passage) {
+          assert.equal(passage.interpretes[0].joueurId, vue.joueurId, `${contexte} : invitation émise pour le Passage d’autrui`);
+          assert.equal(passage.numero, invitation.numero, `${contexte} : numéro du Passage incohérent`);
+        }
+        assert.notEqual(invitation.invite.joueurId, vue.joueurId, `${contexte} : invitation émise vers soi`);
+      }
+      for (const invitation of blocPassages.invitationsRecues) {
+        assert.ok(!siens.has(invitation.passage.passageId), `${contexte} : invitation reçue pour un Passage personnel`);
+        assert.equal(invitation.inscrivant.joueurId, invitation.interpretes[0].joueurId,
+          `${contexte} : l’inscrivant n’est pas le premier Interprète`);
+      }
+    }
     // Le courant du Passage suit l'état de la Manche porté par le bloc : échéance d'appel nulle exactement
     // en pause, état EN_PAUSE seulement dans une Manche en pause.
-    const courant = vue.karaoke?.courant;
     if (courant) {
-      const enPause = vue.karaoke.etat === 'EN_PAUSE';
+      const enPause = blocPassages.etat === 'EN_PAUSE';
       if (courant.etat === 'APPELE') {
         assert.equal(courant.echeanceAppelLe === null, enPause, `${contexte} : échéance d'appel incohérente avec la pause`);
       }
       if (courant.etat === 'EN_PAUSE') assert.ok(enPause, `${contexte} : Passage EN_PAUSE hors d'une Manche en pause`);
+    }
+    // Couplets du Freestyle à plusieurs (#74) : l'ordre ne contient que les Interprètes du Passage, chaque
+    // Couplet revient au rang (numero − 1) mod n, et seule la Manette annoncée porte monCoupletAnnonce.
+    const couplets = vue.freestyle?.courant?.couplets;
+    if (couplets) {
+      const ids = couplets.ordre.map(i => i.joueurId);
+      assert.deepEqual([...ids].sort(), courant.interpretes.map(i => i.joueurId).sort(),
+        `${contexte} : ordre des Couplets différent des Interprètes`);
+      for (const couplet of [couplets.courant, couplets.suivant].filter(Boolean)) {
+        assert.equal(couplet.interprete.joueurId, ids[(couplet.numero - 1) % ids.length], `${contexte} : Couplet hors de l'ordre`);
+        assert.equal(couplet.premiereMesure, (couplet.numero - 1) * couplets.mesuresParCouplet + 1, `${contexte} : première mesure`);
+        assert.equal(couplet.derniereMesure, couplet.numero * couplets.mesuresParCouplet, `${contexte} : dernière mesure`);
+      }
+      assert.equal(couplets.suivant?.numero ?? null, couplets.courant.numero < couplets.nombreCouplets ? couplets.courant.numero + 1 : null,
+        `${contexte} : Couplet suivant incohérent`);
+      if (canal === 'joueur') {
+        assert.equal(vue.freestyle.monCoupletAnnonce,
+          couplets.suivantAnnonce && couplets.suivant?.interprete.joueurId === vue.joueurId, `${contexte} : annonce personnelle`);
+      }
+    } else if (canal === 'joueur' && vue.freestyle) {
+      assert.equal(vue.freestyle.monCoupletAnnonce, false, `${contexte} : annonce sans Couplets`);
     }
   }
 

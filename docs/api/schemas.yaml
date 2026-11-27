@@ -1081,14 +1081,21 @@ $defs:
         maxItems: 3
       palmaresFreestyle:
         type: [array, 'null']
-        description: Palmarès de la dernière Manche de Freestyle terminée, entre deux Manches.
+        description: Palmarès de la dernière Manche de Freestyle terminée, entre deux Manches. Les trois premiers
+          Interprètes par victoires, puis les trois premiers Passages à un seul Interprète par note.
         items:
-          allOf:
-          - $ref: '#/$defs/LignePalmaresFreestyle'
-          - properties:
-              rang:
-                type: integer
-        maxItems: 3
+          oneOf:
+          - allOf:
+            - $ref: '#/$defs/LigneVictoiresFreestyle'
+            - properties:
+                rang:
+                  type: integer
+          - allOf:
+            - $ref: '#/$defs/LignePalmaresFreestyle'
+            - properties:
+                rang:
+                  type: integer
+        maxItems: 6
       classement:
         type: array
         description: Classement général complet par rang croissant.
@@ -1152,9 +1159,12 @@ $defs:
           $ref: '#/$defs/LignePalmaresKaraoke'
       palmaresFreestyle:
         type: [array, 'null']
-        description: Palmarès de la dernière Manche de Freestyle terminée, entre deux Manches.
+        description: Palmarès de la dernière Manche de Freestyle terminée, entre deux Manches. Tous les Interprètes
+          des Passages à plusieurs par victoires, puis tous les Passages à un seul Interprète par note.
         items:
-          $ref: '#/$defs/LignePalmaresFreestyle'
+          oneOf:
+          - $ref: '#/$defs/LigneVictoiresFreestyle'
+          - $ref: '#/$defs/LignePalmaresFreestyle'
       classement:
         type: array
         description: Classement général complet par rang croissant, y compris après la Soirée.
@@ -1377,6 +1387,8 @@ $defs:
         - limite-passages-modifiee
         - passage-appele
         - passage-demarre
+        - couplet-annonce
+        - couplet-commence
         - passage-termine
         - vote-enregistre
         - vote-clos
@@ -1434,6 +1446,8 @@ $defs:
         - limite-passages-modifiee
         - passage-appele
         - passage-demarre
+        - couplet-annonce
+        - couplet-commence
         - passage-termine
         - vote-enregistre
         - vote-clos
@@ -1494,6 +1508,8 @@ $defs:
         - limite-passages-modifiee
         - passage-appele
         - passage-demarre
+        - couplet-annonce
+        - couplet-commence
         - passage-termine
         - vote-enregistre
         - vote-clos
@@ -2155,9 +2171,37 @@ $defs:
         type: string
         minLength: 1
         maxLength: 128
+      invitesIds:
+        type: array
+        maxItems: 3
+        uniqueItems: true
+        items:
+          type: string
+          format: uuid
     required:
     - envoiId
     - chansonId
+  ReponseInvitation:
+    type: object
+    additionalProperties: false
+    description: Réponse du Joueur authentifié à son Invitation en suspens (#138).
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      reponse:
+        type: string
+        enum:
+        - ACCEPTER
+        - REFUSER
+    required:
+    - envoiId
+    - numeroModification
+    - reponse
   DesinscriptionPassage:
     type: object
     additionalProperties: false
@@ -2351,6 +2395,8 @@ $defs:
         - DESINSCRIRE
         - RETIRER
         - DEPLACER
+        - ACCEPTER
+        - REFUSER
       recueLe:
         type: string
         format: date-time
@@ -2912,6 +2958,49 @@ $defs:
     - envoiId
     - numeroModification
     - note
+  DesignationMeilleurInterprete:
+    type: object
+    additionalProperties: false
+    description: Choix d’un seul Interprète d’un Passage de Freestyle à plusieurs (#74), qui remplace la note.
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      interpreteId:
+        type: string
+        format: uuid
+    required:
+    - envoiId
+    - numeroModification
+    - interpreteId
+  AccuseDesignation:
+    type: object
+    additionalProperties: false
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      soireeId:
+        type: string
+        format: uuid
+      mancheId:
+        type: string
+        format: uuid
+      passageId:
+        type: string
+        format: uuid
+      interpreteId:
+        type: string
+        format: uuid
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+    required: [envoiId, soireeId, mancheId, passageId, interpreteId, recueLe]
   AccuseVote:
     type: object
     additionalProperties: false
@@ -3219,6 +3308,76 @@ $defs:
             const: OUVERT
           maNote:
             type: "null"
+  InvitationEnAttente:
+    type: object
+    additionalProperties: false
+    description: Invitation en suspens d’un Passage en attente, vue par la seule Console.
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      invite:
+        $ref: '#/$defs/InterpretePublic'
+    required:
+    - passageId
+    - invite
+  InvitationEmise:
+    type: object
+    additionalProperties: false
+    description: Dernier état d’une Invitation suivie par l’inscripteur. REFUSEE couvre aussi l’invité qui a quitté
+      le Passage après avoir accepté. Au Karaoké, EXPIREE reste visible si le Passage sort de la File ou si l’invité part.
+      Le pseudo d’un invité absent de la Soirée est remplacé par « Joueur parti ».
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+        description: Numéro du Passage, y compris après sa sortie de la File.
+      invite:
+        $ref: '#/$defs/InterpretePublic'
+      etat:
+        type: string
+        enum:
+        - EN_ATTENTE
+        - ACCEPTEE
+        - REFUSEE
+        - EXPIREE
+    required:
+    - passageId
+    - numero
+    - invite
+    - etat
+  InvitationRecue:
+    type: object
+    additionalProperties: false
+    description: Invitation en suspens adressée au seul Joueur de la Manette, avec la Chanson et le Joueur qui
+      l’invite. passage porte le compteur à renvoyer avec ACCEPTER ou REFUSER.
+    properties:
+      passage:
+        $ref: '#/$defs/CiblePassage'
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      chanson:
+        $ref: '#/$defs/ResumeChanson'
+      inscrivant:
+        $ref: '#/$defs/InterpretePublic'
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 3
+    required:
+    - passage
+    - numero
+    - chanson
+    - inscrivant
+    - interpretes
   BlocKaraokeConsole:
     allOf:
     - $ref: '#/$defs/KaraokeCommun'
@@ -3232,6 +3391,11 @@ $defs:
           type: array
           items:
             $ref: '#/$defs/PassageEnAttentePublic'
+        invitationsEnAttente:
+          type: array
+          description: Invitations en suspens des Passages en attente, dans l’ordre de la File puis des invitations.
+          items:
+            $ref: '#/$defs/InvitationEnAttente'
         peutGererFile:
           type: boolean
         peutReglerLimite:
@@ -3268,6 +3432,7 @@ $defs:
             vaut FICHIER_LOCAL.
       required:
       - passagesEnAttente
+      - invitationsEnAttente
       - votes
       - peutGererFile
       - peutReglerLimite
@@ -3322,6 +3487,18 @@ $defs:
           type: array
           items:
             $ref: '#/$defs/PassageEnAttentePublic'
+        invitationsEmises:
+          type: array
+          description: Invitations des Passages en attente dont ce Joueur est l’inscripteur, dans l’ordre de la File,
+            puis ses Invitations expirées pour des Passages sortis de la File, par numéro de Passage.
+            Pour un même Passage, les Invitations sont dans l’ordre d’émission.
+          items:
+            $ref: '#/$defs/InvitationEmise'
+        invitationsRecues:
+          type: array
+          description: Invitations en suspens adressées à ce seul Joueur, dans l’ordre de la File.
+          items:
+            $ref: '#/$defs/InvitationRecue'
         nombrePersonnelEnAttente:
           type: integer
           minimum: 0
@@ -3341,6 +3518,8 @@ $defs:
       - prochainsPassages
       - nombreAutresPassages
       - mesPassagesEnAttente
+      - invitationsEmises
+      - invitationsRecues
       - votes
       - nombrePersonnelEnAttente
       - peutRechercher
@@ -3922,9 +4101,23 @@ $defs:
     - parolesId
     - dureeMs
     - lignes
+  LigneVictoiresFreestyle:
+    type: object
+    additionalProperties: false
+    description: Interprète d’au moins un Passage à plusieurs clos. Une victoire revient à chaque Interprète qui a
+      reçu le plus de voix d’un Passage, égalité comprise ; un Passage sans voix n’en donne aucune. Rang nul sans
+      victoire.
+    properties:
+      rang: { type: [integer, 'null'], minimum: 1 }
+      interprete:
+        $ref: '#/$defs/InterpretePublic'
+      nombreVictoires: { type: integer, minimum: 0 }
+      nombrePassages: { type: integer, minimum: 1 }
+    required: [rang, interprete, nombreVictoires, nombrePassages]
   LignePalmaresFreestyle:
     type: object
     additionalProperties: false
+    description: Passage à un seul Interprète, classé par la moyenne exacte de ses notes.
     properties:
       passageId: { type: string, format: uuid }
       numero: { type: integer, minimum: 1, maximum: 9007199254740991 }
@@ -3998,6 +4191,10 @@ $defs:
   NombreMesuresFreestyle:
     type: integer
     enum: [8, 16, 32]
+  MesuresParCoupletFreestyle:
+    type: integer
+    enum: [2, 4, 8]
+    description: Longueur d’un Couplet en mesures (#74). nombreMesures doit en être un multiple.
   ReglagesFreestyle:
     type: object
     additionalProperties: false
@@ -4013,6 +4210,9 @@ $defs:
         $ref: '#/$defs/DifficulteFreestyle'
       nombreMesures:
         $ref: '#/$defs/NombreMesuresFreestyle'
+      mesuresParCouplet:
+        $ref: '#/$defs/MesuresParCoupletFreestyle'
+        description: Facultatif à la création, 4 par défaut ; toujours présent une fois la Manche créée.
       instrumentaleIds:
         type: array
         minItems: 1
@@ -4032,6 +4232,14 @@ $defs:
         - $ref: '#/$defs/IdentifiantInstrumentale'
         - type: 'null'
         description: Null pour tirer au hasard parmi les Instrumentales sélectionnées, disponibles et admissibles pour le Joueur.
+      invitesIds:
+        type: array
+        maxItems: 3
+        uniqueItems: true
+        description: Facultatif, comme au Karaoké (#66) ; au plus quatre Interprètes avec l’inscripteur.
+        items:
+          type: string
+          format: uuid
     required: [envoiId, instrumentaleId]
   InscriptionSelonMode:
     oneOf:
@@ -4106,9 +4314,14 @@ $defs:
         minimum: 1
       instrumentale:
         $ref: '#/$defs/Instrumentale'
-      interprete:
-        $ref: '#/$defs/InterpretePublic'
-    required: [passageId, numeroModification, numero, instrumentale, interprete]
+      interpretes:
+        type: array
+        minItems: 1
+        maxItems: 4
+        description: Interprètes acceptés, l’inscripteur en premier.
+        items:
+          $ref: '#/$defs/InterpretePublic'
+    required: [passageId, numeroModification, numero, instrumentale, interpretes]
   PassageFreestyleEnAttente:
     allOf:
     - $ref: '#/$defs/PassageFreestyle'
@@ -4146,8 +4359,61 @@ $defs:
         calculeLe:
           type: string
           format: date-time
-      required: [etapeId, etat, delaiAppelRestantMs, demarreLe, finPrevueLe, positionChronologiqueMs, calculeLe]
+        couplets:
+          oneOf:
+          - $ref: '#/$defs/CoupletsFreestyle'
+          - type: 'null'
+          description: Null pour un Passage à un seul Interprète, et avant « Je suis prêt ».
+      required: [etapeId, etat, delaiAppelRestantMs, demarreLe, finPrevueLe, positionChronologiqueMs, calculeLe, couplets]
     unevaluatedProperties: false
+  CoupletFreestyle:
+    type: object
+    additionalProperties: false
+    properties:
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 16
+      interprete:
+        $ref: '#/$defs/InterpretePublic'
+      premiereMesure:
+        type: integer
+        minimum: 1
+        maximum: 32
+      derniereMesure:
+        type: integer
+        minimum: 2
+        maximum: 32
+    required: [numero, interprete, premiereMesure, derniereMesure]
+  CoupletsFreestyle:
+    type: object
+    additionalProperties: false
+    description: Couplets d’un Passage à plusieurs (#74). L’ordre des Interprètes est tiré au sort par le serveur à
+      « Je suis prêt », identique sur toutes les destinations, puis répété tant que la Grille compte des Couplets.
+      suivantAnnonce passe à true une mesure avant le changement (couplet-annonce), puis courant avance au
+      changement (couplet-commence).
+    properties:
+      mesuresParCouplet:
+        $ref: '#/$defs/MesuresParCoupletFreestyle'
+      nombreCouplets:
+        type: integer
+        minimum: 1
+        maximum: 16
+      ordre:
+        type: array
+        minItems: 2
+        maxItems: 4
+        items:
+          $ref: '#/$defs/InterpretePublic'
+      courant:
+        $ref: '#/$defs/CoupletFreestyle'
+      suivant:
+        oneOf:
+        - $ref: '#/$defs/CoupletFreestyle'
+        - type: 'null'
+      suivantAnnonce:
+        type: boolean
+    required: [mesuresParCouplet, nombreCouplets, ordre, courant, suivant, suivantAnnonce]
   CycleVoteFreestyle:
     type: object
     properties:
@@ -4164,16 +4430,38 @@ $defs:
         type: [string, 'null']
         format: date-time
     required: [etat, delaiRestantMs, calculeLe, clotureLe]
+  ScrutinFreestyle:
+    type: string
+    enum: [NOTE, MEILLEUR_INTERPRETE]
+    description: NOTE pour un Passage à un seul Interprète, MEILLEUR_INTERPRETE pour un Passage à plusieurs (#74).
+  VoixInterpreteFreestyle:
+    type: object
+    additionalProperties: false
+    properties:
+      interprete:
+        $ref: '#/$defs/InterpretePublic'
+      nombreVoix:
+        type: integer
+        minimum: 0
+    required: [interprete, nombreVoix]
   VoteFreestylePublic:
     allOf:
     - $ref: '#/$defs/PassageFreestyle'
     - $ref: '#/$defs/CycleVoteFreestyle'
     - type: object
       properties:
+        scrutin:
+          $ref: '#/$defs/ScrutinFreestyle'
         nombreVotes:
           type: integer
           minimum: 0
-      required: [nombreVotes]
+        voix:
+          type: [array, 'null']
+          description: Voix de chaque Interprète, dans l’ordre des Interprètes, une fois le vote clos d’un Passage à
+            plusieurs ; null sinon.
+          items:
+            $ref: '#/$defs/VoixInterpreteFreestyle'
+      required: [scrutin, nombreVotes, voix]
     unevaluatedProperties: false
   VoteFreestyleManette:
     allOf:
@@ -4181,14 +4469,44 @@ $defs:
     - $ref: '#/$defs/CycleVoteFreestyle'
     - type: object
       properties:
+        scrutin:
+          $ref: '#/$defs/ScrutinFreestyle'
         maNote:
           type: [integer, 'null']
           minimum: 1
           maximum: 5
+          description: Toujours null pour le scrutin MEILLEUR_INTERPRETE.
+        monChoix:
+          type: [string, 'null']
+          format: uuid
+          description: Interprète désigné par ce Joueur ; toujours null pour le scrutin NOTE.
         peutVoter:
           type: boolean
-      required: [maNote, peutVoter]
+      required: [scrutin, maNote, monChoix, peutVoter]
     unevaluatedProperties: false
+  InvitationRecueFreestyle:
+    type: object
+    additionalProperties: false
+    description: Invitation en suspens adressée au seul Joueur de la Manette, avec l’Instrumentale et l’inscripteur.
+      passage porte le compteur à renvoyer avec ACCEPTER ou REFUSER.
+    properties:
+      passage:
+        $ref: '#/$defs/CiblePassage'
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      instrumentale:
+        $ref: '#/$defs/Instrumentale'
+      inscrivant:
+        $ref: '#/$defs/InterpretePublic'
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 3
+    required: [passage, numero, instrumentale, inscrivant, interpretes]
   FreestyleCommun:
     type: object
     properties:
@@ -4310,11 +4628,15 @@ $defs:
           type: boolean
         peutPasser:
           type: boolean
+        invitationsEnAttente:
+          type: array
+          items:
+            $ref: '#/$defs/InvitationEnAttente'
         votes:
           type: array
           items:
             $ref: '#/$defs/VoteFreestylePublic'
-      required: [instrumentales, peutGererFile, peutAppeler, peutPasser, votes]
+      required: [instrumentales, peutGererFile, peutAppeler, peutPasser, invitationsEnAttente, votes]
     unevaluatedProperties: false
   BlocFreestyleManette:
     allOf:
@@ -4330,15 +4652,28 @@ $defs:
           type: array
           items:
             $ref: '#/$defs/PassageFreestyleEnAttente'
+        invitationsEmises:
+          type: array
+          items:
+            $ref: '#/$defs/InvitationEmise'
+        invitationsRecues:
+          type: array
+          items:
+            $ref: '#/$defs/InvitationRecueFreestyle'
         peutInscrire:
           type: boolean
         peutConfirmerPresence:
           type: boolean
+        monCoupletAnnonce:
+          type: boolean
+          description: true seulement sur la Manette de l’Interprète annoncé, entre couplet-annonce et
+            couplet-commence. La Manette vibre à l’événement couplet-annonce, jamais sur une capture.
         votes:
           type: array
           items:
             $ref: '#/$defs/VoteFreestyleManette'
-      required: [instrumentales, mesPassagesEnAttente, peutInscrire, peutConfirmerPresence, votes]
+      required: [instrumentales, mesPassagesEnAttente, invitationsEmises, invitationsRecues, peutInscrire,
+        peutConfirmerPresence, monCoupletAnnonce, votes]
     unevaluatedProperties: false
 
   ImageJpeg:

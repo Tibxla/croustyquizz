@@ -1,0 +1,848 @@
+description: >-
+  Passage fictif de Freestyle à trois Interprètes (#74) : Invitations, ordre des Couplets tiré au sort,
+  annonce du suivant une mesure avant le changement, vote du meilleur Interprète et Palmarès par victoires.
+  Tempo 120 BPM, départ du beat à 250 ms, huit mesures, Couplets de deux mesures ; l’Instrumentale dure 95 s
+  et un seul Écran de salle, le lecteur désigné, la joue.
+parametresCommuns:
+  soireeId: &soireeId 74000000-0000-4000-8000-000000000001
+  mancheId: &mancheId 74000000-0000-4000-8000-000000000002
+  passageId: &passageId 74000000-0000-4000-8000-000000000003
+  X-CSRF-TOKEN: csrf_session_freestyle_fictif_74
+http:
+- nom: L’Écran de salle déclare l’Instrumentale et devient le lecteur désigné
+  operationId: declarerInstrumentales
+  acteur: ecran
+  parametres:
+    Idempotency-Key: &declaration 74000000-0000-4000-8000-000000000011
+  requete:
+    lecteurId: &lecteurId 74000000-0000-4000-8000-000000000031
+    instrumentales:
+    - &instrumentale
+      instrumentaleId: &instrumentaleId 74000000-0000-4000-8000-000000000004
+      titre: Pavés mouillés
+      tempoBpm: 120
+      departBeatMs: 250
+      dureeMs: 95000
+  statut: 200
+  reponse:
+    envoiId: *declaration
+    soireeId: *soireeId
+    recueLe: '2026-11-25T20:59:50Z'
+- nom: Préparer une Manche aux Couplets de deux mesures
+  operationId: ajouterManche
+  acteur: animateur
+  requete:
+    mode: FREESTYLE
+    reglages:
+      theme: VILLE
+      schemaDeRimes: ABAB
+      difficulte: TOUS
+      nombreMesures: 8
+      mesuresParCouplet: 2
+      instrumentaleIds: [*instrumentaleId]
+  statut: 201
+  reponse:
+    id: *mancheId
+    ordre: 0
+    mode: FREESTYLE
+    etat: EN_ATTENTE
+    reglages: &reglages
+      theme: VILLE
+      schemaDeRimes: ABAB
+      difficulte: TOUS
+      nombreMesures: 8
+      mesuresParCouplet: 2
+      instrumentaleIds: [*instrumentaleId]
+- nom: Inès s’inscrit et invite Maël, Zoé et Lou
+  operationId: inscrirePassage
+  acteur: joueur:74000000-0000-4000-8000-000000000005
+  requete:
+    envoiId: &inscription 74000000-0000-4000-8000-000000000020
+    instrumentaleId: *instrumentaleId
+    invitesIds:
+    - &maelId 74000000-0000-4000-8000-000000000006
+    - &zoeId 74000000-0000-4000-8000-000000000007
+    - &louId 74000000-0000-4000-8000-000000000008
+  statut: 201
+  reponse:
+    envoiId: *inscription
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    numeroModification: 0
+    action: INSCRIRE
+    recueLe: '2026-11-25T21:00:00Z'
+    etatApres: EN_ATTENTE
+- nom: Lou voit l’Invitation avec l’Instrumentale sur sa Manette
+  operationId: retrouverEtatManette
+  acteur: joueur:74000000-0000-4000-8000-000000000008
+  parametres: {}
+  statut: 200
+  reponse:
+    revision: 2
+    heureServeur: '2026-11-25T21:00:00.500Z'
+    abonnementId: null
+    vue:
+      soiree: &soiree
+        id: *soireeId
+        titre: Rimes à plusieurs
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: RIMES4
+      mancheActive: &manche
+        id: *mancheId
+        ordre: 0
+        mode: FREESTYLE
+        etat: EN_COURS
+        reglages: *reglages
+      modeEnCours: FREESTYLE
+      joueurs: &joueurs
+      - id: &inesId 74000000-0000-4000-8000-000000000005
+        pseudo: Inès
+        connecte: true
+      - id: *maelId
+        pseudo: Maël
+        connecte: true
+      - id: *zoeId
+        pseudo: Zoé
+        connecte: true
+      - id: *louId
+        pseudo: Lou
+        connecte: true
+      - id: &noeId 74000000-0000-4000-8000-000000000009
+        pseudo: Noé
+        connecte: true
+      classement: &classement []
+      dernierBuzz: null
+      joueurId: *louId
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 1
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente:
+        - passageId: *passageId
+          numeroModification: 0
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes:
+          - &ines
+            joueurId: *inesId
+            pseudo: Inès
+          position: 1
+        courant: null
+        grille: null
+        instrumentales: [*instrumentale]
+        mesPassagesEnAttente: []
+        invitationsEmises: []
+        invitationsRecues:
+        - passage:
+            passageId: *passageId
+            numeroModification: 0
+          numero: 1
+          instrumentale: *instrumentale
+          inscrivant: *ines
+          interpretes: [*ines]
+        peutInscrire: true
+        peutConfirmerPresence: false
+        monCoupletAnnonce: false
+        votes: []
+- nom: Maël accepte
+  operationId: repondreInvitation
+  acteur: joueur:74000000-0000-4000-8000-000000000006
+  requete:
+    envoiId: &acceptationMael 74000000-0000-4000-8000-000000000021
+    numeroModification: 0
+    reponse: ACCEPTER
+  statut: 200
+  reponse:
+    envoiId: *acceptationMael
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    numeroModification: 1
+    action: ACCEPTER
+    recueLe: '2026-11-25T21:00:01Z'
+    etatApres: EN_ATTENTE
+- nom: Zoé accepte
+  operationId: repondreInvitation
+  acteur: joueur:74000000-0000-4000-8000-000000000007
+  requete:
+    envoiId: &acceptationZoe 74000000-0000-4000-8000-000000000022
+    numeroModification: 1
+    reponse: ACCEPTER
+  statut: 200
+  reponse:
+    envoiId: *acceptationZoe
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    numeroModification: 2
+    action: ACCEPTER
+    recueLe: '2026-11-25T21:00:02Z'
+    etatApres: EN_ATTENTE
+- nom: Lou refuse, sans changer le compteur
+  operationId: repondreInvitation
+  acteur: joueur:74000000-0000-4000-8000-000000000008
+  requete:
+    envoiId: &refusLou 74000000-0000-4000-8000-000000000023
+    numeroModification: 2
+    reponse: REFUSER
+  statut: 200
+  reponse:
+    envoiId: *refusLou
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    numeroModification: 2
+    action: REFUSER
+    recueLe: '2026-11-25T21:00:03Z'
+    etatApres: EN_ATTENTE
+- nom: Appeler le Passage des trois Interprètes
+  operationId: appelerPassage
+  acteur: animateur
+  parametres:
+    Idempotency-Key: &appel 74000000-0000-4000-8000-000000000024
+  requete:
+    numeroModification: 2
+  statut: 200
+  reponse:
+    envoiId: *appel
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    etapeId: &etapeId 74000000-0000-4000-8000-000000000010
+    numeroModification: 3
+    action: APPELER
+    recueLe: '2026-11-25T21:00:04Z'
+    etatApres: APPELE
+- nom: Zoé confirme « Je suis prêt » et le serveur tire l’ordre des Couplets
+  operationId: confirmerPresencePassage
+  acteur: joueur:74000000-0000-4000-8000-000000000007
+  requete:
+    envoiId: &presence 74000000-0000-4000-8000-000000000025
+    etapeId: *etapeId
+    numeroModification: 3
+  statut: 200
+  reponse:
+    envoiId: *presence
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    etapeId: *etapeId
+    numeroModification: 4
+    action: CONFIRMER_PRESENCE
+    recueLe: &depart '2026-11-25T21:00:05Z'
+    etatApres: EN_COURS
+- nom: La salle affiche l’ordre des Couplets au début du Passage
+  operationId: retrouverEtatSalle
+  parametres:
+    abonnementId: &abonnement 74000000-0000-4000-8000-000000000030
+  statut: 200
+  reponse: &capture
+    revision: 6
+    heureServeur: '2026-11-25T21:00:06Z'
+    abonnementId: *abonnement
+    vue: &vueSalle
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant:
+          passageId: *passageId
+          numeroModification: 4
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes: &trio
+          - *ines
+          - &mael
+            joueurId: *maelId
+            pseudo: Maël
+          - &zoe
+            joueurId: *zoeId
+            pseudo: Zoé
+          etapeId: *etapeId
+          etat: EN_COURS
+          delaiAppelRestantMs: null
+          demarreLe: *depart
+          finPrevueLe: &fin '2026-11-25T21:00:21.250Z'
+          positionChronologiqueMs: 0
+          calculeLe: *depart
+          couplets:
+            mesuresParCouplet: 2
+            nombreCouplets: 4
+            ordre: &ordre [*zoe, *ines, *mael]
+            courant: &couplet1 { numero: 1, interprete: *zoe, premiereMesure: 1, derniereMesure: 2 }
+            suivant: &couplet2 { numero: 2, interprete: *ines, premiereMesure: 3, derniereMesure: 4 }
+            suivantAnnonce: false
+        lecteurDesigneId: *lecteurId
+        votes: []
+        grille: &grille
+          nombreMesures: 8
+          mots:
+          - { mesure: 1, temps: 3, positionMs: 1250, famille: A, mot: lumière }
+          - { mesure: 2, temps: 3, positionMs: 3250, famille: B, mot: nuit }
+          - { mesure: 3, temps: 3, positionMs: 5250, famille: A, mot: pierre }
+          - { mesure: 4, temps: 3, positionMs: 7250, famille: B, mot: bruit }
+          - { mesure: 5, temps: 3, positionMs: 9250, famille: A, mot: rivière }
+          - { mesure: 6, temps: 3, positionMs: 11250, famille: B, mot: fuit }
+          - { mesure: 7, temps: 3, positionMs: 13250, famille: A, mot: poussière }
+          - { mesure: 8, temps: 3, positionMs: 15250, famille: B, mot: luit }
+- nom: Une note est refusée pour un Passage à plusieurs
+  operationId: voterPassage
+  acteur: joueur:74000000-0000-4000-8000-000000000009
+  requete:
+    envoiId: 74000000-0000-4000-8000-000000000026
+    numeroModification: 5
+    note: 4
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 422
+    code: DONNEES_INVALIDES
+    detail: Ce Passage se vote en désignant le meilleur Interprète.
+    instance: /api/soirees/74000000-0000-4000-8000-000000000001/manches/74000000-0000-4000-8000-000000000002/passages/74000000-0000-4000-8000-000000000003/vote
+- nom: Un Interprète ne vote pas pour son propre Passage
+  operationId: designerMeilleurInterprete
+  acteur: joueur:74000000-0000-4000-8000-000000000006
+  requete:
+    envoiId: 74000000-0000-4000-8000-000000000027
+    numeroModification: 5
+    interpreteId: *zoeId
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: VOTE_INTERDIT
+    detail: Tu ne peux pas voter pour un Passage dont tu es Interprète.
+    instance: /api/soirees/74000000-0000-4000-8000-000000000001/manches/74000000-0000-4000-8000-000000000002/passages/74000000-0000-4000-8000-000000000003/meilleur-interprete
+- nom: Le public ne peut pas se désigner lui-même
+  operationId: designerMeilleurInterprete
+  acteur: joueur:74000000-0000-4000-8000-000000000009
+  requete:
+    envoiId: 74000000-0000-4000-8000-000000000028
+    numeroModification: 5
+    interpreteId: *noeId
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 422
+    code: DONNEES_INVALIDES
+    detail: Choisis un Interprète de ce Passage.
+    instance: /api/soirees/74000000-0000-4000-8000-000000000001/manches/74000000-0000-4000-8000-000000000002/passages/74000000-0000-4000-8000-000000000003/meilleur-interprete
+- nom: Noé désigne Zoé
+  operationId: designerMeilleurInterprete
+  acteur: joueur:74000000-0000-4000-8000-000000000009
+  requete:
+    envoiId: &designation 74000000-0000-4000-8000-000000000029
+    numeroModification: 5
+    interpreteId: *zoeId
+  statut: 200
+  reponse:
+    envoiId: *designation
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    interpreteId: *zoeId
+    recueLe: &designationLe '2026-11-25T21:00:23Z'
+evenements:
+- nom: Le Passage démarre avec son ordre de Couplets
+  canal: salle
+  message: &demarreSalle
+    type: passage-demarre
+    soireeId: *soireeId
+    revision: 6
+    emisLe: *depart
+    donnees: *vueSalle
+- nom: Une mesure avant le changement, la salle annonce Inès
+  canal: salle
+  message: &annonceSalle
+    type: couplet-annonce
+    soireeId: *soireeId
+    revision: 7
+    emisLe: &annonceLe '2026-11-25T21:00:07.250Z'
+    donnees: &vueAnnonce
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: &courantAnnonce
+          passageId: *passageId
+          numeroModification: 4
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes: *trio
+          etapeId: *etapeId
+          etat: EN_COURS
+          delaiAppelRestantMs: null
+          demarreLe: *depart
+          finPrevueLe: *fin
+          positionChronologiqueMs: 2250
+          calculeLe: *annonceLe
+          couplets:
+            mesuresParCouplet: 2
+            nombreCouplets: 4
+            ordre: *ordre
+            courant: *couplet1
+            suivant: *couplet2
+            suivantAnnonce: true
+        lecteurDesigneId: *lecteurId
+        votes: []
+        grille: *grille
+- nom: Seule la Manette d’Inès porte l’annonce et vibre
+  canal: joueur
+  message:
+    type: couplet-annonce
+    soireeId: *soireeId
+    revision: 9
+    emisLe: *annonceLe
+    donnees:
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      joueurId: *inesId
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: *courantAnnonce
+        grille: *grille
+        instrumentales: [*instrumentale]
+        mesPassagesEnAttente: []
+        invitationsEmises: []
+        invitationsRecues: []
+        peutInscrire: true
+        peutConfirmerPresence: false
+        monCoupletAnnonce: true
+        votes: []
+- nom: La Manette de Maël reçoit la même annonce sans vibrer
+  canal: joueur
+  message:
+    type: couplet-annonce
+    soireeId: *soireeId
+    revision: 8
+    emisLe: *annonceLe
+    donnees:
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      joueurId: *maelId
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: *courantAnnonce
+        grille: *grille
+        instrumentales: [*instrumentale]
+        mesPassagesEnAttente: []
+        invitationsEmises: []
+        invitationsRecues: []
+        peutInscrire: true
+        peutConfirmerPresence: false
+        monCoupletAnnonce: false
+        votes: []
+- nom: Au changement, Inès prend le deuxième Couplet
+  canal: salle
+  message:
+    type: couplet-commence
+    soireeId: *soireeId
+    revision: 8
+    emisLe: &changementLe '2026-11-25T21:00:09.250Z'
+    donnees:
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant:
+          passageId: *passageId
+          numeroModification: 4
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes: *trio
+          etapeId: *etapeId
+          etat: EN_COURS
+          delaiAppelRestantMs: null
+          demarreLe: *depart
+          finPrevueLe: *fin
+          positionChronologiqueMs: 4250
+          calculeLe: *changementLe
+          couplets:
+            mesuresParCouplet: 2
+            nombreCouplets: 4
+            ordre: *ordre
+            courant: *couplet2
+            suivant: { numero: 3, interprete: *mael, premiereMesure: 5, derniereMesure: 6 }
+            suivantAnnonce: false
+        lecteurDesigneId: *lecteurId
+        votes: []
+        grille: *grille
+- nom: La fin prévue ouvre le vote du meilleur Interprète
+  canal: salle
+  message:
+    type: passage-termine
+    soireeId: *soireeId
+    revision: 14
+    emisLe: *fin
+    donnees:
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: &courantClos
+          passageId: *passageId
+          numeroModification: 5
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes: *trio
+          etapeId: *etapeId
+          etat: TERMINE
+          delaiAppelRestantMs: null
+          demarreLe: *depart
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          calculeLe: *fin
+          couplets:
+            mesuresParCouplet: 2
+            nombreCouplets: 4
+            ordre: *ordre
+            courant: { numero: 4, interprete: *zoe, premiereMesure: 7, derniereMesure: 8 }
+            suivant: null
+            suivantAnnonce: false
+        grille: null
+        lecteurDesigneId: *lecteurId
+        votes:
+        - passageId: *passageId
+          numeroModification: 5
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes: *trio
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: *fin
+          clotureLe: null
+          scrutin: MEILLEUR_INTERPRETE
+          nombreVotes: 0
+          voix: null
+- nom: Noé retrouve son choix sur sa Manette
+  canal: joueur
+  message:
+    type: vote-enregistre
+    soireeId: *soireeId
+    revision: 12
+    emisLe: *designationLe
+    donnees:
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      joueurId: *noeId
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: *courantClos
+        grille: null
+        instrumentales: [*instrumentale]
+        mesPassagesEnAttente: []
+        invitationsEmises: []
+        invitationsRecues: []
+        peutInscrire: true
+        peutConfirmerPresence: false
+        monCoupletAnnonce: false
+        votes:
+        - passageId: *passageId
+          numeroModification: 5
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes: *trio
+          etat: OUVERT
+          delaiRestantMs: 28250
+          calculeLe: *designationLe
+          clotureLe: null
+          scrutin: MEILLEUR_INTERPRETE
+          maNote: null
+          monChoix: *zoeId
+          peutVoter: false
+- nom: À la clôture, la salle voit les voix de chaque Interprète
+  canal: salle
+  message:
+    type: vote-clos
+    soireeId: *soireeId
+    revision: 16
+    emisLe: &closLe '2026-11-25T21:00:51.250Z'
+    donnees:
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: TOUS
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: *courantClos
+        grille: null
+        lecteurDesigneId: *lecteurId
+        votes:
+        - passageId: *passageId
+          numeroModification: 5
+          numero: 1
+          instrumentale: *instrumentale
+          interpretes: *trio
+          etat: CLOS
+          delaiRestantMs: 0
+          calculeLe: *closLe
+          clotureLe: *closLe
+          scrutin: MEILLEUR_INTERPRETE
+          nombreVotes: 1
+          voix:
+          - { interprete: *ines, nombreVoix: 0 }
+          - { interprete: *mael, nombreVoix: 0 }
+          - { interprete: *zoe, nombreVoix: 1 }
+- nom: Le Palmarès classe Zoé par victoires
+  canal: salle
+  message:
+    type: manche-terminee
+    soireeId: *soireeId
+    revision: 17
+    emisLe: '2026-11-25T21:01:30Z'
+    donnees:
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueurs
+      dernierBuzz: null
+      classement: *classement
+      freestyle: null
+      palmaresFreestyle:
+      - rang: 1
+        interprete: *zoe
+        nombreVictoires: 1
+        nombrePassages: 1
+- nom: La Console garde aussi les Interprètes sans victoire
+  canal: console
+  message:
+    type: manche-terminee
+    soireeId: *soireeId
+    revision: 20
+    emisLe: '2026-11-25T21:01:30Z'
+    donnees:
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *joueurs
+      dernierBuzz: null
+      classement: *classement
+      programme:
+      - id: *mancheId
+        ordre: 0
+        mode: FREESTYLE
+        etat: TERMINEE
+        reglages: *reglages
+      freestyle: null
+      palmaresFreestyle:
+      - { rang: 1, interprete: *zoe, nombreVictoires: 1, nombrePassages: 1 }
+      - { rang: null, interprete: *ines, nombreVictoires: 0, nombrePassages: 1 }
+      - { rang: null, interprete: *mael, nombreVictoires: 0, nombrePassages: 1 }
+cases:
+- nom: Inscription Freestyle avec trois invités
+  schema: InscriptionSelonMode
+  valide: true
+  valeur:
+    envoiId: *inscription
+    instrumentaleId: null
+    invitesIds: [*maelId, *zoeId, *louId]
+- nom: Quatre invités dépassent les quatre Interprètes
+  schema: InscriptionFreestyle
+  valide: false
+  valeur:
+    envoiId: *inscription
+    instrumentaleId: null
+    invitesIds: [*maelId, *zoeId, *louId, *noeId]
+  correction:
+    chemin: [invitesIds]
+    valeur: [*maelId, *zoeId, *louId]
+- nom: Couplets de trois mesures refusés
+  schema: ReglagesFreestyle
+  valide: false
+  valeur:
+    theme: VILLE
+    schemaDeRimes: ABAB
+    difficulte: TOUS
+    nombreMesures: 8
+    mesuresParCouplet: 3
+    instrumentaleIds: [*instrumentaleId]
+  correction:
+    chemin: [mesuresParCouplet]
+    valeur: 4
+- nom: Un ordre des Couplets d’un seul Interprète est refusé
+  schema: CoupletsFreestyle
+  valide: false
+  valeur:
+    mesuresParCouplet: 2
+    nombreCouplets: 4
+    ordre: [*zoe]
+    courant: *couplet1
+    suivant: *couplet2
+    suivantAnnonce: false
+  correction:
+    chemin: [ordre]
+    valeur: [*zoe, *ines, *mael]
+- nom: Des Couplets sans ordre sont refusés
+  schema: CoupletsFreestyle
+  valide: false
+  valeur:
+    mesuresParCouplet: 2
+    nombreCouplets: 4
+    courant: *couplet1
+    suivant: *couplet2
+    suivantAnnonce: false
+- nom: Un courant sans Couplets est refusé, même à un seul Interprète
+  schema: CourantFreestyle
+  valide: false
+  valeur:
+    passageId: *passageId
+    numeroModification: 4
+    numero: 1
+    instrumentale: *instrumentale
+    interpretes: *trio
+    etapeId: *etapeId
+    etat: EN_COURS
+    delaiAppelRestantMs: null
+    demarreLe: *depart
+    finPrevueLe: *fin
+    positionChronologiqueMs: 0
+    calculeLe: *depart
+- nom: Une désignation ne porte pas de note
+  schema: DesignationMeilleurInterprete
+  valide: false
+  valeur:
+    envoiId: *designation
+    numeroModification: 5
+    interpreteId: *zoeId
+    note: 5
+- nom: La Manette du votant ne reçoit jamais les voix d’autrui
+  schema: VoteFreestyleManette
+  valide: false
+  valeur:
+    passageId: *passageId
+    numeroModification: 5
+    numero: 1
+    instrumentale: *instrumentale
+    interpretes: *trio
+    etat: CLOS
+    delaiRestantMs: 0
+    calculeLe: *closLe
+    clotureLe: *closLe
+    scrutin: MEILLEUR_INTERPRETE
+    maNote: null
+    monChoix: *zoeId
+    peutVoter: false
+    voix: []
+resynchronisation:
+  destination: /topic/soirees/74000000-0000-4000-8000-000000000001/salle
+  routeEtat: /api/soirees/74000000-0000-4000-8000-000000000001/etat/salle
+  typeEvenementFinal: couplet-annonce
+  etat: *capture
+  tampon: [*demarreSalle, *annonceSalle, *annonceSalle]
+  revisionFinale: 7
+  vueFinale: *vueAnnonce

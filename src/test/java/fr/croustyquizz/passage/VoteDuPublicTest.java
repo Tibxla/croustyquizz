@@ -220,4 +220,50 @@ class VoteDuPublicTest {
         horloge.avancer(Duration.ZERO);
         assertThat(clotures).containsExactly(new ClotureVote(PREMIER, 0, 0, debut.plusSeconds(40)));
     }
+
+    @Test
+    void unPassageAPlusieursSeVoteEnDesignantUnSeulDeSesInterpretesSansNote() {
+        UUID trio = new UUID(0, 9), deuxieme = new UUID(0, 10), troisieme = new UUID(0, 11);
+        inscrire(PREMIER, 1);
+        file.inscrire(new NouveauPassage(trio, SOIREE, MANCHE, VOTANT, List.of(VOTANT), "trio", DUREE, 2, debut),
+                List.of(deuxieme, troisieme));
+        file.repondreInvitation(deuxieme, new CiblePassage(trio, 0), true);
+        file.repondreInvitation(troisieme, new CiblePassage(trio, 1), true);
+        var vote = new VoteDuPublic(file, horloge, DUREE, EtatVoteDuPublic.vide(), clotures::add,
+                passage -> passage.interpretes().size() > 1);
+        vote.ouvrir(trio, debut, false);
+        vote.ouvrir(PREMIER, debut, false);
+        var cible = new CiblePassage(trio, 2);
+
+        verifierRefusDeDesignation(vote, AUTRE_VOTANT, cible, AUTRE_VOTANT, "DONNEES_INVALIDES");
+        verifierRefusDeDesignation(vote, deuxieme, cible, troisieme, "VOTE_INTERDIT");
+        verifierRefusDeDesignation(vote, AUTRE_VOTANT, new CiblePassage(PREMIER, 0), INTERPRETE, "DONNEES_INVALIDES");
+        var avant = vote.etat();
+        assertThat(vote.voter(AUTRE_VOTANT, cible, 5, debut, false)).hasValueSatisfying(
+                refus -> assertThat(refus.code()).isEqualTo("DONNEES_INVALIDES"));
+        assertThat(vote.etat()).isEqualTo(avant);
+
+        assertThat(vote.designer(AUTRE_VOTANT, cible, troisieme, debut, false)).isEmpty();
+        assertThat(vote.designer(INTERPRETE, cible, troisieme, debut, false)).isEmpty();
+        assertThat(vote.designer(new UUID(0, 12), cible, VOTANT, debut, false)).isEmpty();
+        verifierRefusDeDesignation(vote, AUTRE_VOTANT, cible, VOTANT, "VOTE_DEJA_ENREGISTRE");
+
+        var etat = vote.etat().votes().stream().filter(v -> v.passageId().equals(trio)).findFirst().orElseThrow();
+        assertThat(VoteDuPublic.voix(etat, file.trouver(trio))).containsExactly(
+                new VoteDuPublic.Voix(VOTANT, 1), new VoteDuPublic.Voix(deuxieme, 0), new VoteDuPublic.Voix(troisieme, 2));
+        assertThat(VoteDuPublic.projeter(etat, debut)).satisfies(projection -> {
+            assertThat(projection.nombreVotes()).isEqualTo(3);
+            assertThat(projection.sommeNotes()).isZero();
+        });
+        horloge.avancer(DUREE);
+        assertThat(clotures).contains(new ClotureVote(trio, 3, 0, debut.plus(DUREE)));
+    }
+
+    private static void verifierRefusDeDesignation(VoteDuPublic vote, UUID joueur, CiblePassage cible, UUID designe,
+            String code) {
+        var avant = vote.etat();
+        assertThat(vote.designer(joueur, cible, designe, Instant.EPOCH.plusSeconds(1), false))
+                .hasValueSatisfying(refus -> assertThat(refus.code()).isEqualTo(code));
+        assertThat(vote.etat()).isEqualTo(avant);
+    }
 }

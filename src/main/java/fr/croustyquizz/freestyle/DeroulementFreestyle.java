@@ -12,7 +12,11 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 
-/** Déroulement des Passages à un seul Interprète sur des Instrumentales locales. */
+/**
+ * Déroulement des Passages de Freestyle sur des Instrumentales locales, à un Interprète ou à plusieurs (#74). Les
+ * Couplets d’un Passage à plusieurs suivent la chronologie du Passage : l’Horloge annonce le suivant une mesure
+ * avant chaque changement, puis fait commencer son Couplet.
+ */
 public final class DeroulementFreestyle implements DeroulementDeManche {
     private static final String PASSAGE_APPELE = "passage-appele";
     private static final Set<Destination> ECRANS = Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
@@ -29,6 +33,8 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
     private final Map<UUID, EtatFreestyle.Contenu> contenus;
     private EtatManche etatManche;
     private String evenementDuMinuteur;
+    private Minuteur prochainCouplet = () -> { };
+    private long generationCouplet;
 
     DeroulementFreestyle(ContexteDeManche contexte, ReglagesFreestyle reglages, EtatFreestyle etat,
             EtatManche etatManche, CompositeurDeGrille compositeur, Duration delaiAppel, Duration dureeVote,
@@ -44,10 +50,11 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         this.commandesDeFile = new CommandesDeFileAttente(file, contexte.soireeId(), contexte.mancheId());
         this.cycle = new CycleDePassage(file, contexte.horloge(), delaiAppel, etat.cycle(), this::surCloturePassage);
         this.vote = new VoteDuPublic(file, contexte.horloge(), dureeVote, etat.voteDuPublic(),
-                cloture -> { evenementDuMinuteur = "vote-clos"; });
+                cloture -> { evenementDuMinuteur = "vote-clos"; }, passage -> passage.interpretes().size() > 1);
         if (etatManche == EtatManche.EN_COURS) {
             cycle.reprogrammerFin();
             vote.reprogrammer(contexte.horloge().maintenant());
+            programmerCouplet();
         }
     }
 
@@ -62,6 +69,8 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         return switch (action) {
             case InscrireFreestyle inscription -> apres(inscrire(inscription), inscription.recueLe());
             case DesinscrirePassage retrait -> apres(commandesDeFile.desinscrire(retrait), retrait.recueLe());
+            case RepondreInvitation reponse -> apres(commandesDeFile.repondreInvitation(reponse), reponse.recueLe());
+            case DesignerMeilleurInterprete choix -> vote.recevoir(choix, etatManche == EtatManche.EN_PAUSE);
             case ConfirmerPresencePassage presence -> confirmer(presence);
             case VoterPassage notation -> vote.recevoir(notation, etatManche == EtatManche.EN_PAUSE);
             case null, default -> incompatible();
@@ -93,7 +102,8 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         var nouveau = new NouveauPassage(inscription.passageId(), contexte.soireeId(), contexte.mancheId(),
                 joueur, List.of(joueur), instrumentale.instrumentaleId().toString(), Duration.ofMillis(finMs),
                 inscription.numeroPropose(), inscription.recueLe());
-        var resultat = commandesDeFile.inscrire(nouveau, inscription.envoiId());
+        var resultat = commandesDeFile.inscrire(nouveau, inscription.invitesIds(), inscription.invitesPresents(),
+                inscription.envoiId());
         if (resultat instanceof Accepte) { contenus.put(nouveau.id(), new EtatFreestyle.Contenu(instrumentale, grille.get())); }
         return resultat;
     }
@@ -134,7 +144,52 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         if (passage == null || !passage.interpretes().contains(presence.joueurId())) { return introuvable(); }
         if (etatManche != EtatManche.EN_COURS) { return incompatible(); }
         var resultat = cycle.demarrer(presence.cible(), presence.etapeId(), passage.duree(), presence.recueLe());
+        if (resultat instanceof ResultatFile.Modifiee && passage.interpretes().size() > 1) {
+            contenus.put(passage.id(), contenus.get(passage.id()).avec(CoupletsDuPassage.tirer(reglages, tirerOrdre(passage.interpretes()))));
+            programmerCouplet();
+        }
         return acquitterCycle(resultat, presence.envoiId(), presence.recueLe(), "CONFIRMER_PRESENCE", "passage-demarre");
+    }
+
+    /** Tirage au sort de l’ordre des Interprètes, une seule fois par Passage, côté serveur. */
+    private List<UUID> tirerOrdre(List<UUID> interpretes) {
+        var ordre = new java.util.ArrayList<>(interpretes);
+        for (int i = ordre.size() - 1; i > 0; i--) {
+            java.util.Collections.swap(ordre, i, hasard.nextInt(i + 1));
+        }
+        return ordre;
+    }
+
+    /**
+     * Arme le prochain événement des Couplets du courant chanté, hors pause : même chronologie que la fin prévue,
+     * positions calculées comme la Grille par {@link Instrumentale#positionSurLeFichier}.
+     */
+    private void programmerCouplet() {
+        annulerCouplet();
+        Passage courant = cycle.courantActif();
+        if (courant == null || courant.etat() != EtatPassage.EN_COURS || cycle.etat().pauseDepuis() != null) { return; }
+        var contenu = contenus.get(courant.id());
+        var couplets = contenu.couplets();
+        if (couplets == null || couplets.tempsDuProchainEvenement() < 0) { return; }
+        long positionMs = contenu.instrumentale().positionSurLeFichier(couplets.tempsDuProchainEvenement());
+        var chronologie = cycle.etat();
+        Instant echeance = chronologie.demarreLe().plus(chronologie.tempsPause()).plusMillis(positionMs);
+        Duration reste = Duration.between(contexte.horloge().maintenant(), echeance);
+        long rappel = generationCouplet;
+        UUID etapeId = chronologie.etapeId();
+        prochainCouplet = contexte.horloge().programmer(reste.isNegative() ? Duration.ZERO : reste, () -> {
+            if (rappel != generationCouplet || !etapeId.equals(cycle.etat().etapeId())) { return; }
+            var suivants = contenus.get(courant.id()).couplets().avancer();
+            contenus.put(courant.id(), contenus.get(courant.id()).avec(suivants));
+            evenementDuMinuteur = suivants.suivantAnnonce() ? "couplet-annonce" : "couplet-commence";
+            programmerCouplet();
+        });
+    }
+
+    private void annulerCouplet() {
+        generationCouplet++;
+        prochainCouplet.annuler();
+        prochainCouplet = () -> { };
     }
 
     private ResultatDeCommande acquitterCycle(ResultatFile resultat, UUID envoiId, Instant recueLe, String action, String cause) {
@@ -148,6 +203,7 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         if (etatManche != EtatManche.EN_COURS) { return incompatible(); }
         etatManche = EtatManche.EN_PAUSE;
         cycle.suspendre(commande.recueLe());
+        annulerCouplet();
         vote.suspendre(commande.recueLe());
         return new Accepte(commande.accuse(), ECRANS, "manche-en-pause");
     }
@@ -159,6 +215,7 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         etatManche = EtatManche.EN_COURS;
         cycle.reprendre(commande.recueLe());
         vote.reprendre(commande.recueLe());
+        programmerCouplet();
         return apres(new Accepte(commande.accuse(), ECRANS, "manche-reprise"), commande.recueLe());
     }
 
@@ -187,6 +244,11 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
     }
 
     private void surCloturePassage(CloturePassage cloture) {
+        annulerCouplet();
+        var contenu = contenus.get(cloture.passageId());
+        if (contenu != null && contenu.couplets() != null) {
+            contenus.put(cloture.passageId(), contenu.avec(contenu.couplets().sansAnnonce()));
+        }
         if (cloture.etat() == EtatPassage.TERMINE) {
             vote.ouvrir(cloture.passageId(), cloture.instant(), false);
             evenementDuMinuteur = enchainer(cloture.instant()) ? PASSAGE_APPELE : "passage-termine";

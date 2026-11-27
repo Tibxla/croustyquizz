@@ -30,7 +30,7 @@ export function texteEnvoi(e) {
 export function creerInterface(zones, contexte, { annoncerConnexion = true, mode = 'karaoke' } = {}) {
 	const document = zones.principale.ownerDocument;
 	const ecouteurs = [], dialogues = new Set();
-	let detruite = false, machine, quitter, bloc, rendue = false, etatConnexion = 'synchronisation';
+	let detruite = false, machine, quitter, bloc, joueurs = [], rendue = false, etatConnexion = 'synchronisation';
 	let captures = 0, attendCapture = false, csrfInvalide = false, ordre = 0, commandeEnPreparation, suspendre = false;
 	const envois = new Map();
 	function e(tag, classe = '', texte) {
@@ -95,7 +95,10 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 	const ui = {
 		document, principale, laterale, e, bouton, ecouter, envois, contexte,
 		surRendu() {}, surManche() {}, surDestruction() {}, messageInvalidation() {},
-		get bloc() { return bloc; }, get synchronisee() { return etatConnexion === 'synchronisee' && rendue; },
+		get bloc() { return bloc; },
+		// Joueurs présents de la Soirée, partie commune de la vue : la Manette y choisit ses invités (#138).
+		get joueurs() { return joueurs; },
+		get synchronisee() { return etatConnexion === 'synchronisee' && rendue; },
 		get mutationsPermises() { return ui.synchronisee && !attendCapture && !csrfInvalide; },
 		get csrfInvalide() { return csrfInvalide; },
 		rendre,
@@ -106,6 +109,8 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 			if (!bloc) return false;
 			switch (commande.type) {
 				case 'VOTER': return (bloc.votes ?? []).some(vote => vote.passageId === commande.passageId && vote.peutVoter);
+				case 'REPONDRE_INVITATION':
+					return (bloc.invitationsRecues ?? []).some(i => i.passage.passageId === commande.passageId);
 				case 'CONFIRMER_PRESENCE':
 					return bloc.peutConfirmerPresence && commande.passageId === bloc.courant?.passageId;
 				case 'APPELER': return bloc.peutAppeler && bloc.passagesEnAttente.some(p => p.position === 1 && p.passageId === commande.passageId);
@@ -161,10 +166,13 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 		remplacerListe(liste, enfants, titre) {
 			const actif = document.activeElement, avaitFocus = liste.contains(actif);
 			const id = actif?.getAttribute('data-passage-id') ?? actif?.getAttribute('data-chanson-id');
+			const action = actif?.getAttribute('data-action') ?? null;
 			liste.replaceChildren(...enfants);
 			if (avaitFocus) {
 				(Array.from(liste.querySelectorAll('[data-passage-id], [data-chanson-id]')).find(e =>
-					e.tagName === actif.tagName && (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id) ?? titre)?.focus();
+					!e.disabled && !e.hidden && e.tagName === actif.tagName
+					&& (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id
+					&& e.getAttribute('data-action') === action) ?? titre)?.focus();
 			}
 		},
 		afficher(vue, origine) {
@@ -179,6 +187,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 					bloc = vue[mode]; machine = creerMachine(); ui.surManche(blocPrecedent);
 					if (confirmationInvalidee) ui.messageInvalidation();
 				} else bloc = vue[mode];
+				joueurs = vue.joueurs ?? [];
 				rendue = true;
 				if (origine?.source === 'capture') { captures++; attendCapture = false; }
 				const personnels = bloc.mesPassagesEnAttente ?? [];
@@ -188,9 +197,12 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 				for (const [cle, e] of envois) {
 					const { acteurType, passageId, type } = e.commande;
 					if (acteurType !== 'JOUEUR' || !passageId) continue;
+					// Une réponse acceptée fait passer l'Invitation dans « Tes Passages » : son reçu reste visible.
+					const invite = type === 'REPONDRE_INVITATION'
+						&& (bloc.invitationsRecues ?? []).some(i => i.passage.passageId === passageId);
 					const visible = type === 'VOTER' ? voteAttendUnRecu(bloc, passageId, e.etat)
 						: type === 'CONFIRMER_PRESENCE' ? bloc.courant?.passageId === passageId
-							: personnels.some(p => p.passageId === passageId);
+							: invite || personnels.some(p => p.passageId === passageId);
 					if (!visible) { machine.oublier(cle); envois.delete(cle); }
 				}
 			} finally { suspendre = false; }
@@ -213,13 +225,28 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 function voteAttendUnRecu(bloc, passageId, etatEnvoi) {
 	const vote = bloc.votes?.find(vote => vote.passageId === passageId);
 	// Le STOMP peut devancer le HTTP. Laisser arriver le reçu tant que son ticket est visible.
-	return vote && (etatEnvoi === 'en-cours' || (vote.etat === 'OUVERT' && vote.maNote == null));
+	// Une désignation du Freestyle (#74) s'enregistre dans monChoix, une note dans maNote.
+	return vote && (etatEnvoi === 'en-cours' || (vote.etat === 'OUVERT' && vote.maNote == null && vote.monChoix == null));
+}
+
+// Jusqu'à quatre pseudos : chacun se tronque seul, aucun ne disparaît, et le ticket garde les noms complets
+// dans son aria-label (#135).
+function lignePseudos(e, classe, interpretes) {
+	const ligne = e('p', classe);
+	interpretes.forEach((interprete, index) => {
+		if (index) ligne.append(e('span', 'karaoke__separateur', ', '));
+		const pseudo = e('span', 'karaoke__pseudo', interprete.pseudo);
+		pseudo.setAttribute('title', interprete.pseudo);
+		ligne.append(pseudo);
+	});
+	return ligne;
 }
 
 export function creerTicket(ui, passage, { personnel = false, courant = false, selectionner, estimation = false, details = false } = {}) {
 	const { e } = ui;
 	const teinte = teintePassage(passage.numero);
-	const pseudos = (passage.interpretes ?? [passage.interprete]).map(i => i.pseudo).join(', ');
+	const interpretes = passage.interpretes ?? [passage.interprete];
+	const pseudos = interpretes.map(i => i.pseudo).join(', ');
 	const contenu = passage.chanson ?? passage.instrumentale;
 	const artiste = passage.chanson?.artiste;
 	const ticket = e(selectionner ? 'button' : 'article', personnel ? 'mon-ticket' : `ticket ticket--${teinte}`);
@@ -230,7 +257,7 @@ export function creerTicket(ui, passage, { personnel = false, courant = false, s
 	if (personnel) haut.append(e('span', 'mon-ticket__numero', passage.numero));
 	if (personnel) haut.append(e('span', 'mon-ticket__etiquette', passage.prioritaire ? 'Prioritaire' : 'En attente'));
 	const bas = e('div', personnel ? 'mon-ticket__bas' : 'ticket__corps');
-	bas.append(e('p', personnel ? 'mon-ticket__quoi' : 'ticket__qui', pseudos),
+	bas.append(lignePseudos(e, `${personnel ? 'mon-ticket__quoi' : 'ticket__qui'} karaoke__interpretes`, interpretes),
 		e('p', personnel ? 'mon-ticket__quoi' : 'ticket__quoi', contenu.titre));
 	if (artiste) bas.append(e('p', 'ticket__quoi', artiste));
 	if ((personnel && !courant) || details) bas.append(e('p', 'karaoke__position', `Position ${passage.position}${passage.tour ? ` · Tour ${passage.tour}` : ''}`));
@@ -241,6 +268,60 @@ export function creerTicket(ui, passage, { personnel = false, courant = false, s
 	ticket.append(haut, bas);
 	if (selectionner) { ticket.type = 'button'; ticket.setAttribute('aria-pressed', 'false'); ui.ecouter(ticket, 'click', () => selectionner(passage.passageId)); }
 	return ticket;
+}
+
+/** Au plus trois autres Joueurs présents, cochés sur la fiche de Chanson (#138). */
+export const NOMBRE_INVITES_MAX = 3;
+
+export function invitesPossibles(joueurs, moi) {
+	return (joueurs ?? []).filter(joueur => joueur.id !== moi);
+}
+
+/** Cases des invités possibles, communes aux Modes à Passages (#138, #74). */
+export function creerChoixInvites(ui, moi, { verbe = 'Chanter' } = {}) {
+	const { e, ecouter } = ui;
+	const element = e('div');
+	const groupe = e('fieldset', 'karaoke__invites');
+	const legende = e('legend', '', `${verbe} avec (trois au plus)`);
+	const aide = e('p', 'champ__aide', 'Chaque Joueur coché reçoit une Invitation et choisit de te rejoindre.');
+	groupe.append(legende, aide);
+	const cases = new Map();
+	const coches = () => [...cases.values()].filter(({ choix }) => choix.checked).map(({ choix }) => choix.value);
+	// Une liste masquée garde ses cases pour plus tard, mais n'invite personne en silence.
+	const choisis = () => (element.hidden ? [] : coches());
+	function limiter() {
+		const pleins = coches().length >= NOMBRE_INVITES_MAX;
+		for (const { choix } of cases.values()) choix.disabled = pleins && !choix.checked;
+	}
+	function rendre({ vider = false, desactiver = false, masquer = false } = {}) {
+		const candidats = invitesPossibles(ui.joueurs, moi);
+		const presents = new Set(candidats.map(joueur => joueur.id));
+		for (const [id, { ligne }] of cases) {
+			if (presents.has(id)) continue;
+			ligne.remove();
+			cases.delete(id);
+		}
+		for (const joueur of candidats) {
+			const existante = cases.get(joueur.id);
+			if (existante) {
+				if (existante.pseudo.textContent !== joueur.pseudo) existante.pseudo.textContent = joueur.pseudo;
+				continue;
+			}
+			const ligne = e('label', 'karaoke__invite'), choix = e('input'), pseudo = e('span', '', joueur.pseudo);
+			choix.type = 'checkbox'; choix.value = joueur.id;
+			ligne.append(choix, pseudo);
+			groupe.append(ligne);
+			cases.set(joueur.id, { ligne, choix, pseudo });
+			ecouter(choix, 'change', limiter);
+		}
+		if (vider) for (const { choix } of cases.values()) choix.checked = false;
+		groupe.disabled = desactiver;
+		element.hidden = masquer || !cases.size;
+		if (!cases.size) groupe.remove();
+		else if (!element.contains(groupe)) element.append(groupe);
+		limiter();
+	}
+	return { element, rendre, choisis };
 }
 
 export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
@@ -258,7 +339,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	const CONSULTATION = 'Consultation en cours…';
 	const resultats = e(inscrire ? 'ul' : 'table', `karaoke__resultats${inscrire ? '' : ' resultats'}`);
 	parent.append(titre, formulaire, etatLecture, resultats);
-	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur;
+	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur, invitations;
 	const machine = creerMachineRecherche({ envoyer: (...args) => ui.contexte.envoyer(...args), creerUuid,
 		programmerDelai: (f, ms) => setTimeout(f, ms), annulerDelai: clearTimeout,
 		surEtat(etat) {
@@ -321,9 +402,14 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			if (fiche.statut === 404 && fiche.detail) contenu.append(e('p', '', fiche.detail));
 			if (fiche.origineErreur === 'delai') contenu.append(bouton('Réessayer', () => consulter(courante.chansonId, declencheur)));
 		} else if (inscrire) {
+			invitations = creerChoixInvites(ui, ui.contexte.acteur.identifiant);
+			contenu.append(invitations.element);
 			boutonInscription = bouton("M'inscrire", () => {
 				if (!fiche?.donnees || !etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises).possible) return;
-				ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages`, corps: { chansonId: fiche.chansonId },
+				const invitesIds = invitations.choisis();
+				// Sans invité, le corps reste celui d'une inscription seule.
+				const corps = invitesIds.length ? { chansonId: fiche.chansonId, invitesIds } : { chansonId: fiche.chansonId };
+				ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages`, corps,
 					mancheId: ui.bloc.mancheId, acteurType: 'JOUEUR', chansonId: fiche.chansonId });
 			}, 'bouton bouton--action bouton--grand');
 			etatAction = e('p'); etatAction.setAttribute('role', 'status');
@@ -338,6 +424,7 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		const etat = etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises);
 		motif.textContent = etat.motif ?? '';
 		if (inscrire) {
+			invitations.rendre();
 			const cle = ui.inscription(fiche.chansonId), envoi = ui.envoiInscription(fiche.chansonId);
 			boutonInscription.disabled = !etat.possible || Boolean(cle);
 			etatAction.textContent = texteEnvoi(envoi);

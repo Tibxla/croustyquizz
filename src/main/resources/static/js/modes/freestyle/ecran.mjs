@@ -1,6 +1,7 @@
 import { creerInterface, creerTicket, texteAutresPassages } from '../karaoke/commun.mjs';
 import { formaterNombreVotes } from '../../vue-commune.mjs';
 import { positionDansGrille } from './grille.mjs';
+import { pseudos, texteAnnonce, texteCouplet, texteOrdre } from './couplets.mjs';
 
 // Écart toléré entre le lecteur et la position estimée par le serveur avant de recaler la lecture.
 const ECART_DE_RECALAGE_MS = 300;
@@ -33,12 +34,18 @@ export function monter(zones, contexte) {
 	rythme.append(mesure, temps, mot, suivant);
 	const etatLecture = e('p', 'freestyle__phase');
 	etatLecture.setAttribute('role', 'status');
-	ui.principale.append(interprete, phase, rythme, etatLecture);
+	// Passage à plusieurs (#74) : ordre tiré par le serveur, Couplet courant et annonce du suivant.
+	const ordreCouplets = e('p', 'freestyle__ordre');
+	const coupletCourant = e('p', 'freestyle__couplet');
+	const annonceSuivant = e('p', 'freestyle__annonce');
+	annonceSuivant.setAttribute('role', 'status');
+	// La Grille doit rester entière à 1080 px : l'ordre et le Couplet courant vont dans la zone latérale.
+	ui.principale.append(interprete, phase, annonceSuivant, rythme, etatLecture);
 	const titresVotes = e('h2', '', 'Vote du public');
 	const votes = e('ul', 'karaoke__liste-votes');
 	const file = e('ol', 'rouleau a-venir');
 	const autres = e('p');
-	ui.laterale.append(titresVotes, votes, e('h2', '', 'À venir'), file, autres);
+	ui.laterale.append(ordreCouplets, coupletCourant, titresVotes, votes, e('h2', '', 'À venir'), file, autres);
 
 	let source, image, positionConnue = null, derniersTemps, dernierMot, dernierPassage, recaler = false;
 	let sonDeManche = false, autorisation = Promise.resolve(false);
@@ -224,15 +231,22 @@ export function monter(zones, contexte) {
 		if (dernierPassage !== courant?.etapeId) positionConnue = null;
 		dernierPassage = courant?.etapeId;
 		if (origine?.source === 'capture') recalerSurCapture();
+		// Une fois le Passage clos, la salle renomme tous ses Interprètes et retire les Couplets.
+		const couplets = ['EN_COURS', 'EN_PAUSE'].includes(courant?.etat) ? courant.couplets ?? null : null;
 		interprete.hidden = !courant;
-		interprete.textContent = courant?.interprete.pseudo ?? '';
+		interprete.textContent = couplets ? couplets.courant.interprete.pseudo : pseudos(courant?.interpretes);
+		for (const [element, texte] of [[ordreCouplets, texteOrdre(couplets)], [coupletCourant, texteCouplet(couplets)],
+			[annonceSuivant, texteAnnonce(couplets)]]) {
+			if (element.textContent !== texte) element.textContent = texte;
+			element.hidden = !texte;
+		}
 		phase.textContent = bloc.etat === 'EN_PAUSE' ? 'Manche en pause' :
 			({ APPELE: 'Monte sur scène', EN_COURS: courant?.instrumentale.titre, TERMINE: 'Passage terminé',
 				SAUTE: 'Passage sauté' })[courant?.etat] ?? 'En attente d’un Passage';
 		rythme.hidden = !grille;
 		if (grille) afficherPosition(positionConnue);
 		votes.replaceChildren(...bloc.votes.filter(vote => vote.etat === 'OUVERT').map(vote =>
-			e('li', '', `${vote.interprete.pseudo} · ${formaterNombreVotes(vote.nombreVotes)}`)));
+			e('li', '', `${pseudos(vote.interpretes)} · ${formaterNombreVotes(vote.nombreVotes)}`)));
 		titresVotes.hidden = !votes.childElementCount;
 		file.replaceChildren(...bloc.passagesEnAttente.map(passage => {
 			const ligne = e('li');

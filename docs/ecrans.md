@@ -151,6 +151,22 @@ deux Manettes de la même Soirée de démonstration.
    affiche le « Podium final » sans le Palmarès, et que la Console affiche toujours
    le Palmarès du Karaoké.
 
+### Recette des Passages à plusieurs (#66)
+
+Spécification #135, tickets #138 et #139. Reprendre la Soirée de démonstration du ticket #114 avec la Console, l’Écran de salle et les Manettes des Joueurs 1, 2 et 3, une Manche de Karaoké démarrée en Pilotage Manuel avec `limitePassagesEnAttente` à 1.
+
+1. Sur la Manette du Joueur 1, ouvrir la fiche d’une Chanson. Vérifier que « Chanter avec (trois au plus) » liste les autres Joueurs présents, sans le Joueur 1, et qu’une quatrième case se désactive quand trois sont cochées. Cocher les Joueurs 2 et 3, puis « M’inscrire ».
+2. Vérifier que le Passage entre dans la File avec le seul Joueur 1 sur les trois écrans. La Console ajoute « Invités sans réponse : Joueur 2 et Joueur 3 » sous le ticket ; l’Écran de salle ne montre aucune Invitation. Le Joueur 1 voit sous son ticket « Joueur 2 : pas encore répondu » et « Joueur 3 : pas encore répondu ».
+3. Sur la Manette du Joueur 2, vérifier la section « Invitations » : ticket du Passage, « Joueur 1 t’invite à chanter. », « Accepter » et « Refuser ». Inscrire d’abord un Passage seul avec le Joueur 2, puis cliquer sur « Accepter » : le refus « Ta limite de Passages en attente est atteinte. » s’affiche et l’Invitation reste ouverte. Désinscrire ce Passage seul, puis accepter.
+4. Vérifier que le Joueur 2 rejoint le ticket sur les trois écrans (« Joueur 1, Joueur 2 »), que le Passage apparaît dans « Tes Passages » du Joueur 2 avec « Quitter ce Passage », et que le Joueur 1 lit « Joueur 2 : a accepté ».
+5. Refuser l’Invitation sur la Manette du Joueur 3 : elle disparaît, le Joueur 1 lit « Joueur 3 : a refusé » et la Console ne nomme plus d’invité sans réponse.
+6. Sur la Manette du Joueur 1, cliquer sur « Me désinscrire » : la confirmation nomme « Joueur 2 perd aussi ce Passage. ». Annuler. Sur la Manette du Joueur 2, cliquer sur « Quitter ce Passage » : la confirmation dit que le Passage reste pour le Joueur 1. Confirmer et vérifier que le Passage reste dans la File avec le seul Joueur 1.
+7. Inscrire un nouveau Passage du Joueur 1 avec les Joueurs 2 et 3 (désinscrire le précédent d’abord), faire accepter le Joueur 2, laisser le Joueur 3 sans réponse, puis « Appeler le suivant » sur la Console. Vérifier que l’Invitation du Joueur 3 disparaît de sa Manette sans message d’erreur, que l’appel montre « Joueur 1, Joueur 2 », que la Manette du Joueur 2 propose « Je suis prêt » et qu’une seconde confirmation depuis le Joueur 1 est refusée.
+8. Après la fin du Passage, vérifier que le Vote du public est proposé au Joueur 3 seulement : les Manettes des Joueurs 1 et 2 affichent « Le public vote pour ton Passage. ».
+9. À 390 × 844, dans une Soirée enregistrée où quatre Joueurs ont rejoint par `rejoindre.html` avec des pseudos longs, former un Passage de quatre Interprètes : les pseudos tiennent sur deux lignes au plus dans le ticket de la Manette, de la Console et de l’Écran de salle, sans déborder, et le lecteur d’écran annonce la liste complète.
+
+Recette exécutée le 25/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans interface : Écran à 1920 × 1080, Console à 1440 px et trois Manettes de démonstration à 390 × 844. La fiche ne propose que les Joueurs 2, 3 et 4. Le Joueur 2 reçoit « Joueur de démonstration 1 t'invite à chanter » et accepte, le Joueur 3 refuse. L'inscripteur lit « a accepté » et « a refusé ». La Console et l'Écran affichent « Joueur de démonstration 1, Joueur de démonstration 2 », et la salle ne montre aucune Invitation. Après l'appel, l'invitée confirme « Je suis prêt » et le Passage démarre. Aucun écran ne déborde.
+
 ### Musique d'attente (#140)
 
 Sur `/ecran.html`, choisir le dossier de musique depuis la coquille. Les MP3, M4A, OGG et WAV du sous-dossier `Attente`, y compris dans ses sous-dossiers, alimentent la Musique d'attente. La casse et les accents du nom `Attente` sont ignorés. La recherche locale des Chansons écarte ces fichiers. Le navigateur garde le dossier en mémoire le temps de l'ouverture de la page.
@@ -299,6 +315,23 @@ lisibilité à 5 m.
 
 Les amorces thématiques et les familles de rimes de cette branche sont écrites
 pour la recette. Le dictionnaire issu de Lexique relève de #69.
+
+### Recette du Freestyle à plusieurs (#74)
+
+Reprendre la préparation ci-dessus avec la Console, l’Écran de salle et les Manettes de quatre Joueurs : trois Interprètes et un Joueur du public. Prendre une Instrumentale à 120 BPM, départ du beat à 250 ms, une Grille de 8 mesures et **Mesures par Couplet** à 2 : une mesure dure alors 2 s et la Grille compte quatre Couplets.
+
+1. Dans la Console, vérifier que **Mesures par Couplet** propose 2, 4 et 8, avec 4 par défaut, puis ajouter la Manche à 2.
+2. Sur la Manette du Joueur 1, vérifier que « Rapper avec (trois au plus) » liste les autres Joueurs présents, sans le Joueur 1, et qu’une quatrième case se désactive. Cocher les Joueurs 2 et 3, puis **M’inscrire**. La Console affiche « Joueur 2 n’a pas encore répondu (Passage 1) » ; l’Écran de salle ne montre aucune Invitation.
+3. Sur la Manette du Joueur 2, lire « Joueur 1 t’invite à rapper. » avec l’Instrumentale, puis **Accepter**. Faire de même avec le Joueur 3. Le Joueur 1 lit « a accepté » pour chacun, et le ticket porte les trois pseudos sur les trois écrans.
+4. Appeler le Passage, puis **Je suis prêt** depuis n’importe quel Interprète. Vérifier que l’Écran de salle affiche « Ordre des Couplets : … » avec les trois pseudos, que le titre nomme l’Interprète du premier Couplet et que « Couplet 1 sur 4 · mesures 1 à 2 » est lisible à 5 m. La Console montre le même ordre. Recharger l’Écran de salle : l’ordre ne change pas.
+5. À 2,25 s de lecture, au début de la mesure 2, l’Écran de salle annonce « À <Interprète suivant> dans une mesure ». Sur un vrai téléphone, seule la Manette de cet Interprète vibre, une fois, et affiche « À toi dans une mesure ! » ; les deux autres Manettes ne vibrent pas. Recharger cette Manette pendant l’annonce : le texte reste, sans nouvelle vibration.
+6. À 4,25 s, le titre passe au deuxième Interprète et « Couplet 2 sur 4 ». Mettre la Manche en pause entre deux annonces, attendre, reprendre : l’annonce suivante arrive avec le temps restant, recalée sur la balle. Le quatrième Couplet revient au premier Interprète de l’ordre.
+7. À la fin prévue, la Manette du Joueur du public propose **Désigne le meilleur Interprète** avec un bouton par Interprète, sans note de 1 à 5. Choisir un Interprète et **Envoyer mon choix** : « Ton choix est enregistré : … ». Les Manettes des trois Interprètes affichent « Le public vote pour ton Passage. ».
+8. Jouer ensuite un Passage à un seul Interprète : il n’a ni ordre ni annonce, et le public le note de 1 à 5.
+9. Terminer la Manche. Le Palmarès de l’Écran de salle classe d’abord l’Interprète désigné (« 1 victoire »), puis les Passages seuls par note ; la Console garde aussi les Interprètes sans victoire, sans rang. Le Classement général ne change pas.
+10. À 390 × 844, vérifier que la liste des invités, la section **Invitations** et les boutons de désignation tiennent sans déborder, et qu’un lecteur d’écran annonce « À toi dans une mesure ! » une seule fois.
+
+Recette exécutée le 25/11/2026 sur l’application réelle (PostgreSQL), dans Chromium sans interface, à 120 BPM avec des Couplets de 2 mesures. Le Joueur 1 invite les Joueurs 2 et 3, qui acceptent. Au départ, la salle affiche l’ordre tiré au sort ; « À … dans une mesure » s’affiche une mesure avant chaque changement de Couplet, et chaque Interprète annoncé reçoit une seule vibration. Les Interprètes n’ont pas le vote ; le Joueur 4 désigne le Joueur 3, et le Palmarès affiche « 1 victoire ». L’ordre et le Couplet courant sont dans la zone latérale, pour que la Grille reste entière à 1080 px. Aucun écran ne déborde. Restent la vibration et la lecture à 5 m sur le vrai matériel.
 
 ## Photos de la salle (#72)
 

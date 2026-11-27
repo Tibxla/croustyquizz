@@ -143,7 +143,7 @@ Joueur qui fait partie d'un Passage, qu'il l'ait inscrit ou qu'il y ait été in
 _Éviter_ : chanteur, rappeur, artiste
 
 **Invitation** :
-Proposition qu'un Joueur fait à un autre, en inscrivant un Passage, de devenir Interprète de ce Passage. L'invité l'accepte ou la refuse ; sans réponse, elle expire à l'appel du Passage.
+Proposition qu'un Joueur fait à un autre, en inscrivant un Passage, de devenir Interprète de ce Passage. L'invité l'accepte ou la refuse ; sans réponse, elle expire à l'appel du Passage, à son retrait ou à la fin de la Manche.
 _Éviter_ : demande d'ami, ajout
 
 **File d'attente** :

@@ -79,6 +79,59 @@
   overflow-wrap: anywhere;
 }
 
+/* Passage à plusieurs (#74) : ordre et Couplet en crème usée, annonce du suivant en rose, sans citron sur la salle. */
+.freestyle__ordre,
+.freestyle__couplet {
+  margin: 0 0 .3em;
+  color: var(--texte-2);
+  font-size: clamp(1rem, 1.6vw, 1.75rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.freestyle__annonce {
+  margin: 0 0 .4em;
+  color: var(--rose);
+  font: 800 clamp(1.25rem, 2.8vw, 3rem)/1 var(--police-chiffres);
+  overflow-wrap: anywhere;
+}
+
+.freestyle__ordre[hidden],
+.freestyle__couplet[hidden],
+.freestyle__annonce[hidden] { display: none; }
+
+.freestyle__annonce-manette {
+  margin: 0;
+  color: var(--rose);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.freestyle__annonce-manette:empty { display: none; }
+
+.freestyle__couplet-manette { margin: 0; color: var(--texte-2); }
+
 @media (prefers-reduced-motion: reduce) {
   .freestyle__balle { transform: translateX(-50%); }
+}
+
+/* Inscription sur la Manette : le champ de l'Instrumentale, les invités, puis l'envoi. */
+.freestyle__inscription { display: grid; gap: var(--espace-3); }
+
+/* Manette (#283) : un Interprète par ligne, et chaque pseudo ne se tronque qu'au-delà de
+   deux lignes, au lieu de 13 caractères comme au Karaoké. Aucun Interprète ne disparaît. */
+.freestyle .mon-ticket .karaoke__interpretes {
+  display: flex;
+  flex-direction: column;
+}
+.freestyle .mon-ticket .karaoke__separateur { display: none; }
+.freestyle .mon-ticket .karaoke__pseudo {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  max-width: none;
+  white-space: normal;
+  overflow-wrap: break-word;
 }

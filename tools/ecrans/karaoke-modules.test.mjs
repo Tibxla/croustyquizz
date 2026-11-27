@@ -849,3 +849,12 @@ test('Salle : « Aucun vote » seul à la clôture, en Atkinson et sans aplat ci
 	assert.match(css, /\.bandeau-vote\s*\{[^}]*var\(--police-texte\)/s);
 	assert.doesNotMatch(css.match(/[^{}]*\.bandeau-vote[^{}]*\{[^}]*\}/g).join(''), /var\(--citron/);
 });
+
+test('salle : un Passage à plusieurs montre tous ses Interprètes et aucune Invitation (#138)', () => {
+	const b = creerBanc(ecran, 'ECRAN');
+	const groupe = { ...passage('groupe', 18), interpretes: [{ joueurId: 'j', pseudo: 'Jo' }, { joueurId: 'b', pseudo: 'Basile' }] };
+	b.module.afficher(vue({ prochainsPassages: [groupe], invitationsEnAttente: [{ passageId: 'groupe', invite: { joueurId: 'c', pseudo: 'Célia' } }] }), capture);
+	assert.equal(b.principale.querySelector('.karaoke__interpretes').textContent, 'Jo, Basile');
+	assert.doesNotMatch(b.principale.textContent + b.laterale.textContent, /Célia/);
+	b.module.demonter();
+});

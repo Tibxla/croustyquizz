@@ -53,8 +53,9 @@ public class PassagesControleur {
         }
         // Même empreinte pour les reçus Karaoké antérieurs au partage de la route.
         if (corps.concerneLeKaraoke()) {
-            envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(), new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(),
-                    java.util.Map.of("envoiId", corps.envoiId(), "chansonId", corps.chansonId())));
+            var empreinte = new java.util.HashMap<String, Object>(java.util.Map.of("envoiId", corps.envoiId(), "chansonId", corps.chansonId()));
+            if (corps.invitesIds() != null) { empreinte.put("invitesIds", corps.invitesIds()); }
+            envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(), new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(), empreinte));
         }
         return ReponsesDeCommande.http(service.inscrire(mancheId, envoi, corps), route);
     }
@@ -69,6 +70,15 @@ public class PassagesControleur {
                 new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service(soireeId, mancheId).desinscrirePassage(mancheId, passageId, envoi, corps), route);
     }
+    @PostMapping("/passages/{passageId}/invitation")
+    public ResponseEntity<?> repondreInvitation(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId, @Valid @RequestBody CorpsPassage.ReponseInvitation corps, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/invitation";
+        var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(),
+                new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service(soireeId, mancheId).repondreInvitation(mancheId, passageId, envoi, corps), route);
+    }
     @PostMapping("/passages/{passageId}/vote")
     public ResponseEntity<?> voterPassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
             @PathVariable UUID passageId, @Valid @RequestBody CorpsPassage.VotePassage corps, Acteur acteur) {
@@ -77,6 +87,15 @@ public class PassagesControleur {
         var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(),
                 new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service(soireeId, mancheId).voterPassage(mancheId, passageId, envoi, corps), route);
+    }
+    @PostMapping("/passages/{passageId}/meilleur-interprete")
+    public ResponseEntity<?> designerMeilleurInterprete(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId, @Valid @RequestBody CorpsPassage.DesignationMeilleurInterprete corps, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/meilleur-interprete";
+        var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(),
+                new CorpsPassage.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service(soireeId, mancheId).designerMeilleurInterprete(mancheId, passageId, envoi, corps), route);
     }
     @PostMapping("/passages/{passageId}/retrait")
     public ResponseEntity<?> retirerPassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,

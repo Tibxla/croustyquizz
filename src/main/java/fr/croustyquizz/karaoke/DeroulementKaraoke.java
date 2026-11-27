@@ -143,7 +143,12 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
         if (action instanceof VoterPassage notation) { return vote.recevoir(notation, etat == EtatManche.EN_PAUSE); }
+        // Le Karaoké note toujours : le Vote du public refuse la désignation (422).
+        if (action instanceof DesignerMeilleurInterprete choix) { return vote.recevoir(choix, etat == EtatManche.EN_PAUSE); }
         if (action instanceof ConfirmerPresencePassage confirmation) { return confirmer(confirmation); }
+        if (action instanceof RepondreInvitation reponse) {
+            return commandesDeFile.repondreInvitation(reponse);
+        }
         if (action instanceof DesinscrirePassage desinscription) {
             return commandesDeFile.desinscrire(desinscription);
         }
@@ -165,7 +170,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         var nouveau = new NouveauPassage(inscription.faits().passageId(),
                 contexte.soireeId(), contexte.mancheId(), inscription.joueurId(), List.of(inscription.joueurId()),
                 inscription.chansonId(), Duration.ofMillis(chanson.dureeMs()), inscription.faits().numeroPropose(), inscription.recueLe());
-        var resultat = commandesDeFile.inscrire(nouveau, inscription.envoiId());
+        var resultat = commandesDeFile.inscrire(nouveau, inscription.invitesIds(), inscription.invitesPresents(), inscription.envoiId());
         if (resultat instanceof Accepte) { contenus.put(nouveau.id(), inscription.contenu()); }
         return resultat;
     }

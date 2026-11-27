@@ -159,7 +159,8 @@ http:
           numeroModification: 2
           numero: 1
           instrumentale: *instrumentale
-          interprete: &interprete
+          interpretes: &interpretes
+          - &interprete0
             joueurId: *interpreteId
             pseudo: Inès
           etapeId: *etapeId
@@ -169,6 +170,7 @@ http:
           finPrevueLe: &fin '2026-11-24T20:00:21.250Z'
           positionChronologiqueMs: 0
           calculeLe: *depart
+          couplets: null
         lecteurDesigneId: *lecteurId
         votes: []
         grille: &masquee
@@ -247,6 +249,7 @@ evenements:
         peutAppeler: false
         peutPasser: true
         instrumentales: *instrumentales
+        invitationsEnAttente: []
         votes: []
 - nom: La Manette reçoit la même Grille que la salle
   canal: joueur
@@ -279,8 +282,11 @@ evenements:
         grille: *masquee
         instrumentales: *instrumentales
         mesPassagesEnAttente: []
+        invitationsEmises: []
+        invitationsRecues: []
         peutInscrire: true
         peutConfirmerPresence: false
+        monCoupletAnnonce: false
         votes: []
 - nom: L’Horloge clôt le Passage et la salle retire la Grille
   canal: salle
@@ -311,7 +317,7 @@ evenements:
           numeroModification: 3
           numero: 1
           instrumentale: *instrumentale
-          interprete: *interprete
+          interpretes: *interpretes
           etapeId: *etapeId
           etat: TERMINE
           delaiAppelRestantMs: null
@@ -319,6 +325,7 @@ evenements:
           finPrevueLe: null
           positionChronologiqueMs: null
           calculeLe: *fin
+          couplets: null
         grille: null
         lecteurDesigneId: *lecteurId
         votes:
@@ -326,12 +333,14 @@ evenements:
           numeroModification: 3
           numero: 1
           instrumentale: *instrumentale
-          interprete: *interprete
+          interpretes: *interpretes
           etat: OUVERT
           delaiRestantMs: 30000
           calculeLe: *fin
           clotureLe: null
+          scrutin: NOTE
           nombreVotes: 0
+          voix: null
 - nom: Le votant reçoit sa note personnelle
   canal: joueur
   message:
@@ -363,19 +372,24 @@ evenements:
         grille: null
         instrumentales: *instrumentales
         mesPassagesEnAttente: []
+        invitationsEmises: []
+        invitationsRecues: []
         peutInscrire: true
         peutConfirmerPresence: false
+        monCoupletAnnonce: false
         votes:
         - passageId: *passageId
           numeroModification: 3
           numero: 1
           instrumentale: *instrumentale
-          interprete: *interprete
+          interpretes: *interpretes
           etat: OUVERT
           delaiRestantMs: 29250
           calculeLe: *noteLe
           clotureLe: null
+          scrutin: NOTE
           maNote: 4
+          monChoix: null
           peutVoter: false
 - nom: La Salle reçoit le Palmarès quand la Manche se termine
   canal: salle
@@ -398,7 +412,7 @@ evenements:
         numero: 1
         rang: 1
         instrumentale: *instrumentale
-        interprete: *interprete
+        interprete: *interprete0
         nombreVotes: 1
         moyenneDixiemes: 40
 cases:

@@ -8,13 +8,14 @@ function creerElement(document, champ, valeur) {
 
 export function creerLignePalmaresSalle(document, { numero, rang, titre, interpretes, moyenne, votes, texte }) {
 	const li = document.createElement('li');
-	li.setAttribute('data-teinte', String(numero % 4));
+	li.setAttribute('data-teinte', String((numero ?? rang ?? 0) % 4));
 	const presentation = document.createElement('div');
 	presentation.className = 'palmares__ligne';
 	presentation.setAttribute('aria-hidden', 'true');
 	if (rang !== null) presentation.append(creerElement(document, 'rang', `${rang}.`));
-	presentation.append(creerElement(document, 'numero', `n° ${numero}`), creerElement(document, 'interpretes', interpretes),
-		creerElement(document, 'chanson', titre));
+	// Une ligne de victoires du Freestyle (#74) n'a pas de numéro de Passage.
+	if (numero !== null) presentation.append(creerElement(document, 'numero', `n° ${numero}`));
+	presentation.append(creerElement(document, 'interpretes', interpretes), creerElement(document, 'chanson', titre));
 	if (moyenne !== null) {
 		// Le chiffre en grand, « sur 5 » en petit : la note tient dans sa colonne.
 		const note = document.createElement('span');

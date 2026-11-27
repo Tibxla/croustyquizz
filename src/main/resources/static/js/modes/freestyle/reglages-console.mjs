@@ -71,7 +71,7 @@ export function monterReglagesFreestyle(zone, contexte, actualiser) {
 		peutAjouter: () => prete && !lecture && selection().length > 0,
 		valeurs: () => ({ theme: element('theme-rimes').value, schemaDeRimes: element('schema-rimes').value,
 			difficulte: element('difficulte-rimes').value, nombreMesures: Number(element('nombre-mesures').value),
-			instrumentaleIds: selection() }),
+			mesuresParCouplet: Number(element('mesures-couplet').value), instrumentaleIds: selection() }),
 		demonter() {
 			annuler();
 			fiches.removeEventListener('change', actualiser);

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
+import fr.croustyquizz.passage.CorpsPassage;
 import fr.croustyquizz.tempsreel.*;
 import java.lang.reflect.Type;
 import java.time.Duration;
@@ -409,6 +410,218 @@ class KaraokeTempsReelTest {
                 assertThat(vue.at("/karaoke/votes/0/etat").asString()).isEqualTo("OUVERT");
             }
         }
+    }
+
+    @Test void unJoueurSansInvitationRecoitUn404AvantToutRecu() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var joueurs = joueursDe(soiree);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur, Map.of("envoiId", UUID.randomUUID(),
+                "chansonId", IdentifiantsChanson.encoder(1), "invitesIds", List.of(joueurs.get(1))), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String route = racine + "/passages/" + json.readTree(inscription.getBody()).path("passageId").asString() + "/invitation";
+        var tiers = new Acteur(Acteur.Type.JOUEUR, joueurs.get(2), soiree);
+        UUID envoiId = UUID.randomUUID();
+        var corps = Map.of("envoiId", envoiId, "numeroModification", 0, "reponse", "ACCEPTER");
+        var premierRefus = envoyer(HttpMethod.POST, route, tiers, corps, null);
+        var rejeu = envoyer(HttpMethod.POST, route, tiers,
+                Map.of("envoiId", envoiId, "numeroModification", 0, "reponse", "REFUSER"), null);
+
+        org.junit.jupiter.api.Assertions.assertAll(
+                () -> verifierInvitationIntrouvable(premierRefus),
+                () -> verifierInvitationIntrouvable(rejeu),
+                () -> assertThat(socle.envois().retrouver(new EnvoiDeCommande(tiers, route, envoiId,
+                        new CorpsPassage.EmpreinteHttp("POST", new CorpsPassage.ReponseInvitation(envoiId, 0L, "ACCEPTER")))))
+                        .as("reçu du Joueur non invité").isNull());
+    }
+
+    private void verifierInvitationIntrouvable(ResponseEntity<String> reponse) throws Exception {
+        KaraokeHttpTest.verifier("repondreInvitation", reponse, 404);
+        assertThat(json.readTree(reponse.getBody()).path("code").asString()).isEqualTo("RESSOURCE_INTROUVABLE");
+    }
+
+    /**
+     * Passages à plusieurs (#135) : Invitation à l'inscription, refus, limite de l'invité, acceptation, départ d'un
+     * invité, expiration à l'appel et Vote refusé aux Interprètes, sur PostgreSQL, en HTTP et en STOMP.
+     */
+    @Test
+    @org.springframework.test.annotation.DirtiesContext(methodMode = org.springframework.test.annotation.DirtiesContext.MethodMode.AFTER_METHOD)
+    void lesInvitationsSuiventLeurInviteEtExpirentALAppel() throws Exception {
+        UUID manche = service.creer(soiree, Map.of("limitePassagesEnAttente", 1));
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        List<UUID> joueurs = joueursDe(soiree);
+        var inscrivant = new Acteur(Acteur.Type.JOUEUR, joueurs.get(0), soiree);
+        var invite = new Acteur(Acteur.Type.JOUEUR, joueurs.get(1), soiree);
+        var silencieux = new Acteur(Acteur.Type.JOUEUR, joueurs.get(2), soiree);
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var salle = abonner(new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree), Canaux.salle(soiree), "salle");
+        var manetteInscrivant = abonner(inscrivant, Canaux.joueur(inscrivant.identifiant()), "manette");
+        var manetteInvite = abonner(invite, Canaux.joueur(invite.identifiant()), "manette");
+        var manetteSilencieux = abonner(silencieux, Canaux.joueur(silencieux.identifiant()), "manette");
+        var flux = List.of(console, salle, manetteInscrivant, manetteInvite, manetteSilencieux);
+
+        for (var invites : List.of(List.of(invite.identifiant(), invite.identifiant()),
+                List.of(invite.identifiant(), silencieux.identifiant(), UUID.randomUUID(), UUID.randomUUID()))) {
+            KaraokeHttpTest.verifier("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", inscrivant,
+                    Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1), "invitesIds", invites), null), 400);
+        }
+        var sonde = envoyer(HttpMethod.POST, racine + "/passages", inscrivant,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1),
+                        "invitesIds", List.of(invite.identifiant(), inscrivant.identifiant())), null);
+        KaraokeHttpTest.verifier("inscrirePassage", sonde, 422);
+        KaraokeHttpTest.verifier("inscrirePassage", envoyer(HttpMethod.POST, racine + "/passages", inscrivant,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1),
+                        "invitesIds", List.of(UUID.randomUUID())), null), 404);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", inscrivant, Map.of("envoiId", UUID.randomUUID(),
+                "chansonId", IdentifiantsChanson.encoder(1), "invitesIds", List.of(invite.identifiant(), silencieux.identifiant())), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String passage = json.readTree(inscription.getBody()).path("passageId").asString();
+        String route = racine + "/passages/" + passage + "/invitation";
+        var vues = lireTous(flux, "file-attente-modifiee");
+        assertThat(vues.get(salle).path("karaoke").toString()).doesNotContain("invitation");
+        assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/interpretes").size()).isEqualTo(1);
+        assertThat(vues.get(console).at("/karaoke/invitationsEnAttente").size()).isEqualTo(2);
+        assertThat(vues.get(manetteInscrivant).at("/karaoke/invitationsEmises/1/etat").asString()).isEqualTo("EN_ATTENTE");
+        assertThat(vues.get(manetteInvite).at("/karaoke/invitationsRecues/0/passage/passageId").asString()).isEqualTo(passage);
+        assertThat(vues.get(manetteInvite).at("/karaoke/invitationsRecues/0/inscrivant/joueurId").asString())
+                .isEqualTo(inscrivant.identifiant().toString());
+
+        // L'invité qui a atteint sa limite garde son Invitation ouverte.
+        var solo = envoyer(HttpMethod.POST, racine + "/passages", invite,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(2)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", solo, 201);
+        lireTous(flux, "file-attente-modifiee");
+        var limite = envoyer(HttpMethod.POST, route, invite, reponse("ACCEPTER", 0), null);
+        KaraokeHttpTest.verifier("repondreInvitation", limite, 409);
+        assertThat(json.readTree(limite.getBody()).path("code").asString()).isEqualTo("LIMITE_ATTEINTE");
+        KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, route, invite,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0, "reponse", "PEUT-ETRE"), null), 400);
+        KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/"
+                + json.readTree(solo.getBody()).path("passageId").asString() + "/invitation", inscrivant, reponse("ACCEPTER", 0), null), 404);
+        String soloId = json.readTree(solo.getBody()).path("passageId").asString();
+        KaraokeHttpTest.verifier("desinscrirePassage", envoyer(HttpMethod.POST, racine + "/passages/" + soloId + "/desinscription",
+                invite, Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0), null), 200);
+        lireTous(flux, "file-attente-modifiee");
+
+        var acceptation = reponse("ACCEPTER", 0);
+        var accepte = envoyer(HttpMethod.POST, route, invite, acceptation, null);
+        KaraokeHttpTest.verifier("repondreInvitation", accepte, 200);
+        assertThat(json.readTree(accepte.getBody()).path("numeroModification").asLong()).isEqualTo(1);
+        vues = lireTous(flux, "file-attente-modifiee");
+        assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/interpretes").size()).isEqualTo(2);
+        assertThat(vues.get(manetteInvite).at("/karaoke/mesPassagesEnAttente/0/passageId").asString()).isEqualTo(passage);
+        assertThat(vues.get(manetteInscrivant).at("/karaoke/invitationsEmises/0/etat").asString()).isEqualTo("ACCEPTEE");
+        assertThat(json.readTree(envoyer(HttpMethod.POST, route, invite, acceptation, null).getBody()))
+                .isEqualTo(json.readTree(accepte.getBody()));
+        var close = envoyer(HttpMethod.POST, route, invite, reponse("REFUSER", 1), null);
+        KaraokeHttpTest.verifier("repondreInvitation", close, 409);
+        assertThat(json.readTree(close.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
+
+        // L'invité quitte le Passage, qui reste dans la File ; son Invitation close ne se rouvre pas.
+        var depart = envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/desinscription", invite,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 1), null);
+        KaraokeHttpTest.verifier("desinscrirePassage", depart, 200);
+        assertThat(json.readTree(depart.getBody()).path("etatApres").asString()).isEqualTo("EN_ATTENTE");
+        vues = lireTous(flux, "file-attente-modifiee");
+        assertThat(vues.get(salle).at("/karaoke/prochainsPassages/0/interpretes").size()).isEqualTo(1);
+        assertThat(vues.get(manetteInscrivant).at("/karaoke/invitationsEmises/0/etat").asString()).isEqualTo("REFUSEE");
+        var retour = envoyer(HttpMethod.POST, route, invite, reponse("ACCEPTER", 2), null);
+        KaraokeHttpTest.verifier("repondreInvitation", retour, 409);
+
+        var appel = envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/appel", animateur,
+                Map.of("numeroModification", 2), UUID.randomUUID());
+        KaraokeHttpTest.verifier("appelerPassage", appel, 200);
+        vues = lireTous(flux, "passage-appele");
+        assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues").isEmpty()).isTrue();
+        assertThat(vues.get(console).at("/karaoke/invitationsEnAttente").isEmpty()).isTrue();
+        var expiree = vues.get(manetteInscrivant).at("/karaoke/invitationsEmises");
+        assertThat(expiree.size()).isEqualTo(1);
+        assertThat(expiree.get(0).path("passageId").asString()).isEqualTo(passage);
+        assertThat(expiree.get(0).path("numero").asLong()).isEqualTo(1);
+        assertThat(expiree.get(0).path("etat").asString()).isEqualTo("EXPIREE");
+        assertThat(vues.get(manetteInvite).at("/karaoke/invitationsEmises").isEmpty()).isTrue();
+        var tardive = envoyer(HttpMethod.POST, route, silencieux, reponse("ACCEPTER", 2), null);
+        KaraokeHttpTest.verifier("repondreInvitation", tardive, 409);
+        assertThat(json.readTree(tardive.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
+        assertThat(capturer(salle).at("/vue/karaoke/courant/interpretes").size()).isEqualTo(1);
+        var apresAppel = envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/desinscription", inscrivant,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3), null);
+        KaraokeHttpTest.verifier("desinscrirePassage", apresAppel, 409);
+        assertThat(json.readTree(apresAppel.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
+
+        // L'inscripteur qui se désinscrit retire tout le Passage, et l'Invitation ouverte expire (#139).
+        var autre = envoyer(HttpMethod.POST, racine + "/passages", inscrivant, Map.of("envoiId", UUID.randomUUID(),
+                "chansonId", IdentifiantsChanson.encoder(3), "invitesIds", List.of(silencieux.identifiant())), null);
+        KaraokeHttpTest.verifier("inscrirePassage", autre, 201);
+        String autreId = json.readTree(autre.getBody()).path("passageId").asString();
+        vues = lireTous(flux, "file-attente-modifiee");
+        assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues/0/passage/passageId").asString()).isEqualTo(autreId);
+        var retrait = envoyer(HttpMethod.POST, racine + "/passages/" + autreId + "/desinscription", inscrivant,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 0), null);
+        KaraokeHttpTest.verifier("desinscrirePassage", retrait, 200);
+        assertThat(json.readTree(retrait.getBody()).path("etatApres").asString()).isEqualTo("RETIRE");
+        vues = lireTous(flux, "file-attente-modifiee");
+        assertThat(vues.get(manetteSilencieux).at("/karaoke/invitationsRecues").isEmpty()).isTrue();
+        assertThat(vues.get(console).at("/karaoke/invitationsEnAttente").isEmpty()).isTrue();
+        assertThat(vues.get(salle).at("/karaoke/nombreEnAttente").asLong()).isZero();
+        var apresRetrait = vues.get(manetteInscrivant).at("/karaoke/invitationsEmises");
+        assertThat(apresRetrait.size()).isEqualTo(2);
+        assertThat(apresRetrait.get(1).path("passageId").asString()).isEqualTo(autreId);
+        assertThat(apresRetrait.get(1).path("etat").asString()).isEqualTo("EXPIREE");
+        assertThat(capturer(manetteInscrivant).at("/vue/karaoke/invitationsEmises")).isEqualTo(apresRetrait);
+        KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/" + autreId + "/invitation",
+                silencieux, reponse("ACCEPTER", 1), null), 409);
+    }
+
+    /** Le Vote du public reste fermé à chacun des Interprètes d'un Passage à deux (#115, #138). */
+    @Test
+    @org.springframework.test.annotation.DirtiesContext(methodMode = org.springframework.test.annotation.DirtiesContext.MethodMode.AFTER_METHOD)
+    void leVoteEstRefuseAChacunDesDeuxInterpretes() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        List<UUID> joueurs = joueursDe(soiree);
+        var inscrivant = new Acteur(Acteur.Type.JOUEUR, joueurs.get(0), soiree);
+        var invite = new Acteur(Acteur.Type.JOUEUR, joueurs.get(1), soiree);
+        var public_ = new Acteur(Acteur.Type.JOUEUR, joueurs.get(2), soiree);
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", inscrivant, Map.of("envoiId", UUID.randomUUID(),
+                "chansonId", IdentifiantsChanson.encoder(1), "invitesIds", List.of(invite.identifiant())), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String passage = json.readTree(inscription.getBody()).path("passageId").asString();
+        KaraokeHttpTest.verifier("repondreInvitation", envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/invitation",
+                invite, reponse("ACCEPTER", 0), null), 200);
+        var appel = envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/appel", animateur,
+                Map.of("numeroModification", 1), UUID.randomUUID());
+        KaraokeHttpTest.verifier("appelerPassage", appel, 200);
+        String etape = json.readTree(appel.getBody()).path("etapeId").asString();
+        var presence = Map.of("envoiId", UUID.randomUUID(), "etapeId", etape, "numeroModification", 2);
+        KaraokeHttpTest.verifier("confirmerPresencePassage", envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/presence",
+                invite, presence, null), 200);
+        var seconde = envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/presence", inscrivant,
+                Map.of("envoiId", UUID.randomUUID(), "etapeId", etape, "numeroModification", 2), null);
+        KaraokeHttpTest.verifier("confirmerPresencePassage", seconde, 409);
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+        String vote = racine + "/passages/" + passage + "/vote";
+        for (var interprete : List.of(inscrivant, invite)) {
+            var refus = envoyer(HttpMethod.POST, vote, interprete,
+                    Map.of("envoiId", UUID.randomUUID(), "numeroModification", 4, "note", 5), null);
+            KaraokeHttpTest.verifier("voterPassage", refus, 409);
+            assertThat(json.readTree(refus.getBody()).path("code").asString()).isEqualTo("VOTE_INTERDIT");
+        }
+        KaraokeHttpTest.verifier("voterPassage", envoyer(HttpMethod.POST, vote, public_,
+                Map.of("envoiId", UUID.randomUUID(), "numeroModification", 4, "note", 4), null), 200);
+    }
+
+    private static Map<String, Object> reponse(String reponse, long numeroModification) {
+        return Map.of("envoiId", UUID.randomUUID(), "numeroModification", numeroModification, "reponse", reponse);
+    }
+
+    private Map<Abonnement, JsonNode> lireTous(List<Abonnement> flux, String cause) throws Exception {
+        Map<Abonnement, JsonNode> vues = new HashMap<>();
+        for (var abonne : flux) { vues.put(abonne, lireEvenement(abonne, cause)); }
+        return vues;
     }
 
     private JsonNode lireEvenement(Abonnement abonne, String cause) throws Exception {

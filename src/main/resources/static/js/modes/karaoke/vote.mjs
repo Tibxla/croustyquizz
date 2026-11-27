@@ -4,7 +4,7 @@ export { formaterNote, formaterMoyenne, formaterNombreVotes } from '../../vue-co
 export function etatVoteManette(vote, { joueurId, enPause }) {
 	if (vote.etat === 'CLOS') return 'clos';
 	if ((vote.interpretes ?? [vote.interprete]).some(i => i.joueurId === joueurId)) return 'interprete';
-	if (vote.maNote != null) return 'enregistre';
+	if (vote.maNote != null || vote.monChoix != null) return 'enregistre';
 	return enPause ? 'pause' : 'a-voter';
 }
 

@@ -1,6 +1,7 @@
 import { creerInterface, creerTicket, texteEnvoi } from '../karaoke/commun.mjs';
 import { appelerSuivant, piloter, prochainPassage } from '../passage/pilotage.mjs';
 import { formaterNombreVotes } from '../../vue-commune.mjs';
+import { pseudos, texteAnnonce, texteCouplet, texteOrdre } from './couplets.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte, { mode: 'freestyle', annoncerConnexion: false });
@@ -10,6 +11,7 @@ export function monter(zones, contexte) {
 	const titre = e('h2', '', 'Passage courant'); titre.tabIndex = -1;
 	const identite = e('p');
 	const instructions = e('p');
+	const couplets = e('p');
 	const commandes = e('div', 'karaoke__commandes');
 	const appeler = bouton('Appeler le suivant', () => appelerSuivant(ui, commande), 'bouton bouton--action');
 	const pause = bouton('Pause', () => piloter(ui, commande, ui.bloc.etat === 'EN_PAUSE' ? 'REPRENDRE' : 'METTRE_EN_PAUSE'));
@@ -32,8 +34,10 @@ export function monter(zones, contexte) {
 	const votes = e('ul', 'karaoke__liste-votes');
 	const zoneVotes = e('section', 'karaoke__votes');
 	zoneVotes.append(e('h2', '', 'Vote du public'), votes);
-	ui.principale.append(titre, identite, instructions, commandes, statut, message, reessayer,
-		e('h2', '', 'File d’attente'), file, vide, zoneVotes);
+	const invitations = e('ul', 'karaoke__etat-invitations');
+	invitations.setAttribute('aria-label', 'Invitations en attente');
+	ui.principale.append(titre, identite, instructions, couplets, commandes, statut, message, reessayer,
+		e('h2', '', 'File d’attente'), file, vide, invitations, zoneVotes);
 
 	ui.messageInvalidation = () => { message.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
 	// Même route et même garde de compteur qu’au Karaoké : le serveur refuse un Passage qui n’attend plus.
@@ -50,7 +54,7 @@ export function monter(zones, contexte) {
 					{ numeroModification: cible.numeroModification })) } });
 		dialogue.annuler.textContent = 'Annuler';
 		dialogue.contenu.append(e('p', '',
-			`Retirer le Passage ${cible.numero} · ${cible.interprete.pseudo} · ${cible.instrumentale.titre} ?`), dialogue.confirmer);
+			`Retirer le Passage ${cible.numero} · ${pseudos(cible.interpretes)} · ${cible.instrumentale.titre} ?`), dialogue.confirmer);
 	}
 
 	let automatique = false;
@@ -58,7 +62,11 @@ export function monter(zones, contexte) {
 		const bloc = ui.bloc;
 		if (!bloc) return;
 		const courant = bloc.courant;
-		identite.textContent = courant ? `${courant.interprete.pseudo} · ${courant.instrumentale.titre}` : 'Aucun Passage appelé.';
+		identite.textContent = courant ? `${pseudos(courant.interpretes)} · ${courant.instrumentale.titre}` : 'Aucun Passage appelé.';
+		const etatCouplets = courant?.couplets;
+		couplets.hidden = !etatCouplets;
+		couplets.textContent = etatCouplets ? [texteOrdre(etatCouplets), `${texteCouplet(etatCouplets)} · ${etatCouplets.courant.interprete.pseudo}`,
+			texteAnnonce(etatCouplets)].filter(Boolean).join('. ') : '';
 		instructions.textContent = bloc.etat === 'EN_PAUSE' ? 'Manche en pause.' : {
 			APPELE: 'Attend « Je suis prêt ».', EN_COURS: 'En scène.', TERMINE: 'Passage terminé.', SAUTE: 'Passage sauté.',
 		}[courant?.etat] ?? '';
@@ -82,8 +90,13 @@ export function monter(zones, contexte) {
 			return ligne;
 		}), titre);
 		vide.hidden = bloc.nombreEnAttente > 0;
+		const numeros = new Map(bloc.passagesEnAttente.map(p => [p.passageId, p.numero]));
+		invitations.replaceChildren(...(bloc.invitationsEnAttente ?? []).map(i => e('li', '',
+			`${i.invite.pseudo} n’a pas encore répondu${numeros.has(i.passageId) ? ` (Passage ${numeros.get(i.passageId)})` : ''}`)));
+		invitations.hidden = !invitations.childElementCount;
 		votes.replaceChildren(...bloc.votes.map(vote => e('li', '',
-			`${vote.interprete.pseudo} · ${formaterNombreVotes(vote.nombreVotes)} · ${vote.etat === 'CLOS' ? 'Vote clos' : 'Vote ouvert'}`)));
+			`${pseudos(vote.interpretes)} · ${formaterNombreVotes(vote.nombreVotes)} · ${vote.etat === 'CLOS' ? 'Vote clos' : 'Vote ouvert'}`
+			+ (vote.voix ? ` · ${vote.voix.map(v => `${v.interprete.pseudo} ${v.nombreVoix}`).join(', ')}` : ''))));
 		zoneVotes.hidden = bloc.votes.length === 0;
 	};
 	return {

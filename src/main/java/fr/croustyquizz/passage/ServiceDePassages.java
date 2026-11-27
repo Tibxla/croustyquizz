@@ -3,6 +3,7 @@ package fr.croustyquizz.passage;
 import fr.croustyquizz.manche.*;
 import fr.croustyquizz.tempsreel.AccesAuxVues;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -56,18 +57,35 @@ public abstract class ServiceDePassages<R, E> extends ServiceDeManche<R, E> {
 
     public ResultatDeCommande desinscrirePassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsPassage.DesinscriptionPassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
-        socle.verrous().executer(envoi.acteur().soireeId(), () -> { verifierInscripteur(mancheId, passageId, envoi.acteur()); return null; });
+        socle.verrous().executer(envoi.acteur().soireeId(), () -> { verifierPortee(mancheId, passageId, envoi.acteur(), false); return null; });
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> {
-            verifierInscripteur(mancheId, passageId, envoi.acteur());
+            verifierPortee(mancheId, passageId, envoi.acteur(), false);
             return d.recevoir(new DesinscrirePassage(envoi.acteur(), recueLe, envoi.envoiId(),
                     new CiblePassage(passageId, corps.numeroModification())));
         }));
+    }
+    /** Acceptation ou refus de son Invitation par le Joueur invité (#138). */
+    public ResultatDeCommande repondreInvitation(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsPassage.ReponseInvitation corps) {
+        return socle.verrous().executer(envoi.acteur().soireeId(), () -> {
+            verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+            verifierPortee(mancheId, passageId, envoi.acteur(), true);
+            return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.recevoir(new RepondreInvitation(
+                    envoi.acteur(), recueLe, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification()), corps.accepte()))));
+        });
     }
     public ResultatDeCommande voterPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsPassage.VotePassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
         return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
                 d.recevoir(new VoterPassage(envoi.acteur(), recueLe, envoi.envoiId(),
                         new CiblePassage(passageId, corps.numeroModification()), corps.note().intValue()))));
+    }
+    public ResultatDeCommande designerMeilleurInterprete(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,
+            CorpsPassage.DesignationMeilleurInterprete corps) {
+        verifierEntree(mancheId, envoi, Acteur.Type.JOUEUR);
+        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+                d.recevoir(new DesignerMeilleurInterprete(envoi.acteur(), recueLe, envoi.envoiId(),
+                        new CiblePassage(passageId, corps.numeroModification()), corps.interpreteId()))));
     }
     public ResultatDeCommande retirerPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsPassage.RetraitPassage corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
@@ -136,11 +154,19 @@ public abstract class ServiceDePassages<R, E> extends ServiceDeManche<R, E> {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche ou Joueur introuvable.").exception();
         }
     }
-    private void verifierInscripteur(UUID mancheId, UUID passageId, Acteur acteur) {
+    /** Vérifie la portée sur un Passage connu avant tout reçu : invité, ou Interprète pour la désinscription. */
+    private void verifierPortee(UUID mancheId, UUID passageId, Acteur acteur, boolean invitationRequise) {
         EtatFileAttente file = passages.charger(mancheId);
-        if (file != null && file.passages().stream().anyMatch(p -> p.id().equals(passageId) && !p.inscripteurId().equals(acteur.identifiant()))) {
+        UUID joueur = acteur.identifiant();
+        if (file != null && file.passages().stream().anyMatch(p ->
+                p.id().equals(passageId) && (invitationRequise || !p.interpretes().contains(joueur)))
+                && file.invitations().stream().noneMatch(i -> i.passageId().equals(passageId) && i.inviteId().equals(joueur))) {
             throw introuvable().exception();
         }
+    }
+    /** Présence de tous les invités, lue sous le verrou de Soirée avant la décision du domaine. */
+    protected boolean invitesPresents(UUID soireeId, List<UUID> invites) {
+        return invites.stream().allMatch(id -> participants.estPresent(soireeId, id));
     }
     protected void verifierActivite(UUID soireeId, UUID mancheId) {
         if (!portee.estActive(soireeId, mancheId)) { throw inactive().exception(); }

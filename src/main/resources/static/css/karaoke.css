@@ -171,3 +171,17 @@
   .karaoke .ticket--detache .ticket__corps,
   .karaoke .mon-ticket--detachement .mon-ticket__bas { animation: none; }
 }
+/* Passages à plusieurs (#135) : chaque pseudo se tronque seul ; quatre pseudos longs tiennent sur deux
+   lignes d'un ticket à 390 px, et aucun ne disparaît. */
+.karaoke .karaoke__interpretes { overflow-wrap: normal; }
+.karaoke .karaoke__pseudo {
+  display: inline-block;
+  max-width: min(100%, 13ch);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.karaoke__invitations { display: grid; gap: var(--espace-3); }
+.karaoke__texte-invitation { font-weight: 700; }
+.karaoke__etat-invitations { margin: 0; padding: 0; list-style: none; color: var(--encre-2); font-size: 0.9375rem; }
