@@ -139,6 +139,17 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         return apres(appliquerAction(action), action == null ? null : action.recueLe());
     }
 
+    /**
+     * Départ d’un Joueur, par Exclusion ou à sa demande (#205) : la File le retire de ses Passages en attente, en pause
+     * comme hors pause. Le Passage appelé ou en cours n’est pas touché. Aucun reçu : le geste vient du serveur. Un
+     * départ sans effet est refusé, pour que le service ne réécrive pas la Manche sans changement.
+     */
+    public ResultatDeCommande retirerJoueurParti(UUID joueurId, Instant recueLe) {
+        Refuse refus = gardeCommune();
+        if (refus != null) { return refus; }
+        return commandesDeFile.retirerJoueurParti(joueurId, recueLe);
+    }
+
     private ResultatDeCommande appliquerAction(ActionJoueur action) {
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }

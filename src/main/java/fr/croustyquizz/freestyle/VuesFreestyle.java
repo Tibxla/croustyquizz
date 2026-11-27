@@ -61,7 +61,7 @@ public final class VuesFreestyle {
     record InvitationRecue(CiblePassage passage, long numero, Instrumentale instrumentale, Interprete inscrivant,
             List<Interprete> interpretes) { }
 
-    record InvitationEmise(UUID passageId, Interprete invite, InvitationPassage.Etat etat) { }
+    record InvitationEmise(UUID passageId, long numero, Interprete invite, InvitationPassage.Etat etat) { }
 
     record InvitationEnAttente(UUID passageId, Interprete invite) { }
 
@@ -145,7 +145,8 @@ public final class VuesFreestyle {
             bloc.put("mesPassagesEnAttente", personnels.stream().map(p -> enAttente(p, positions)).toList());
             // Un invité devenu inscripteur après un départ ne voit pas sa propre Invitation.
             bloc.put("invitationsEmises", invitations().stream().filter(i -> file.trouver(i.passageId()).inscripteurId().equals(joueur)
-                    && !i.inviteId().equals(joueur)).map(i -> new InvitationEmise(i.passageId(), interprete(i.inviteId(), pseudos), i.etat()))
+                    && !i.inviteId().equals(joueur)).map(i -> new InvitationEmise(i.passageId(), file.trouver(i.passageId()).numero(),
+                            interprete(i.inviteId(), pseudos), i.etat()))
                     .toList());
             bloc.put("invitationsRecues", invitations().stream().filter(i -> i.enSuspens() && i.inviteId().equals(joueur)).map(i -> {
                 Passage p = file.trouver(i.passageId());

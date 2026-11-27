@@ -270,6 +270,25 @@ class FileAttenteInvitationTest {
         assertThat(file.etat().invitations()).contains(new InvitationPassage(groupe, BORIS, Etat.EXPIREE));
     }
 
+    /** L’Invitation disait « Ana t’invite » : sans Ana, elle n’a plus d’auteur et expire (#205). */
+    @Test
+    void leDepartDeLInscripteurFaitExpirerSesInvitationsOuvertes() {
+        UUID groupe = inscrire("Groupe", List.of(BORIS, CELIA, DINA), ANA);
+        UUID autre = inscrire("Autre", List.of(ELI), BORIS);
+        accepter(CELIA, groupe);
+        long compteur = file.trouver(groupe).numeroModification();
+
+        assertThat(file.retirerJoueurParti(ANA, RECU)).isInstanceOf(ResultatFile.Modifiee.class);
+
+        assertThat(file.trouver(groupe).inscripteurId()).isEqualTo(CELIA);
+        assertThat(file.trouver(groupe).interpretes()).containsExactly(CELIA);
+        assertThat(file.trouver(groupe).numeroModification()).isGreaterThan(compteur);
+        assertThat(invitations()).extracting(InvitationPassage::passageId, InvitationPassage::inviteId, InvitationPassage::etat)
+                .containsExactly(tuple(groupe, BORIS, Etat.EXPIREE), tuple(groupe, CELIA, Etat.ACCEPTEE),
+                        tuple(groupe, DINA, Etat.EXPIREE), tuple(autre, ELI, Etat.EN_ATTENTE));
+        refuserSansMutation(() -> accepter(DINA, groupe), "COMMANDE_PERIMEE");
+    }
+
     @Test
     void lInterpreteAccepteQuiPartFermeSonInvitationCommeUnDepartVolontaire() {
         UUID groupe = inscrire("Groupe", List.of(BORIS, CELIA, DINA), ANA);

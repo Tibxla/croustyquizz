@@ -54,6 +54,15 @@ public final class CommandesDeFileAttente {
                 reponse.envoiId(), reponse.recueLe(), reponse.cible(), reponse.action());
     }
 
+    /** Départ signalé par le serveur, sans reçu. Un refus évite de réécrire une File inchangée. */
+    public ResultatDeCommande retirerJoueurParti(UUID joueurId, Instant recueLe) {
+        ResultatFile resultat = file.retirerJoueurParti(joueurId, recueLe);
+        if (resultat instanceof ResultatFile.SansEffet) {
+            return new Refuse(409, "ETAT_INCOMPATIBLE", "Ce Joueur n’a aucun Passage en attente ni Invitation en suspens.");
+        }
+        return new Accepte(null, ECRANS, FILE_MODIFIEE, 200);
+    }
+
     public ResultatDeCommande retirer(RetirerPassage commande) {
         return resultatPassage(file.retirer(commande.acteur().identifiant(), commande.cible(), commande.recueLe()),
                 commande.envoiId(), commande.recueLe(), commande.cible(), "RETIRER");

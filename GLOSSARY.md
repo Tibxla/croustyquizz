@@ -56,6 +56,10 @@ _Éviter_ : warning, sanction
 Retrait définitif d'un Joueur d'une Soirée, décidé par l'Animateur. Elle vaut pour la Soirée et pour la Manette du Joueur.
 _Éviter_ : ban, kick, bannissement
 
+**Départ** :
+Sortie d'un Joueur de la Soirée, par Exclusion ou à sa demande depuis sa Manette. Une Manette déconnectée, même longtemps, ne vaut pas Départ : le Joueur reste dans la Soirée et revient avec son jeton de reconnexion.
+_Éviter_ : déconnexion, abandon
+
 **Classement général** :
 Cumul des points des Joueurs, ou des Équipes en Format Équipe, sur les Manches de Quiz et de Blind test d'une Soirée. Le Karaoké et le Freestyle n'y comptent pas.
 _Éviter_ : score, leaderboard

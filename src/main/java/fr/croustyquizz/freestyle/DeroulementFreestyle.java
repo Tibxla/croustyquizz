@@ -63,6 +63,12 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         etatManche = EtatManche.EN_COURS;
     }
 
+    public ResultatDeCommande retirerJoueurParti(UUID joueurId, Instant recueLe) {
+        Refuse refus = gardeCommune();
+        if (refus != null) { return refus; }
+        return commandesDeFile.retirerJoueurParti(joueurId, recueLe);
+    }
+
     @Override public ResultatDeCommande recevoir(ActionJoueur action) {
         Refuse refus = gardeCommune();
         if (refus != null) { return refus; }
