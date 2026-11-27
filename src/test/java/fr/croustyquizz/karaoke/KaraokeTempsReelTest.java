@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
+import fr.croustyquizz.passage.CorpsPassage;
 import fr.croustyquizz.tempsreel.*;
 import java.lang.reflect.Type;
 import java.time.Duration;
@@ -431,7 +432,7 @@ class KaraokeTempsReelTest {
                 () -> verifierInvitationIntrouvable(premierRefus),
                 () -> verifierInvitationIntrouvable(rejeu),
                 () -> assertThat(socle.envois().retrouver(new EnvoiDeCommande(tiers, route, envoiId,
-                        new CorpsKaraoke.EmpreinteHttp("POST", new CorpsKaraoke.ReponseInvitation(envoiId, 0L, "ACCEPTER")))))
+                        new CorpsPassage.EmpreinteHttp("POST", new CorpsPassage.ReponseInvitation(envoiId, 0L, "ACCEPTER")))))
                         .as("reçu du Joueur non invité").isNull());
     }
 

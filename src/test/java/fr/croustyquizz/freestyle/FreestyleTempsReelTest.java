@@ -218,6 +218,10 @@ class FreestyleTempsReelTest {
             evenement(messages, "file-attente-modifiee");
             var invitee = appeler(GET, racine + "/etat/manette", zoe.jeton(), null, "retrouverEtatManette", 200);
             assertThat(invitee.at("/vue/freestyle/invitationsRecues/0/instrumentale/titre").asString()).isEqualTo("Pavés mouillés");
+            var inscrivante = appeler(GET, racine + "/etat/manette", ines.jeton(), null, "retrouverEtatManette", 200);
+            var invitations = inscrivante.at("/vue/freestyle/invitationsEmises");
+            assertThat(invitations.size()).isEqualTo(2);
+            assertThat(invitations.at("/0/numero")).isEqualTo(invitee.at("/vue/freestyle/invitationsRecues/0/numero"));
             for (var reponse : List.of(Map.entry(mael, 0), Map.entry(zoe, 1))) {
                 appeler(POST, passage + "/invitation", reponse.getKey().jeton(), Map.of("envoiId", UUID.randomUUID(),
                         "numeroModification", reponse.getValue(), "reponse", "ACCEPTER"), "repondreInvitation", 200);
