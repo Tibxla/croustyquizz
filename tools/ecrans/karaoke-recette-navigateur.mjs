@@ -254,21 +254,26 @@ async page => {
 	await page.locator('#karaoke-limite').fill('5'); publier();
 	verifier(await page.locator('#karaoke-limite').inputValue() === '5', 'Vue reçue pendant la saisie');
 	await page.getByRole('button', { name: 'Appliquer', exact: true }).click();
+	// Le Catalogue de la Console est replié (#282) : on le déplie avant de chercher.
+	await page.locator('[data-laterale] summary').click();
 	await page.locator('[data-laterale] input').fill('panne'); await page.getByRole('button', { name: 'Chercher', exact: true }).click();
 	await page.getByText('La recherche est indisponible.', { exact: true }).waitFor();
 	await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'En direct');
 	await page.locator('[data-laterale] input').fill('métro'); await page.getByRole('button', { name: 'Chercher', exact: true }).click();
 	await page.getByRole('button', { name: chanson.titre, exact: true }).click();
-	verifier((await page.locator('dialog').innerText()).includes('Consultation uniquement'), 'Fiche Animateur sans inscription');
+	verifier((await page.locator('dialog[open]').innerText()).includes('Consultation uniquement'), 'Fiche Animateur sans inscription');
 	await page.keyboard.press('Escape');
-	await manette.locator('input').fill('métro'); await manette.getByRole('button', { name: 'Chercher', exact: true }).click();
+	await manette.locator('input[type=search]').fill('métro'); await manette.getByRole('button', { name: 'Chercher', exact: true }).click();
 	await manette.getByRole('button', { name: chanson.titre, exact: true }).click();
 	await manette.getByRole('button', { name: "M'inscrire", exact: true }).click();
 	await manette.waitForFunction(() => document.querySelectorAll('.mon-ticket').length === 3);
-	await manette.getByRole('button', { name: 'Fermer', exact: true }).click();
+	// La vue confirme l'inscription : la fiche se ferme d'elle-même (#280).
+	await manette.locator('dialog[open]').waitFor({ state: 'detached' });
 	await confirmationRetardee(); // Le ticket est confirmé par vue avant le 201 tardif.
 	verifier(await manette.locator('.mon-ticket').count() === 3, '201 tardif sans ticket dupliqué');
 	const avant = consoleClient.captures;
+	// « Resynchroniser » est rangé dans le menu « Plus » de la Console (#282).
+	await page.getByRole('button', { name: 'Plus', exact: true }).click();
 	await page.getByRole('button', { name: 'Resynchroniser', exact: true }).click();
 	await page.waitForFunction(() => document.querySelector('[data-connexion]').textContent === 'En direct');
 	verifier(consoleClient.captures > avant, 'Recapture effective');
@@ -315,8 +320,8 @@ async page => {
 
 	await ongletSalle.evaluate(() => { window.recetteAudio.refuserTemoin = true; });
 	await choisirDossier(ongletSalle, dossiers.unique);
-	await attendreTexte(ongletSalle, '1 fichier audio');
-	await attendreTexte(ongletSalle, 'Son bloqué');
+	await attendreTexte(ongletSalle, '1 morceau');
+	await attendreTexte(ongletSalle, 'Son coupé');
 	await attendreTexte(salle2.onglet, 'Un autre Écran de salle est désigné pour lire les Chansons.');
 	const lecteurInitial = lecteurDesigneId;
 	await ongletSalle.emulateMedia({ reducedMotion: 'reduce' });
@@ -429,8 +434,8 @@ async page => {
 	verifier(finLocale.c === salle && finLocale.corps.positionMs === 6000 && finLocale.signaleLe < finLocale.finPrevueLe,
 		'Le lecteur d’origine joue jusqu’au bout et clôt avant la fin prévue');
 
-	for (const [dossier, nombre, texte] of [[dossiers.absent, '1 fichier audio', 'Paroles seules : cette Chanson n’est pas dans ton dossier de musique'],
-		[dossiers.ambigu, '2 fichiers audio', 'Paroles seules : plusieurs morceaux de ton dossier portent ce titre']]) {
+	for (const [dossier, nombre, texte] of [[dossiers.absent, '1 morceau', 'Paroles seules : cette Chanson n’est pas dans ton dossier de musique'],
+		[dossiers.ambigu, '2 morceaux', 'Paroles seules : plusieurs morceaux de ton dossier portent ce titre']]) {
 		await choisirDossier(salle2.onglet, dossier);
 		await attendreTexte(salle2.onglet, nombre);
 		const joueur = await appeler();
