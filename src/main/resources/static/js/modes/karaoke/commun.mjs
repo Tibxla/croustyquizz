@@ -286,12 +286,14 @@ export function creerChoixInvites(ui, moi, { verbe = 'Chanter' } = {}) {
 	const aide = e('p', 'champ__aide', 'Chaque Joueur coché reçoit une Invitation et choisit de te rejoindre.');
 	groupe.append(legende, aide);
 	const cases = new Map();
-	const choisis = () => [...cases.values()].filter(({ choix }) => choix.checked).map(({ choix }) => choix.value);
+	const coches = () => [...cases.values()].filter(({ choix }) => choix.checked).map(({ choix }) => choix.value);
+	// Une liste masquée garde ses cases pour plus tard, mais n'invite personne en silence.
+	const choisis = () => (element.hidden ? [] : coches());
 	function limiter() {
-		const pleins = choisis().length >= NOMBRE_INVITES_MAX;
+		const pleins = coches().length >= NOMBRE_INVITES_MAX;
 		for (const { choix } of cases.values()) choix.disabled = pleins && !choix.checked;
 	}
-	function rendre({ vider = false, desactiver = false } = {}) {
+	function rendre({ vider = false, desactiver = false, masquer = false } = {}) {
 		const candidats = invitesPossibles(ui.joueurs, moi);
 		const presents = new Set(candidats.map(joueur => joueur.id));
 		for (const [id, { ligne }] of cases) {
@@ -314,7 +316,7 @@ export function creerChoixInvites(ui, moi, { verbe = 'Chanter' } = {}) {
 		}
 		if (vider) for (const { choix } of cases.values()) choix.checked = false;
 		groupe.disabled = desactiver;
-		element.hidden = !cases.size;
+		element.hidden = masquer || !cases.size;
 		if (!cases.size) groupe.remove();
 		else if (!element.contains(groupe)) element.append(groupe);
 		limiter();

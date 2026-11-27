@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { creerBanc, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 import { monter as monterConsole } from '../../src/main/resources/static/js/modes/freestyle/console.mjs';
@@ -405,6 +406,73 @@ test('une inscription acceptée décoche les invités, et un refus les garde pou
 		afficher();
 		assert.deepEqual(coches(), ['z'], 'un nouveau choix survit au rendu suivant');
 	} finally { banc.module.demonter(); }
+});
+
+const ancetres = element => { const liste = []; for (let p = element.parentNode; p; p = p.parentNode) liste.push(p); return liste; };
+const masque = element => [element, ...ancetres(element)].some(e => e.hidden);
+const lireStatique = chemin => readFile(new URL(`../../src/main/resources/static/${chemin}`, import.meta.url), 'utf8');
+const regle = (css, selecteur) => css.match(new RegExp(`(?:^|[}/])\\s*${selecteur.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+
+test('les cases des invités restent hors du champ de l’Instrumentale (#74)', () => {
+	const banc = creerBanc(monterManette);
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher({ ...vue({ peutInscrire: true }), joueurs: [{ id: 'j', pseudo: 'Jo' }, { id: 'i', pseudo: 'Inès' }] }, capture);
+		const choixInvite = banc.principale.querySelector('.karaoke__invite').querySelector('input');
+		assert.equal(choixInvite.type, 'checkbox');
+		// La règle « .champ input » de croustyquizz.css grossirait la case à 56 px.
+		assert.equal(ancetres(choixInvite).some(e => e.classList?.contains('champ')), false);
+		const instrumentale = banc.principale.querySelector('select');
+		assert.equal(ancetres(instrumentale).some(e => e.classList?.contains('champ')), true, 'le choix de l’Instrumentale reste un champ');
+	} finally { banc.module.demonter(); }
+});
+
+test('en scène, la Manette masque la liste d’invitation et n’invite personne en silence (#74)', async () => {
+	const banc = creerBanc(monterManette);
+	try {
+		banc.connecter('synchronisee');
+		const joueurs = [{ id: 'j', pseudo: 'Jo' }, { id: 'i', pseudo: 'Inès' }];
+		const afficher = bloc => banc.module.afficher({ ...vue({ peutInscrire: true, ...bloc }), joueurs }, capture);
+		afficher();
+		const choixInvite = banc.principale.querySelector('.karaoke__invite').querySelector('input');
+		choixInvite.checked = true;
+		for (const etat of ['APPELE', 'EN_COURS', 'EN_PAUSE']) {
+			afficher({ courant: { ...passage, etat } });
+			assert.equal(masque(choixInvite), true, `liste masquée pendant ${etat}`);
+		}
+		bouton(banc, 'M’inscrire').click();
+		assert.equal(banc.appels[0].args[2].invitesIds, undefined, 'une case cachée n’invite pas');
+		banc.appels[0].resolve({ statut: 422, corps: { code: 'DONNEES_INVALIDES', detail: 'Refus.' } });
+		await terminerMicrotaches();
+		afficher({ courant: { ...passage, interpretes: [ines], etat: 'EN_COURS' } });
+		assert.equal(masque(choixInvite), false, 'le Passage d’un autre Joueur laisse la liste');
+		afficher({ courant: { ...passage, etat: 'TERMINE' } });
+		assert.equal(masque(choixInvite), false, 'après sa scène, le Joueur retrouve la liste');
+		assert.equal(choixInvite.checked, true);
+	} finally { banc.module.demonter(); }
+});
+
+test('le style des cases d’invités est commun à la Manette, hors de la feuille du Karaoké (#74)', async () => {
+	const [page, manette, karaoke] = await Promise.all([lireStatique('manette.html'), lireStatique('css/manette.css'), lireStatique('css/karaoke.css')]);
+	assert.match(page, /<link rel="stylesheet" href="\/css\/manette\.css">/);
+	assert.match(regle(manette, '.karaoke__invite input'), /width: 1\.25rem;[^}]*height: 1\.25rem;/s);
+	assert.match(regle(manette, '.karaoke__invite'), /display: flex;/);
+	assert.match(regle(manette, '.karaoke__invites'), /display: grid;/);
+	assert.doesNotMatch(karaoke, /\.karaoke__invites?\b/);
+});
+
+test('sur la Manette du Freestyle, un pseudo ne se tronque qu’au-delà de deux lignes, et aucun ne disparaît (#283)', async () => {
+	const css = await lireStatique('css/freestyle.css');
+	// Un Interprète par ligne : la ligne entière n'est jamais coupée, sinon un quatuor perdrait ses derniers noms.
+	const ligne = regle(css, '.freestyle .mon-ticket .karaoke__interpretes');
+	assert.match(ligne, /flex-direction: column;/);
+	assert.doesNotMatch(ligne, /line-clamp|overflow: hidden/);
+	assert.match(regle(css, '.freestyle .mon-ticket .karaoke__separateur'), /display: none;/);
+	const pseudo = regle(css, '.freestyle .mon-ticket .karaoke__pseudo');
+	assert.match(pseudo, /display: -webkit-box;/);
+	assert.match(pseudo, /-webkit-line-clamp: 2;/);
+	assert.match(pseudo, /max-width: none;/);
+	assert.match(pseudo, /white-space: normal;/);
 });
 
 test('seule la Manette annoncée vibre, une fois, à l’événement d’annonce', () => {
