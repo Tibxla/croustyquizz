@@ -6,6 +6,9 @@ import { monter as consoleKaraoke } from '../../src/main/resources/static/js/mod
 import { creerEcranKaraoke } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
 import { creerAudioSalle } from '../../src/main/resources/static/js/audio-salle.mjs';
 import { readFile } from 'node:fs/promises';
+// Un résultat de la Manette est une carte entière (#280) : son titre est en gras.
+const carteChanson = (zone, titre) => zone.querySelectorAll('button').find(b => b.textContent === titre || b.querySelector('strong')?.textContent === titre);
+
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'karaoke-file-modifiee' };
 const bouton = (zone, texte) => zone.querySelectorAll('button').find(b => b.textContent === texte);
 
@@ -243,7 +246,7 @@ test('Manette : recherche par composition, validation accessible, vidage silenci
 	champ.value = ''; champ.dispatchEvent({ type: 'input' }); assert.equal(champ.getAttribute('aria-invalid'), null); assert.equal(b.appels.length, 0);
 	champ.value = 'titre'; formulaire.dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 404, corps: { detail: 'Source disparue' } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 404, corps: { detail: 'Source disparue' } }); await terminerMicrotaches();
 	assert.match(b.principale.querySelector('dialog').textContent, /Cette Chanson n'est plus disponible/);
 	assert.match(b.principale.querySelector('dialog').textContent, /Source disparue/); assert.ok(bouton(b.principale, "M'inscrire") === undefined);
 	b.module.demonter();
@@ -253,7 +256,7 @@ test('Manette : l’inscription inconnue se réessaie après capture, puis un ti
 	const b = creerBanc(manette); b.module.afficher(vue(), evenement); b.connecter('synchronisee');
 	const champ = b.principale.querySelector('input'); champ.value = 'titre'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	bouton(b.principale, "M'inscrire").click(); b.appels[2].reject(new Error()); await terminerMicrotaches();
 	assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
 	b.module.afficher(vue(), evenement); assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
@@ -262,11 +265,14 @@ test('Manette : l’inscription inconnue se réessaie après capture, puis un ti
 	assert.deepEqual(b.appels[3].args[2], b.appels[2].args[2]);
 	b.appels[3].resolve({ statut: 503, corps: { detail: 'Panne' } }); await terminerMicrotaches();
 	b.module.afficher(vue({ mesPassagesEnAttente: [{ ...passage(), chanson }] }), capture);
-	assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
-	assert.match(b.principale.querySelector('dialog').textContent, /C’est noté/);
-	assert.equal(bouton(b.principale, "M'inscrire").disabled, true);
+	// La vue confirme l'inscription : la fiche se ferme et un message vrai dit la position (#280).
+	assert.equal(b.principale.querySelector('dialog'), null);
+	assert.match(b.principale.textContent, /C’est noté : tu passes en position 14\./);
 	assert.doesNotMatch(b.principale.textContent, /Consultation en cours/);
-	b.module.afficher(vue(), capture); assert.equal(bouton(b.principale, "M'inscrire").disabled, false);
+	b.module.afficher(vue(), capture);
+	carteChanson(b.principale, chanson.titre).click();
+	b.appels[4].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	assert.equal(bouton(b.principale, "M'inscrire").disabled, false);
 	b.module.demonter();
 });
 
@@ -284,7 +290,7 @@ test('un refus définitif d’inscription garde le détail près de l’action t
 	const b = creerBanc(manette); b.module.afficher(vue(), capture); b.connecter('synchronisee');
 	const champ = b.principale.querySelector('input'); champ.value = 'titre'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	bouton(b.principale, "M'inscrire").click(); b.appels[2].resolve({ statut: 422, corps: { code: 'DONNEES_INVALIDES', detail: 'La durée manque côté serveur.' } }); await terminerMicrotaches();
 	assert.match(b.principale.querySelector('dialog').textContent, /La durée manque côté serveur/);
 	assert.equal(bouton(b.principale, "M'inscrire").disabled, false); b.module.demonter();
@@ -296,7 +302,7 @@ test('la Manette conserve la recherche au quota, consulte par GET puis attend le
 	b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	assert.equal(b.appels[0].args[0], 'GET');
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	assert.equal(bouton(b.principale, "M'inscrire").disabled, true);
 	b.module.afficher(vue(), capture); b.connecter('synchronisee');
 	bouton(b.principale, "M'inscrire").click(); assert.equal(b.appels.length, 3);
@@ -335,7 +341,7 @@ test('changer de Manche ou démonter annule les lectures et ignore toute répons
 	const champ = b.principale.querySelector('input'); champ.value = 'ancien'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.module.afficher(vue({ mancheId: 'nouvelle' }), capture); assert.equal(b.appels[0].args[3].signal.aborted, true); assert.equal(champ.value, '');
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	assert.ok(bouton(b.principale, chanson.titre) === undefined);
+	assert.ok(carteChanson(b.principale, chanson.titre) === undefined);
 	champ.value = 'nouveau'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.module.demonter(); assert.equal(b.appels[1].args[3].signal.aborted, true);
 	b.appels[1].reject(new Error()); await terminerMicrotaches(); assert.equal(b.principale.childElementCount, 0);
@@ -390,9 +396,9 @@ test('Manette : fermer la fiche pendant une consultation retire « Consultation 
 	const champ = b.principale.querySelector('input'), formulaire = b.principale.querySelector('form');
 	champ.value = 'titre'; formulaire.dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson, { ...chanson, chansonId: 'autre', titre: 'Autre' }] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, paroles: null } }); await terminerMicrotaches();
+	carteChanson(b.principale, chanson.titre).click(); b.appels[1].resolve({ statut: 200, corps: { chanson, paroles: null } }); await terminerMicrotaches();
 	assert.ok(b.principale.querySelector('dialog'));
-	bouton(b.principale, 'Autre').click(); await terminerMicrotaches();
+	carteChanson(b.principale, 'Autre').click(); await terminerMicrotaches();
 	assert.match(b.principale.textContent, /Consultation en cours…/);
 	bouton(b.principale.querySelector('dialog'), 'Fermer').click(); await terminerMicrotaches();
 	assert.doesNotMatch(b.principale.textContent, /Consultation en cours…/); b.module.demonter();

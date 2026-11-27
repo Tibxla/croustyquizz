@@ -134,3 +134,16 @@
 .photos--affiche:not([hidden]) ~ [data-attente],
 .photos--affiche:not([hidden]) ~ [data-zone-palmares],
 .photos--affiche:not([hidden]) ~ [data-classement-salle] { display: none; }
+
+/* Envoi d'une photo depuis la Manette (#280, M2) : un bouton de la charte ; le champ natif caché porte le focus. */
+.photos__champ { display: grid; gap: var(--espace-2); }
+.photos__bouton { justify-content: center; gap: var(--espace-2); cursor: pointer; }
+.photos__bouton::before {
+  content: "";
+  width: 1.25em;
+  height: 1.25em;
+  background: currentColor;
+  mask: url("../icones/camera.svg") center / contain no-repeat;
+}
+.photos__champ input:focus-visible + .photos__bouton { outline: 3px solid var(--citron); outline-offset: 3px; }
+.photos__champ input[aria-disabled="true"] + .photos__bouton { color: var(--texte-3); border-color: var(--fond-3); cursor: not-allowed; }

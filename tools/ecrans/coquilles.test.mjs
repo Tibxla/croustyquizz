@@ -82,3 +82,35 @@ test('Console : la barre de pilotage tient sur une ligne au-dessus de 860 px (#2
 	assert.match(pilotage, /flex-wrap:\s*nowrap/);
 	assert.match(css, /@media \(max-width: 860px\)\s*\{[^@]*\.pilotage \{[^}]*flex-wrap:\s*wrap/);
 });
+
+test('Manette : l’en-tête tient sur une ligne et le reste se range dans un menu (#280)', async () => {
+	const html = await lire('manette.html');
+	const entete = bloc(html, 'class="manette__entete"');
+	for (const attribut of ['class="marque"', 'data-pseudo', 'data-connexion', 'data-menu-bouton']) assert.match(entete, new RegExp(attribut), attribut);
+	assert.doesNotMatch(entete, /data-titre|data-resume|data-manche/);
+	const menu = bloc(html, 'data-menu');
+	assert.match(menu, /id="menu-manette"/);
+	for (const attribut of ['data-titre', 'data-joueurs', 'data-classement', 'data-photos', 'data-reprise']) assert.match(menu, new RegExp(attribut), attribut);
+	const actions = bloc(html, 'class="manette__actions"');
+	assert.match(actions, /data-buzzer/);
+	assert.doesNotMatch(actions, /data-reprise/);
+	assert.ok(html.indexOf('data-principale') < html.indexOf('class="manette__actions"'));
+});
+
+test('Manette : l’action du moment reste collée en bas, zone de sécurité comprise (#280)', async () => {
+	const css = await lire('css/manette.css');
+	const actions = css.match(/^\.manette__actions \{([^}]*)\}/m)?.[1] ?? '';
+	assert.match(actions, /position:\s*sticky/);
+	assert.match(actions, /bottom:\s*0/);
+	assert.match(actions, /safe-area-inset-bottom/);
+});
+
+test('Manette : aucun texte sous 16 px (#280, M1)', async () => {
+	const css = await lire('css/manette.css');
+	const regle = css.match(/\/\* Aucun texte sous 16 px[^*]*\*\/\s*([^{]+)\{([^}]*)\}/);
+	assert.ok(regle, 'règle de plancher typographique');
+	for (const selecteur of ['.champ__aide', '.ticket__quoi', '.karaoke__position', '.karaoke__attente', '.mon-ticket__etiquette--texte', '.karaoke__etat-invitations']) {
+		assert.ok(regle[1].includes(selecteur), selecteur);
+	}
+	assert.match(regle[2], /font-size:\s*1rem/);
+});

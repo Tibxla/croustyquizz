@@ -354,7 +354,12 @@ export function creerChoixInvites(ui, moi, { verbe = 'Chanter' } = {}) {
 	return { element, rendre, choisis };
 }
 
-export function creerCatalogue(ui, parent, { inscrire = false, replie = false } = {}) {
+// Une Chanson qu'on ne peut pas chanter ici reste visible, grisée, avec la raison (#280).
+const refusParoles = { NON_SYNCHRONISEES: 'Paroles non synchronisées : impossible de la chanter ici.',
+	ABSENTES: 'Sans paroles : impossible de la chanter ici.', SANS_VOIX: 'Version sans voix : impossible de la chanter ici.' };
+const RESULTATS_PAR_PAGE = 10;
+
+export function creerCatalogue(ui, parent, { inscrire = false, replie = false, surInscription = () => {} } = {}) {
 	const { e, bouton, ecouter } = ui;
 	const titre = e('h2', '', replie ? 'Catalogue des Chansons' : 'Catalogue'); titre.tabIndex = -1;
 	const formulaire = e('form', inscrire ? 'champ' : 'recherche');
@@ -368,18 +373,22 @@ export function creerCatalogue(ui, parent, { inscrire = false, replie = false } 
 	const etatLecture = e('p'); etatLecture.setAttribute('role', 'status');
 	const CONSULTATION = 'Consultation en cours…';
 	const resultats = e(inscrire ? 'ul' : 'table', `karaoke__resultats${inscrire ? '' : ' resultats'}`);
+	// Dix résultats d'abord sur la Manette, puis « Voir plus » : la liste a une fin visible (#280).
+	let visibles = RESULTATS_PAR_PAGE;
+	const voirPlus = bouton('Voir plus', () => { visibles += RESULTATS_PAR_PAGE; dessinerResultats(); }, 'bouton karaoke__voir-plus');
+	voirPlus.hidden = true;
 	if (replie) {
 		// Rarement utile à l'Animateur : la Console le replie sous son titre (#282).
 		const repli = e('details', 'catalogue-replie'), resume = e('summary');
 		resume.append(titre);
 		repli.append(resume, formulaire, etatLecture, resultats);
 		parent.append(repli);
-	} else parent.append(titre, formulaire, etatLecture, resultats);
+	} else parent.append(titre, formulaire, etatLecture, resultats, ...(inscrire ? [voirPlus] : []));
 	let composition = false, recherche, fiche, dialogue, boutonInscription, motif, etatAction, reessai, declencheur, invitations;
 	const machine = creerMachineRecherche({ envoyer: (...args) => ui.contexte.envoyer(...args), creerUuid,
 		programmerDelai: (f, ms) => setTimeout(f, ms), annulerDelai: clearTimeout,
 		surEtat(etat) {
-			if (etat.genre === 'recherche') { recherche = etat; dessinerResultats(); }
+			if (etat.genre === 'recherche') { if (etat !== recherche) visibles = RESULTATS_PAR_PAGE; recherche = etat; dessinerResultats(); }
 			else {
 				fiche = etat;
 				if (etat.etat !== 'chargement') { etatLecture.textContent = ''; ouvrirFiche(); }
@@ -397,7 +406,22 @@ export function creerCatalogue(ui, parent, { inscrire = false, replie = false } 
 		etatLecture.textContent = !recherche ? '' : recherche.etat === 'chargement' ? 'Recherche en cours…' :
 			recherche.etat === 'vide' ? 'Aucune Chanson trouvée.' : recherche.etat === 'erreur' && erreur.hidden ? (recherche.detail ?? 'La recherche est indisponible.') : '';
 		const lignes = [];
-		for (const chanson of recherche?.donnees?.chansons ?? []) {
+		const toutes = recherche?.donnees?.chansons ?? [];
+		const montrees = inscrire ? toutes.slice(0, visibles) : toutes;
+		voirPlus.hidden = !inscrire || montrees.length >= toutes.length;
+		for (const chanson of montrees) {
+			if (inscrire) {
+				// Toute la carte s'ouvre : le titre en gras, l'artiste dessous, la durée à droite (#280).
+				const ligne = e('li'), carte = bouton('', () => consulter(chanson.chansonId, carte), 'karaoke__carte');
+				carte.setAttribute('data-chanson-id', chanson.chansonId);
+				const refus = refusParoles[chanson.etatParoles];
+				carte.append(e('strong', 'karaoke__carte-titre', chanson.titre), e('span', 'karaoke__carte-duree chiffres', formaterDuree(chanson.dureeMs)),
+					e('span', 'karaoke__carte-artiste', [chanson.artiste, chanson.album].filter(Boolean).join(' · ')),
+					e('span', 'karaoke__carte-paroles', refus ?? paroles[chanson.etatParoles] ?? ''));
+				carte.disabled = Boolean(refus);
+				ligne.append(carte); lignes.push(ligne);
+				continue;
+			}
 			const ligne = e(inscrire ? 'li' : 'tr');
 			const cellule = inscrire ? ligne : e('td');
 			const ouvrir = bouton(chanson.titre, () => consulter(chanson.chansonId, ouvrir), 'bouton bouton--lien titre');
@@ -442,6 +466,7 @@ export function creerCatalogue(ui, parent, { inscrire = false, replie = false } 
 			contenu.append(invitations.element);
 			boutonInscription = bouton("M'inscrire", () => {
 				if (!fiche?.donnees || !etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises).possible) return;
+				surInscription(fiche.chansonId);
 				const invitesIds = invitations.choisis();
 				// Sans invité, le corps reste celui d'une inscription seule.
 				const corps = invitesIds.length ? { chansonId: fiche.chansonId, invitesIds } : { chansonId: fiche.chansonId };
@@ -460,9 +485,10 @@ export function creerCatalogue(ui, parent, { inscrire = false, replie = false } 
 		const etat = etatInscription(fiche.donnees, ui.bloc, ui.mutationsPermises);
 		motif.textContent = etat.motif ?? '';
 		if (inscrire) {
-			invitations.rendre();
 			const cle = ui.inscription(fiche.chansonId), envoi = ui.envoiInscription(fiche.chansonId);
 			boutonInscription.disabled = !etat.possible || Boolean(cle);
+			// Les cases d'invitation suivent le bouton : on n'invite pas à un Passage qu'on ne peut pas créer (#280).
+			invitations.rendre({ desactiver: boutonInscription.disabled });
 			etatAction.textContent = texteEnvoi(envoi);
 			reessai.hidden = !ui.reessaiPossible(envoi);
 		}
@@ -475,6 +501,8 @@ export function creerCatalogue(ui, parent, { inscrire = false, replie = false } 
 	ecouter(champ, 'compositionstart', () => { composition = true; }); ecouter(champ, 'compositionend', () => { composition = false; });
 	ecouter(champ, 'input', () => { if (!champ.value) { machine.invalider(); recherche = null; dessinerResultats(); } });
 	return { rendre,
+		// Fermée par la page (#280) : le focus ne revient pas à la carte, la page le place elle-même.
+		fermerFiche() { dialogue?.oublierDeclencheur(); dialogue?.fermer(); },
 		// Une fiche encore en chargement ne s'ouvrira plus (#277) : l'appel du Joueur passe avant.
 		annulerConsultation() {
 			if (fiche?.etat === 'chargement') { machine.fermerFiche(); fiche = null; }

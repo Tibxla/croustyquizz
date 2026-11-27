@@ -54,7 +54,7 @@ function afficherPalmares(palmares) {
 }
 function afficherCommun(vue) {
 	const description = decrireVue(vue, { ecran });
-	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
+	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel', 'pseudo']) texte(nom, description[nom]);
 	// Une ligne vide ne prend pas de place : le Buzz, le résumé ou le rang ne parlent que s'ils ont quelque chose à dire.
 	for (const nom of ['resume', 'buzz', 'personnel']) { const cible = element(nom); if (cible) cible.hidden = !description[nom]; }
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);

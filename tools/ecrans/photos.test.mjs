@@ -306,3 +306,15 @@ test('Transport : JPEG envoyé brut et téléchargé avec la même authentificat
 	assert.equal(appels[1].headers.Authorization, 'Bearer secret');
 	assert.equal(appels[1].cache, 'no-store');
 });
+
+test('Manette : « Envoyer une photo » est un bouton de la charte, le champ natif reste caché mais focalisable (#280, M2)', () => {
+	const { champ, module, zone } = manette();
+	assert.match(champ.className, /visuellement-cache/);
+	const etiquette = zone.querySelector('label');
+	assert.equal(etiquette.getAttribute('for'), champ.id);
+	assert.match(etiquette.className, /\bbouton\b/);
+	assert.equal(etiquette.textContent, 'Envoyer une photo');
+	const groupe = champ.parentNode;
+	assert.ok(groupe.children.indexOf(champ) < groupe.children.indexOf(etiquette), 'le champ précède son bouton pour porter le focus visible');
+	module.demonter();
+});

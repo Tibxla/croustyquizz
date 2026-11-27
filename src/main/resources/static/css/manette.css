@@ -13,17 +13,46 @@
   font-size: 1.125rem;
 }
 
+/* En-tête d'une ligne (#280) : le mot-symbole, le pseudo, la pastille de connexion et le menu. */
 .manette__entete {
+  position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--espace-3);
+  gap: var(--espace-2);
   color: var(--texte-2);
-  font-size: 0.9375rem;
 }
-.manette__entete strong {
+.manette__entete .marque { flex: none; font-size: 1.0625rem; }
+.manette__pseudo {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--texte);
+  font-weight: 700;
 }
+/* Tout va bien : un point seul, son texte reste lu par le lecteur d'écran. */
+.manette__entete .connexion { font-size: 0; gap: 0; }
+/* Coupure : le bandeau prend toute la ligne sous l'en-tête. */
+.manette__entete .coupure { order: 1; flex-basis: 100%; }
+.manette__menu-bouton { flex: none; gap: var(--espace-2); padding-inline: var(--espace-3); }
+.manette__menu-bouton[aria-expanded="true"] { background: var(--fond-3); border-color: var(--texte-3); }
+
+/* Menu de la Manette : Joueurs, classement, photo, resynchronisation, sous l'en-tête. */
+.menu--manette {
+  display: grid;
+  gap: var(--espace-3);
+  padding: var(--espace-4);
+  border: 1px solid var(--fond-4);
+  border-radius: var(--rayon-grand);
+  background: var(--fond-2);
+  box-shadow: var(--ombre);
+}
+.menu__titre { font-size: 1.25rem; text-wrap: balance; }
+.menu--manette .commun__liste { display: grid; gap: var(--espace-1); padding-bottom: var(--espace-2); }
+.menu--manette > .bouton { justify-content: flex-start; gap: var(--espace-2); }
+.manette__buzz { color: var(--texte-2); text-align: center; }
 
 .manette__titre {
   font-size: 1.5rem;
@@ -36,12 +65,25 @@
   color: var(--texte-2);
 }
 
+/* L'action du moment reste à portée du pouce, collée en bas, zone de sécurité comprise (#280). */
 .manette__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--espace-2);
-  margin-top: auto;
+  margin: auto calc(-1 * var(--espace-4)) calc(-1 * (var(--espace-5) + env(safe-area-inset-bottom)));
+  padding: var(--espace-3) var(--espace-4) calc(var(--espace-4) + env(safe-area-inset-bottom));
+  background: var(--fond-0);
+}
+.manette__actions:not(:has(> :not([hidden]))) { display: none; }
+
+/* Aucun texte sous 16 px sur la Manette (#280, M1) : le corps y monte à 1,125rem. */
+.manette .champ__aide, .manette .ticket__quoi, .manette .karaoke__position, .manette .karaoke__attente,
+.manette .mon-ticket__etiquette--texte, .manette .karaoke__etat-invitations, .manette .commun__personnel {
+  font-size: 1rem;
 }
 
 /* Le ticket du Joueur : son numéro se lit de loin, d'un coup d'œil. La souche

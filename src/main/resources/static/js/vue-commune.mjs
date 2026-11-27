@@ -74,7 +74,9 @@ export function decrireVue(vue, { ecran = 'console' } = {}) {
 		// Le Buzz ne sert qu'entre deux Manches : pendant une Manche, il se tait (#281).
 		buzz: vue.dernierBuzz && !vue.modeEnCours ? `Dernier Buzz : ${vue.dernierBuzz.pseudo}` : '',
 		programme: (vue.programme ?? []).map(decrireManche),
-		personnel: joueur ? [joueur.pseudo, decrireRangPersonnel(vue), vue.mancheActive && !vue.eligiblePourMancheActive ?
+		pseudo: joueur?.pseudo ?? '',
+		// Le pseudo est dans l'en-tête de la Manette (#280) : la ligne personnelle ne dit que ce qui change.
+		personnel: joueur ? [decrireRangPersonnel(vue), vue.mancheActive && !vue.eligiblePourMancheActive ?
 			'Tu participeras à la prochaine Manche.' : '', vue.resultatPersonnel ?
 			`${vue.resultatPersonnel.pointsGagnes} points à la dernière correction` : ''].filter(Boolean).join(' · ') : '',
 		codeAcces: terminee ? null : vue.soiree.codeAcces,

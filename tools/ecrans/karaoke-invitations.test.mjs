@@ -6,6 +6,9 @@ import { monter as consoleKaraoke } from '../../src/main/resources/static/js/mod
 import { estInscripteur, joindrePseudos, lignesInvitations, texteDesinscription, texteInvitation }
 	from '../../src/main/resources/static/js/modes/karaoke/invitations.mjs';
 import { invitesPossibles } from '../../src/main/resources/static/js/modes/karaoke/commun.mjs';
+// Un résultat de la Manette est une carte entière (#280) : son titre est en gras.
+const carteChanson = (zone, titre) => zone.querySelectorAll('button').find(b => b.textContent === titre || b.querySelector('strong')?.textContent === titre);
+
 
 // Passages à plusieurs (#135, #138, #139). Le banc joue le Joueur « j » (Jo).
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'file-attente-modifiee' };
@@ -170,7 +173,7 @@ test('Manette : la fiche coche trois invités au plus, sans soi, et n’ajoute i
 	const champ = b.principale.querySelector('input'); champ.value = 'titre';
 	b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(b.principale, chanson.titre).click();
+	carteChanson(b.principale, chanson.titre).click();
 	b.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	const cases = b.principale.querySelector('dialog').querySelectorAll('input');
 	assert.deepEqual(cases.map(c => c.value), ['b', 'c', 'd', 'e']);
@@ -192,7 +195,7 @@ test('Manette : la fiche coche trois invités au plus, sans soi, et n’ajoute i
 	const recherche = seul.principale.querySelector('input'); recherche.value = 'titre';
 	seul.principale.querySelector('form').dispatchEvent({ type: 'submit' });
 	seul.appels[0].resolve({ statut: 200, corps: { chansons: [chanson] } }); await terminerMicrotaches();
-	bouton(seul.principale, chanson.titre).click();
+	carteChanson(seul.principale, chanson.titre).click();
 	seul.appels[1].resolve({ statut: 200, corps: { chanson, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
 	assert.equal(seul.principale.querySelector('fieldset'), null);
 	bouton(seul.principale, "M'inscrire").click();
