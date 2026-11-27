@@ -1,7 +1,7 @@
 import { ouvrirDialogue } from '../../dialogue.mjs';
 import { creerMachineEnvoi, exigeCapture, peutReessayer } from './envois.mjs';
 import { creerMachineRecherche } from './recherche.mjs';
-import { teintePassage, formaterDuree, formaterAttente, etatInscription, libelleEtatTicketPublic } from './presentation.mjs';
+import { teintePassage, formaterDuree, formaterAttente, etatInscription, libelleEtatTicketPublic, libelleParoles, musiqueIncluse } from './presentation.mjs';
 
 export const texteAutresPassages = n => (n ? `et ${n} ${n > 1 ? 'autres' : 'autre'}` : '');
 
@@ -15,8 +15,6 @@ export function creerUuid(cryptoDisponible = globalThis.crypto) {
 }
 
 const styles = new WeakMap();
-const paroles = { SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',
-	ABSENTES: 'Sans paroles', SANS_VOIX: 'Sans voix', INCONNU: 'Paroles à vérifier' };
 
 export function texteEnvoi(e) {
 	if (!e) return '';
@@ -274,9 +272,11 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 			const cellule = inscrire ? ligne : e('td');
 			const ouvrir = bouton(chanson.titre, () => consulter(chanson.chansonId, ouvrir), 'bouton bouton--lien titre');
 			ouvrir.setAttribute('data-chanson-id', chanson.chansonId);
-			cellule.append(ouvrir, e('p', 'artiste', chanson.artiste));
+			cellule.append(ouvrir);
+			if (musiqueIncluse(chanson)) cellule.append(e('p', 'karaoke__musique', 'Musique incluse'));
+			cellule.append(e('p', 'artiste', chanson.artiste));
 			if (chanson.album) cellule.append(e('p', '', chanson.album));
-			cellule.append(e('p', 'duree', formaterDuree(chanson.dureeMs)), e('p', '', paroles[chanson.etatParoles]));
+			cellule.append(e('p', 'duree', formaterDuree(chanson.dureeMs)), e('p', '', libelleParoles(chanson.etatParoles)));
 			if (!inscrire) ligne.append(cellule); lignes.push(ligne);
 		}
 		if (recherche?.origineErreur === 'delai') {
@@ -300,9 +300,10 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 		const contenu = dialogue.contenu;
 		if (fiche.donnees) {
 			const chanson = fiche.donnees.chanson;
+			if (musiqueIncluse(chanson)) contenu.append(e('p', 'karaoke__musique', 'Musique incluse'));
 			contenu.append(e('p', '', chanson.artiste));
 			if (chanson.album) contenu.append(e('p', '', chanson.album));
-			contenu.append(e('p', 'chiffres', formaterDuree(chanson.dureeMs)), e('p', '', paroles[chanson.etatParoles]));
+			contenu.append(e('p', 'chiffres', formaterDuree(chanson.dureeMs)), e('p', '', libelleParoles(chanson.etatParoles)));
 		}
 		motif = e('p'); contenu.append(motif);
 		if (fiche.etat === 'erreur') {

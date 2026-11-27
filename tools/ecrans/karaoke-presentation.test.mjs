@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { teintePassage, formaterDuree, formaterAttente, etatInscription, tableMotifsKaraoke } from '../../src/main/resources/static/js/modes/karaoke/presentation.mjs';
+import { teintePassage, formaterDuree, formaterAttente, etatInscription, tableMotifsKaraoke, libelleParoles, musiqueIncluse } from '../../src/main/resources/static/js/modes/karaoke/presentation.mjs';
 
 test('les tickets suivent leur numéro et les durées tronquent les millisecondes', () => {
 	assert.deepEqual([1, 12, 13, 14, 15].map(teintePassage), ['eau', 'orange', 'eau', 'bleu', 'rose']);
@@ -44,4 +44,16 @@ test('les décomptes arrondissent au plafond et le décalage comporte un signe e
 	const { formaterTempsRestant, formaterDecalage } = await import('../../src/main/resources/static/js/modes/karaoke/presentation.mjs');
 	assert.deepEqual([0, 26999, 59000, 59001, 61442].map(formaterTempsRestant), ['0 s', '27 s', '59 s', '1:00', '1:02']);
 	assert.deepEqual([1500, -349, -50, 1599].map(formaterDecalage), ['+1,5 s', '−0,3 s', '0,0 s', '+1,6 s']);
+});
+
+test('une Chanson de la Bibliothèque de base annonce sa musique, une Chanson sans voix se dit version instrumentale', () => {
+	const fichier = { fichier: '/bibliotheque/chansons/josh-woodward-crazy-glue.mp3', tailleOctets: 2400, licence: 'CC BY 4.0',
+		urlLicence: 'https://creativecommons.org/licenses/by/4.0/deed.fr', urlSource: 'https://example.org/crazy-glue' };
+	assert.equal(musiqueIncluse({ origine: 'BIBLIOTHEQUE', bibliotheque: fichier }), true);
+	// Le serveur ne sait pas si le Lieu a le fichier d'une Chanson de LRCLIB : rien n'est affirmé pour elle.
+	assert.equal(musiqueIncluse({ origine: 'LRCLIB', bibliotheque: null }), false);
+	assert.equal(musiqueIncluse({ origine: 'BIBLIOTHEQUE', bibliotheque: null }), false, 'entrée retirée du catalogue : plus de fichier');
+	assert.deepEqual(['SYNCHRONISEES', 'NON_SYNCHRONISEES', 'ABSENTES', 'SANS_VOIX', 'INCONNU'].map(libelleParoles),
+		['Paroles synchronisées', 'Paroles non synchronisées', 'Sans paroles', 'Version instrumentale', 'Paroles à vérifier']);
+	assert.equal(tableMotifsKaraoke.SANS_VOIX, 'C’est une version instrumentale : rien à chanter.');
 });

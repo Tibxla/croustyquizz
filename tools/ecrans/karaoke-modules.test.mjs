@@ -254,6 +254,28 @@ test('Manette : recherche par composition, validation accessible, vidage silenci
 	b.module.demonter();
 });
 
+test('Manette : les Chansons de la Bibliothèque de base portent « Musique incluse » dans les résultats et sur la fiche', async t => {
+	const b = creerBanc(manette); t.after(() => b.module.demonter());
+	b.module.afficher(vue(), capture); b.connecter('synchronisee');
+	const libre = { ...chanson, chansonId: 'libre', titre: 'Crazy Glue', artiste: 'Josh Woodward', origine: 'BIBLIOTHEQUE', bibliotheque: {
+		fichier: '/bibliotheque/chansons/josh-woodward-crazy-glue.mp3', tailleOctets: 2400, licence: 'CC BY 4.0',
+		urlLicence: 'https://creativecommons.org/licenses/by/4.0/deed.fr', urlSource: 'https://example.org/crazy-glue' } };
+	const homonyme = { ...libre, chansonId: 'homonyme', album: 'The Wake', origine: 'LRCLIB', bibliotheque: null };
+	const instrumentale = { ...chanson, chansonId: 'instrumentale', titre: 'Crazy Glue (Instrumental)', etatParoles: 'SANS_VOIX',
+		origine: 'LRCLIB', bibliotheque: null };
+	const champ = b.principale.querySelector('input'); champ.value = 'crazy glue'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
+	b.appels[0].resolve({ statut: 200, corps: { chansons: [libre, homonyme, instrumentale] } }); await terminerMicrotaches();
+	const lignes = b.principale.querySelector('.karaoke__resultats').children;
+	assert.deepEqual(lignes.map(li => li.querySelector('[data-chanson-id]').getAttribute('data-chanson-id')), ['libre', 'homonyme', 'instrumentale'],
+		'l’ordre du serveur, Bibliothèque de base en tête, est gardé');
+	assert.deepEqual(lignes.map(li => li.querySelector('.karaoke__musique')?.textContent ?? null), ['Musique incluse', null, null]);
+	assert.match(lignes[2].textContent, /Version instrumentale/);
+	assert.doesNotMatch(b.principale.textContent, /Sans voix/);
+	bouton(b.principale, 'Crazy Glue').click();
+	b.appels[1].resolve({ statut: 200, corps: { chanson: libre, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	assert.equal(b.principale.querySelector('dialog').querySelector('.karaoke__musique')?.textContent, 'Musique incluse');
+});
+
 test('Manette : l’inscription inconnue se réessaie après capture, puis un ticket confirme le 503', async () => {
 	const b = creerBanc(manette); b.module.afficher(vue(), evenement); b.connecter('synchronisee');
 	const champ = b.principale.querySelector('input'); champ.value = 'titre'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
