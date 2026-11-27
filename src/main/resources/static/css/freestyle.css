@@ -112,6 +112,40 @@
 
 .freestyle__couplet-manette { margin: 0; color: var(--texte-2); }
 
+/* Écran de salle (#276) : la zone du mode a la hauteur qui reste entre l'en-tête et le pied, environ la moitié
+   de l'écran en 16:9. Les tailles suivent la largeur et la hauteur, sans plancher en rem qui ferait déborder
+   le 720p ; le nom de l'Interprète reste le titre de la zone. */
+.salle .freestyle { gap: 0.6vw; }
+.salle .freestyle .freestyle__interprete {
+  font: 800 min(3.2vw, 5.7vh)/0.95 var(--police-chiffres);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.salle .freestyle .freestyle__phase {
+  margin: 0;
+  font-size: min(1.8vw, 3.2vh);
+  line-height: 1.25;
+}
+.salle .freestyle .freestyle__grille {
+  gap: 0.1em;
+  font-size: min(3vw, 5.3vh);
+}
+.salle .freestyle .freestyle__mesure { font-size: min(1.6vw, 2.85vh); }
+.salle .freestyle .freestyle__temps { margin-top: 0.1em; }
+.salle .freestyle .freestyle__temps-fort { padding: 0.45em 0 0.1em; }
+.salle .freestyle .freestyle__mot {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+.salle .freestyle .freestyle__suivant { font-size: min(1.6vw, 2.85vh); }
+.salle .freestyle .freestyle__annonce { margin: 0; font-size: min(2.2vw, 3.9vh); }
+/* Colonne de la salle : l'ordre et le Couplet courant à 1,6vw, comme le reste de la colonne (#278). */
+.salle .freestyle .freestyle__ordre,
+.salle .freestyle .freestyle__couplet { font-size: 1.6vw; }
+
 @media (prefers-reduced-motion: reduce) {
   .freestyle__balle { transform: translateX(-50%); }
 }

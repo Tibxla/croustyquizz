@@ -13,6 +13,8 @@
 .salle__scene {
   display: grid;
   grid-template-columns: 1fr 30vw;
+  /* Une seule rangée, bornée à la fenêtre : un contenu trop haut est coupé, jamais la page allongée (#276). */
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
 }
 
@@ -28,6 +30,8 @@
 
 .salle__cote {
   display: flex;
+  /* Lisible à 5 m (#278) : rien sous 1,6vw dans la colonne. */
+  font-size: 1.6vw;
   flex-direction: column;
   gap: 1.2vw;
   padding: 2.4vw 2.2vw;
@@ -37,7 +41,7 @@
 }
 
 .salle__cote h2 {
-  font: 800 1.5vw/1 var(--police-chiffres);
+  font: 800 1.6vw/1 var(--police-chiffres);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--texte-2);
@@ -100,11 +104,11 @@
   font-size: 3.4vw;
 }
 .salle .talon__aide {
-  font-size: 1.5vw;
+  font-size: 1.6vw;
 }
 .salle .talon__adresse {
   display: block;
-  font-size: 1.5vw;
+  font-size: 1.6vw;
   font-weight: 700;
 }
 /* Chaque segment reste insécable. La page place les coupures avec <wbr>. */
@@ -132,12 +136,25 @@
   font-size: 2.6vw;
   line-height: 1.25;
 }
+/* Les voisines servent de repère : deux lignes au plus, pour laisser la place à la ligne chantée (#276). */
+.paroles__ligne:not(.paroles__ligne--en-cours) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+/* Bornée par la largeur et par la hauteur : une télé plus carrée ne la fait pas déborder. */
 .paroles__ligne--en-cours {
   color: var(--texte);
   font-weight: 700;
-  font-size: 4.4vw;
+  font-size: min(4.4vw, 9vh);
   line-height: 1.15;
   text-wrap: balance;
+}
+/* Au-delà de deux lignes au corps normal, la ligne chantée passe en corps réduit plutôt que d'être coupée. */
+.paroles__ligne--longue {
+  font-size: min(3.4vw, 7vh);
 }
 /* Sans minutage par mot, toute la ligne en cours reçoit la teinte du Passage. */
 .paroles__chante {
@@ -259,7 +276,34 @@
 /* La coquille garde le pied et le talon hors des zones confiées au mode. */
 .salle--coquille .talon { row-gap: 0.6vw; }
 .salle--coquille .talon__adresse { grid-column: 1 / -1; }
-.salle--coquille .salle__principal { justify-content: flex-start; gap: 1.2vw; padding-bottom: 6vw; }
+/* #276 : la page ne défile jamais. L'en-tête, les messages, le dossier de musique et le pied gardent
+   leur hauteur ; la zone du mode prend la place qui reste entre l'en-tête et le pied, et coupe ce qui dépasse. */
+.salle--coquille .salle__principal { justify-content: flex-start; gap: 1.2vw; min-height: 0; overflow: hidden; padding-bottom: 2.4vw; }
+.salle--coquille .salle__principal > * { flex: none; }
+.salle--coquille .salle__principal > [data-principale] { flex: 1 1 0; min-height: 0; overflow: hidden; }
+.salle--coquille .salle__principal > [data-principale]:empty { display: none; }
+/* Entre deux Manches, la photo affichée garde la place restante, comme la zone du mode. */
+.salle--coquille .salle__principal > .photos--affiche { flex: 1 1 0; min-height: 0; }
+.salle--coquille .salle__principal > .salle__pied { position: static; margin-top: auto; }
+/* Le pied a trois places : le mot-symbole, un crédit éventuel (celui d'une Chanson, #271) sur une ligne
+   tronquée, puis le nom de l'écran. */
+.salle--coquille .salle__pied { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+.salle--coquille .salle__pied > :not(.marque) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.salle--coquille .salle__pied > :last-child:not(.marque) { grid-column: 3; text-align: right; }
+/* La colonne : le rouleau du mode, puis les Joueurs, puis le talon, toujours entier et figé en bas.
+   Le rouleau passe avant les Joueurs ; ce qui ne tient pas est coupé avant le talon. */
+.salle--coquille .salle__cote { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.salle--coquille .salle__cote > :not(.talon) { min-height: 0; overflow: clip; overflow-clip-margin: 1vw; }
+/* Rangées fixées : hors Manche, la zone du mode vide ne décale pas les Joueurs dans la première rangée. */
+.salle--coquille .salle__cote > [data-laterale] { grid-row: 1; }
+.salle--coquille .salle__cote > .commun { grid-row: 2; }
+.salle--coquille .salle__cote > .talon { grid-row: 3; align-self: end; margin-top: 0; }
+/* Les Joueurs prennent la place qui reste : plutôt que de couper une ligne, la salle retire d'abord le dernier
+   Buzz, puis la liste, et garde le nombre de Joueurs. */
+.salle--coquille .salle__cote > .commun { container: joueurs-salle / size; }
+@container joueurs-salle (max-height: 12em) { .salle--coquille .commun [data-buzz] { display: none; } }
+@container joueurs-salle (max-height: 8em) { .salle--coquille .commun [data-joueurs] { display: none; } }
+@container joueurs-salle (max-height: 1.6em) { .salle--coquille .commun [data-nombre-joueurs] { display: none; } }
 .salle--coquille .coquille__commun h1 { font-size: 2.4vw; }
 .salle--coquille .commun__resume { font-size: 1.5vw; }
 .salle--coquille .coupure { font-size: 1.3vw; padding: 0.7vw 1vw; }

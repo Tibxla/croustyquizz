@@ -805,7 +805,8 @@ test('Salle : deux bandeaux stables au-dessus du rouleau, avec compte des votes 
 	const rouleau = b.laterale.querySelector('.rouleau');
 	assert.ok(rouleau && rouleau.parentNode.children[0] === premier.parentNode);
 	assert.equal(premier.style.getPropertyValue('--teinte'), 'var(--rose)');
-	assert.match(b.principale.querySelector('.karaoke__invitation').textContent, /Prépare-toi/);
+	// À l'appel, la zone principale nomme l'Interprète appelé (#277) ; le vote reste dans la colonne.
+	assert.match(b.principale.querySelector('.passage-salle--appel').textContent, /À toi, Jo.*Prépare-toi/);
 	assert.match(premier.textContent, /15.*<Chanson>.*Lou.*Note ce Passage sur ta Manette.*1 vote.*18 s/);
 	assert.match(second.textContent, /Aucun vote/);
 	assert.equal(b.laterale.querySelectorAll('[role=status]').length, 0);

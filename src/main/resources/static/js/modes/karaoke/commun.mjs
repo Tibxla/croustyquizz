@@ -95,6 +95,8 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 	const ui = {
 		document, principale, laterale, e, bouton, ecouter, envois, contexte,
 		surRendu() {}, surManche() {}, surDestruction() {}, messageInvalidation() {},
+		// Appelé à l'appel du Joueur (#277), avant la fermeture des dialogues : le module annule ce qui en ouvrirait un.
+		avantAppel() {},
 		get bloc() { return bloc; },
 		// Joueurs présents de la Soirée, partie commune de la vue : la Manette y choisit ses invités (#138).
 		get joueurs() { return joueurs; },
@@ -158,10 +160,17 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true, mode
 			function terminer() {
 				if (!dialogues.delete(d)) return;
 				fermer(); dialog.remove();
-				if (!declencheur?.isConnected) (principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
+				if (!d.sansRetour && !declencheur?.isConnected) (principale.querySelector('input') ?? principale.querySelector('h2'))?.focus();
 			}
 			dialog.append(titreElement, contenu, annuler); principale.append(dialog);
-			dialogues.add(d); ecouter(dialog, 'close', terminer); ouvrirDialogue(dialog, declencheur); return d;
+			dialogues.add(d); ecouter(dialog, 'close', terminer);
+			const ouverture = ouvrirDialogue(dialog, declencheur);
+			d.oublierDeclencheur = () => { d.sansRetour = true; ouverture?.oublierDeclencheur(); };
+			return d;
+		},
+		// À l'appel du Joueur (#277) : les dialogues se ferment sans rendre le focus, la page le place elle-même.
+		fermerDialogues() {
+			for (const d of [...dialogues]) { d.oublierDeclencheur(); d.fermer(); }
 		},
 		remplacerListe(liste, enfants, titre) {
 			const actif = document.activeElement, avaitFocus = liste.contains(actif);
@@ -439,6 +448,11 @@ export function creerCatalogue(ui, parent, { inscrire = false } = {}) {
 	ecouter(champ, 'compositionstart', () => { composition = true; }); ecouter(champ, 'compositionend', () => { composition = false; });
 	ecouter(champ, 'input', () => { if (!champ.value) { machine.invalider(); recherche = null; dessinerResultats(); } });
 	return { rendre,
+		// Une fiche encore en chargement ne s'ouvrira plus (#277) : l'appel du Joueur passe avant.
+		annulerConsultation() {
+			if (fiche?.etat === 'chargement') { machine.fermerFiche(); fiche = null; }
+			if (etatLecture.textContent === CONSULTATION) etatLecture.textContent = '';
+		},
 		reinitialiser() { machine.invalider(); dialogue?.fermer(); recherche = null; fiche = null; champ.value = ''; dessinerResultats(); },
 		detruire() { machine.detruire(); dialogue?.fermer(); },
 	};

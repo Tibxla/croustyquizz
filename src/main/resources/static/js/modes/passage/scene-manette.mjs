@@ -26,6 +26,7 @@ export function installerScene(ui, invitation) {
 		const actif = ui.document.activeElement;
 		const avaitFocus = scene.contains(actif);
 		const boutonCible = actif === reessai ? 'reessai' : 'confirmer';
+		let amener = false;
 		if (description !== descriptionTicket) {
 			descriptionTicket = description;
 			minuterie = confirmerPresence = statutPresence = reessai = undefined;
@@ -39,9 +40,10 @@ export function installerScene(ui, invitation) {
 					statutPresence = e('p'); statutPresence.setAttribute('role', 'status');
 					if (p.etat === 'APPELE') {
 						ticketCourant.classList.add('mon-ticket--appele');
-						if (dernierCourant !== p.passageId && origine?.source === 'evenement' && origine.type === 'passage-appele') {
-							ticketCourant.classList.add('mon-ticket--detachement');
-						}
+						const evenementAppel = origine?.source === 'evenement' && origine.type === 'passage-appele';
+						if (dernierCourant !== p.passageId && evenementAppel) ticketCourant.classList.add('mon-ticket--detachement');
+						// Un téléphone en veille reçoit l'appel par capture : il est amené aussi, sans animation (#277).
+						if (dernierCourant !== p.passageId) amener = evenementAppel ? 'doux' : 'immediat';
 						minuterie = e('p', 'chiffres');
 						confirmerPresence = bouton('Je suis prêt', () => {
 							const cible = ui.bloc.courant;
@@ -73,11 +75,26 @@ export function installerScene(ui, invitation) {
 			confirmerPresence.disabled = !ui.mutationsPermises || ['en-cours', 'accepte'].includes(envoi?.etat) || Boolean(peutReessayer(envoi));
 			reessai.hidden = !ui.reessaiPossible(envoi);
 		}
+		if (amener) {
+			amenerALAppel(amener === 'doux');
+			return decompter();
+		}
 		if (avaitFocus && (!actif.isConnected || actif.hidden || actif.disabled || ui.document.activeElement !== actif)) {
 			const cible = boutonCible === 'reessai' ? reessai : confirmerPresence;
 			(actif !== titreScene && cible && !cible.hidden && !cible.disabled ? cible : p ? titreScene : titre).focus();
 		}
 		decompter();
+	}
+	// À l'appel (#277), le Joueur regarde peut-être une fiche ou la liste des résultats : la fiche se referme,
+	// la page remonte au ticket appelé et le focus va à « Je suis prêt », une fois par appel.
+	function amenerALAppel(doux) {
+		ui.avantAppel();
+		ui.fermerDialogues();
+		const fenetre = ui.document.defaultView;
+		const reduit = fenetre?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? true;
+		scene.scrollIntoView({ block: 'start', behavior: doux && !reduit ? 'smooth' : 'auto' });
+		const cible = confirmerPresence && !confirmerPresence.hidden && !confirmerPresence.disabled ? confirmerPresence : titreScene;
+		cible.focus({ preventScroll: true });
 	}
 	function envoiPresence() {
 		return ui.dernierEnvoi(e => e.commande.type === 'CONFIRMER_PRESENCE' && e.commande.passageId === ui.bloc.courant?.passageId);

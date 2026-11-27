@@ -70,6 +70,10 @@ Recette exécutée en Chromium sans interface graphique sur le port 18113, avec 
 
 Le test constate le décodage, la progression et la fin du WAV dans Chromium. L’audibilité sur le matériel du Lieu, la lecture à cinq mètres, le tactile physique et l’intégration des routes #99 et #100 restent à vérifier en situation.
 
+**Écran de salle sans débordement (#276).** Ouvrir l’Écran de salle en 1280 × 720 puis en 1920 × 1080 et dérouler un Passage avec une Chanson dont une ligne passe sur deux lignes, puis une ligne de plus de 48 caractères. À chaque étape (appel, paroles, fin, vote), vérifier que la page ne défile pas (`document.documentElement.scrollHeight` égal à la hauteur de la fenêtre), que la ligne chantée est entière, et que le talon (QR code, code, adresse) reste entier en bas de la colonne, même avec trois Passages dans « Ensuite » et un bandeau de vote. Une ligne chantée longue ne garde qu’une voisine avant et une après ; au-delà de deux lignes, elle passe en corps réduit. Le bouton « Choisir le dossier de musique » et le pied restent visibles sous la zone du mode ; un crédit de Chanson placé dans le pied tient sur une ligne, tronqué par « … ». Si la colonne manque de place, elle retire le dernier Buzz, puis la liste des Joueurs, sans couper une ligne.
+
+La même vérification est automatisée sur les vraies feuilles et les vrais modules, sans serveur : `node tools/ecrans/servir-recette.mjs`, `playwright-cli open http://127.0.0.1:18080/index.html`, puis `playwright-cli run-code --filename=tools/ecrans/salle-hauteur-navigateur.mjs`. Le script monte le Karaoké (ligne longue, ligne très longue avec crédit, appel, vote) et le Freestyle (Passage à plusieurs, désignation) à 1280 × 720 et 1920 × 1080, et lève une erreur si la page dépasse la fenêtre ou si la zone principale, le pied, le bouton de dossier ou le talon sont coupés.
+
 ### Recette du Vote du public (#115)
 
 Reprendre la Soirée de démonstration du ticket #114 avec la Console, l’Écran de salle et deux
@@ -100,11 +104,14 @@ Vérification navigateur à réaliser à 1920 × 1080 puis à 1280 × 720, avec 
 visible à cinq mètres. Reprendre la Soirée de démonstration et ouvrir deux Manettes de votants
 en plus de celle de l’Interprète.
 
-1. Terminer un Passage et envoyer les notes 4 et 5. La salle affiche le numéro, la Chanson,
-   les Interprètes, le nombre de votes et le temps restant dans le bandeau au-dessus du rouleau.
-   Pendant le vote, vérifier l’absence de moyenne sur les trois écrans et de nombre de votes
-   sur la Manette. Le changement du nombre garde le bandeau en place et l’appel ou les paroles
-   restent dans la zone principale.
+1. Terminer un Passage et envoyer les notes 4 et 5. Tant qu’aucun Passage n’est appelé, la zone
+   principale de la salle montre le vote (#278) : « Note ce Passage sur ta Manette », les
+   Interprètes, la Chanson, le temps restant en chiffres géants et le nombre de votes ; le Passage
+   suivant n’y apparaît qu’à la clôture. Sur la Manette, la note touchée reste lisible (encre sur
+   la teinte du ticket), même sous le doigt. Pendant le vote, vérifier l’absence de moyenne sur
+   les trois écrans et de nombre de votes sur la Manette. Si un Passage est appelé pendant le
+   vote, l’appel prend la zone principale et le vote passe dans le bandeau au-dessus du rouleau,
+   en texte de 1,6vw au moins ; le changement du nombre garde le bandeau en place.
 2. Laisser le vote se clore. Vérifier « 4,5 sur 5 » et « 2 votes » sur les trois écrans, la note
    personnelle sur la Manette et une seule annonce du résultat au lecteur d’écran. Recharger
    la Manette et vérifier que le résultat reste lisible sans nouvelle annonce. Refaire la
@@ -116,9 +123,11 @@ en plus de celle de l’Interprète.
    et recharger la salle. Le bandeau échu reste masqué. Refaire en sautant le Passage dès
    l’appel, avant « Je suis prêt ». Ce saut laisse la moyenne affichée.
 4. Terminer deux Passages en moins de trente secondes pour obtenir deux votes ouverts et
-   mettre la Manche en pause. Vérifier les deux bandeaux au-dessus du rouleau, le plus récent
-   en haut, les temps figés sous « Pause », les textes lisibles, le talon visible et la colonne
-   latérale sans débordement aux deux résolutions. En terminant la Manche pendant un vote,
+   mettre la Manche en pause. Sans Passage en scène, le plus récent est au centre et l’autre en
+   bandeau ; dès qu’un Passage est appelé, vérifier les deux bandeaux au-dessus du rouleau, le
+   plus récent en haut, à la place des tickets suivants (« et N autres »), les temps figés sous
+   « Pause », les textes lisibles, le talon visible et la colonne latérale sans débordement aux
+   deux résolutions. En terminant la Manche pendant un vote,
    vérifier que les bandeaux disparaissent.
 5. En Pilotage Automatique, provoquer une clôture qui appelle le Passage suivant. Vérifier
    que la Manette annonce aussi la moyenne à cette clôture et que la salle garde le bandeau
@@ -299,6 +308,11 @@ dans l’[ADR 0010](adr/0010-source-des-instrumentales-du-freestyle.md).
 7. Termine la Soirée juste après une Manche de Freestyle notée. Vérifie
    que la salle affiche le « Podium final » sans le Palmarès, et que la
    Console affiche toujours le Palmarès du Freestyle (#224).
+
+8. **Écran de salle sans débordement (#276).** En 1280 × 720 puis en 1920 × 1080,
+   pendant un Passage à plusieurs, vérifie que la page ne défile pas et que le nom de
+   l’Interprète, la mesure, les quatre temps, le mot, « Ensuite : … » et le talon (QR code,
+   code, adresse) restent entiers, ordre des Couplets compris dans la colonne.
 
 Sur l'Écran de salle, le mot de chaque mesure reste affiché toute la mesure, pour qu'il
 se lise à 5 m. Il s'allume sur son temps, et le mot de la mesure suivante est annoncé
