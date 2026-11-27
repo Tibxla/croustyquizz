@@ -499,13 +499,46 @@ test('l’Écran de salle affiche le crédit du morceau de la bibliothèque qui 
 	assert.equal(await lecture, '/bibliotheque/attente/kevin-macleod-ambiance.mp3');
 	await terminerMicrotaches();
 	assert.equal(ecran.credit.hidden, false);
-	assert.equal(ecran.credit.textContent, 'Musique : « Ambiance », Kevin MacLeod · CC BY 4.0');
+	assert.equal(ecran.credit.textContent, 'Musique : « Ambiance\u00a0», Kevin MacLeod · CC BY 4.0');
 	const relais = ecran.attendreLecture();
 	ecran.choisirDossier([{ name: 'Kevin MacLeod - Ambiance.ogg', webkitRelativePath: 'Musique/Attente/Kevin MacLeod - Ambiance.ogg' }]);
 	assert.equal(await relais, 'blob:Kevin MacLeod - Ambiance.ogg', 'le morceau du Lieu remplace son homonyme');
 	await terminerMicrotaches();
 	assert.equal(ecran.credit.hidden, true);
 	assert.equal(ecran.aide.textContent, '1 fichier audio en plus de la Bibliothèque de base');
+});
+
+test('le crédit de la Chanson prend la place de celui de la Musique d’attente dans le pied, sur une ligne qui garde la licence', { timeout: 3000 }, async t => {
+	const ecran = ecranDeSalle(t, 100, { bibliotheque: Promise.resolve(CATALOGUE) });
+	await new Promise(resolve => { const retirer = ecran.salle.surChangement(({ morceauxDisponibles }) => {
+		if (morceauxDisponibles) { retirer(); resolve(); } }); });
+	const lecture = ecran.attendreLecture();
+	ecran.activer.click();
+	await lecture;
+	await terminerMicrotaches();
+	assert.equal(ecran.credit.textContent, 'Musique : « Ambiance\u00a0», Kevin MacLeod · CC BY 4.0');
+	const parties = () => ecran.credit.children.map(partie => [partie.className, partie.textContent]);
+	// Seul le titre peut s'abréger : l'auteur et la licence, que CC BY exige, restent entiers.
+	assert.deepEqual(parties(), [['salle__credit-titre', 'Musique : « Ambiance'], ['salle__credit-licence', '\u00a0», Kevin MacLeod · CC BY 4.0']]);
+
+	ecran.salle.crediterSonDeManche({ nature: 'Chanson', titre: 'La lanterne', artiste: 'Les Lucioles', licence: 'CC BY-SA 4.0' });
+	assert.equal(ecran.credit.hidden, false);
+	assert.equal(ecran.credit.textContent, 'Chanson : « La lanterne\u00a0», Les Lucioles · CC BY-SA 4.0');
+	assert.deepEqual(parties(), [['salle__credit-titre', 'Chanson : « La lanterne'], ['salle__credit-licence', '\u00a0», Les Lucioles · CC BY-SA 4.0']]);
+	assert.deepEqual(ecran.salle.etat().creditDeManche,
+		{ nature: 'Chanson', titre: 'La lanterne', artiste: 'Les Lucioles', licence: 'CC BY-SA 4.0' });
+
+	ecran.salle.crediterSonDeManche(null);
+	assert.equal(ecran.credit.textContent, 'Musique : « Ambiance\u00a0», Kevin MacLeod · CC BY 4.0', 'la Musique d’attente reprend le pied');
+	ecran.salle.reglerMusiqueDAttente(false);
+	await terminerMicrotaches();
+	assert.equal(ecran.credit.hidden, true);
+	ecran.salle.crediterSonDeManche({ nature: 'Chanson', titre: 'La lanterne', artiste: 'Les Lucioles', licence: 'CC BY-SA 4.0' });
+	assert.equal(ecran.credit.textContent, 'Chanson : « La lanterne\u00a0», Les Lucioles · CC BY-SA 4.0');
+	ecran.salle.crediterSonDeManche(null);
+	assert.equal(ecran.salle.etat().creditDeManche, null);
+	assert.equal(ecran.credit.hidden, true);
+	assert.equal(ecran.credit.textContent, '');
 });
 
 test('une fenêtre qui n’a que la Bibliothèque de base ne prend pas la Musique d’attente à celle qui joue le dossier du Lieu', { timeout: 3000 }, async t => {

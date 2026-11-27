@@ -1,4 +1,3 @@
-import { texteCredit } from '../../bibliotheque.mjs';
 import { creerInterface, creerTicket, creerUuid, texteAutresPassages } from './commun.mjs';
 import { creerCycleLecture } from './cycle-lecture.mjs';
 import { delaiAppelRestant, determinerLignes, positionChronologique } from './paroles.mjs';
@@ -25,10 +24,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	const ui = creerInterface(zones, contexte, { annoncerConnexion: false }), { e, ecouter } = ui;
 	const invitation = e('h2', 'karaoke__invitation'), prochain = e('div', 'karaoke__prochain');
 	const minutes = e('p', 'karaoke__delai chiffres'), paroles = e('div', 'karaoke__paroles');
-	// Crédit exigé par la licence d'une Chanson de la Bibliothèque de base, pendant tout son Passage (ADR 0011).
-	const credit = e('p', 'karaoke__credit');
-	credit.hidden = true;
-	ui.principale.append(invitation, prochain, minutes, paroles, credit);
+	ui.principale.append(invitation, prochain, minutes, paroles);
 	const listeVotes = e('div', 'karaoke__bandeaux-vote');
 	const bandeaux = new Map();
 	listeVotes.hidden = true;
@@ -235,10 +231,11 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		prochain.replaceChildren(...(prochain.hidden ? [] : [creerTicket(ui, passages[0])]));
 		minutes.hidden = !appel || enErreur;
 		paroles.hidden = !actif || appel || enErreur || !bloc.paroles;
+		// Crédit exigé par la licence d'une Chanson de la Bibliothèque de base, pendant tout son Passage : la coquille
+		// l'affiche dans le pied à la place de celui de la Musique d'attente (ADR 0011).
 		const libre = actif && !appel && actif.chanson.origine === 'BIBLIOTHEQUE' ? actif.chanson.bibliotheque : null;
-		const texteDuCredit = libre ? `Chanson : ${texteCredit({ ...actif.chanson, licence: libre.licence })}` : '';
-		credit.hidden = !libre;
-		if (credit.textContent !== texteDuCredit) credit.textContent = texteDuCredit;
+		contexte.crediterSonDeManche(libre ? { nature: 'Chanson', titre: actif.chanson.titre, artiste: actif.chanson.artiste,
+			licence: libre.licence } : null);
 		if (paroles.hidden) {
 			paroles.replaceChildren();
 			versionParoles = indexAffiche = undefined;
@@ -257,6 +254,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		if (trame !== undefined) cancelAnimationFrame(trame);
 		retirerAudio();
 		detruireCycle();
+		contexte.crediterSonDeManche(null);
 		void contexte.signalerSonDeManche(false);
 	};
 	return { afficher: ui.afficher, demonter: ui.demonter };

@@ -91,7 +91,8 @@ async function demarrer() {
 			envoi.textContent = detail;
 		},
 	});
-	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	if (audioSalle) Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche,
+		crediterSonDeManche: audioSalle.crediterSonDeManche });
 	const boutonMusique = element('musique-attente');
 	const musiqueConsole = boutonMusique
 		? monterMusiqueDAttenteConsole(boutonMusique, element('musique-attente-statut'), contexte) : null;

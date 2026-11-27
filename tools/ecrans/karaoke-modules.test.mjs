@@ -38,7 +38,8 @@ function bancLecteur({ bibliotheque, lecteurId = 'lecteur', soireeId, memoireLec
 			cancelAnimationFrame: id => trames.delete(id), performance } };
 }
 function ecran(zones, contexte, { audioSalle, dependances } = bancLecteur()) {
-	Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche,
+		crediterSonDeManche: audioSalle.crediterSonDeManche });
 	return creerEcranKaraoke(zones, contexte, { ...dependances, document: zones.principale.ownerDocument });
 }
 
@@ -934,22 +935,27 @@ test('salle : un lecteur d’un autre navigateur garde la désignation pendant s
 	assert.deepEqual(b.appels, []);
 });
 
-test('salle : le crédit d’une Chanson de la Bibliothèque de base reste affiché pendant tout son Passage', t => {
-	const b = creerBanc((z, c) => ecran(z, c), 'ECRAN');
-	t.after(() => b.module.demonter());
+test('salle : le crédit d’une Chanson de la Bibliothèque de base passe au pied pendant tout son Passage, jamais sous les paroles', t => {
+	const audio = bancLecteur();
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
+	t.after(() => audio.audioSalle.detruire());
 	b.contexte.maintenantServeur = () => heureAppel;
 	const libre = { ...chanson, titre: 'La lanterne', artiste: 'Les Lucioles', origine: 'BIBLIOTHEQUE', bibliotheque: {
 		fichier: '/bibliotheque/chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, licence: 'CC BY-SA 4.0',
 		urlLicence: 'https://creativecommons.org/licenses/by-sa/4.0/deed.fr', urlSource: 'https://example.org/la-lanterne' } };
-	const credit = () => b.principale.querySelector('.karaoke__credit');
+	const credit = () => audio.audioSalle.etat().creditDeManche;
 	const paroles = { parolesId: 'v1', dureeMs: 4000, lignes: [{ positionMs: 0, texte: 'Une lanterne' }] };
 	const lecture = { lectureId: 'l', source: 'PAROLES_SEULES', decalageMs: 0 };
 	b.module.afficher(vue({ courant: courant('APPELE', { chanson: libre }) }), capture);
-	assert.equal(credit().hidden, true, 'pas encore pendant l’appel');
+	assert.equal(credit(), null, 'pas encore pendant l’appel');
 	b.module.afficher(vue({ courant: courant('EN_COURS', { chanson: libre }), paroles, lecture }), capture);
-	assert.equal(credit().hidden, false);
-	assert.equal(credit().textContent, 'Chanson : « La lanterne », Les Lucioles · CC BY-SA 4.0');
+	assert.deepEqual(credit(), { nature: 'Chanson', titre: 'La lanterne', artiste: 'Les Lucioles', licence: 'CC BY-SA 4.0' });
+	assert.equal(b.principale.querySelector('.karaoke__credit'), null, 'le crédit ne s’ajoute plus sous les paroles');
+	assert.ok(!b.principale.textContent.includes('CC BY-SA 4.0'));
 	b.module.afficher(vue({ courant: courant('EN_COURS', { chanson: { ...chanson, origine: 'LRCLIB', bibliotheque: null } }), paroles, lecture }),
 		capture);
-	assert.equal(credit().hidden, true);
+	assert.equal(credit(), null);
+	b.module.afficher(vue({ courant: courant('EN_COURS', { chanson: libre }), paroles, lecture }), capture);
+	b.module.demonter();
+	assert.equal(credit(), null, 'le démontage rend le pied à la Musique d’attente');
 });

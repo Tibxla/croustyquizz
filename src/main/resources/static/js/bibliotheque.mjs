@@ -38,7 +38,9 @@ export function fusionnerMorceauxDAttente(bibliotheque, fichiersDuDossier) {
 	return [...bibliotheque.filter(morceau => ![...nomsPossibles(morceau)].some(nom => noms.has(nom))), ...lieu];
 }
 
-export const texteCredit = ({ titre, artiste, licence }) => `« ${titre} », ${artiste} · ${licence}`;
+// Le crédit du pied de salle tient sur une ligne : seul le titre s'abrège, le guillemet fermant, l'auteur et la licence
+// restent entiers. L'espace insécable avant le guillemet survit au début de sa boîte, où une espace ordinaire disparaît.
+export const partiesDuCredit = ({ nature, titre, artiste, licence }) => [`${nature} : « ${titre}`, `\u00a0», ${artiste} · ${licence}`];
 
 // Données de la page des crédits, section par section, dans l'ordre du catalogue.
 export function decrireCredits(catalogue) {

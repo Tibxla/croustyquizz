@@ -1,7 +1,7 @@
 import { creerCoordinationSon } from './coordination-son.mjs';
 import { creerLecteurDePassage } from './lecteur-de-passage.mjs';
 import { creerMusiqueDAttente } from './musique-attente.mjs';
-import { CATALOGUE_VIDE, chargerBibliotheque, fusionnerMorceauxDAttente, morceauxDeLaBibliotheque, texteCredit } from './bibliotheque.mjs';
+import { CATALOGUE_VIDE, chargerBibliotheque, fusionnerMorceauxDAttente, morceauxDeLaBibliotheque, partiesDuCredit } from './bibliotheque.mjs';
 import { creerUuid } from './modes/karaoke/commun.mjs';
 import { estFichierAudio } from './modes/karaoke/fichiers.mjs';
 import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
@@ -12,10 +12,10 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 	const abonnes = new Set();
 	const morceauxIllisibles = new Set();
 	let fichiers = null, dossier = null, bibliotheque = [], chansonsLibres = false, morceauxDisponibles = null, morceauEnCours = null;
-	let morceauxDuLieu = false;
+	let morceauxDuLieu = false, creditDeManche = null;
 	let sonDebloque = false, suspendu = false, detruit = false, musiqueAutorisee = false, attenteAutorisee = false;
 	const etat = () => ({ fichiers, dossier, bibliotheque: bibliotheque.length > 0 || chansonsLibres, sonDebloque,
-		morceauxDisponibles, morceauxDuLieu, morceauEnCours });
+		morceauxDisponibles, morceauxDuLieu, morceauEnCours, creditDeManche });
 	function lireCatalogue(nouveau) {
 		for (const morceau of bibliotheque) morceauxIllisibles.delete(morceau);
 		bibliotheque = morceauxDeLaBibliotheque(nouveau, 'attente');
@@ -95,6 +95,14 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 			coordination.signalerSonDeManche(actif);
 			return actif ? coordination.attendreSonDeManche() : Promise.resolve(false);
 		},
+		// Crédit du son de Manche (une Chanson de la Bibliothèque de base) : il prend la place de celui de la Musique
+		// d'attente dans le pied tant que le module le maintient, et null le lui rend (ADR 0011).
+		crediterSonDeManche(credit) {
+			const nouveau = credit ? { nature: credit.nature, titre: credit.titre, artiste: credit.artiste, licence: credit.licence } : null;
+			if (JSON.stringify(nouveau) === JSON.stringify(creditDeManche)) return;
+			creditDeManche = nouveau;
+			notifier();
+		},
 		suspendre(valeur) {
 			suspendu = valeur;
 			actualiserCandidature();
@@ -150,7 +158,7 @@ export function monterAudioSalle(zone, soireeId, { bibliotheque = chargerBibliot
 		audio.choisirDossier(Array.from(choix.files));
 		choix.value = '';
 	});
-	function afficher({ fichiers, dossier, bibliotheque: libre, sonDebloque, morceauxDuLieu, morceauEnCours }) {
+	function afficher({ fichiers, dossier, bibliotheque: libre, sonDebloque, morceauxDuLieu, morceauEnCours, creditDeManche }) {
 		const avaitFocus = document.activeElement === activer;
 		// « Activer le son » se propose dès l'ouverture : la bibliothèque n'attend que ce clic.
 		activer.hidden = sonDebloque;
@@ -164,9 +172,17 @@ export function monterAudioSalle(zone, soireeId, { bibliotheque = chargerBibliot
 		}
 		if (aide.textContent !== texteAide) aide.textContent = texteAide;
 		if (credit) {
-			credit.hidden = !morceauEnCours?.credit;
-			const texte = credit.hidden ? '' : `Musique : ${texteCredit(morceauEnCours.credit)}`;
-			if (credit.textContent !== texte) credit.textContent = texte;
+			const affiche = creditDeManche ?? (morceauEnCours?.credit ? { nature: 'Musique', ...morceauEnCours.credit } : null);
+			const parties = affiche ? partiesDuCredit(affiche) : [];
+			credit.hidden = !affiche;
+			if (credit.textContent !== parties.join('')) {
+				credit.replaceChildren(...parties.map((texte, i) => {
+					const partie = document.createElement('span');
+					partie.className = i ? 'salle__credit-licence' : 'salle__credit-titre';
+					partie.textContent = texte;
+					return partie;
+				}));
+			}
 		}
 	}
 	audio.surChangement(afficher);

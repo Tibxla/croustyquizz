@@ -293,15 +293,22 @@
 .salle__audio:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65vw; }
 .salle__audio .bouton { font-size: clamp(0.875rem, 1vw, 1.125rem); }
 .salle__audio p:empty { display: none; }
-/* Crédit de la Bibliothèque de base (ADR 0011) : discret dans le pied, à l'échelle de la salle pour rester lisible à 5 m. */
+/*
+ * Crédit de la Bibliothèque de base (ADR 0011), Musique d'attente ou Chanson en cours : discret dans le pied,
+ * à l'échelle de la salle pour rester lisible à 5 m, sur une seule ligne. Seul le titre s'abrège : le guillemet fermant,
+ * l'auteur et la licence, que CC BY exige, restent entiers.
+ */
 .salle__credit {
   flex: 1;
   margin: 0;
   min-width: 0;
   font-size: 1.5vw;
   line-height: 1.2;
-  text-align: center;
-  /* Un titre long passe à la ligne plutôt que de couper la licence, que CC BY exige. */
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
+.salle__credit:not([hidden]) { display: flex; justify-content: center; }
+.salle__credit-titre { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.salle__credit-licence { flex: none; }
+/* Le crédit a besoin de la largeur du pied : le nom de l'écran s'efface tant qu'il est affiché, le lien des crédits reste. */
+.salle__pied:has(.salle__credit:not([hidden])) .salle__pied-nom { display: none; }
 .salle__credits { color: inherit; }

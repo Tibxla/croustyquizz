@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-	chargerBibliotheque, decrireCredits, fusionnerMorceauxDAttente, morceauxDeLaBibliotheque, texteCredit,
+	chargerBibliotheque, decrireCredits, fusionnerMorceauxDAttente, morceauxDeLaBibliotheque, partiesDuCredit,
 } from '../../src/main/resources/static/js/bibliotheque.mjs';
 import { choisirFichierDeChanson } from '../../src/main/resources/static/js/modes/karaoke/fichiers.mjs';
 
@@ -66,9 +66,9 @@ test('le fichier du Lieu l’emporte sur celui de la bibliothèque, qui passe av
 	assert.deepEqual(choisirFichierDeChanson([local], deLrclib), { etat: 'unique', fichier: local });
 });
 
-test('le crédit nomme le titre, l’auteur et la licence', () => {
-	assert.equal(texteCredit({ titre: 'Ambiance', artiste: 'Kevin MacLeod', licence: 'CC BY 4.0' }),
-		'« Ambiance », Kevin MacLeod · CC BY 4.0');
+test('le crédit nomme le titre, l’auteur et la licence, et seul le titre peut s’abréger', () => {
+	assert.deepEqual(partiesDuCredit({ nature: 'Musique', titre: 'Ambiance', artiste: 'Kevin MacLeod', licence: 'CC BY 4.0' }),
+		['Musique : « Ambiance', '\u00a0», Kevin MacLeod · CC BY 4.0']);
 });
 
 test('la page des crédits reprend chaque entrée du catalogue avec sa licence, sa source et les paroles en BY-SA', () => {
