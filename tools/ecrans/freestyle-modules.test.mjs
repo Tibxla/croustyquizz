@@ -583,3 +583,49 @@ test('un Passage à plusieurs garde le lecteur désigné et continue de jouer pe
 		assert.equal(autre.texte('freestyle__interprete'), 'Zoé');
 	} finally { autre.banc.module.demonter(); }
 });
+
+test('sur la Manette, la ligne du Couplet disparaît avec le Passage (#283)', () => {
+	const banc = creerBanc(monterManette);
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue({ courant: enScene(false) }), capture);
+		const ligne = banc.principale.querySelector('.freestyle__couplet-manette');
+		assert.equal(ligne.hidden, false);
+		assert.match(ligne.textContent, /Couplet 1 sur 4/);
+		banc.module.afficher(vue({ courant: { ...enScene(false), etat: 'TERMINE' } }), capture);
+		assert.equal(ligne.hidden, true);
+		assert.equal(ligne.textContent, '');
+	} finally { banc.module.demonter(); }
+});
+
+test('les boutons de désignation s’empilent et passent à la ligne avec un pseudo long (#283)', async () => {
+	const banc = creerBanc(monterManette);
+	const long = { joueurId: 'l', pseudo: 'Bartholoméo Croustillant-Dupré' };
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue({ votes: [{ ...passage, interpretes: [long, zoe], etat: 'OUVERT', delaiRestantMs: 30000,
+			peutVoter: true, scrutin: 'MEILLEUR_INTERPRETE', maNote: null, monChoix: null }] }), capture);
+		const groupe = banc.principale.querySelector('.karaoke__notes');
+		assert.match(groupe.className, /karaoke__notes--designation/);
+		const css = await readFile(new URL('../../src/main/resources/static/css/karaoke.css', import.meta.url), 'utf8');
+		const regle = css.match(/\.karaoke__notes--designation \{([^}]*)\}/)?.[1] ?? '';
+		assert.match(regle, /grid-template-columns:\s*minmax\(0, 1fr\)/);
+		const bouton = css.match(/\.karaoke \.karaoke__notes--designation \.bouton \{([^}]*)\}/)?.[1] ?? '';
+		assert.match(bouton, /white-space:\s*normal/);
+		assert.match(bouton, /overflow-wrap:\s*anywhere/);
+	} finally { banc.module.demonter(); }
+});
+
+test('sur la salle, « À venir » dit quand personne n’est inscrit (#283)', () => {
+	const banc = creerBanc((zones, contexte) => {
+		zones.principale.ownerDocument.defaultView = { requestAnimationFrame: () => 1, cancelAnimationFrame() {} };
+		return monterSalle(zones, contexte);
+	}, 'ECRAN');
+	try {
+		banc.connecter('synchronisee');
+		banc.module.afficher(vue(), capture);
+		assert.match(banc.laterale.textContent, /À venir\s*Personne n’est inscrit\./);
+		banc.module.afficher(vue({ passagesEnAttente: [passage], nombreEnAttente: 1 }), capture);
+		assert.doesNotMatch(banc.laterale.textContent, /Personne n’est inscrit/);
+	} finally { banc.module.demonter(); }
+});

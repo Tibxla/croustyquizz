@@ -278,7 +278,9 @@ export function monter(zones, contexte) {
 			ligne.append(creerTicket(ui, passage));
 			return ligne;
 		}));
-		autres.textContent = texteAutresPassages(bloc.nombreEnAttente - bloc.passagesEnAttente.length);
+		// « À venir » ne reste jamais vide sans rien dire (#283).
+		autres.textContent = bloc.passagesEnAttente.length ? texteAutresPassages(bloc.nombreEnAttente - bloc.passagesEnAttente.length)
+			: 'Personne n’est inscrit.';
 		synchroniser();
 	};
 	ui.surDestruction = () => {

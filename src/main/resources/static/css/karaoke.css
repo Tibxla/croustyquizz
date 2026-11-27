@@ -15,6 +15,9 @@
 .karaoke__ticket-vote p:empty { margin: 0; padding: 0; }
 .karaoke__notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--espace-1); }
 .karaoke .karaoke__notes .bouton { padding-inline: 0; font-variant-numeric: tabular-nums; }
+/* Désignation du meilleur Interprète (#283) : un pseudo par ligne, entier, sur deux lignes au besoin. */
+.karaoke__notes--designation { grid-template-columns: minmax(0, 1fr); gap: var(--espace-2); }
+.karaoke .karaoke__notes--designation .bouton { padding-inline: var(--espace-4); white-space: normal; overflow-wrap: anywhere; text-align: center; }
 .karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"],
 .karaoke .karaoke__ticket-vote .bouton[aria-pressed="true"]:hover {
   border-color: var(--encre);
