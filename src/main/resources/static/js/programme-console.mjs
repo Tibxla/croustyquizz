@@ -45,6 +45,9 @@ export function monterProgramme(panneau, contexte) {
 		}
 	}
 
+	// 400 : réglages hors contrat ; 422 : réglages à corriger, comme une source Deezer inconnue ou trop courte.
+	const aCorriger = statut => statut === 400 || statut === 422;
+
 	async function modifier(methode, chemin, corps, surRequeteInvalide) {
 		if (!peutEnvoyer()) return;
 		const annulation = new AbortController();
@@ -53,10 +56,10 @@ export function monterProgramme(panneau, contexte) {
 		try {
 			const { statut, corps: reponse } = await contexte.envoyer(methode, route + chemin, corps, {
 				signal: annulation.signal,
-				annoncer: ({ statut }) => statut !== 400 || !surRequeteInvalide || !modifiable,
+				annoncer: ({ statut }) => !aCorriger(statut) || !surRequeteInvalide || !modifiable,
 			});
 			if (annulation.signal.aborted) return;
-			if (statut === 400) {
+			if (statut === 400 || (statut === 422 && surRequeteInvalide)) {
 				if (modifiable) surRequeteInvalide?.(reponse);
 				return;
 			}

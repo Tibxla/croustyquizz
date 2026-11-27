@@ -226,6 +226,35 @@ test('le Blind test envoie sa source Deezer et son nombre de Morceaux, puis les 
 	b.programme.demonter();
 });
 
+test('une source Deezer refusée en 422 s’affiche sous le formulaire, pas dans le bandeau', async () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'BLIND_TEST';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.source.value = 'PLAYLIST';
+	b.idDeezer.value = '0';
+	b.nombreMorceaux.value = '10';
+	const detail = 'Deezer ne connaît aucune playlist 0 : vérifie l’identifiant et le type (playlist ou genre).';
+
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	b.appels[0].resoudre({ statut: 422, corps: { code: 'SOURCE_MUSICALE_INVALIDE', detail } });
+	await terminerMicrotaches();
+	assert.equal(b.erreurAjout.hidden, false);
+	assert.equal(b.erreurAjout.textContent, detail);
+	assert.deepEqual(b.annonces, ['en-cours', null]);
+	assert.equal(b.captures(), 0);
+
+	b.idDeezer.value = '1306931615';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.erreurAjout.hidden, true, 'un nouvel envoi efface le refus précédent');
+	b.appels[1].resoudre({ statut: 503, corps: { code: 'SOURCE_MUSICALE_INDISPONIBLE', detail: 'Le catalogue musical ne répond pas.' } });
+	await terminerMicrotaches();
+	assert.equal(b.erreurAjout.hidden, true, 'une panne reste annoncée par la coquille');
+	assert.deepEqual(b.annonces, ['en-cours', null, 'en-cours', 'inconnu']);
+	b.programme.demonter();
+});
+
 test('le Karaoké envoie un objet de réglages vide et le démontage annule l’envoi', async () => {
 	const b = banc();
 	b.afficher([], 'OUVERTE');
