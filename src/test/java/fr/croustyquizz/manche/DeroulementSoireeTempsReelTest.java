@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.tempsreel.Canaux;
 import fr.croustyquizz.tempsreel.RegistreAbonnements;
@@ -53,6 +55,8 @@ class DeroulementSoireeTempsReelTest {
 	private static final String PILOTER_MANCHE = "piloterManche";
 	private static final String COMMANDES = "/commandes";
 	@LocalServerPort private int port;
+	/** Animateur du Lieu qui crée les Soirées : ses requêtes partent sans Bearer, avec sa session. */
+	private SessionAnimateurHttp proprietaire;
 	@Autowired private JsonMapper json;
 	@Autowired private Horloge horloge;
 	@Autowired private RegistreAbonnements abonnements;
@@ -60,6 +64,11 @@ class DeroulementSoireeTempsReelTest {
 	private final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("soiree-stomp-");
 	private final List<StompSession> sessions = new ArrayList<>();
 	private final List<WebSocketStompClient> clients = new ArrayList<>();
+
+	@BeforeEach
+	void connecterLeProprietaire() throws Exception {
+		proprietaire = SessionAnimateurHttp.ouvrir(port, json);
+	}
 
 	@AfterEach
 	void fermerLesConnexions() {
@@ -75,7 +84,7 @@ class DeroulementSoireeTempsReelTest {
 				Map.of("titre", "Soirée ouverte devant la salle", "format", "SOLO", "pilotage", "MANUEL"), null, 201);
 		UUID soiree = UUID.fromString(creation.path("id").asString());
 		String racine = "/api/soirees/" + soiree;
-		String animateur = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
+		String animateur = null; // la session du propriétaire, pas de Bearer de démonstration
 		String cleEcran = envoyer("creerAccesEcran", HttpMethod.POST, racine + "/acces-ecran", animateur, null, null, 200)
 				.path("cleEcran").asString();
 		var salle = abonner(cleEcran, Canaux.salle(soiree), "salle", "retrouverEtatSalle");
@@ -110,7 +119,7 @@ class DeroulementSoireeTempsReelTest {
 				Map.of("titre", "Soirée de deux Manches", "format", "SOLO", "pilotage", "MANUEL"), null, 201);
 		UUID soiree = UUID.fromString(creation.path("id").asString());
 		String racine = "/api/soirees/" + soiree;
-		String animateur = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
+		String animateur = null; // la session du propriétaire, pas de Bearer de démonstration
 		String seconde = ajouterManche(racine, animateur);
 		String premiere = ajouterManche(racine, animateur);
 		envoyer("ordonnerManches", HttpMethod.PUT, racine + "/ordre-des-manches", animateur,
@@ -244,6 +253,8 @@ class DeroulementSoireeTempsReelTest {
 		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
 		if (jeton != null) {
 			requete.header("Authorization", "Bearer " + jeton);
+		} else {
+			requete.headers(entetes -> entetes.addAll(proprietaire.entetes()));
 		}
 		if (cle != null) {
 			requete.header("Idempotency-Key", cle.toString());
@@ -263,10 +274,14 @@ class DeroulementSoireeTempsReelTest {
 		var client = new WebSocketStompClient(websocket);
 		clients.add(client);
 		client.setMessageConverter(new JacksonJsonMessageConverter());
-		var connexion = new StompHeaders();
-		connexion.set("Authorization", "Bearer " + jeton);
+		var connexion = jeton == null ? proprietaire.connexionStomp() : new StompHeaders();
+		if (jeton != null) {
+			connexion.set("Authorization", "Bearer " + jeton);
+		}
+		var poigneeDeMain = jeton == null ? proprietaire.poigneeDeMain() : new WebSocketHttpHeaders();
 		var session = client.connectAsync("ws://localhost:" + port + "/ws",
-				new WebSocketHttpHeaders(), connexion, new StompSessionHandlerAdapter() { }).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
+				poigneeDeMain, connexion, new StompSessionHandlerAdapter() { })
+				.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		UUID id = UUID.randomUUID();
 		var entetes = new StompHeaders();

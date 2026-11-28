@@ -37,17 +37,33 @@ La File d’attente du Karaoké étend ce parcours ci-dessous. Une Soirée peut 
 
 Les jetons sont opaques. Le serveur en déduit l’identité et la portée ; une route ou un corps contenant un UUID ne confère aucun droit. Un Joueur ne peut agir pour un autre, un Animateur ne peut accéder à un autre Lieu et une clé d’Écran n’envoie que les commandes de son lecteur (désignation, déclaration, fin, erreur et relevé de position), sans aucune action de jeu. Les ressources hors de la portée autorisée répondent `404`, les identités absentes ou expirées `401`.
 
+Si le résolveur d’Acteur doit lire un `soireeId` de chemin mal formé, il répond `404 RESSOURCE_INTROUVABLE`. Sur une route où Spring convertit d’abord le paramètre de chemin en UUID, la conversion répond `400 REQUETE_INVALIDE`.
+
 Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée. La page d’arrivée conserve le jeton et l’UUID du Joueur renvoyés par le serveur pour la Soirée concernée. La Manette utilise le jeton pour ses requêtes HTTP et le CONNECT STOMP, et l’UUID pour choisir son canal. La clé d’Écran indique sa propre expiration. Une clé expirée nécessite un nouvel accès depuis la préparation. Les capacités ne sont transmises ni dans les événements, ni dans une chaîne de requête, ni dans les journaux. La préparation ouvre `ecran.html?soiree=<UUID>#cle=<clé>` ; l’Écran de salle conserve sa clé dans le stockage de l’onglet et retire le fragment après lecture. Tous les secrets et vues sont servis avec `Cache-Control: no-store` ; HTTPS est requis hors développement local.
+
+Les opérations sans Soirée, comme la création, reçoivent l’identité de session `AnimateurConnecte` (`animateurId`, `lieuId`) côté serveur. La création enregistre ce Lieu. Pour une opération sur une Soirée, le serveur résout un Acteur Animateur pour cette Soirée après avoir vérifié son Lieu. Les anciennes Soirées sans Lieu donnent aussi `404 RESSOURCE_INTROUVABLE` aux Animateurs connectés.
 
 Pour la session Animateur, obtenir un jeton par `GET /api/csrf`, puis envoyer `X-CSRF-TOKEN` avec les opérations mutantes. L’inscription et la connexion sont également protégées contre les requêtes intersites. Après connexion/déconnexion, récupérer un nouveau jeton. Le cookie de session est `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS.
 
-Sur les routes de compte, un en-tête `Authorization: Bearer …` entraîne un refus sans contrôle CSRF : `403 ACCES_REFUSE` pour l’inscription et la connexion, `401 AUTHENTIFICATION_REQUISE` pour la consultation et la déconnexion. Pour les requêtes de la session navigateur, un jeton CSRF absent ou invalide entraîne `403 CSRF_INVALIDE`. Pour l’instant, la session ne sert qu’à ces routes de compte : la déconnexion l’invalide, sans effet sur les connexions STOMP ouvertes avec un Bearer.
+Sur les routes de compte, un en-tête `Authorization: Bearer …` entraîne un refus sans contrôle CSRF : `403 ACCES_REFUSE` pour l’inscription et la connexion, `401 AUTHENTIFICATION_REQUISE` pour la consultation et la déconnexion. Pour les requêtes de la session navigateur, un jeton CSRF absent ou invalide entraîne `403 CSRF_INVALIDE`. La déconnexion invalide la session et ferme les connexions STOMP de la Console qui en dépendent (voir plus bas) ; une connexion ouverte avec un Bearer n’en dépend pas.
 
-Pour STOMP 1.2, le sous-protocole est `v12.stomp`. Le navigateur envoie le jeton CSRF dans `CONNECT`, ainsi que `Authorization: Bearer …` pour un Joueur ou un Écran de salle. En `dev` et `recette`, la Console utilise encore le Bearer `demo:ANIMATEUR` tant que la session du Lieu (#5) ne couvre pas STOMP ; elle utilisera ensuite la session du handshake. Il s’agit de **headers STOMP de CONNECT**, pas d’un header HTTP arbitraire ajouté par le constructeur WebSocket du navigateur. Si un jeton Bearer est présent, l’identité est celle de ce jeton ; une session Animateur présente dans le même navigateur ne permet pas d’élargir ses droits. Le serveur vérifie l’origine, l’identité et chaque `SUBSCRIBE`, refuse les commandes métier `SEND`, et ferme les connexions dont l’accès a expiré ou été invalidé. Un `CONNECT` refusé (identité ou accès rejetés) reçoit une trame `ERROR` dont l’en-tête `message` porte un motif affichable en français, puis le serveur ferme la WebSocket (code 1002) ; aucune trame `CONNECTED` n’est envoyée. La coquille affiche ce motif et ne se reconnecte pas d’elle-même : seul le bouton de reprise relance la connexion. Une trame `ERROR` reçue après `CONNECTED` reste une coupure ordinaire, suivie de la reconnexion habituelle. Une panne du serveur pendant le `CONNECT` n’est pas un refus : elle ne produit pas de trame `ERROR`, et le client réessaie comme après une coupure. L’utilisation de la clé d’Écran est limitée au canal et aux vues décrits dans le tableau, et aux commandes HTTP de son lecteur décrites dans « Passage : appel, lecture et calage ».
+Après un `403 CSRF_INVALIDE` sur une mutation par session, la Console relit `GET /api/csrf` et refait une seule tentative avec le même corps et la même `Idempotency-Key` lorsqu’elle était fournie. Ce refus du contrôle CSRF intervient avant l’exécution de la mutation.
+
+Pour STOMP 1.2, le sous-protocole est `v12.stomp`. Dans `CONNECT`, la Console en session envoie le jeton CSRF associé au cookie du handshake. Un Joueur ou un Écran de salle envoie `Authorization: Bearer …`. À chaque `SUBSCRIBE` d’un Animateur connecté, le serveur vérifie le Lieu de la Soirée visée par le canal. Il s’agit de **headers STOMP de CONNECT**, pas d’un header HTTP arbitraire ajouté par le constructeur WebSocket du navigateur. Si un jeton Bearer est présent, l’identité est celle de ce jeton ; une session Animateur présente dans le même navigateur ne permet pas d’élargir ses droits. Le serveur vérifie l’origine, l’identité et chaque `SUBSCRIBE`, refuse les commandes métier `SEND`, et ferme les connexions dont l’accès a expiré ou été invalidé. L’utilisation de la clé d’Écran est limitée au canal et aux vues décrits dans le tableau, et aux commandes HTTP de son lecteur décrites dans « Passage : appel, lecture et calage ».
+
+Un `CONNECT` refusé (identité ou accès rejetés) reçoit une trame `ERROR` dont l’en-tête `message` porte un motif affichable en français, puis le serveur ferme la WebSocket (code 1002) ; aucune trame `CONNECTED` n’est envoyée. La coquille affiche ce motif et ne se reconnecte pas d’elle-même : seul le bouton de reprise relance la connexion. Une trame `ERROR` reçue après `CONNECTED` reste une coupure ordinaire, suivie de la reconnexion habituelle. Une panne du serveur pendant le `CONNECT` n’est pas un refus : elle ne produit pas de trame `ERROR`, et le client réessaie comme après une coupure.
 
 Lorsqu’un secret Bearer opaque de forme valide ne permet pas d’identifier son porteur, le serveur renvoie le même motif pour une clé d’Écran invalide ou expirée et pour un jeton de Manette inconnu. Le motif conseille de rouvrir l’Écran de salle depuis la préparation de la Soirée pour obtenir une nouvelle clé ou de rejoindre la Soirée avec son code depuis la Manette.
 
 Si le jeton de reconnexion correspond à un Joueur exclu, le serveur répond « Tu ne fais plus partie de cette Soirée. »
+
+Le cookie de session ne suffit pas à faire d’une connexion STOMP celle de l’Animateur : il faut aussi `X-CSRF-TOKEN` dans `CONNECT`. Si cet en-tête est présent et que le serveur ne peut pas valider le jeton pour la session du handshake, il envoie `ERROR` avec le motif « Le jeton CSRF est absent ou invalide. Resynchronise la Console d’animation. », puis ferme la WebSocket avec le code 1002 sans envoyer `CONNECTED`. La Console affiche le motif. Le bouton « Resynchroniser » lance une nouvelle connexion avec un jeton relu. Sans Bearer ni jeton CSRF, le serveur ignore la session du navigateur : en `dev` et `recette`, la connexion reste anonyme (Écran de salle d’une Soirée fictive, prototype), et en production elle est refusée. Un Écran de salle ouvert dans un navigateur déjà connecté en Animateur se connecte donc comme ailleurs.
+
+La Console en session appelle `GET /api/csrf` avant chaque `CONNECT` STOMP, dès la première connexion et à chaque reconnexion.
+
+La session expire après 30 minutes sans requête HTTP, et le trafic STOMP ne la prolonge pas. La Console connectée consulte donc `GET /api/animateurs/session` toutes les cinq minutes tant qu’elle est ouverte : la session tient toute la Soirée, Pilotage Automatique compris. À la déconnexion ou à l’expiration, le serveur ferme les connexions STOMP de cette session.
+
+Sous `/api/soirees`, toute méthode non sûre (`POST`, `PUT`, `PATCH`, `DELETE`) envoyée avec le cookie de session et sans Bearer passe par le contrôle CSRF, y compris une route qui n’existe pas encore au contrat. Seule l’opération publique `rejoindreSoiree` y échappe, pour qu’un navigateur connecté puisse rejoindre une Soirée.
 
 ## Vues et événements
 
@@ -422,19 +438,19 @@ reçoivent `401 AUTHENTIFICATION_REQUISE` en HTTP et une trame `ERROR` suivie de
 connexion au CONNECT STOMP. Le canal de la Manette et sa dernière vue dépendent de l’UUID du Joueur.
 Un jeton `demo:JOUEUR` qui porte l’UUID d’un vrai Joueur reçoit le même refus, quelle que soit la Soirée
 déclarée. Pour une Soirée enregistrée, la Manette utilise son jeton de reconnexion et l’Écran de salle sa clé.
-L’Animateur de démonstration vérifie son jeton par la capture de la Console. `demo:ANIMATEUR` reste accepté
-sur une Soirée enregistrée jusqu’à la connexion du Lieu (#5), pour les routes de test des Manches et le pilotage.
+L’Animateur de démonstration vérifie son jeton par la capture de la Console. Un Bearer `demo:ANIMATEUR`
+donne `401 AUTHENTIFICATION_REQUISE` sur une Soirée enregistrée, même dans un navigateur connecté :
+l’Animateur y utilise sa session. Sur une Soirée absente de la base, les parcours de démonstration
+continuent d’utiliser ce Bearer sans CSRF.
 Le [prototype #7](prototype/README.md) peut s’abonner anonymement au canal de salle uniquement en `dev`
 et `recette`, pour un UUID de Soirée absent de la base (#181). Le serveur vérifie cette absence à chaque
 `SUBSCRIBE` anonyme. Si la Soirée est enregistrée, le broker n’installe aucun abonnement pour ce `SUBSCRIBE`.
-La coquille STOMP `/ecran.html#soiree=<UUID>&cle=<cleEcran>` retire le fragment après lecture et conserve la
-clé dans le stockage de l’onglet, pour cette seule Soirée.
 
-Le port conserve l'accès à la session et aux en-têtes CSRF pour #5/#10 ; les jetons
-Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
+Les jetons Bearer de démonstration n'utilisent pas de session ni de cookie d'authentification.
 
 Les trois routes temporaires de création, de démarrage et de choix du Pilotage sont
-réservées aux profils `dev`/`recette` et à l'Animateur de démonstration.
+réservées aux profils `dev`/`recette`. Une Soirée enregistrée exige une session
+du même Lieu et un jeton CSRF ; une Soirée de démonstration utilise le Bearer.
 La création et le démarrage d'une Manche nécessitent un service du mode installé.
 Le choix du Pilotage d'une Soirée de démonstration se fait avant le démarrage de toute Manche.
 Il est perdu au redémarrage du serveur. Si une Manche a démarré ou si la Soirée est
@@ -469,8 +485,9 @@ cours, une commande réussie, rejouée par le même Acteur avec la même clé et
 même contenu, rend le même reçu. Si la publication a échoué, le rejeu peut
 achever la première publication. Réutiliser la clé pour une
 autre commande ou un autre contenu donne `409 ENVOI_REUTILISE`. Un refus
-ne crée pas de reçu. Les opérations de l'Animateur utilisent l'identité de
-démonstration en dev et recette tant que la session du Lieu (#5) est en attente.
+ne crée pas de reçu. Sur une Soirée enregistrée, les opérations de l'Animateur
+utilisent sa session et son jeton CSRF, pour une Soirée de son Lieu (`404` sinon) ;
+l'identité de démonstration reste réservée aux Soirées absentes de la base, en dev et recette.
 
 Le bloc `photos` contient le réglage sur la Manette, et sur la Console le
 réglage et la file d'attente avec le pseudo des auteurs. La salle ne reçoit

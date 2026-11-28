@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.HorlogeFactice;
 import tools.jackson.databind.JsonNode;
@@ -55,6 +57,12 @@ class LimiteDeRequetesHttpTest {
 	@Autowired private HorlogeFactice horloge;
 	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 	private final RestClient http = RestClient.builder().requestFactory(new JdkClientHttpRequestFactory(clientHttp)).build();
+	private SessionAnimateurHttp proprietaire;
+
+	@BeforeEach
+	void connecterLeProprietaire() throws Exception {
+		proprietaire = SessionAnimateurHttp.ouvrir(port, json);
+	}
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TempsDuTest {
@@ -202,21 +210,22 @@ class LimiteDeRequetesHttpTest {
 	void lAccesDEcranEtLeQrCodeOntLeurPropreLimite() throws Exception {
 		SoireeOuverte soiree = ouvrirSoiree("198.51.100.4");
 		for (int i = 0; i < 9; i++) {
-			verifier("creerAccesEcran", envoyer(HttpMethod.POST, soiree.route() + "/acces-ecran", soiree.animateur(), null,
-					"198.51.100.4"), 200);
+			verifier("creerAccesEcran", envoyer(HttpMethod.POST, soiree.route() + "/acces-ecran", proprietaire.entetes(),
+					null, "198.51.100.4"), 200);
 		}
-		ResponseEntity<String> refusEcran = envoyer(HttpMethod.POST, soiree.route() + "/acces-ecran", soiree.animateur(),
+		ResponseEntity<String> refusEcran = envoyer(HttpMethod.POST, soiree.route() + "/acces-ecran", proprietaire.entetes(),
 				null, "198.51.100.4");
 		assertThat(verifier("creerAccesEcran", refusEcran, 429).path("code").asString()).isEqualTo("TROP_DE_REQUETES");
 		assertThat(refusEcran.getHeaders().getFirst("Retry-After")).isEqualTo("6");
 
+		HttpHeaders entetesEcran = entetesBearer(soiree.cleEcran());
 		for (int i = 0; i < 10; i++) {
-			ResponseEntity<String> qrCode = envoyer(HttpMethod.GET, soiree.route() + "/qrcode", soiree.cleEcran(), null,
+			ResponseEntity<String> qrCode = envoyer(HttpMethod.GET, soiree.route() + "/qrcode", entetesEcran, null,
 					"198.51.100.4");
 			assertThat(qrCode.getStatusCode().value()).isEqualTo(200);
 			ContratApi.verifier(CONTRAT, "consulterQrCodeSoiree", qrCode);
 		}
-		ResponseEntity<String> refusQrCode = envoyer(HttpMethod.GET, soiree.route() + "/qrcode", soiree.cleEcran(), null,
+		ResponseEntity<String> refusQrCode = envoyer(HttpMethod.GET, soiree.route() + "/qrcode", entetesEcran, null,
 				"198.51.100.4");
 		assertThat(verifier("consulterQrCodeSoiree", refusQrCode, 429).path("code").asString()).isEqualTo("TROP_DE_REQUETES");
 		assertThat(refusQrCode.getHeaders().getFirst("Retry-After")).isEqualTo("1");
@@ -239,15 +248,15 @@ class LimiteDeRequetesHttpTest {
 	}
 
 	private SoireeOuverte ouvrirSoiree(String adresse) throws Exception {
-		JsonNode creation = verifier("creerSoiree", envoyer(HttpMethod.POST, SOIREES, null,
+		JsonNode creation = verifier("creerSoiree", envoyer(HttpMethod.POST, SOIREES, proprietaire.entetes(),
 				Map.of("titre", "Soirée limitée", "format", "SOLO", "pilotage", "MANUEL"), adresse), 201);
 		UUID id = UUID.fromString(creation.path("id").asString());
-		String animateur = "demo:ANIMATEUR:" + id + ":" + UUID.randomUUID();
 		String route = SOIREES + "/" + id;
-		JsonNode ouverte = verifier("ouvrirSoiree", envoyer(HttpMethod.POST, route + "/ouverture", animateur, null, adresse), 200);
-		JsonNode ecran = verifier("creerAccesEcran", envoyer(HttpMethod.POST, route + "/acces-ecran", animateur, null, adresse),
-				200);
-		return new SoireeOuverte(route, ouverte.path("codeAcces").asString(), animateur, ecran.path("cleEcran").asString());
+		JsonNode ouverte = verifier("ouvrirSoiree", envoyer(HttpMethod.POST, route + "/ouverture", proprietaire.entetes(),
+				null, adresse), 200);
+		JsonNode ecran = verifier("creerAccesEcran", envoyer(HttpMethod.POST, route + "/acces-ecran", proprietaire.entetes(),
+				null, adresse), 200);
+		return new SoireeOuverte(route, ouverte.path("codeAcces").asString(), ecran.path("cleEcran").asString());
 	}
 
 	private String rejoindre(SoireeOuverte soiree, String pseudo, String adresse) throws Exception {
@@ -255,11 +264,13 @@ class LimiteDeRequetesHttpTest {
 	}
 
 	private ResponseEntity<String> arriver(String code, String pseudo, String adresse) {
-		return envoyer(HttpMethod.POST, SOIREES + "/rejoindre", null, Map.of("codeAcces", code, "pseudo", pseudo), adresse);
+		return envoyer(HttpMethod.POST, SOIREES + "/rejoindre", HttpHeaders.EMPTY, Map.of("codeAcces", code, "pseudo", pseudo),
+				adresse);
 	}
 
 	private ResponseEntity<String> buzzer(SoireeOuverte soiree, String jeton) {
-		return envoyer(HttpMethod.POST, soiree.route() + "/buzz", jeton, Map.of("envoiId", UUID.randomUUID()), "198.51.100.99");
+		return envoyer(HttpMethod.POST, soiree.route() + "/buzz", entetesBearer(jeton), Map.of("envoiId", UUID.randomUUID()),
+				"198.51.100.99");
 	}
 
 	private static String codeInconnu(SoireeOuverte soiree) {
@@ -296,11 +307,17 @@ class LimiteDeRequetesHttpTest {
 		assertThat(reponse.getHeaders().getCacheControl()).isEqualTo("no-store");
 	}
 
-	private ResponseEntity<String> envoyer(HttpMethod methode, String route, String secret, Object corps, String adresse) {
+	private static HttpHeaders entetesBearer(String jeton) {
+		var entetes = new HttpHeaders();
+		entetes.setBearerAuth(jeton);
+		return entetes;
+	}
+
+	private ResponseEntity<String> envoyer(HttpMethod methode, String route, HttpHeaders entetesActeur, Object corps,
+			String adresse) {
 		var requete = http.method(methode).uri("http://localhost:" + port + route)
 				.header("X-Forwarded-For", adresse)
-				.header("X-CSRF-TOKEN", "demonstration");
-		if (secret != null) { requete.headers(entetes -> entetes.setBearerAuth(secret)); }
+				.headers(entetes -> entetes.addAll(entetesActeur));
 		if (corps == null) { requete.header("Idempotency-Key", UUID.randomUUID().toString()); }
 		else { requete.contentType(MediaType.APPLICATION_JSON).body(corps); }
 		return requete.retrieve().onStatus(statut -> statut.isError(), (q, r) -> { }).toEntity(String.class);
@@ -312,7 +329,7 @@ class LimiteDeRequetesHttpTest {
 		return json.readTree(reponse.getBody());
 	}
 
-	private record SoireeOuverte(String route, String code, String animateur, String cleEcran) { }
+	private record SoireeOuverte(String route, String code, String cleEcran) { }
 
 	private record Navigateur(String adresse, String cookie, String csrf) { }
 

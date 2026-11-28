@@ -62,7 +62,7 @@ class VoteDuPublicEnChargeHttpTest {
         @Bean @Primary HorlogeFactice horlogeDuVote() { return new HorlogeFactice(); }
     }
 
-    @BeforeEach void ouvrirLeClient() { client = new ClientDeSoiree(port, json); }
+    @BeforeEach void ouvrirLeClient() throws Exception { client = new ClientDeSoiree(port, json); }
 
     @AfterEach void fermerLesConnexions() { client.close(); }
 

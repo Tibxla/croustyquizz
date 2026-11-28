@@ -11,11 +11,20 @@
  * porte type, soireeId, revision, emisLe et donnees. Le module /js/tempsreel.js
  * assure la reprise après la barrière d'abonnement du même Acteur.
  *
- * <p>Le package soiree fournit la partie commune réelle (FournisseurCommunSoiree) et
- * reconnaît Joueurs et Écrans de salle (ResolveurDActeurSoiree) ; les autres identités
- * vont au ResolveurDActeur du profil, qui refuse en production avant #5. En dev/recette,
- * ses jetons de démonstration sont décrits dans docs/api/README.md. Le Buzz anonyme /api/test
- * conserve ses vues et son cache distincts du métier sur les mêmes canaux.
+ * <p>Le package soiree fournit la partie commune réelle (FournisseurCommunSoiree) et le
+ * ResolveurDActeur principal (ResolveurDActeurSoiree). Sans Bearer, une requête HTTP est celle
+ * de l'Animateur de la session, pour une Soirée de son Lieu (401 sans session, 404 hors du Lieu).
+ * Un Bearer est un jeton de reconnexion de Joueur ou une clé d'Écran ; s'il n'en est pas un, il va
+ * au repli {@code @Fallback} ResolveurDActeurDuProfil : ResolveurDActeurDemonstration en dev et
+ * recette, dont les jetons décrits dans docs/api/README.md ne visent que des Soirées fictives, et
+ * ResolveurDActeurProduction ailleurs, qui refuse en 401.
+ *
+ * <p>En STOMP, PoigneeDeMainAnimateur garde la session HTTP du handshake. ControleAccesStomp n'en
+ * fait l'Animateur que si le CONNECT porte son jeton CSRF, puis vérifie le Lieu à chaque SUBSCRIBE ;
+ * sans Bearer ni jeton CSRF, la connexion reste anonyme en dev et recette (canal de salle d'une
+ * Soirée fictive) et passe ailleurs par le repli, qui la refuse. La fin de la session HTTP ferme
+ * les connexions de la Console. Le Buzz anonyme /api/test conserve ses vues et son cache
+ * distincts du métier sur les mêmes canaux.
  *
  * <p>LimiteDeRequetes protège le Buzz, les Réponses, l'accès à une Soirée (#4), la connexion
  * et l'inscription de l'Animateur (#238) : 429 TROP_DE_REQUETES avec Retry-After, seuils dans

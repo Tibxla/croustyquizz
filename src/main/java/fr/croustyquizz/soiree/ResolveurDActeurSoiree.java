@@ -1,71 +1,91 @@
 package fr.croustyquizz.soiree;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.context.annotation.Primary;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerMapping;
 
+import fr.croustyquizz.animateur.AnimateurConnecte;
+import fr.croustyquizz.animateur.ResolveurAnimateurConnecte;
 import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.tempsreel.ResolveurDActeur;
-import jakarta.servlet.http.HttpServletRequest;
+import fr.croustyquizz.tempsreel.ResolveurDActeurDuProfil;
 
 /**
- * Reconnaît les Joueurs à leur jeton de reconnexion et les Écrans de salle à
- * leur clé, en HTTP comme au CONNECT STOMP. Un secret opaque non reconnu au
- * CONNECT reçoit des consignes de reprise. Un Joueur exclu reçoit un motif
- * propre à son Exclusion. Le résolveur du profil traite les
- * autres en-têtes : jetons de démonstration en dev et recette, refus en
- * production. L'Animateur sera reconnu avec la connexion du Lieu (#5).
- *
- * Un Joueur ou un Écran de démonstration ne vise qu'une Soirée fictive : sur une
- * Soirée enregistrée, seuls le jeton de reconnexion et la clé d'Écran comptent.
- * Un Joueur de démonstration ne porte pas non plus l'UUID d'un vrai Joueur.
- * L'Animateur de démonstration reste accepté jusqu'à #5, pour les routes de test
- * des Manches (#106).
+ * Résout la portée de l'Animateur et les accès portés par un Bearer.
+ * <p>
+ * Sans Bearer, l'Animateur est reconnu à sa session, pour une Soirée de son Lieu.
+ * Un Bearer est d'abord un jeton de reconnexion de Joueur ou une clé d'Écran ;
+ * sinon il est confié au résolveur du profil (démonstration en dev et recette,
+ * refus en production). Une identité de démonstration ne vise qu'une Soirée
+ * fictive : sur une Soirée enregistrée, l'Animateur passe par sa session, le
+ * Joueur par son jeton de reconnexion et l'Écran par sa clé. Un Joueur de
+ * démonstration ne porte pas non plus l'UUID d'un vrai Joueur.
+ * Au CONNECT, un secret opaque non reconnu reçoit des consignes de reprise.
+ * Un Joueur exclu reçoit un motif propre à son Exclusion.
  */
 @Component
-@Primary
 class ResolveurDActeurSoiree implements ResolveurDActeur {
 
 	private static final String PREFIXE = "Bearer ";
+	private static final String AUTHENTIFICATION_REQUISE = "AUTHENTIFICATION_REQUISE";
 
 	private final ServiceDesAcces acces;
-	private final ObjectProvider<ResolveurDActeur> resolveurs;
 	private final DepotDeSoirees soirees;
 	private final DepotDeJoueurs joueurs;
+	private final ResolveurDActeurDuProfil profil;
 
-	ResolveurDActeurSoiree(ServiceDesAcces acces, ObjectProvider<ResolveurDActeur> resolveurs, DepotDeSoirees soirees,
-			DepotDeJoueurs joueurs) {
+	ResolveurDActeurSoiree(ServiceDesAcces acces, DepotDeSoirees soirees, DepotDeJoueurs joueurs,
+			ResolveurDActeurDuProfil profil) {
 		this.acces = acces;
-		this.resolveurs = resolveurs;
 		this.soirees = soirees;
 		this.joueurs = joueurs;
+		this.profil = profil;
 	}
 
 	@Override
 	public Acteur resoudre(HttpServletRequest requete) {
-		return reconnaitre(extraireSecret(requete.getHeader("Authorization")))
-				.orElseGet(() -> limiter(delegue().resoudre(requete)));
+		if (ResolveurAnimateurConnecte.porteUnBearer(requete)) {
+			return reconnaitre(extraireSecret(requete.getHeader(HttpHeaders.AUTHORIZATION)))
+					.orElseGet(() -> limiter(profil.resoudre(requete), soireeDeLaRoute(requete)));
+		}
+		var animateur = ResolveurAnimateurConnecte.resoudre(requete);
+		UUID soireeId = soireeDeLaRoute(requete);
+		if (soireeId == null) {
+			throw soireeIntrouvable().exception();
+		}
+		return resoudre(animateur, soireeId);
 	}
 
 	@Override
 	public Acteur resoudre(SimpMessageHeaderAccessor connexion) {
-		String secret = extraireSecret(connexion.getFirstNativeHeader("Authorization"));
+		String secret = extraireSecret(connexion.getFirstNativeHeader(HttpHeaders.AUTHORIZATION));
 		return reconnaitre(secret).orElseGet(() -> {
 			if (Secrets.aLaForme(secret)) {
 				if (joueurs.findByEmpreinteJeton(Secrets.empreinte(secret)).filter(Joueur::isExclu).isPresent()) {
-					throw new Refuse(401, "AUTHENTIFICATION_REQUISE", "Tu ne fais plus partie de cette Soirée.").exception();
+					throw new Refuse(401, AUTHENTIFICATION_REQUISE, "Tu ne fais plus partie de cette Soirée.").exception();
 				}
 				// Une clé d'Écran purgée et un jeton Joueur inconnu ont la même forme.
-				throw new Refuse(401, "AUTHENTIFICATION_REQUISE", "Accès invalide ou expiré. "
+				throw new Refuse(401, AUTHENTIFICATION_REQUISE, "Accès invalide ou expiré. "
 						+ "Rouvre l'Écran de salle depuis la préparation de la Soirée pour obtenir une nouvelle clé, "
 						+ "ou rejoins la Soirée avec son code si tu utilises la Manette.").exception();
 			}
-			return limiter(delegue().resoudre(connexion));
+			return limiter(profil.resoudre(connexion), null);
 		});
+	}
+
+	@Override
+	public Acteur resoudre(AnimateurConnecte animateur, UUID soireeId) {
+		if (!soirees.existsByIdAndLieuId(soireeId, animateur.lieuId())) {
+			throw soireeIntrouvable().exception();
+		}
+		return new Acteur(Acteur.Type.ANIMATEUR, animateur.animateurId(), soireeId);
 	}
 
 	private static String extraireSecret(String autorisation) {
@@ -76,30 +96,45 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 		return secret == null ? Optional.empty() : acces.reconnaitre(secret);
 	}
 
+	private static UUID soireeDeLaRoute(HttpServletRequest requete) {
+		Map<?, ?> variables = (Map<?, ?>) requete.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+		if (variables == null || !(variables.get("soireeId") instanceof String id)) {
+			return null;
+		}
+		try {
+			return UUID.fromString(id);
+		} catch (IllegalArgumentException invalide) {
+			throw soireeIntrouvable().exception(invalide);
+		}
+	}
+
 	/**
-	 * Le canal d'une Manette et sa dernière vue ne dépendent que de l'UUID du
-	 * Joueur : un vrai Joueur est donc refusé même derrière une Soirée fictive.
+	 * Réserve les identités de démonstration aux Soirées fictives. Le canal d'une
+	 * Manette et sa dernière vue ne dépendent que de l'UUID du Joueur : un vrai
+	 * Joueur est donc refusé même derrière une Soirée fictive.
 	 */
-	private Acteur limiter(Acteur acteur) {
+	private Acteur limiter(Acteur acteur, UUID soireeDemandee) {
 		if (acteur.type() == Acteur.Type.ANIMATEUR) {
-			return acteur;
+			return verifierDemonstration(acteur, soireeDemandee);
 		}
 		if (soirees.existsById(acteur.soireeId())
 				|| acteur.type() == Acteur.Type.JOUEUR && joueurs.existsById(acteur.identifiant())) {
-			throw new Refuse(401, "AUTHENTIFICATION_REQUISE", acteur.type() == Acteur.Type.ECRAN
+			throw new Refuse(401, AUTHENTIFICATION_REQUISE, acteur.type() == Acteur.Type.ECRAN
 					? "Cette Soirée n'accepte pas d'Écran de démonstration : ouvre l'Écran de salle avec la clé créée depuis la Console."
 					: "Cette Soirée n'accepte pas d'identité de démonstration : rejoins-la avec son code.").exception();
 		}
 		return acteur;
 	}
 
-	/**
-	 * Le résolveur du profil, cherché à l'appel pour ne pas dépendre de soi-même à
-	 * la création ; filtré par type, car Spring peut fournir un proxy.
-	 */
-	private ResolveurDActeur delegue() {
-		return resolveurs.orderedStream().filter(resolveur -> !(resolveur instanceof ResolveurDActeurSoiree)).findFirst()
-				.orElseThrow(() -> new IllegalStateException("Aucun résolveur d'Acteur pour ce profil"));
+	private Acteur verifierDemonstration(Acteur acteur, UUID soireeDemandee) {
+		if (soirees.existsById(acteur.soireeId())
+				|| soireeDemandee != null && !soireeDemandee.equals(acteur.soireeId()) && soirees.existsById(soireeDemandee)) {
+			throw new Refuse(401, AUTHENTIFICATION_REQUISE, "Une Soirée enregistrée exige une session Animateur.").exception();
+		}
+		return acteur;
 	}
 
+	private static Refuse soireeIntrouvable() {
+		return new Refuse(404, "RESSOURCE_INTROUVABLE", "Soirée introuvable.");
+	}
 }

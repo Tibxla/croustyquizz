@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Connexion · CroustyQuizz</title>
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/compte.css">
+	<script type="module" src="/js/formulaire-compte.mjs"></script>
+</head>
+<body>
+	<main class="compte">
+		<header><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
+		<section class="panneau" aria-labelledby="titre">
+			<h1 id="titre">Connexion à la Console</h1>
+			<p id="compte-cree" role="status" hidden>Ton compte est créé. Connecte-toi pour préparer ta Soirée.</p>
+			<form class="compte__formulaire" data-compte="connexion" method="post" novalidate>
+				<div class="champ">
+					<label for="email">Ton e-mail</label>
+					<input id="email" name="email" type="email" autocomplete="username" required aria-describedby="email-erreur">
+					<p id="email-erreur" class="champ--erreur" hidden></p>
+				</div>
+				<div class="champ">
+					<label for="mot-de-passe">Mot de passe</label>
+					<input id="mot-de-passe" name="motDePasse" type="password" autocomplete="current-password" required
+						aria-describedby="mot-de-passe-erreur">
+					<p id="mot-de-passe-erreur" class="champ--erreur" hidden></p>
+				</div>
+				<p class="champ--erreur" role="alert" hidden></p>
+				<button class="bouton bouton--action" type="submit">Se connecter</button>
+			</form>
+			<noscript>Active JavaScript pour te connecter.</noscript>
+		</section>
+		<p class="compte__navigation">Première Soirée au Lieu ? <a data-autre-page href="/inscription.html">Créer un compte</a></p>
+	</main>
+</body>
+</html>

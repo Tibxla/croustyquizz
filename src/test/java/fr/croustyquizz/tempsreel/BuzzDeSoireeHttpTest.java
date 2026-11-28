@@ -55,7 +55,7 @@ class BuzzDeSoireeHttpTest {
 	}
 
 	@BeforeEach
-	void ouvrirLeClient() {
+	void ouvrirLeClient() throws Exception {
 		client = new ClientDeSoiree(port, json);
 	}
 

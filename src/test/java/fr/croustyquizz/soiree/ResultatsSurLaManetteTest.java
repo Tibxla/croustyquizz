@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +26,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -42,6 +44,9 @@ class ResultatsSurLaManetteTest {
 	@LocalServerPort
 	private int port;
 
+	/** Animateur du Lieu qui crée et ouvre les Soirées : ses requêtes partent sans Bearer, avec sa session. */
+	private SessionAnimateurHttp proprietaire;
+
 	@Autowired
 	private JsonMapper json;
 
@@ -53,6 +58,11 @@ class ResultatsSurLaManetteTest {
 
 	@Autowired
 	private ServiceSoiree service;
+
+	@BeforeEach
+	void connecterLeProprietaire() throws Exception {
+		proprietaire = SessionAnimateurHttp.ouvrir(port, json);
+	}
 
 	@AfterEach
 	void effacer() {
@@ -168,6 +178,8 @@ class ResultatsSurLaManetteTest {
 		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
 		if (jeton != null) {
 			requete.header("Authorization", "Bearer " + jeton);
+		} else {
+			requete.headers(entetes -> entetes.addAll(proprietaire.entetes()));
 		}
 		if (route.endsWith("/ouverture")) {
 			requete.header("Idempotency-Key", UUID.randomUUID().toString());

@@ -17,6 +17,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 /**
@@ -34,10 +35,13 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 	private TaskScheduler ordonnanceur;
 	private MessageChannel sortant;
 	private final ObjectProvider<ControleAccesStomp> acces;
+	private final ObjectProvider<PoigneeDeMainAnimateur> animateurs;
 
-	ConfigurationTempsReel(RegistreAbonnements abonnements, ObjectProvider<ControleAccesStomp> acces) {
+	ConfigurationTempsReel(RegistreAbonnements abonnements, ObjectProvider<ControleAccesStomp> acces,
+			ObjectProvider<PoigneeDeMainAnimateur> animateurs) {
 		this.abonnements = abonnements;
 		this.acces = acces;
+		this.animateurs = animateurs;
 	}
 
 	@Override
@@ -58,9 +62,15 @@ class ConfigurationTempsReel implements WebSocketMessageBrokerConfigurer {
 
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registre) {
-		registre.addEndpoint(POINT_DE_CONNEXION);
+		var connexion = registre.addEndpoint(POINT_DE_CONNEXION);
+		animateurs.ifAvailable(poignee -> connexion.addInterceptors(poignee));
 		// Préserve l'ordre des opérations techniques d'une même connexion.
 		registre.setPreserveReceiveOrder(true);
+	}
+
+	@Override
+	public void configureWebSocketTransport(WebSocketTransportRegistration transport) {
+		animateurs.ifAvailable(poignee -> transport.addDecoratorFactory(poignee::decorer));
 	}
 
 	@Autowired

@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.manche.Destination;
@@ -63,6 +65,9 @@ class ReconnexionManetteTest {
 	@LocalServerPort
 	private int port;
 
+	/** Animateur du Lieu qui crée et ouvre les Soirées : ses requêtes partent sans Bearer, avec sa session. */
+	private SessionAnimateurHttp proprietaire;
+
 	@Autowired
 	private JsonMapper json;
 
@@ -81,6 +86,11 @@ class ReconnexionManetteTest {
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("manette-test-");
 	private final List<WebSocketStompClient> clients = new ArrayList<>();
+
+	@BeforeEach
+	void connecterLeProprietaire() throws Exception {
+		proprietaire = SessionAnimateurHttp.ouvrir(port, json);
+	}
 
 	@AfterEach
 	void toutFermer() {
@@ -232,6 +242,8 @@ class ReconnexionManetteTest {
 		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
 		if (jeton != null) {
 			requete.header("Authorization", "Bearer " + jeton);
+		} else {
+			requete.headers(entetes -> entetes.addAll(proprietaire.entetes()));
 		}
 		if (route.endsWith("/ouverture")) {
 			requete.header("Idempotency-Key", UUID.randomUUID().toString());

@@ -6,17 +6,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.manche.ReponsesDeCommande;
@@ -39,26 +42,32 @@ class ProgrammeSoireeHttpTest {
 	@Autowired
 	private OrchestrateurDeSoiree orchestrateur;
 
+	private SessionAnimateurHttp proprietaire;
+
+	@BeforeEach
+	void connecterLeProprietaire() throws Exception {
+		proprietaire = SessionAnimateurHttp.ouvrir(port, json);
+	}
+
 	@Test
 	void lanceLaPremiereMancheDansLOrdreEtGardeLeRecu() throws Exception {
 		String soiree = creerSoiree();
-		String animateur = animateur(soiree);
 		ouvrir(soiree);
-		assertThat(piloter(soiree, animateur, "LANCER", UUID.randomUUID(), 409).path("code").asString())
+		assertThat(piloter(soiree, "LANCER", UUID.randomUUID(), 409).path("code").asString())
 				.isEqualTo("PROGRAMME_INCOMPLET");
 		String seconde = ajouter(soiree, KARAOKE).path("id").asString();
 		String premiere = ajouter(soiree, KARAOKE).path("id").asString();
 		ordonner(soiree, List.of(premiere, seconde), 200);
 		UUID cle = UUID.randomUUID();
-		var lancement = piloter(soiree, animateur, "LANCER", cle, 200);
+		var lancement = piloter(soiree, "LANCER", cle, 200);
 		assertThat(lancement.path("envoiId").asString()).isEqualTo(cle.toString());
 		var capture = console(soiree);
 		assertThat(capture.at("/vue/soiree/etat").asString()).isEqualTo("EN_COURS");
 		assertThat(capture.at("/vue/mancheActive/id").asString()).isEqualTo(premiere);
-		assertThat(piloter(soiree, animateur, "LANCER", cle, 200)).isEqualTo(lancement);
-		assertThat(piloter(soiree, animateur, "MANCHE_SUIVANTE", cle, 409).path("code").asString())
+		assertThat(piloter(soiree, "LANCER", cle, 200)).isEqualTo(lancement);
+		assertThat(piloter(soiree, "MANCHE_SUIVANTE", cle, 409).path("code").asString())
 				.isEqualTo("ENVOI_REUTILISE");
-		assertThat(piloter(soiree, animateur, "MANCHE_SUIVANTE", UUID.randomUUID(), 409).path("code").asString())
+		assertThat(piloter(soiree, "MANCHE_SUIVANTE", UUID.randomUUID(), 409).path("code").asString())
 				.isEqualTo("ETAT_INCOMPATIBLE");
 		assertThat(console(soiree).path("revision")).isEqualTo(capture.path("revision"));
 	}
@@ -69,7 +78,7 @@ class ProgrammeSoireeHttpTest {
 		ajouter(soiree, KARAOKE);
 		ajouter(soiree, QUIZ);
 		ouvrir(soiree);
-		assertThat(piloter(soiree, animateur(soiree), "LANCER", UUID.randomUUID(), 409).path("code").asString())
+		assertThat(piloter(soiree, "LANCER", UUID.randomUUID(), 409).path("code").asString())
 				.isEqualTo("ETAT_INCOMPATIBLE");
 		assertThat(console(soiree).at("/vue/soiree/etat").asString()).isEqualTo("OUVERTE");
 		assertThat(console(soiree).at("/vue/mancheActive").isNull()).isTrue();
@@ -79,25 +88,24 @@ class ProgrammeSoireeHttpTest {
 	void leMemeRappelDeFinNeConsommePasUneAutreMancheEtLaCommandeSuivanteClotLeProgramme() throws Exception {
 		String soiree = creerSoiree();
 		Acteur acteur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), UUID.fromString(soiree));
-		String animateur = "demo:ANIMATEUR:" + soiree + ":" + acteur.identifiant();
 		String premiere = ajouter(soiree, KARAOKE).path("id").asString();
 		String seconde = ajouter(soiree, KARAOKE).path("id").asString();
 		ouvrir(soiree);
-		piloter(soiree, animateur, "LANCER", UUID.randomUUID(), 200);
-		terminerManche(soiree, animateur, premiere);
+		piloter(soiree, "LANCER", UUID.randomUUID(), 200);
+		terminerManche(soiree, premiere);
 
 		UUID terminee = UUID.fromString(premiere);
 		var premierRappel = orchestrateur.mancheSuivante(acteur, terminee);
 		assertThat(ReponsesDeCommande.statut(premierRappel)).isEqualTo(200);
 		assertThat(console(soiree).at("/vue/mancheActive/id").asString()).isEqualTo(seconde);
-		terminerManche(soiree, animateur, seconde);
+		terminerManche(soiree, seconde);
 		var rappelRejoue = orchestrateur.mancheSuivante(acteur, terminee);
 		assertThat(ReponsesDeCommande.statut(rappelRejoue)).isEqualTo(200);
 		assertThat(json.<JsonNode>valueToTree(ReponsesDeCommande.corps(rappelRejoue, "")))
 				.isEqualTo(json.valueToTree(ReponsesDeCommande.corps(premierRappel, "")));
 		assertThat(console(soiree).at("/vue/soiree/etat").asString()).isEqualTo("EN_COURS");
 
-		piloter(soiree, animateur, "MANCHE_SUIVANTE", UUID.randomUUID(), 200);
+		piloter(soiree, "MANCHE_SUIVANTE", UUID.randomUUID(), 200);
 		assertThat(console(soiree).at("/vue/soiree/etat").asString()).isEqualTo("TERMINEE");
 	}
 
@@ -165,7 +173,7 @@ class ProgrammeSoireeHttpTest {
 		ouvrir(soiree);
 		// Le lancement d'une Soirée est livré par #12.
 		jdbc.update("update soiree set etat = 'EN_COURS', debutee_le = ouverte_le where id = ?::uuid", soiree);
-		var ajout = envoyer("ajouterManche", HttpMethod.POST, route(soiree, "/manches"), animateur(soiree), QUIZ, 409);
+		var ajout = envoyer("ajouterManche", HttpMethod.POST, route(soiree, "/manches"), QUIZ, 409);
 		assertThat(ajout.path("code").asString()).isEqualTo("ETAT_INCOMPATIBLE");
 		assertThat(ordonner(soiree, List.of(manche), 409).path("code").asString()).isEqualTo("ETAT_INCOMPATIBLE");
 		assertThat(retirer(soiree, manche, 409).path("code").asString()).isEqualTo("ETAT_INCOMPATIBLE");
@@ -178,7 +186,7 @@ class ProgrammeSoireeHttpTest {
 		String manche = ajouter(soiree, Map.of("mode", "KARAOKE", "reglages", Map.of("limitePassagesEnAttente", 3)))
 				.path("id").asString();
 		envoyer("docs/api/prototype/openapi.yaml", "demarrerMancheDeTest", HttpMethod.POST,
-				"/api/test/soirees/" + soiree + "/manches/" + manche + "/demarrer", animateur(soiree), null, 200);
+				"/api/test/soirees/" + soiree + "/manches/" + manche + "/demarrer", entetesAvecCle(), null, 200);
 		JsonNode capture = console(soiree);
 		assertThat(capture.at("/vue/mancheActive/id").asString()).isEqualTo(manche);
 		assertThat(capture.at("/vue/karaoke/limitePassagesEnAttente").intValue()).isEqualTo(3);
@@ -191,73 +199,118 @@ class ProgrammeSoireeHttpTest {
 		String route = route(soiree, "/manches");
 		var quizInvalide = Map.of("mode", "QUIZ", "reglages", Map.of("nombreEtapes", 101, "tempsParEtapeSecondes", 20));
 		var karaokeInvalide = Map.of("mode", "KARAOKE", "reglages", Map.of("limitePassagesEnAttente", 21));
-		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, animateur(soiree), quizInvalide, 400)
+		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, quizInvalide, 400)
 				.path("code").asString()).isEqualTo("REQUETE_INVALIDE");
-		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, animateur(soiree), karaokeInvalide, 400)
+		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, karaokeInvalide, 400)
 				.path("code").asString()).isEqualTo("REQUETE_INVALIDE");
-		// Sur une Soirée enregistrée, l'Écran de salle n'est reconnu qu'à sa clé (#106).
-		String cleEcran = envoyer("creerAccesEcran", HttpMethod.POST, route(soiree, "/acces-ecran"), animateur(soiree), null, 200)
+		String cleEcran = envoyer("creerAccesEcran", HttpMethod.POST, route(soiree, "/acces-ecran"), null, 200)
 				.path("cleEcran").asString();
-		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, cleEcran, QUIZ, 403)
-				.path("code").asString()).isEqualTo("ACCES_REFUSE");
-		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, "demo:ECRAN:" + soiree + ":" + UUID.randomUUID(), QUIZ, 401)
+		var ecran = new HttpHeaders();
+		ecran.setBearerAuth(cleEcran);
+		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, ecran, QUIZ, 403).path("code").asString())
+				.isEqualTo("ACCES_REFUSE");
+		// Sur une Soirée enregistrée, l'Écran de salle n'est reconnu qu'à sa clé (#106).
+		var ecranDeDemonstration = new HttpHeaders();
+		ecranDeDemonstration.setBearerAuth("demo:ECRAN:" + soiree + ":" + UUID.randomUUID());
+		assertThat(envoyer("ajouterManche", HttpMethod.POST, route, ecranDeDemonstration, QUIZ, 401)
 				.path("code").asString()).isEqualTo("AUTHENTIFICATION_REQUISE");
 		assertThat(console(soiree).at("/vue/programme").size()).isZero();
 	}
 
+	@Test
+	void refuseLesMutationsDUnAutreLieuSansModifierLeProgramme() throws Exception {
+		String soiree = creerSoiree();
+		String quiz = ajouter(soiree, QUIZ).path("id").asString();
+		String karaoke = ajouter(soiree, KARAOKE).path("id").asString();
+		JsonNode avant = console(soiree);
+
+		var autreLieu = SessionAnimateurHttp.ouvrir(port, json);
+		verifierRefusDesMutations(soiree, List.of(karaoke, quiz), autreLieu.entetes(), 404, "RESSOURCE_INTROUVABLE");
+
+		JsonNode apres = console(soiree);
+		assertThat(apres.path("revision")).isEqualTo(avant.path("revision"));
+		assertThat(apres.at("/vue/programme")).isEqualTo(avant.at("/vue/programme"));
+	}
+
+	@Test
+	void exigeLeCsrfDeLaSessionPourLesTroisMutations() throws Exception {
+		String soiree = creerSoiree();
+		String manche = ajouter(soiree, QUIZ).path("id").asString();
+
+		var sansCsrf = new HttpHeaders();
+		sansCsrf.set(HttpHeaders.COOKIE, proprietaire.cookie());
+		verifierRefusDesMutations(soiree, List.of(manche), sansCsrf, 403, "CSRF_INVALIDE");
+	}
+
+	private void verifierRefusDesMutations(String soiree, List<String> ordre, HttpHeaders entetes, int statut,
+			String code) throws Exception {
+		assertThat(envoyer("ajouterManche", HttpMethod.POST, route(soiree, "/manches"), entetes, QUIZ, statut)
+				.path("code").asString()).isEqualTo(code);
+		assertThat(envoyer("retirerManche", HttpMethod.DELETE, route(soiree, "/manches/" + ordre.getFirst()),
+				entetes, null, statut).path("code").asString()).isEqualTo(code);
+		assertThat(envoyer("ordonnerManches", HttpMethod.PUT, route(soiree, "/ordre-des-manches"), entetes,
+				Map.of("mancheIds", ordre), statut).path("code").asString()).isEqualTo(code);
+	}
+
 	private String creerSoiree() throws Exception {
-		return envoyer("creerSoiree", HttpMethod.POST, "/api/soirees", null,
+		return envoyer("creerSoiree", HttpMethod.POST, "/api/soirees",
 				Map.of("titre", "Soirée du jeudi", "format", "SOLO", "pilotage", "MANUEL"), 201).path("id").asString();
 	}
 
 	private JsonNode ajouter(String soiree, Map<String, Object> corps) throws Exception {
-		return envoyer("ajouterManche", HttpMethod.POST, route(soiree, "/manches"), animateur(soiree), corps, 201);
+		return envoyer("ajouterManche", HttpMethod.POST, route(soiree, "/manches"), corps, 201);
 	}
 
 	private JsonNode console(String soiree) throws Exception {
-		return envoyer("retrouverEtatConsole", HttpMethod.GET, route(soiree, "/etat/console"), animateur(soiree), null, 200);
+		return envoyer("retrouverEtatConsole", HttpMethod.GET, route(soiree, "/etat/console"), null, 200);
 	}
 
 	private void ouvrir(String soiree) throws Exception {
-		envoyer("ouvrirSoiree", HttpMethod.POST, route(soiree, "/ouverture"), animateur(soiree), null, 200);
+		envoyer("ouvrirSoiree", HttpMethod.POST, route(soiree, "/ouverture"), entetesAvecCle(), null, 200);
 	}
 
 	private JsonNode ordonner(String soiree, List<String> manches, int statut) throws Exception {
-		return envoyer("ordonnerManches", HttpMethod.PUT, route(soiree, "/ordre-des-manches"), animateur(soiree),
+		return envoyer("ordonnerManches", HttpMethod.PUT, route(soiree, "/ordre-des-manches"),
 				Map.of("mancheIds", manches), statut);
 	}
 
 	private JsonNode retirer(String soiree, String manche, int statut) throws Exception {
-		return envoyer("retirerManche", HttpMethod.DELETE, route(soiree, "/manches/" + manche), animateur(soiree), null, statut);
+		return envoyer("retirerManche", HttpMethod.DELETE, route(soiree, "/manches/" + manche), null, statut);
 	}
 
-	private JsonNode envoyer(String operation, HttpMethod methode, String route, String jeton, Object corps, int statut)
-			throws Exception {
-		return envoyer("docs/api/openapi.yaml", operation, methode, route, jeton, corps, statut);
+	private JsonNode piloter(String soiree, String action, UUID cle, int statut) throws Exception {
+		var entetes = proprietaire.entetes();
+		entetes.set("Idempotency-Key", cle.toString());
+		return envoyer("piloterSoiree", HttpMethod.POST, route(soiree, "/commandes"), entetes,
+				Map.of("action", action), statut);
 	}
 
-	private JsonNode envoyer(String contrat, String operation, HttpMethod methode, String route, String jeton, Object corps,
-			int statut) throws Exception {
-		return envoyer(contrat, operation, methode, route, jeton, corps, statut, UUID.randomUUID());
-	}
-
-	private JsonNode piloter(String soiree, String animateur, String action, UUID cle, int statut) throws Exception {
-		return envoyer("docs/api/openapi.yaml", "piloterSoiree", HttpMethod.POST, route(soiree, "/commandes"),
-				animateur, Map.of("action", action), statut, cle);
-	}
-
-	private void terminerManche(String soiree, String animateur, String manche) throws Exception {
+	private void terminerManche(String soiree, String manche) throws Exception {
 		envoyer("piloterManche", HttpMethod.POST, route(soiree, "/manches/" + manche + "/commandes"),
-				animateur, Map.of("action", "TERMINER"), 200);
+				entetesAvecCle(), Map.of("action", "TERMINER"), 200);
 	}
 
-	private JsonNode envoyer(String contrat, String operation, HttpMethod methode, String route, String jeton, Object corps,
-			int statut, UUID cle) throws Exception {
-		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
-		if (jeton != null) {
-			requete.header("Authorization", "Bearer " + jeton);
-		}
-		requete.header("Idempotency-Key", cle.toString()).header("X-CSRF-TOKEN", "csrf_demo_000000000");
+	private HttpHeaders entetesAvecCle() {
+		var entetes = proprietaire.entetes();
+		entetes.set("Idempotency-Key", UUID.randomUUID().toString());
+		return entetes;
+	}
+
+	private JsonNode envoyer(String operation, HttpMethod methode, String route, Object corps, int statut)
+			throws Exception {
+		return envoyer(operation, methode, route, proprietaire.entetes(), corps, statut);
+	}
+
+	private JsonNode envoyer(String operation, HttpMethod methode, String route, HttpHeaders entetes, Object corps,
+			int statut) throws Exception {
+		return envoyer("docs/api/openapi.yaml", operation, methode, route, entetes, corps, statut);
+	}
+
+	private JsonNode envoyer(String contrat, String operation, HttpMethod methode, String route, HttpHeaders entetes,
+			Object corps, int statut) throws Exception {
+		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route)
+				.headers(envoi -> envoi.addAll(entetes));
+
 		if (corps != null) {
 			requete.contentType(MediaType.APPLICATION_JSON).body(corps);
 		}
@@ -266,10 +319,6 @@ class ProgrammeSoireeHttpTest {
 		assertThat(reponse.getStatusCode().value()).as(operation).isEqualTo(statut);
 		assertThat(reponse.getHeaders().getCacheControl()).isEqualTo("no-store");
 		return reponse.getBody() == null ? null : json.readTree(reponse.getBody());
-	}
-
-	private static String animateur(String soiree) {
-		return "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
 	}
 
 	private static String route(String soiree, String suffixe) {

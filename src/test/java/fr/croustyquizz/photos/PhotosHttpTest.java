@@ -25,6 +25,7 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
 
 import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,6 +53,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Accepte;
 import fr.croustyquizz.manche.Destination;
@@ -86,6 +88,13 @@ class PhotosHttpTest {
 	private final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("photos-stomp-");
 	private final List<WebSocketStompClient> clients = new ArrayList<>();
 	private final List<StompSession> sessions = new ArrayList<>();
+	/** Animateur du Lieu qui crée les Soirées : ses requêtes partent sans Bearer, avec sa session. */
+	private SessionAnimateurHttp proprietaire;
+
+	@BeforeEach
+	void connecterLeProprietaire() throws Exception {
+		proprietaire = SessionAnimateurHttp.ouvrir(port, json);
+	}
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TempsDeTest {
@@ -314,10 +323,14 @@ class PhotosHttpTest {
 		var client = new WebSocketStompClient(websocket);
 		clients.add(client);
 		client.setMessageConverter(new JacksonJsonMessageConverter());
-		var connexion = new StompHeaders();
-		connexion.set("Authorization", "Bearer " + jeton);
-		var session = client.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(),
-				connexion, new StompSessionHandlerAdapter() { }).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
+		var connexion = jeton == null ? proprietaire.connexionStomp() : new StompHeaders();
+		if (jeton != null) {
+			connexion.set("Authorization", "Bearer " + jeton);
+		}
+		var poigneeDeMain = jeton == null ? proprietaire.poigneeDeMain() : new WebSocketHttpHeaders();
+		var session = client.connectAsync("ws://localhost:" + port + "/ws", poigneeDeMain,
+				connexion, new StompSessionHandlerAdapter() { })
+				.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		String destination = "/topic/soirees/" + soireeId + "/" + ecran;
 		UUID id = UUID.randomUUID();
@@ -371,8 +384,9 @@ class PhotosHttpTest {
 				.path("cleEcran").asString();
 	}
 
+	/** Aucun Bearer pour l'Animateur : la requête part avec la session du propriétaire de la Soirée. */
 	private static String animateur(JsonNode soiree) {
-		return "demo:ANIMATEUR:" + soiree.path("id").asString() + ":" + UUID.randomUUID();
+		return null;
 	}
 
 	private static String route(JsonNode soiree) {
@@ -387,9 +401,11 @@ class PhotosHttpTest {
 		var requete = RestClient.create("http://localhost:" + port).method(methode).uri(route);
 		if (jeton != null) {
 			requete.header("Authorization", "Bearer " + jeton);
+		} else {
+			requete.headers(entetes -> entetes.addAll(proprietaire.entetes()));
 		}
 		if (cle != null) {
-			requete.header("Idempotency-Key", cle.toString()).header("X-CSRF-TOKEN", "jeton-csrf-de-test");
+			requete.header("Idempotency-Key", cle.toString());
 		}
 		if (corps instanceof byte[] jpeg) {
 			requete.contentType(MediaType.IMAGE_JPEG).body(jpeg);

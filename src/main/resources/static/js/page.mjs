@@ -10,7 +10,8 @@ import { monterProgramme } from './programme-console.mjs';
 import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
-import { memoire } from './api.js';
+import { appeler, memoire } from './api.js';
+import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
 import { afficherPalmaresDeSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -65,27 +66,72 @@ function afficherCommun(vue) {
 	zoneErreur.hidden = true;
 }
 
+function activerDeconnexion(envoyer, arreter) {
+	const bouton = element('deconnexion');
+	bouton.hidden = false;
+	bouton.addEventListener('click', async () => {
+		bouton.disabled = true;
+		const erreur = 'Impossible de confirmer la déconnexion. Réessaie.';
+		try {
+			const { statut, corps } = await envoyer('DELETE', ROUTE_SESSION);
+			if (statut === 204 || statut === 401) {
+				arreter();
+				renvoyerVersConnexion();
+			} else {
+				afficherErreur(corps?.detail ?? erreur);
+			}
+		} catch {
+			afficherErreur(erreur);
+		} finally {
+			bouton.disabled = false;
+		}
+	});
+}
 async function demarrer() {
 	const soireeId = new URLSearchParams(location.search).get('soiree');
 	const stockageManette = ecran === 'manette' ? creerAccesManette() : null;
 	const accesManette = stockageManette?.lire(soireeId);
 	const cleEnMemoire = ecran === 'ecran' && memoire.lire('croustyquizz.soireeEcran') === soireeId
 		? memoire.lire('croustyquizz.cleEcran') : null;
-	const jetonEnMemoire = accesManette?.jeton ?? cleEnMemoire ?? memoire.lire('croustyquizz.jeton');
+	const memorise = memoire.lire('croustyquizz.jeton');
+	// La Console n'emploie le jeton de démonstration que pour sa Soirée ; sinon, la session Animateur.
+	const demoConsole = memorise?.startsWith('demo:ANIMATEUR:') && memorise.split(':')[2] === soireeId;
+	const jetonEnMemoire = accesManette?.jeton ?? cleEnMemoire ?? (ecran === 'console' && !demoConsole ? null : memorise);
+	const consoleConnectee = ecran === 'console' && !jetonEnMemoire;
+	let identite;
+	let suivi;
+	let arreterTout;
+	let arreterMaintien;
+	if (consoleConnectee) {
+		const session = await consulterSession();
+		if (session.statut === 401) return;
+		if (!session.ok || !session.corps?.id) throw new Error(session.detail ?? 'Impossible de vérifier ta session. Recharge la Console.');
+		identite = session.corps;
+		if (soireeId === null) {
+			location.replace('/preparer-soiree.html');
+			return;
+		}
+	}
 	const { cleEcran, ...acces } = lireAcces(ecran, location.search, jetonEnMemoire, accesManette?.joueurId, location.hash);
 	const jeton = cleEcran ?? jetonEnMemoire;
+	const transport = creerTransport({ jeton, sessionAnimateur: consoleConnectee });
 	if (cleEcran !== null) {
 		memoire.ecrire('croustyquizz.cleEcran', cleEcran);
 		memoire.ecrire('croustyquizz.soireeEcran', soireeId);
 		history.replaceState(null, '', location.pathname + location.search);
 	}
-	let csrf;
-	if (ecran === 'console' && !jeton?.startsWith('demo:')) {
-		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
-		if (reponse.statut !== 200 || !reponse.corps?.token) throw new Error(reponse.corps?.detail ?? 'Impossible d’obtenir le jeton de session. Recharge la Console.');
-		csrf = reponse.corps.token;
+	if (consoleConnectee) {
+		acces.acteur.identifiant = identite.id;
+		const soiree = await appeler('GET', `/api/soirees/${acces.soireeId}`);
+		if (soiree.statut === 401) {
+			renvoyerVersConnexion();
+			return;
+		}
+		if (!soiree.ok) throw new Error(soiree.detail ?? 'Impossible d’ouvrir la Soirée. Recharge la Console.');
+		activerDeconnexion(transport.envoyer, () => arreterTout?.());
+		arreterMaintien = maintenirSession();
 	}
-	const transport = creerTransport({ jeton, csrf });
+
 	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
 	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
 		stockageManette.oublier(acces.soireeId);
@@ -96,7 +142,6 @@ async function demarrer() {
 	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
 	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio, acces.soireeId) : null;
-	let suivi;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
 		resynchroniser: () => suivi?.resynchroniser(),
@@ -144,6 +189,7 @@ async function demarrer() {
 			musiqueSalle?.afficher(vue, modeAffiche);
 		},
 		surEtat(etat) {
+			if (etat === 'coupure' && consoleConnectee) void consulterSession();
 			changerEtat(etat);
 			if (etat === 'coupure' && connexionRefusee) return;
 			connexionRefusee = false;
@@ -159,13 +205,21 @@ async function demarrer() {
 			afficherErreur(motif);
 		},
 	}, { transport });
-	addEventListener('pagehide', evenement => {
-		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
+	let arrete = false;
+	// Appelé au départ de la page comme à la déconnexion de l'Animateur, une seule fois.
+	arreterTout = () => {
+		if (arrete) return;
+		arrete = true;
+		arreterMaintien?.();
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
 		pilotage?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
+	};
+	addEventListener('pagehide', evenement => {
+		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
+		arreterTout();
 	});
 	addEventListener('pageshow', evenement => {
 		if (evenement.persisted && audioSalle) {

@@ -12,6 +12,8 @@ import jakarta.persistence.LockModeType;
 
 interface DepotDeSoirees extends JpaRepository<Soiree, UUID> {
 
+	boolean existsByIdAndLieuId(UUID id, UUID lieuId);
+
 	Optional<Soiree> findByCodeAccesAndEtatIn(String codeAcces, Collection<EtatSoiree> etats);
 
 	/** Charge la Soirée en bloquant les autres modifications jusqu'à la fin de la transaction. */

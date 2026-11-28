@@ -36,6 +36,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -56,15 +57,21 @@ public final class ClientDeSoiree implements AutoCloseable {
 
 	private final int port;
 	private final JsonMapper json;
+	private final SessionAnimateurHttp proprietaire;
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final WebSocketStompClient stomp = new WebSocketStompClient(new StandardWebSocketClient(conteneur));
 	private final List<StompSession> sessions = new ArrayList<>();
 	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(PLAFOND).build();
 	private final RestClient http;
 
-	public ClientDeSoiree(int port, JsonMapper json) {
+	public ClientDeSoiree(int port, JsonMapper json) throws Exception {
+		this(port, json, SessionAnimateurHttp.ouvrir(port, json));
+	}
+
+	private ClientDeSoiree(int port, JsonMapper json, SessionAnimateurHttp proprietaire) {
 		this.port = port;
 		this.json = json;
+		this.proprietaire = proprietaire;
 		var fabrique = new JdkClientHttpRequestFactory(clientHttp);
 		fabrique.setReadTimeout(LECTURE);
 		this.http = RestClient.builder().requestFactory(fabrique).build();
@@ -88,7 +95,7 @@ public final class ClientDeSoiree implements AutoCloseable {
 		JsonNode creation = verifier("creerSoiree", envoyer(HttpMethod.POST, SOIREES, null,
 				Map.of("titre", "Soirée du vendredi", "format", "SOLO", "pilotage", "MANUEL"), null), 201);
 		UUID id = UUID.fromString(creation.path("id").asString());
-		String animateur = "demo:ANIMATEUR:" + id + ":" + UUID.randomUUID();
+		String animateur = null; // La Console utilise la session du propriétaire.
 		String route = SOIREES + "/" + id;
 		JsonNode ouverte = verifier("ouvrirSoiree", envoyer(HttpMethod.POST, route + "/ouverture", animateur,
 				null, UUID.randomUUID()), 200);
@@ -115,9 +122,10 @@ public final class ClientDeSoiree implements AutoCloseable {
 	 */
 	public <T> BlockingQueue<T> abonner(SoireeOuverte soiree, String ecran, String secret, String destination,
 			Function<JsonNode, T> projection) throws Exception {
-		StompHeaders connexion = new StompHeaders();
-		connexion.set("Authorization", "Bearer " + secret);
-		StompSession session = stomp.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(),
+		StompHeaders connexion = secret == null ? proprietaire.connexionStomp() : new StompHeaders();
+		if (secret != null) { connexion.set("Authorization", "Bearer " + secret); }
+		var poigneeDeMain = secret == null ? proprietaire.poigneeDeMain() : new WebSocketHttpHeaders();
+		StompSession session = stomp.connectAsync("ws://localhost:" + port + "/ws", poigneeDeMain,
 				connexion, new StompSessionHandlerAdapter() { }).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		StompHeaders abonnement = new StompHeaders();
@@ -165,7 +173,8 @@ public final class ClientDeSoiree implements AutoCloseable {
 	public ResponseEntity<String> envoyer(HttpMethod methode, String route, String secret, Object corps, UUID cle) {
 		var requete = http.method(methode).uri("http://localhost:" + port + route);
 		if (secret != null) { requete.headers(entetes -> entetes.setBearerAuth(secret)); }
-		if (cle != null) { requete.header("Idempotency-Key", cle.toString()).header("X-CSRF-TOKEN", "demonstration"); }
+		else { requete.headers(entetes -> entetes.addAll(proprietaire.entetes())); }
+		if (cle != null) { requete.header("Idempotency-Key", cle.toString()); }
 		if (corps != null) { requete.contentType(MediaType.APPLICATION_JSON).body(corps); }
 		return requete.retrieve().onStatus(statut -> statut.isError(), (q, r) -> { }).toEntity(String.class);
 	}

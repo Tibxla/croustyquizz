@@ -19,8 +19,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.soiree.Format;
 import fr.croustyquizz.soiree.Pilotage;
@@ -50,7 +52,9 @@ class SocleMancheJpaTest {
 
 	@Test
 	void leClassementSeCumuleEntreLesManchesEtResteAccessibleApresLaSoiree() throws Exception {
-		UUID soiree = soirees.creer("Quiz du jeudi", Format.SOLO, Pilotage.MANUEL).getId();
+		// La Console d'une Soirée enregistrée se lit avec la session d'un Animateur de son Lieu (#5).
+		var proprietaire = SessionAnimateurHttp.ouvrir(port, json);
+		UUID soiree = soirees.creer("Quiz du jeudi", Format.SOLO, Pilotage.MANUEL, lieuDe(proprietaire)).getId();
 		String code = soirees.ouvrir(soiree).getCodeAcces();
 		var lea = soirees.rejoindre(code, "Léa");
 		String cleEcran = acces.ouvrirEcran(soiree).cle();
@@ -76,14 +80,13 @@ class SocleMancheJpaTest {
 		jdbc.update("update soiree set etat = 'TERMINEE', terminee_le = ? where id = ?",
 				Timestamp.from(horloge.maintenant()), soiree);
 		vues.publier(soiree, new Accepte(null, Set.of(Destination.CONSOLE), "soiree-terminee"));
-		String jeton = "demo:ANIMATEUR:" + soiree + ":" + animateur.identifiant();
-		JsonNode console = lire(soiree, "/etat/console", jeton, "retrouverEtatConsole").path("vue");
+		JsonNode console = lire(soiree, "/etat/console", proprietaire.entetes(), "retrouverEtatConsole").path("vue");
 		assertThat(console.at("/soiree/etat").asString()).isEqualTo("TERMINEE");
 		assertThat(console.at("/classement/0/concurrentId").asString()).isEqualTo(joueuse.identifiant().toString());
 		assertThat(console.at("/classement/0/points").asLong()).isEqualTo(2);
 		assertThat(console.at("/classement/0/bonnesReponses").asInt()).isEqualTo(2);
 		assertThat(console.at("/classement/0/tempsCumuleMs").asLong()).isEqualTo(5_000);
-		assertThat(lire(soiree, "/classement", jeton, "consulterClassement").path("classement"))
+		assertThat(lire(soiree, "/classement", proprietaire.entetes(), "consulterClassement").path("classement"))
 				.isEqualTo(console.path("classement"));
 	}
 
@@ -99,14 +102,27 @@ class SocleMancheJpaTest {
 	}
 
 	private JsonNode lire(UUID soiree, String chemin, String jeton, String operation) throws Exception {
+		var entetes = new HttpHeaders();
+		entetes.setBearerAuth(jeton);
+		return lire(soiree, chemin, entetes, operation);
+	}
+
+	private JsonNode lire(UUID soiree, String chemin, HttpHeaders entetes, String operation) throws Exception {
 		var reponse = RestClient.create("http://localhost:" + port).get()
 				.uri("/api/soirees/" + soiree + chemin)
-				.header("Authorization", "Bearer " + jeton)
+				.headers(envoi -> envoi.addAll(entetes))
 				.retrieve().onStatus(statut -> statut.isError(), (requete, refus) -> { }).toEntity(String.class);
 		ContratApi.verifier(CONTRAT, operation, reponse);
 		assertThat(reponse.getStatusCode().value()).isEqualTo(200);
 		assertThat(reponse.getHeaders().getCacheControl()).isEqualTo("no-store");
 		return json.readTree(reponse.getBody());
+	}
+
+	private UUID lieuDe(SessionAnimateurHttp session) throws Exception {
+		var identite = RestClient.create("http://localhost:" + port).get().uri("/api/animateurs/session")
+				.headers(envoi -> envoi.addAll(session.entetes())).retrieve().toEntity(String.class);
+		ContratApi.verifier(CONTRAT, "consulterAnimateur", identite);
+		return UUID.fromString(json.readTree(identite.getBody()).path("lieuId").asString());
 	}
 
 	@Test

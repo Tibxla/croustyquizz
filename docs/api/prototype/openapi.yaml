@@ -4,7 +4,7 @@ info:
   version: 0.2.0
   description: >-
     Routes de test actives en profils dev et recette (sauf heure).
-    Le Buzz reste anonyme ; les Manches exigent un Acteur de démonstration.
+    Le Buzz reste anonyme. Les Manches exigent un Acteur Animateur dont l’accès dépend de la Soirée.
     Le contrat métier authentifié reste dans ../openapi.yaml.
 servers:
   - url: http://localhost:8080
@@ -121,7 +121,10 @@ paths:
       - $ref: '#/components/parameters/SoireeId'
     post:
       operationId: creerMancheDeTest
-      description: Crée une Manche PRETE du mode installé, avec ses réglages. Acteur Animateur de démonstration requis.
+      description: >-
+        Crée une Manche PRETE du mode installé. Pour une Soirée enregistrée, session Animateur du même Lieu
+        et X-CSRF-TOKEN requis ; un Bearer de démonstration est refusé en 401. Pour une Soirée absente de la base,
+        le Bearer Animateur de démonstration reste utilisable sans CSRF.
       requestBody:
         required: true
         content:
@@ -161,7 +164,9 @@ paths:
         schema: {type: string, format: uuid}
     post:
       operationId: demarrerMancheDeTest
-      description: Démarre une Manche PRETE ; Acteur Animateur de démonstration requis. Reçu idempotent.
+      description: >-
+        Démarre une Manche PRETE. Pour une Soirée enregistrée, session Animateur du même Lieu et X-CSRF-TOKEN
+        requis. Sur une Soirée de démonstration, Bearer Animateur de démonstration. Reçu idempotent.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -186,7 +191,8 @@ paths:
     put:
       operationId: choisirPilotageDeTest
       description: >-
-        Réservé à l'Animateur de démonstration dans les profils dev et recette.
+        Réservé aux profils dev et recette. Pour une Soirée enregistrée, la route exige une session
+        Animateur du même Lieu et X-CSRF-TOKEN avant de refuser le changement de Pilotage.
         Le choix est possible pour une Soirée de démonstration tant qu'aucune de ses Manches
         n'a démarré. Il est gardé en mémoire et perdu au redémarrage.
       requestBody:

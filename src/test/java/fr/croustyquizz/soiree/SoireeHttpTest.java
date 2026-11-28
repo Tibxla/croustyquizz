@@ -1,21 +1,32 @@
 package fr.croustyquizz.soiree;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.WebSocket;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +37,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.RefusDeCommande;
 import fr.croustyquizz.tempsreel.ResolveurDActeur;
@@ -47,6 +59,188 @@ class SoireeHttpTest {
 
 	@Autowired
 	private JdbcTemplate jdbc;
+
+	private SessionAnimateurHttp animateur;
+
+	@BeforeEach
+	void connecterAnimateur() throws Exception {
+		animateur = SessionAnimateurHttp.ouvrir(adresseServeur(), json);
+	}
+
+	@Test
+	void refuseLesRequetesSansSessionEtProtegeLesMutationsParCsrf() throws Exception {
+		Map<String, String> creation = Map.of("titre", "Quiz", "format", "SOLO", "pilotage", "MANUEL");
+		verifierRefus("creerSoiree", envoyer(HttpMethod.POST, "/api/soirees", creation, new HttpHeaders()),
+				401, "AUTHENTIFICATION_REQUISE");
+		var sansCsrf = new HttpHeaders();
+		sansCsrf.set(HttpHeaders.COOKIE, animateur.cookie());
+		verifierRefus("creerSoiree", envoyer(HttpMethod.POST, "/api/soirees", creation, sansCsrf),
+				403, "CSRF_INVALIDE");
+	}
+
+	@Test
+	void isoleLesSoireesDesDeuxLieux() throws Exception {
+		String id = soireeOuverte().path("id").asString();
+		String route = "/api/soirees/" + id;
+		var autre = SessionAnimateurHttp.ouvrir(adresseServeur(), json);
+		var commande = autre.entetes();
+		commande.set("Idempotency-Key", UUID.randomUUID().toString());
+
+		for (var lecture : Map.of("", "consulterSoiree", "/qrcode", "consulterQrCodeSoiree",
+				"/etat/console", "retrouverEtatConsole", "/etat/salle", "retrouverEtatSalle",
+				"/etat/manette", "retrouverEtatManette").entrySet()) {
+			verifierRefus(lecture.getValue(), envoyer(HttpMethod.GET, route + lecture.getKey(), null, autre.entetes()),
+					404, "RESSOURCE_INTROUVABLE");
+			verifierRefus(lecture.getValue(), envoyer(HttpMethod.GET, route + lecture.getKey(), null, new HttpHeaders()),
+					401, "AUTHENTIFICATION_REQUISE");
+		}
+		for (var mutation : Map.of("/ouverture", "ouvrirSoiree", "/acces-ecran", "creerAccesEcran").entrySet()) {
+			verifierRefus(mutation.getValue(), envoyer(HttpMethod.POST, route + mutation.getKey(), null, commande),
+					404, "RESSOURCE_INTROUVABLE");
+			verifierRefus(mutation.getValue(), envoyer(HttpMethod.POST, route + mutation.getKey(), null, new HttpHeaders()),
+					401, "AUTHENTIFICATION_REQUISE");
+		}
+		String routePilotage = route + "/manches/" + UUID.randomUUID() + "/commandes";
+		var intervention = Map.of("action", "METTRE_EN_PAUSE");
+		verifierRefus("piloterManche", envoyer(HttpMethod.POST, routePilotage, intervention, commande),
+				404, "RESSOURCE_INTROUVABLE");
+		var sansSession = new HttpHeaders();
+		sansSession.set("Idempotency-Key", UUID.randomUUID().toString());
+		verifierRefus("piloterManche", envoyer(HttpMethod.POST, routePilotage, intervention, sansSession),
+				401, "AUTHENTIFICATION_REQUISE");
+
+		var capture = envoyer(HttpMethod.GET, route + "/etat/console", null, animateur.entetes());
+		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", capture);
+		assertThat(capture.getStatusCode().value()).isEqualTo(200);
+		var qrCode = envoyer(HttpMethod.GET, route + "/qrcode", null, animateur.entetes());
+		ContratApi.verifier(CONTRAT, "consulterQrCodeSoiree", qrCode);
+		assertThat(qrCode.getStatusCode().value()).isEqualTo(200);
+
+		String demo = "demo:ANIMATEUR:" + id + ":" + UUID.randomUUID();
+		verifierRefus("retrouverEtatConsole", envoyer(HttpMethod.GET, route + "/etat/console", null, demo),
+				401, "AUTHENTIFICATION_REQUISE");
+		String demoAutreSoiree = "demo:ANIMATEUR:" + UUID.randomUUID() + ":" + UUID.randomUUID();
+		verifierRefus("retrouverEtatConsole", envoyer(HttpMethod.GET, route + "/etat/console", null, demoAutreSoiree),
+				401, "AUTHENTIFICATION_REQUISE");
+		var avecBearer = animateur.entetes();
+		avecBearer.setBearerAuth(demo);
+		verifierRefus("retrouverEtatConsole", envoyer(HttpMethod.GET, route + "/etat/console", null, avecBearer),
+				401, "AUTHENTIFICATION_REQUISE");
+
+		jdbc.update("update soiree set lieu_id = null where id = ?::uuid", id);
+		verifierRefus("consulterSoiree", envoyer(HttpMethod.GET, route, null, animateur.entetes()),
+				404, "RESSOURCE_INTROUVABLE");
+	}
+
+	/**
+	 * Les routes d'Animateur du pilotage de Soirée, de la Musique d'attente, des photos et du Classement
+	 * passent par le même résolveur que les routes de la Console : 404 hors du Lieu, 401 sans session.
+	 */
+	@Test
+	void lesRoutesDePilotageDeMusiqueDePhotosEtDeClassementSuiventLeLieu() throws Exception {
+		String route = "/api/soirees/" + soireeOuverte().path("id").asString();
+		var autre = SessionAnimateurHttp.ouvrir(adresseServeur(), json);
+		record Appel(String operation, HttpMethod methode, String chemin, Object corps) { }
+		var appels = List.of(
+				new Appel("piloterSoiree", HttpMethod.POST, "/commandes", Map.of("action", "LANCER")),
+				new Appel("reglerMusiqueDAttente", HttpMethod.PUT, "/musique-attente", Map.of("etat", "COUPEE")),
+				new Appel("reglerPhotos", HttpMethod.PUT, "/photos/reglages", Map.of("ouvertes", false)),
+				new Appel("modererPhoto", HttpMethod.POST, "/photos/" + UUID.randomUUID() + "/moderation",
+						Map.of("acceptee", true)),
+				new Appel("consulterPhoto", HttpMethod.GET, "/photos/" + UUID.randomUUID(), null),
+				new Appel("consulterClassement", HttpMethod.GET, "/classement", null));
+		for (var appel : appels) {
+			var horsDuLieu = autre.entetes();
+			horsDuLieu.set("Idempotency-Key", UUID.randomUUID().toString());
+			verifierRefus(appel.operation(), envoyer(appel.methode(), route + appel.chemin(), appel.corps(), horsDuLieu),
+					404, "RESSOURCE_INTROUVABLE");
+			var sansSession = new HttpHeaders();
+			sansSession.set("Idempotency-Key", UUID.randomUUID().toString());
+			verifierRefus(appel.operation(), envoyer(appel.methode(), route + appel.chemin(), appel.corps(), sansSession),
+					401, "AUTHENTIFICATION_REQUISE");
+		}
+		var reglage = envoyer(HttpMethod.PUT, route + "/musique-attente", Map.of("etat", "COUPEE"));
+		ContratApi.verifier(CONTRAT, "reglerMusiqueDAttente", reglage);
+		assertThat(reglage.getStatusCode().value()).isEqualTo(200);
+		var classement = envoyer(HttpMethod.GET, route + "/classement", null);
+		ContratApi.verifier(CONTRAT, "consulterClassement", classement);
+		assertThat(classement.getStatusCode().value()).isEqualTo(200);
+	}
+
+	@Test
+	void leCanalDeConsoleSuitLeLieuEtSeFermeALaDeconnexion() throws Exception {
+		String id = soireeOuverte().path("id").asString();
+		String route = "/api/soirees/" + id + "/etat/console";
+		String canal = "/topic/soirees/" + id + "/console";
+		String abonnement = UUID.randomUUID().toString();
+		var autre = SessionAnimateurHttp.ouvrir(adresseServeur(), json);
+		try (var client = HttpClient.newHttpClient()) {
+			var proprietaire = new TramesStomp();
+			var etranger = new TramesStomp();
+			WebSocket socket = connecterStomp(client, animateur, proprietaire);
+			WebSocket autreSocket = connecterStomp(client, autre, etranger);
+			try {
+				socket.sendText("SUBSCRIBE\nid:" + abonnement + "\ndestination:" + canal + "\n\n\0", true).join();
+				var capture = await().atMost(Duration.ofSeconds(5)).until(
+						() -> envoyer(HttpMethod.GET, route + "?abonnementId=" + abonnement, null, animateur.entetes()),
+						reponse -> reponse.getStatusCode().value() == 200);
+				ContratApi.verifier(CONTRAT, "retrouverEtatConsole", capture);
+
+				String abonnementEtranger = UUID.randomUUID().toString();
+				autreSocket.sendText("SUBSCRIBE\nid:" + abonnementEtranger + "\ndestination:" + canal + "\n\n\0", true).join();
+				assertThat(etranger.fermeture.get(5, TimeUnit.SECONDS)).isEqualTo(1008);
+				verifierRefus("retrouverEtatConsole",
+						envoyer(HttpMethod.GET, route + "?abonnementId=" + abonnementEtranger, null, animateur.entetes()),
+						409, "ABONNEMENT_INACTIF");
+				var deconnexion = envoyer(HttpMethod.DELETE, "/api/animateurs/session", null, animateur.entetes());
+				ContratApi.verifier(CONTRAT, "deconnecterAnimateur", deconnexion);
+				assertThat(deconnexion.getStatusCode().value()).isEqualTo(204);
+				assertThat(proprietaire.fermeture.get(5, TimeUnit.SECONDS)).isEqualTo(1008);
+				verifierRefus("retrouverEtatConsole", envoyer(HttpMethod.GET, route, null, animateur.entetes()),
+						401, "AUTHENTIFICATION_REQUISE");
+			} finally {
+				socket.abort();
+				autreSocket.abort();
+			}
+		}
+	}
+
+	private WebSocket connecterStomp(HttpClient client, SessionAnimateurHttp session, TramesStomp reception)
+			throws Exception {
+		WebSocket socket = client.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(5))
+				.subprotocols("v12.stomp").header("Cookie", session.cookie())
+				.buildAsync(URI.create(adresseServeur().replaceFirst("^http", "ws") + "/ws"), reception).get(5, TimeUnit.SECONDS);
+		socket.sendText("CONNECT\naccept-version:1.2\nhost:localhost\nX-CSRF-TOKEN:" + session.csrf() + "\n\n\0", true).join();
+		assertThat(reception.trames.poll(5, TimeUnit.SECONDS)).startsWith("CONNECTED");
+		return socket;
+	}
+
+	private static final class TramesStomp implements WebSocket.Listener {
+		private final LinkedBlockingQueue<String> trames = new LinkedBlockingQueue<>();
+		private final CompletableFuture<Integer> fermeture = new CompletableFuture<>();
+		private final StringBuilder trame = new StringBuilder();
+
+		@Override
+		public CompletionStage<?> onText(WebSocket socket, CharSequence fragment, boolean fin) {
+			trame.append(fragment);
+			if (fin) {
+				trames.add(trame.toString());
+				trame.setLength(0);
+			}
+			return WebSocket.Listener.super.onText(socket, fragment, fin);
+		}
+
+		@Override
+		public CompletionStage<?> onClose(WebSocket socket, int statut, String raison) {
+			fermeture.complete(statut);
+			return WebSocket.Listener.super.onClose(socket, statut, raison);
+		}
+		@Override
+		public void onError(WebSocket socket, Throwable erreur) {
+			fermeture.completeExceptionally(erreur);
+		}
+
+	}
 
 	@Autowired
 	private ResolveurDActeur resolveur;
@@ -85,6 +279,7 @@ class SoireeHttpTest {
 		String code = json.readTree(ouverture.getBody()).path("codeAcces").asString();
 		assertThat(json.readTree(ouverture.getBody()).path("etat").asString()).isEqualTo("OUVERTE");
 		var repetition = envoyer(HttpMethod.POST, "/api/soirees/" + id + "/ouverture", null);
+		ContratApi.verifier(CONTRAT, "ouvrirSoiree", repetition);
 		assertThat(repetition.getBody()).isEqualTo(ouverture.getBody());
 
 		var arrivee = envoyer(HttpMethod.POST, "/api/soirees/rejoindre",
@@ -149,10 +344,14 @@ class SoireeHttpTest {
 		assertThat(jdbc.queryForObject("select count(*) from joueur", Integer.class)).isZero();
 	}
 
-	private JsonNode soireeOuverte() {
-		String id = json.readTree(envoyer(HttpMethod.POST, "/api/soirees",
-				Map.of("titre", "Quiz du jeudi", "format", "SOLO", "pilotage", "MANUEL")).getBody()).path("id").asString();
-		return json.readTree(envoyer(HttpMethod.POST, "/api/soirees/" + id + "/ouverture", null).getBody());
+	private JsonNode soireeOuverte() throws Exception {
+		var creation = envoyer(HttpMethod.POST, "/api/soirees",
+				Map.of("titre", "Quiz du jeudi", "format", "SOLO", "pilotage", "MANUEL"));
+		ContratApi.verifier(CONTRAT, "creerSoiree", creation);
+		String id = json.readTree(creation.getBody()).path("id").asString();
+		var ouverture = envoyer(HttpMethod.POST, "/api/soirees/" + id + "/ouverture", null);
+		ContratApi.verifier(CONTRAT, "ouvrirSoiree", ouverture);
+		return json.readTree(ouverture.getBody());
 	}
 
 	private void verifierRefus(String operationId, ResponseEntity<String> reponse, int statut, String code)
@@ -243,7 +442,7 @@ class SoireeHttpTest {
 	}
 
 	@Test
-	void leQrCodeEstReserveALEcranDeSaSoiree() throws Exception {
+	void leQrCodeRefuseLesSecretsHorsDeLeurPortee() throws Exception {
 		JsonNode ouverte = soireeOuverte();
 		String id = ouverte.path("id").asString();
 		String route = "/api/soirees/" + id + "/qrcode";
@@ -321,9 +520,12 @@ class SoireeHttpTest {
 			verifierRefusAuConnect(jeton);
 		}
 
-		// L'Animateur de démonstration reste accepté jusqu'à la connexion du Lieu (#5).
-		var console = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/console", null,
-				"demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID());
+		// L'Animateur de démonstration non plus (#5) : la Console d'une Soirée enregistrée passe par la session.
+		String animateurDemo = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
+		verifierRefus("retrouverEtatConsole", envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/console", null,
+				animateurDemo), 401, "AUTHENTIFICATION_REQUISE");
+		verifierRefusAuConnect(animateurDemo);
+		var console = envoyer(HttpMethod.GET, "/api/soirees/" + soiree + "/etat/console", null);
 		ContratApi.verifier(CONTRAT, "retrouverEtatConsole", console);
 		assertThat(console.getStatusCode().value()).isEqualTo(200);
 	}
@@ -392,14 +594,20 @@ class SoireeHttpTest {
 	}
 
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps) {
-		return envoyer(methode, route, corps, null);
+		boolean routeDeConsole = route.startsWith("/api/soirees") && !route.equals("/api/soirees/rejoindre")
+				&& !route.endsWith("/qrcode");
+		return envoyer(methode, route, corps, routeDeConsole ? animateur.entetes() : new HttpHeaders());
 	}
 
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps, String secret) {
-		var requete = RestClient.create(adresseServeur()).method(methode).uri(route);
-		if (secret != null) {
-			requete.header("Authorization", "Bearer " + secret);
-		}
+		var entetes = new HttpHeaders();
+		entetes.setBearerAuth(secret);
+		return envoyer(methode, route, corps, entetes);
+	}
+
+	private ResponseEntity<String> envoyer(HttpMethod methode, String route, Object corps, HttpHeaders entetes) {
+		var requete = RestClient.create(adresseServeur()).method(methode).uri(route)
+				.headers(envoi -> envoi.addAll(entetes));
 		if (methode == HttpMethod.POST && route.endsWith("/ouverture")) {
 			requete.header("Idempotency-Key", UUID.randomUUID().toString());
 		}

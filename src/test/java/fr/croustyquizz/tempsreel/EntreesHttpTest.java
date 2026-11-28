@@ -74,7 +74,9 @@ class EntreesHttpTest {
 	@Test
 	void lesClientsNePeuventEnvoyerNiCommandeNiEvenementSurStomp() {
 		CanalDeTest canal = new CanalDeTest();
-		new ConfigurationTempsReel(new RegistreAbonnements(), new org.springframework.beans.factory.support.DefaultListableBeanFactory().getBeanProvider(ControleAccesStomp.class)).configureClientInboundChannel(canal);
+		var beans = new org.springframework.beans.factory.support.DefaultListableBeanFactory();
+		new ConfigurationTempsReel(new RegistreAbonnements(), beans.getBeanProvider(ControleAccesStomp.class),
+				beans.getBeanProvider(PoigneeDeMainAnimateur.class)).configureClientInboundChannel(canal);
 		ChannelInterceptor filtre = canal.filtre();
 		for (String destination : new String[] { "/app/soirees/test/buzz", "/topic/soirees/test/salle" }) {
 			var entetes = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);

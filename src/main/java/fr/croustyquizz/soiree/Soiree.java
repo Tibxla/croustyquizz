@@ -28,6 +28,9 @@ public class Soiree {
 
 	private String titre;
 
+	@Column(updatable = false)
+	private UUID lieuId;
+
 	@Enumerated(EnumType.STRING)
 	private Format format;
 
@@ -63,6 +66,10 @@ public class Soiree {
 
 	/** Une Soirée naît en Préparation, sans code d'accès. */
 	public Soiree(String titre, Format format, Pilotage pilotage, Instant creeeLe) {
+		this(titre, format, pilotage, creeeLe, null);
+	}
+
+	Soiree(String titre, Format format, Pilotage pilotage, Instant creeeLe, UUID lieuId) {
 		if (titre == null) {
 			throw new TitreInvalide();
 		}
@@ -71,6 +78,7 @@ public class Soiree {
 			throw new TitreInvalide();
 		}
 		this.id = UUID.randomUUID();
+		this.lieuId = lieuId;
 		this.titre = titreNettoye;
 		this.format = Objects.requireNonNull(format, "format");
 		this.pilotage = Objects.requireNonNull(pilotage, "pilotage");

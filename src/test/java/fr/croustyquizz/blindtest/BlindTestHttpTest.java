@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.HorlogeFactice;
@@ -80,6 +81,8 @@ class BlindTestHttpTest {
 	private final WsWebSocketContainer conteneur = new WsWebSocketContainer();
 	private final WebSocketStompClient stomp = new WebSocketStompClient(new StandardWebSocketClient(conteneur));
 	private final List<StompSession> sessions = new ArrayList<>();
+	/** Animateur du Lieu qui crée les Soirées : ses requêtes partent sans Bearer, avec sa session. */
+	private SessionAnimateurHttp proprietaire;
 	private final HttpClient clientHttp = HttpClient.newBuilder().connectTimeout(PLAFOND).build();
 	private final RestClient http = clientHttp(clientHttp);
 
@@ -120,6 +123,11 @@ class BlindTestHttpTest {
 			return sansExtrait.contains(idDeezer) ? Optional.empty()
 					: Optional.of(URI.create("https://cdnt-preview.dzcdn.net/extrait.mp3?hdnea=exp=1~hmac=" + Long.toHexString(idDeezer * 31)));
 		}
+	}
+
+	@BeforeEach
+	void connecterLeProprietaire() throws Exception {
+		proprietaire = SessionAnimateurHttp.ouvrir(port, json);
 	}
 
 	@BeforeEach
@@ -595,7 +603,7 @@ class BlindTestHttpTest {
 		JsonNode creation = verifier("creerSoiree", envoyer(HttpMethod.POST, "/api/soirees", null,
 				Map.of("titre", "Blind test du mardi", "format", "SOLO", "pilotage", pilotage), null), 201);
 		UUID id = UUID.fromString(creation.path("id").asString());
-		String animateur = "demo:ANIMATEUR:" + id + ":" + UUID.randomUUID();
+		String animateur = null; // la session du propriétaire, pas de Bearer de démonstration
 		String route = "/api/soirees/" + id;
 		JsonNode ouverte = verifier("ouvrirSoiree", envoyer(HttpMethod.POST, route + "/ouverture", animateur,
 				null, UUID.randomUUID()), 200);
@@ -641,7 +649,8 @@ class BlindTestHttpTest {
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, String secret, Object corps, UUID cle) {
 		var requete = http.method(methode).uri("http://localhost:" + port + route);
 		if (secret != null) { requete.headers(entetes -> entetes.setBearerAuth(secret)); }
-		if (cle != null) { requete.header("Idempotency-Key", cle.toString()).header("X-CSRF-TOKEN", "demonstration"); }
+		else { requete.headers(entetes -> entetes.addAll(proprietaire.entetes())); }
+		if (cle != null) { requete.header("Idempotency-Key", cle.toString()); }
 		if (corps != null) { requete.contentType(MediaType.APPLICATION_JSON).body(corps); }
 		return requete.retrieve().onStatus(statut -> statut.isError(), (q, r) -> { }).toEntity(String.class);
 	}

@@ -168,9 +168,10 @@ x-stomp:
   version: '1.2'
   sousProtocole: v12.stomp
   connect:
-    Authorization: 'Bearer <jetonJoueur, cleEcran ou demo:ANIMATEUR> ; la session Animateur par cookie du handshake viendra avec #5'
-    X-CSRF-TOKEN: Jeton obtenu par HTTP dans ce navigateur, requis pour CONNECT
+    Authorization: Bearer <jetonJoueur ou cleEcran> ; sinon session Animateur par cookie du handshake
+    X-CSRF-TOKEN: Jeton obtenu par GET /api/csrf avant chaque CONNECT de la Console en session ; il rattache CONNECT à la session Animateur du handshake, ignorée sans lui
     refus: Trame ERROR dont l’en-tête message porte un motif affichable, puis fermeture de la WebSocket, sans CONNECTED ; la coquille ne se reconnecte pas d’elle-même
+    refusCsrf: Pour une session Animateur du handshake et un en-tête X-CSRF-TOKEN présent mais non validé, trame ERROR avec le motif « Le jeton CSRF est absent ou invalide. Resynchronise la Console d’animation. », puis fermeture de la WebSocket avec le code 1002, sans CONNECTED
   subscribe:
     id: UUID neuf ; utilisé comme abonnementId pour la capture HTTP cohérente
     destination: Adresse autorisée du canal

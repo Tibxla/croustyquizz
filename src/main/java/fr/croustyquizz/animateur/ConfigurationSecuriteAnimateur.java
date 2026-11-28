@@ -2,6 +2,8 @@ package fr.croustyquizz.animateur;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,20 +32,24 @@ import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.AndRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import fr.croustyquizz.manche.Probleme;
 import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.soiree.ServiceSoiree;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 class ConfigurationSecuriteAnimateur {
 
-	private static final RequestMatcher AVEC_BEARER = requete -> {
-		String autorisation = requete.getHeader(HttpHeaders.AUTHORIZATION);
-		return autorisation != null && autorisation.regionMatches(true, 0, "Bearer ", 0, "Bearer ".length());
-	};
+	private static final RequestMatcher AVEC_BEARER = ResolveurAnimateurConnecte::porteUnBearer;
+	private static final PathPatternRequestMatcher.Builder CHEMINS = PathPatternRequestMatcher.withDefaults();
+	private static final Set<String> METHODES_SURES = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
+	private static final String TEST = "/api/test/soirees/{soireeId}";
 
 	@Bean
 	PasswordEncoder encodeurMotDePasse() {
@@ -70,22 +76,27 @@ class ConfigurationSecuriteAnimateur {
 	DelegatingFilterProxyRegistrationBean filtreDeSessionAnimateur() {
 		var filtre = new DelegatingFilterProxyRegistrationBean(
 				AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME);
-		// Le filtre et son pare-feu ne traitent que les routes de compte.
-		filtre.setUrlPatterns(List.of(AnimateurControleur.CSRF, AnimateurControleur.INSCRIPTION, AnimateurControleur.SESSION));
+		// Dans ces préfixes, securityMatcher écarte les routes publiques et les accès Bearer de Soirée.
+		filtre.setUrlPatterns(List.of(AnimateurControleur.CSRF, AnimateurControleur.INSCRIPTION, AnimateurControleur.SESSION,
+				"/api/soirees", "/api/soirees/*", "/api/test/soirees/*"));
 		return filtre;
 	}
 
 	@Bean
 	SecurityFilterChain securiteAnimateur(HttpSecurity http, JsonMapper json,
-			CsrfTokenRepository jetons, HttpSessionSecurityContextRepository sessions) throws Exception {
-		return http.securityContext(contexte -> contexte.securityContextRepository(sessions))
+			CsrfTokenRepository jetons, HttpSessionSecurityContextRepository sessions, ServiceSoiree soirees)
+			throws Exception {
+		var compte = new OrRequestMatcher(CHEMINS.matcher(AnimateurControleur.CSRF),
+				CHEMINS.matcher(AnimateurControleur.INSCRIPTION), CHEMINS.matcher(AnimateurControleur.SESSION));
+		return http.securityMatcher(new OrRequestMatcher(compte, mutationsParSession(soirees)))
+				.securityContext(contexte -> contexte.securityContextRepository(sessions))
 				.csrf(csrf -> csrf
 						.csrfTokenRepository(jetons)
 						.ignoringRequestMatchers(AVEC_BEARER)
 						.csrfTokenRequestHandler(new JetonCsrfDansEntete()))
 				.authorizeHttpRequests(acces -> acces
 						.requestMatchers(AnimateurControleur.CSRF).permitAll()
-						.requestMatchers(AVEC_BEARER).denyAll()
+						.requestMatchers(new AndRequestMatcher(compte, AVEC_BEARER)).denyAll()
 						.requestMatchers(HttpMethod.POST, AnimateurControleur.SESSION).permitAll()
 						.requestMatchers(AnimateurControleur.SESSION).authenticated()
 						.anyRequest().permitAll())
@@ -99,6 +110,33 @@ class ConfigurationSecuriteAnimateur {
 				.requestCache(cache -> cache.disable())
 				.logout(sortie -> sortie.disable())
 				.build();
+	}
+
+	/**
+	 * Toute méthode non sûre sous /api/soirees, portée par la session et sans Bearer, exige le CSRF :
+	 * une route ajoutée plus tard est protégée d'office. Seule l'arrivée d'un Joueur, publique, y échappe.
+	 */
+	private static RequestMatcher mutationsParSession(ServiceSoiree soirees) {
+		var sousLesSoirees = new OrRequestMatcher(CHEMINS.matcher("/api/soirees"), CHEMINS.matcher("/api/soirees/**"));
+		var publique = CHEMINS.matcher(HttpMethod.POST, "/api/soirees/rejoindre");
+		RequestMatcher metier = requete -> !METHODES_SURES.contains(requete.getMethod())
+				&& sousLesSoirees.matches(requete) && !publique.matches(requete);
+		var test = new OrRequestMatcher(CHEMINS.matcher(HttpMethod.POST, TEST + "/manches"),
+				CHEMINS.matcher(HttpMethod.POST, TEST + "/manches/{mancheId}/demarrer"),
+				CHEMINS.matcher(HttpMethod.PUT, TEST + "/pilotage"));
+		return requete -> !AVEC_BEARER.matches(requete) && SessionAnimateur.de(requete.getSession(false)) != null
+				&& (metier.matches(requete) || mutationDeTestEnregistree(test.matcher(requete), soirees));
+	}
+
+	private static boolean mutationDeTestEnregistree(RequestMatcher.MatchResult correspondance, ServiceSoiree soirees) {
+		if (!correspondance.isMatch()) {
+			return false;
+		}
+		try {
+			return soirees.estEnregistree(UUID.fromString(correspondance.getVariables().get("soireeId")));
+		} catch (IllegalArgumentException invalide) {
+			return false; // Spring MVC répondra 400 pour l'identifiant mal formé.
+		}
 	}
 
 	private static Refuse refusAcces(HttpServletRequest requete) {

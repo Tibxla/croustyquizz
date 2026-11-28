@@ -23,6 +23,14 @@ export async function appeler(methode, route, { corps, secret, entetes = {} } = 
 	return { ok: false, statut: reponse.status, code: contenu?.code ?? 'ERREUR_INATTENDUE', ...(detail ? { detail } : {}) };
 }
 
+// Réservé aux mutations par session ; les appels Bearer gardent appeler().
+export async function appelerAvecCsrf(methode, route, { corps, entetes = {} } = {}) {
+	const csrf = await appeler('GET', '/api/csrf');
+	if (!csrf.ok) return csrf;
+	if (!csrf.corps?.token) return { ok: false, statut: csrf.statut, code: 'ERREUR_INATTENDUE' };
+	return appeler(methode, route, { corps, entetes: { ...entetes, 'X-CSRF-TOKEN': csrf.corps.token } });
+}
+
 // UUID v4 pour Idempotency-Key, y compris hors contexte sécurisé (voir uuid.mjs).
 export function nouvelleCle() {
 	return creerUuid();

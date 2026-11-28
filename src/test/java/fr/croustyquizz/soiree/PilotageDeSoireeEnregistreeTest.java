@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
@@ -19,6 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
 import fr.croustyquizz.ContratApi;
+import fr.croustyquizz.SessionAnimateurHttp;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.ModeFacticeDuSocle;
 import fr.croustyquizz.manche.PilotageDeSoireeDemonstration;
@@ -39,11 +41,24 @@ class PilotageDeSoireeEnregistreeTest {
 
 		@Test
 		void leChoixDeDemonstrationEstRefusePourUneSoireeEnregistree() throws Exception {
-			UUID automatique = creerSoiree(Pilotage.AUTOMATIQUE);
-			UUID manuelle = creerSoiree(Pilotage.MANUEL);
+			var proprietaire = ouvrirSession(json);
+			UUID automatique = creerSoiree(Pilotage.AUTOMATIQUE, proprietaire, json);
+			UUID manuelle = creerSoiree(Pilotage.MANUEL, proprietaire, json);
 
-			verifierRefus(automatique, "MANUEL");
-			verifierRefus(manuelle, "AUTOMATIQUE");
+			var demonstrationRefusee = demanderPilotage(automatique, "MANUEL");
+			ContratApi.verifier(PROTOTYPE, "choisirPilotageDeTest", demonstrationRefusee);
+			assertThat(demonstrationRefusee.getStatusCode().value()).isEqualTo(401);
+			assertThat(json.readTree(demonstrationRefusee.getBody()).path("code").asString())
+					.isEqualTo("AUTHENTIFICATION_REQUISE");
+			var sansCsrf = new HttpHeaders();
+			sansCsrf.set(HttpHeaders.COOKIE, proprietaire.cookie());
+			var csrfManquant = demanderPilotage(automatique, "MANUEL", sansCsrf);
+			ContratApi.verifier(PROTOTYPE, "choisirPilotageDeTest", csrfManquant);
+			assertThat(csrfManquant.getStatusCode().value()).isEqualTo(403);
+			assertThat(json.readTree(csrfManquant.getBody()).path("code").asString()).isEqualTo("CSRF_INVALIDE");
+
+			verifierRefus(automatique, "MANUEL", proprietaire);
+			verifierRefus(manuelle, "AUTOMATIQUE", proprietaire);
 			assertThat(demonstration.estAutomatique(manuelle)).isFalse();
 			verifierPilotageDuDeroulement(automatique, true);
 			verifierPilotageDuDeroulement(manuelle, false);
@@ -59,8 +74,8 @@ class PilotageDeSoireeEnregistreeTest {
 			verifierPilotageDuDeroulement(soiree, true);
 		}
 
-		private void verifierRefus(UUID soiree, String pilotage) throws Exception {
-			var reponse = demanderPilotage(soiree, pilotage);
+		private void verifierRefus(UUID soiree, String pilotage, SessionAnimateurHttp proprietaire) throws Exception {
+			var reponse = demanderPilotage(soiree, pilotage, proprietaire.entetes());
 			assertThat(reponse.getStatusCode().value()).isEqualTo(409);
 			ContratApi.verifier(PROTOTYPE, "choisirPilotageDeTest", reponse);
 			var probleme = json.readTree(reponse.getBody());
@@ -100,6 +115,19 @@ class PilotageDeSoireeEnregistreeTest {
 			return soirees.creer("Soirée de test", Format.SOLO, pilotage).getId();
 		}
 
+		SessionAnimateurHttp ouvrirSession(JsonMapper json) throws Exception {
+			return SessionAnimateurHttp.ouvrir(port, json);
+		}
+
+		UUID creerSoiree(Pilotage pilotage, SessionAnimateurHttp session, JsonMapper json) throws Exception {
+			var reponse = RestClient.create("http://localhost:" + port).post().uri("/api/soirees")
+					.headers(entetes -> entetes.addAll(session.entetes()))
+					.body(Map.of("titre", "Soirée de test", "format", "SOLO", "pilotage", pilotage.name()))
+					.retrieve().toEntity(String.class);
+			ContratApi.verifier("docs/api/openapi.yaml", "creerSoiree", reponse);
+			return UUID.fromString(json.readTree(reponse.getBody()).path("id").asString());
+		}
+
 		void verifierPilotageDuDeroulement(UUID soiree, boolean attendu) {
 			var mode = new ModeFacticeDuSocle();
 			var service = new ServiceDeManche<>(mode, mode, socle);
@@ -109,9 +137,14 @@ class PilotageDeSoireeEnregistreeTest {
 		}
 
 		ResponseEntity<String> demanderPilotage(UUID soiree, String pilotage) {
-			String jeton = "demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID();
+			var entetes = new HttpHeaders();
+			entetes.setBearerAuth("demo:ANIMATEUR:" + soiree + ":" + UUID.randomUUID());
+			return demanderPilotage(soiree, pilotage, entetes);
+		}
+
+		ResponseEntity<String> demanderPilotage(UUID soiree, String pilotage, HttpHeaders entetes) {
 			return RestClient.create("http://localhost:" + port).put().uri("/api/test/soirees/{soireeId}/pilotage", soiree)
-					.header("Authorization", "Bearer " + jeton).contentType(MediaType.APPLICATION_JSON)
+					.headers(envoi -> envoi.addAll(entetes)).contentType(MediaType.APPLICATION_JSON)
 					.body(Map.of("pilotage", pilotage))
 					.retrieve().onStatus(statut -> statut.isError(), (demande, reponse) -> { }).toEntity(String.class);
 		}

@@ -2,7 +2,7 @@
 
 Ouvrir `/test/identite.html?soiree=<UUID>` en profil `dev` ou `recette`. Pour ouvrir deux Manettes, charger la page dans deux onglets avec le même UUID de Soirée, choisir le rôle Joueur dans chacun, puis sélectionner « Joueur 1 » dans le premier et « Joueur 2 » dans le second. Quatre Joueurs de démonstration sont disponibles. La page lit l’UUID stable du Joueur choisi dans la vue du serveur. Le jeton `demo:TYPE:soireeId:acteurId` reste dans le `sessionStorage` de l’onglet (`croustyquizz.jeton`), jamais dans l’URL. La page est stockée dans `resources/demonstration/`, hors de `static/`, et servie par un contrôleur `@Profile({"dev", "recette"})`.
 
-Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. Le formulaire d’identité vérifie le jeton de l’Animateur par la capture de la Console. Sans ce jeton, la Console demande `/api/csrf` et transmet session et CSRF, en prévision de #5. Sur une Soirée enregistrée, la Manette relit l’identité renvoyée par le serveur et enregistrée par `rejoindre.html`. La préparation ouvre l’Écran de salle avec `#cle=…` dans l’adresse. La coquille conserve la clé pour cette Soirée dans le stockage de l’onglet, puis retire le fragment. L’Écran de salle envoie les commandes de son lecteur. La Console et la Manette ont un bouton de recapture. Les commandes de Soirée appartiennent à la Console et celles de Manche aux modules des modes.
+Les destinations et captures sont celles de `docs/api/`. Les trois pages lisent `?soiree=<UUID>`. La Console utilise la session Animateur sur une Soirée enregistrée et le Bearer de démonstration sur une Soirée absente de la base en dev/recette. Avec une session, elle récupère `/api/csrf` pour les mutations et la connexion STOMP. Le serveur vérifie le Lieu pour chaque abonnement de l’Animateur. Le formulaire d’identité vérifie le jeton de l’Animateur de démonstration par la capture de la Console. Sur une Soirée enregistrée, la Manette relit l’identité renvoyée par le serveur et enregistrée par `rejoindre.html`. La préparation ouvre l’Écran de salle avec `#cle=…` dans l’adresse. La coquille conserve la clé pour cette Soirée dans le stockage de l’onglet, puis retire le fragment. L’Écran de salle envoie les commandes de son lecteur. La Console et la Manette ont un bouton de recapture. Les commandes de Soirée appartiennent à la Console et celles de Manche aux modules des modes.
 
 Le navigateur revalide les scripts, les feuilles de style, les pages HTML et les WebJars à chaque chargement (`Cache-Control: no-cache` et `Last-Modified`) : après un déploiement, il ne mélange pas un module ancien et un module neuf (#132). Un fichier inchangé coûte une réponse `304`. La page `/test/identite.html` reste en `no-store`. Cette revalidation repose sur la date des fichiers dans le JAR : ne pas ajouter `project.build.outputTimestamp` au `pom.xml` (builds reproductibles) sans passer à un ETag calculé sur le contenu, sinon tous les fichiers garderaient la même date et le navigateur resservirait d'anciens modules.
 
@@ -38,9 +38,22 @@ Ce parcours se joue sur `develop` déployée (recette Render) après chaque vagu
 
 Noter chaque écart avec une capture, l'écran, la taille et l'étape, puis ouvrir une issue par écart.
 
+## Recette du compte du Lieu (#5)
+
+Avec l’application sur le port 8080, `playwright-cli run-code --filename=tools/ecrans/compte-recette-navigateur.mjs` (après `playwright-cli open`) joue l’inscription, le refus du mot de passe, la connexion, la création, la synchronisation de la Console et la déconnexion dans un contexte isolé. Le script crée un compte et une Soirée fictifs dans la base de développement.
+
+La Console connectée consulte sa session toutes les cinq minutes (`maintenirSession` de `js/compte.mjs`) : sans requête HTTP pendant 30 minutes, Tomcat l’expirerait en plein Pilotage Automatique et fermerait la connexion STOMP de la Console.
+
+1. En navigation privée, ouvre `/preparer-soiree.html`. La page de connexion doit s’ouvrir avec le chemin demandé dans `retour`.
+2. Suis « Créer un compte ». Envoie le formulaire vide, puis une inscription valide. Vérifie au clavier le focus sur le premier champ en erreur et l’association du message au champ. L’inscription réussie ramène à la connexion.
+3. Saisis un mauvais mot de passe. Vérifie le message en français et le retour du focus au mot de passe. Connecte-toi avec le bon mot de passe : la préparation doit s’ouvrir.
+4. Crée et ouvre une Soirée, ouvre l’Écran de salle, puis ouvre la Console depuis la préparation. Vérifie le passage à « Vue synchronisée ». Depuis un autre profil de navigateur connecté à un second Lieu, essaie d’ouvrir les mêmes liens de préparation et de Console : la Soirée doit être signalée introuvable.
+5. Dans la Console, clique « Se déconnecter ». La page de connexion doit s’ouvrir et une nouvelle connexion doit ramener à la même Console. Avec un paramètre `retour` qui contient une URL absolue, la connexion doit ouvrir la préparation.
+6. En `dev` ou `recette`, reprends le parcours de démonstration avec un UUID absent de la base.
+
 ## Recette du programme de la Soirée (#9)
 
-1. Créer une Soirée dans `/preparer-soiree.html`. Reprendre son UUID dans `/test/identite.html?soiree=<UUID>`, choisir le rôle Animateur, garder le Pilotage actuel et décocher le module factice.
+1. Connecté comme Animateur, créer une Soirée dans `/preparer-soiree.html`, puis ouvrir sa Console depuis la préparation.
 2. Dans « Programme », ajouter un Quiz avec 3 étapes de 20 secondes puis un Karaoké. Déplacer le Karaoké en tête au clavier et vérifier le retour du focus à une commande de la même Manche.
 3. Ouvrir la Soirée depuis la page de préparation. Dans la Console, vérifier le passage à « Ouverte », retirer le Quiz et recharger pour vérifier l’ordre enregistré.
 4. Couper la connexion, vérifier que la Console suspend les commandes puis que la reconnexion restaure le programme. Démarrer ensuite le Karaoké par la route de test de la recette #114, avec l’identifiant de la Manche ajoutée, et vérifier que le programme reste visible avec la mention « Le programme est figé. ».

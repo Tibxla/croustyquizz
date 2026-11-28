@@ -72,7 +72,12 @@ public class ServiceSoiree {
 	 */
 	@Transactional
 	public Soiree creer(String titre, Format format, Pilotage pilotage) {
-		return depotDeSoirees.save(new Soiree(titre, format, pilotage, horloge.instant()));
+		return creer(titre, format, pilotage, null);
+	}
+
+	@Transactional
+	public Soiree creer(String titre, Format format, Pilotage pilotage, UUID lieuId) {
+		return depotDeSoirees.save(new Soiree(titre, format, pilotage, horloge.instant(), lieuId));
 	}
 
 	/** @throws SoireeIntrouvable si aucune Soirée ne porte cet identifiant */

@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { creerContexte } from '../../src/main/resources/static/js/contexte.mjs';
 import { monterProgramme } from '../../src/main/resources/static/js/programme-console.mjs';
+import { creerTransport } from '../../src/main/resources/static/js/transport.mjs';
 import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
-function banc() {
+function banc({ envoyer, surEnvoi } = {}) {
 	const document = creerDocument();
 	const panneau = document.createElement('section');
 	document.body.append(panneau);
@@ -47,13 +48,12 @@ function banc() {
 	const appels = [];
 	const annonces = [];
 	let captures = 0;
-	const contexteCree = creerContexte({
+	const { contexte, changerEtat } = creerContexte({
 		soireeId: 's',
-		envoyer: (...args) => new Promise((resoudre, rejeter) => appels.push({ args, resoudre, rejeter })),
+		envoyer: envoyer ?? ((...args) => new Promise((resoudre, rejeter) => appels.push({ args, resoudre, rejeter }))),
 		resynchroniser: () => captures++,
-		surEnvoi: etat => annonces.push(etat),
+		surEnvoi: surEnvoi ?? (etat => annonces.push(etat)),
 	});
-	const { contexte, changerEtat } = contexteCree;
 	const programme = monterProgramme(panneau, contexte);
 	return {
 		ailleurs, ajout, annonces, appels, communs, contexte, document, erreurAjout, erreurs, formulaire, liste, mode, nombre,
@@ -316,4 +316,60 @@ test('déplace avec une permutation complète, retire avec DELETE et affiche le 
 	assert.equal(b.formulaire.hidden, true);
 	assert.equal(b.programmeFige.hidden, false);
 	assert.equal(b.liste.querySelectorAll('button').length, 0);
+});
+
+test('les trois mutations de la Console passent par le transport de la session et son CSRF', async () => {
+	const requetes = [];
+	const etats = [];
+	const reponses = [
+		{ status: 201, texte: '{"id":"b"}' },
+		{ status: 200, texte: '{"vue":{"programme":[]}}' },
+		{ status: 204, texte: '' },
+	];
+	const transport = creerTransport({ sessionAnimateur: true }, {
+		adresse: 'https://exemple.test/console.html?soiree=s',
+		requete: async (url, options) => {
+			const headers = new Headers({ 'Content-Type': 'application/json' });
+			if (url.pathname === '/api/csrf') {
+				return { status: 200, headers, text: async () => '{"token":"csrf-session"}' };
+			}
+			requetes.push({
+				chemin: url.pathname, methode: options.method, credentials: options.credentials,
+				csrf: options.headers['X-CSRF-TOKEN'], autorisation: options.headers.Authorization,
+				corps: options.body === undefined ? undefined : JSON.parse(options.body),
+			});
+			const { status, texte } = reponses.shift();
+			return { status, headers, text: async () => texte };
+		},
+	});
+	const b = banc({ envoyer: transport.envoyer, surEnvoi: etat => etats.push(etat) });
+	const quiz = manche('a', 0);
+	const karaoke = manche('b', 1, 'KARAOKE');
+
+	b.connecter('synchronisee');
+	b.afficher([quiz]);
+	b.mode.value = 'KARAOKE';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	await terminerMicrotaches();
+
+	b.afficher([quiz, karaoke]);
+	b.liste.querySelectorAll('[data-action-programme="monter"]')[1].click();
+	await terminerMicrotaches();
+
+	b.afficher([{ ...karaoke, ordre: 0 }, { ...quiz, ordre: 1 }]);
+	b.liste.querySelector('[data-action-programme="retirer"]').click();
+	await terminerMicrotaches();
+
+	assert.deepEqual(requetes.map(({ methode, chemin, corps }) => [methode, chemin, corps]), [
+		['POST', '/api/soirees/s/manches', { mode: 'KARAOKE', reglages: {} }],
+		['PUT', '/api/soirees/s/ordre-des-manches', { mancheIds: ['b', 'a'] }],
+		['DELETE', '/api/soirees/s/manches/b', undefined],
+	]);
+	for (const requete of requetes) {
+		assert.equal(requete.credentials, 'same-origin');
+		assert.equal(requete.csrf, 'csrf-session');
+		assert.equal(requete.autorisation, undefined);
+	}
+	assert.deepEqual(etats, ['en-cours', 'accepte', 'en-cours', 'accepte', 'en-cours', 'accepte']);
+	assert.equal(b.captures(), 3);
 });
