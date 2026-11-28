@@ -20,6 +20,7 @@ tags:
 - name: Socle
 - name: Photos
 - name: Karaoké
+- name: Campagne SMS
 paths:
   /api/csrf:
     get:
@@ -377,6 +378,157 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas.yaml#/$defs/Heure
+  /api/campagnes-sms/apercu:
+    post:
+      operationId: previsualiserCampagneSms
+      summary: Prévisualiser une Campagne SMS
+      description: >-
+        Calcule l’estimation sans enregistrer de Campagne. Le lien d’exemple est fictif. Un texte vide ou dépassant six segments avec le lien STOP donne 422.
+      tags: [Campagne SMS]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema: { type: string, minLength: 16 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/TexteCampagneSms
+      responses:
+        '200':
+          description: Aperçu de la Campagne.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ApercuCampagneSms
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/campagnes-sms:
+    get:
+      operationId: listerCampagnesSms
+      summary: Lister les Campagnes SMS de son Lieu
+      description: >-
+        La liste est triée par date de demande décroissante.
+      tags: [Campagne SMS]
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Liste des Campagnes avec leurs compteurs.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/ListeCampagnesSms
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+    post:
+      operationId: creerCampagneSms
+      summary: Envoyer ou programmer une Campagne SMS
+      description: >-
+        Le serveur retient les Contacts consentants à la création et vérifie leur éligibilité à l’envoi. Une clé déjà utilisée dans ce Lieu restitue la Campagne existante pour le même texte après nettoyage. Un texte différent pour la même clé ou l’absence de destinataires donne 409.
+      tags: [Campagne SMS]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema: { type: string, minLength: 16 }
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/TexteCampagneSms
+      responses:
+        '201':
+          description: Campagne créée.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+            Location:
+              schema: { type: string, format: uri-reference }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/CampagneSms
+        '200':
+          description: Campagne déjà créée avec cette clé.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/CampagneSms
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/campagnes-sms/{campagneId}:
+    get:
+      operationId: consulterCampagneSms
+      summary: Consulter une Campagne SMS de son Lieu
+      description: >-
+        Une Campagne inconnue ou rattachée à un autre Lieu donne 404. Les numéros et les liens personnels restent privés.
+      tags: [Campagne SMS]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: campagneId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Campagne avec les résultats individuels.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/DetailCampagneSms
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees:
     get:
       operationId: listerSoirees

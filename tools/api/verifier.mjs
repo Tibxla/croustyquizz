@@ -124,7 +124,7 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'campagnes-sms'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();
@@ -208,9 +208,19 @@ for (const { nom, exemples } of parcours) {
         || etape.reponse?.code === 'ETAPE_INACTIVE';
       if (!transitoire && precedent) {
         if (empreinte === precedent.empreinte) {
-          assert.equal(etape.statut, precedent.statut, `${etape.nom} : statut répété modifié`);
-          assert.deepEqual(etape.reponse, precedent.corps, `${etape.nom} : reçu répété modifié`);
-        } else assert.equal(etape.reponse?.code, 'ENVOI_REUTILISE', `${etape.nom} : contenu réutilisé`);
+          if (etape.operationId === 'creerCampagneSms') {
+            assert.equal(etape.statut, 200, `${etape.nom} : consultation de la Campagne existante`);
+            for (const champ of ['id', 'texte', 'demandeeLe']) {
+              assert.equal(etape.reponse[champ], precedent.corps[champ], `${etape.nom} : ${champ} a changé`);
+            }
+          } else {
+            assert.equal(etape.statut, precedent.statut, `${etape.nom} : statut répété modifié`);
+            assert.deepEqual(etape.reponse, precedent.corps, `${etape.nom} : reçu répété modifié`);
+          }
+        } else {
+          const code = etape.operationId === 'creerCampagneSms' ? 'CLE_IDEMPOTENCE_REUTILISEE' : 'ENVOI_REUTILISE';
+          assert.equal(etape.reponse?.code, code, `${etape.nom} : contenu réutilisé`);
+        }
       } else if (!transitoire) reutilisations.set(cle, {
         empreinte, statut: etape.statut, corps: etape.reponse,
       });
@@ -316,23 +326,25 @@ for (const { nom, exemples } of parcours) {
 
   // Valider les échanges puis les livrer au vrai module ES de Vue synchronisée.
   const synchro = exemples.resynchronisation;
-  const canalSynchro = synchro.destination.endsWith('/salle') ? 'salle'
-    : synchro.destination.endsWith('/console') ? 'console' : 'joueur';
-  const [schemaEtat, schemaEvenement] = {
-    salle: ['EtatSalle', 'EvenementSalle'], console: ['EtatConsole', 'EvenementConsole'],
-    joueur: ['EtatManette', 'EvenementJoueur'],
-  }[canalSynchro];
-  valider(schemaEtat, synchro.etat, 'Capture de reconnexion');
-  retenirProjection(canalSynchro, synchro.etat.vue, synchro.etat.revision, synchro.etat.heureServeur,
-    'Capture de reconnexion');
-  assert.ok(synchro.etat.abonnementId);
-  for (const evenement of synchro.tampon) {
-    valider(schemaEvenement, evenement, 'Événement de reconnexion');
-    retenirProjection(canalSynchro, evenement.donnees, evenement.revision, evenement.emisLe,
-      'Événement de reconnexion');
-    assert.equal(evenement.soireeId, synchro.etat.vue.soiree.id);
+  if (synchro || exemples.evenements.length > 0) {
+    const canalSynchro = synchro.destination.endsWith('/salle') ? 'salle'
+      : synchro.destination.endsWith('/console') ? 'console' : 'joueur';
+    const [schemaEtat, schemaEvenement] = {
+      salle: ['EtatSalle', 'EvenementSalle'], console: ['EtatConsole', 'EvenementConsole'],
+      joueur: ['EtatManette', 'EvenementJoueur'],
+    }[canalSynchro];
+    valider(schemaEtat, synchro.etat, 'Capture de reconnexion');
+    retenirProjection(canalSynchro, synchro.etat.vue, synchro.etat.revision, synchro.etat.heureServeur,
+      'Capture de reconnexion');
+    assert.ok(synchro.etat.abonnementId);
+    for (const evenement of synchro.tampon) {
+      valider(schemaEvenement, evenement, 'Événement de reconnexion');
+      retenirProjection(canalSynchro, evenement.donnees, evenement.revision, evenement.emisLe,
+        'Événement de reconnexion');
+      assert.equal(evenement.soireeId, synchro.etat.vue.soiree.id);
+    }
+    await rejouerReconnexion(synchro);
   }
-  await rejouerReconnexion(synchro);
 
   // Les captures HTTP et événements d'une même destination décrivent une seule
   // chronologie. Les compteurs d'autres destinations restent indépendants.

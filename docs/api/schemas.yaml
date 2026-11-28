@@ -1559,6 +1559,9 @@ $defs:
         - VOTE_INTERDIT
         - VOTE_DEJA_ENREGISTRE
         - VOTE_CLOS
+        - TEXTE_SMS_INVALIDE
+        - AUCUN_CONTACT_ELIGIBLE
+        - CLE_IDEMPOTENCE_REUTILISEE
       detail:
         type: string
         minLength: 1
@@ -3911,3 +3914,72 @@ $defs:
         echeance:
           type: string
           format: date-time
+  TexteCampagneSms:
+    type: object
+    additionalProperties: false
+    required: [texte]
+    properties:
+      texte: { type: string }
+  ApercuCampagneSms:
+    type: object
+    additionalProperties: false
+    required: [exemple, destinataires, segments, coutEstimeCentimes, envoiPrevuLe, immediat]
+    properties:
+      exemple: { type: string }
+      destinataires: { type: integer, minimum: 0 }
+      segments: { type: integer, minimum: 1, maximum: 6 }
+      coutEstimeCentimes: { type: integer, minimum: 0 }
+      envoiPrevuLe: { type: string, format: date-time }
+      immediat: { type: boolean }
+  CampagneSms:
+    type: object
+    additionalProperties: false
+    required: [id, texte, demandeeLe, envoiPrevuLe, etat, envoyes, echoues]
+    properties:
+      id: { type: string, format: uuid }
+      texte: { type: string, minLength: 1 }
+      demandeeLe: { type: string, format: date-time }
+      envoiPrevuLe: { type: string, format: date-time }
+      etat: { type: string, enum: [PROGRAMMEE, EN_COURS, TERMINEE] }
+      envoyes: { type: integer, minimum: 0 }
+      echoues: { type: integer, minimum: 0 }
+  ListeCampagnesSms:
+    type: object
+    additionalProperties: false
+    required: [campagnes, destinatairesEligibles]
+    properties:
+      destinatairesEligibles: { type: integer, minimum: 0 }
+      campagnes:
+        type: array
+        items:
+          $ref: '#/$defs/CampagneSms'
+  DetailCampagneSms:
+    type: object
+    additionalProperties: false
+    required: [campagne, envois]
+    properties:
+      campagne:
+        $ref: '#/$defs/CampagneSms'
+      envois:
+        type: array
+        items:
+          $ref: '#/$defs/EnvoiCampagneSms'
+  EnvoiCampagneSms:
+    type: object
+    additionalProperties: false
+    required: [contactId, statut, envoyeLe, motif, identifiantPrestataire]
+    properties:
+      contactId: { type: string, format: uuid }
+      statut: { type: string, enum: [ENVOYE, ECHOUE] }
+      envoyeLe: { type: string, format: date-time }
+      motif: { type: [string, 'null'] }
+      identifiantPrestataire: { type: [string, 'null'] }
+    oneOf:
+    - properties:
+        statut: { const: ENVOYE }
+        motif: { type: 'null' }
+        identifiantPrestataire: { type: string, minLength: 1 }
+    - properties:
+        statut: { const: ECHOUE }
+        motif: { type: string, minLength: 1 }
+        identifiantPrestataire: { type: 'null' }
