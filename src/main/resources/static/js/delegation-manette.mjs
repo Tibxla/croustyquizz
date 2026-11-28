@@ -3,6 +3,7 @@
 // peutGererFile) viennent de la vue, le serveur tranche chaque commande et la coquille annonce le reçu.
 import { preparerPlacement } from './modes/karaoke/placement.mjs';
 import { creerImage, element } from './photos/commun.mjs';
+import { creerUuid } from './uuid.mjs';
 
 const NOMS = { FILE_ATTENTE: 'la File d’attente', MUSIQUE_ATTENTE: 'la Musique d’attente', PHOTOS: 'les photos' };
 
@@ -49,7 +50,7 @@ const ETATS_COURANT = { APPELE: 'appelé', EN_COURS: 'sur scène', EN_PAUSE: 'en
  * Monte la section dans `zone`. `refuge` reçoit le focus quand la Délégation est retirée alors que le focus
  * était dans la section. Rend `{ afficher(vue), demonter() }`.
  */
-export function monterDelegation(zone, contexte, { refuge = null, cle = () => crypto.randomUUID(), ...adaptations } = {}) {
+export function monterDelegation(zone, contexte, { refuge = null, cle = creerUuid, ...adaptations } = {}) {
 	const document = zone.ownerDocument;
 	const titre = element(document, 'h2', { id: 'titre-delegation', tabindex: '-1' }, 'Ta Délégation');
 	const resume = element(document, 'p', { class: 'manette__aide' });

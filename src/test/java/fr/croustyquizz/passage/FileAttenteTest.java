@@ -92,6 +92,26 @@ class FileAttenteTest {
     }
 
     @Test
+    void sauteLePassagePrioritaireALEcheanceSansActeurEtGardeLesReservations() {
+        inscrireDeuxTours();
+        file.definirPriorite(cible("Ana-2"), true);
+        file.appelerPassage(cible("Ana-2"));
+        var attentes = file.ordreEffectif();
+        var tours = file.etat().derniersToursConsommes();
+        var trace = new TraceTerminale("ECHEANCE_APPEL", null, RECU.plusSeconds(30));
+
+        assertThat(file.clorePassage(cible("Ana-2"), EtatPassage.SAUTE, trace))
+                .isInstanceOf(ResultatFile.Modifiee.class);
+
+        var saute = passage("Ana-2");
+        assertThat(saute.etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(saute.traceTerminale()).isEqualTo(trace);
+        assertThat(saute.tourConsomme()).isEqualTo(1L);
+        assertThat(file.ordreEffectif()).isEqualTo(attentes);
+        assertThat(file.etat().derniersToursConsommes()).isEqualTo(tours);
+    }
+
+    @Test
     void uneClotureExigeLeMotifEtLActeurCorrespondants() {
         inscrire(ANA, "Ana-1");
         file.appelerPassage(cible("Ana-1"));

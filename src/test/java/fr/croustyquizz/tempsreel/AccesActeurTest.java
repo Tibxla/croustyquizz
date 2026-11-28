@@ -1,9 +1,9 @@
 package fr.croustyquizz.tempsreel;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
-import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -110,12 +110,12 @@ class AccesActeurTest {
 			String canal = Canaux.joueur(acteur.identifiant());
 			entrant.send(trame(StompCommand.CONNECT, acteur, abonnement, canal));
 			entrant.send(trame(StompCommand.SUBSCRIBE, acteur, abonnement, canal));
-			await().atMost(Duration.ofSeconds(2)).until(() -> registre.estInstalle(abonnement, canal, acteur));
+			await().atMost(PLAFOND).until(() -> registre.estInstalle(abonnement, canal, acteur));
 			assertThat(registre.estInstalle(abonnement, canal, new Acteur(Acteur.Type.JOUEUR, UUID.randomUUID(), acteur.soireeId()))).isFalse();
 			assertThatThrownBy(() -> entrant.send(trame(StompCommand.SUBSCRIBE, acteur, UUID.randomUUID(), Canaux.console(acteur.soireeId()))))
 					.isInstanceOf(MessageDeliveryException.class);
 			entrant.send(trame(StompCommand.UNSUBSCRIBE, acteur, abonnement, canal));
-			await().atMost(Duration.ofSeconds(2)).until(() -> !registre.estInstalle(abonnement, canal, acteur));
+			await().atMost(PLAFOND).until(() -> !registre.estInstalle(abonnement, canal, acteur));
 		}
 	}
 	private Message<byte[]> trame(StompCommand commande, Acteur acteur, UUID abonnement, String destination) {

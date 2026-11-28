@@ -48,9 +48,13 @@ paths:
     post:
       operationId: inscrireAnimateur
       summary: Créer un Lieu et son premier Animateur
-      description: 'Inscription initiale atomique ; ne rattache jamais à un Lieu existant fourni par le visiteur.
-        Le mot de passe est haché côté serveur et absent des réponses. L’invitation d’autres Animateurs relève d’une
-        extension de #5.'
+      description: >-
+        Inscription initiale atomique d’un Lieu et de son premier Animateur. L’e-mail est unique sans distinction
+        de casse (409 EMAIL_DEJA_UTILISE). Ce 409 révèle qu’un compte existe pour cet e-mail : sans confirmation
+        par e-mail, l’inscription ne peut pas répondre de façon neutre. Le mot de passe est haché côté serveur et
+        absent des réponses. L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une
+        extension de #5. Au-delà de la limite d’inscription par adresse IP, 429 TROP_DE_REQUETES avec
+        Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Accès
       security: []
@@ -80,6 +84,10 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: X-CSRF-TOKEN
         in: header
@@ -100,7 +108,10 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe.'
+        sans distinguer e-mail et mot de passe. Une adresse IP qui a épuisé ses tentatives, ou un couple
+        e-mail normalisé et adresse IP qui a épuisé ses essais d’identification, reçoit 429 TROP_DE_REQUETES
+        avec Retry-After. Seuls les échecs d’identification alimentent le compteur du couple
+        (README.md, « Limite de requêtes »).'
       tags:
       - Accès
       security: []
@@ -129,6 +140,10 @@ paths:
           $ref: '#/components/responses/Erreur403'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
+        '503':
+          $ref: '#/components/responses/Erreur503'
       parameters:
       - name: X-CSRF-TOKEN
         in: header
@@ -169,8 +184,7 @@ paths:
     delete:
       operationId: deconnecterAnimateur
       summary: Fermer la session Animateur
-      description: Invalide la session et ferme ses connexions STOMP ; récupérer un nouveau CSRF avant une nouvelle
-        connexion.
+      description: Invalide la session ; récupérer un nouveau CSRF avant une nouvelle connexion.
       tags:
       - Accès
       security:
@@ -403,6 +417,8 @@ paths:
         injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
         pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
         409 PSEUDO_DEJA_PRIS. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes.
+        Au-delà de la limite par adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »). Toutes les arrivées
+        comptent, et un code inconnu reçoit 429 au lieu de 404 une fois les essais de code de l’adresse épuisés ; un code valide n’est jamais refusé pour ces essais.
       tags:
       - Soirée
       security: []
@@ -432,6 +448,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
       requestBody:
         required: true
         content:
@@ -447,6 +465,7 @@ paths:
         déclaration, fin, erreur et relevé de position), sans aucune action de jeu ; elle ne donne accès ni à la
         Console ni aux vues privées. Préférer un transfert par fragment URL, retirer ce fragment après lecture et ne
         jamais inscrire la clé dans une chaîne de requête.
+        Au-delà de la limite par adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Soirée
       security:
@@ -476,6 +495,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
       parameters:
       - name: soireeId
         in: path
@@ -502,6 +523,7 @@ paths:
         SOIREE_NON_OUVERTE. Sans clé, 401
         AUTHENTIFICATION_REQUISE ; la clé d’une autre Soirée donne 404 RESSOURCE_INTROUVABLE ; un jeton de Joueur, 403
         ACCES_REFUSE. L’image se charge avec la clé dans Authorization, jamais dans l’URL.
+        Au-delà de la limite par clé d’Écran, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Soirée
       security:
@@ -536,6 +558,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
       parameters:
       - name: soireeId
         in: path
@@ -551,8 +575,10 @@ paths:
         en fin de programme et publie programme-modifie sur la Console. KARAOKE résout la limite initiale
         configurée si elle est absente. BLIND_TEST tire les Morceaux dans la playlist ou le genre Deezer, hors
         du verrou de la Soirée, parmi ceux qui ont un extrait ; la sélection reste privée et n’apparaît jamais
-        dans les réglages, publiés à toutes les destinations. Deezer indisponible ou source sans assez de
-        Morceaux jouables : 503 SOURCE_MUSICALE_INDISPONIBLE, rien n’est ajouté. Un mode ou des réglages hors
+        dans les réglages, publiés à toutes les destinations. Une source que Deezer ne connaît pas, ou qui n’a
+        pas assez de Morceaux jouables, donne 422 SOURCE_MUSICALE_INVALIDE, avec un detail qui dit quoi
+        corriger ; Deezer injoignable, en panne ou trop lent donne 503 SOURCE_MUSICALE_INDISPONIBLE. Dans les
+        deux cas, rien n’est ajouté. Un mode ou des réglages hors
         schéma donnent 400 REQUETE_INVALIDE. Aucun Idempotency-Key ajouté à cette route.'
       tags:
       - Soirée
@@ -1068,7 +1094,8 @@ paths:
         contenu = 409 ENVOI_REUTILISE ; nouvel envoiId pour modifier la Réponse = 409 REPONSE_DEJA_ENREGISTREE.
         Déduplication conservée jusqu’à expiration de l’accès Joueur, au minimum jusqu’à la fin de la Soirée. L’accusé
         ne révèle pas la justesse. Une Question manquée ne peut être rejouée. Un Joueur arrivé pendant cette Manche
-        y répond aussitôt, Question en cours comprise s’il reste du temps (décision de #14).'
+        y répond aussitôt, Question en cours comprise s’il reste du temps (décision de #14).
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
       tags:
       - Quiz
       security:
@@ -1098,6 +1125,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1138,7 +1167,8 @@ paths:
         brouillon retenu est jugé comme une validation, puis proposition-jugee, ou morceau-revele quand ce
         jugement termine le Morceau. Ordre des refus : Morceau qui n’est plus le Morceau affiché, 409
         COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
-        HORS_DELAI ; Joueur sans la main, 409 ETAT_INCOMPATIBLE.'
+        HORS_DELAI ; Joueur sans la main, 409 ETAT_INCOMPATIBLE.
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
       tags:
       - Blind test
       security:
@@ -1162,6 +1192,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1201,7 +1233,8 @@ paths:
         accusé original, même après la fin du Morceau ; même envoiId avec autre contenu = 409 ENVOI_REUTILISE.
         Ordre des refus : Morceau qui n’est plus le Morceau affiché (un Morceau révélé l’est encore), 409
         COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
-        HORS_DELAI ; Joueur sans la main, ou Manche en pause, 409 ETAT_INCOMPATIBLE.'
+        HORS_DELAI ; Joueur sans la main, ou Manche en pause, 409 ETAT_INCOMPATIBLE.
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
       tags:
       - Blind test
       security:
@@ -1229,6 +1262,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1276,6 +1311,7 @@ paths:
         Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise, Manche en
         pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le révèle :
         409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.
+        Au-delà de la limite des Buzz par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Socle
       security:
@@ -1305,6 +1341,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1445,7 +1483,9 @@ paths:
       description: >
         Animateur de la Soirée, ou Joueur délégué avec le pouvoir MUSIQUE_ATTENTE (#67), vérifié sous le verrou
         de la Soirée : sinon 403 ACCES_REFUSE. Le choix est conservé après redémarrage, même hors Manche.
-        Un changement publie musique-attente-modifiee sur la Console, l’Écran de salle et les Manettes déléguées.
+        Un changement publie musique-attente-modifiee sur la Console et l’Écran de salle jusqu’à l’expiration
+        du délai de conservation des vues (24 h par défaut après la fin de la Soirée). Les Manettes déléguées
+        reçoivent aussi l’événement jusqu’au retrait des Délégations à la fin de la Soirée.
         Un choix déjà en vigueur réussit avec 200, sans publication.
         En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
@@ -1502,9 +1542,11 @@ paths:
       summary: Signaler la présence de morceaux dans Attente
       description: >
         Écran de salle de cette Soirée uniquement, même hors Manche. Le dernier signal indique si le dossier
-        choisi contient des morceaux dans Attente. Il ne contient ni fichiers ni noms de morceaux et ne
-        change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur la Console
-        et l’Écran de salle. Un signal identique réussit sans publication.
+        choisi contient des morceaux dans Attente. L’Écran de salle signale false sans nouveau choix de dossier
+        quand il a écarté comme illisibles tous ces morceaux. Le signal ne contient ni fichiers ni noms de
+        morceaux et ne change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur
+        la Console et l’Écran de salle tant que le délai de conservation des vues après la fin de la Soirée
+        n’est pas écoulé (24 h par défaut). Un signal identique réussit sans publication.
         En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
       tags:
@@ -2056,6 +2098,7 @@ paths:
         409 ETAT_INCOMPATIBLE (pause), 409 VOTE_INTERDIT, 409 COMMANDE_PERIMEE,
         409 VOTE_CLOS, 409 VOTE_DEJA_ENREGISTRE. En cas de panne, 503 SERVICE_INDISPONIBLE
         sans reçu.
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Karaoké
       security:
@@ -2108,6 +2151,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/retrait:
@@ -2434,7 +2479,8 @@ paths:
         EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
         numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
         recalculée sur la salle, la Console et toutes les Manettes. En Pilotage Automatique, le serveur
-        appelle le Passage suivant et cette commande est refusée. Le saut automatique relève du ticket #121.
+        appelle le Passage suivant et cette commande est refusée. À l’échéance de l’appel, le Passage
+        est sauté en Pilotage Automatique ; en Pilotage Manuel, l’échéance ne publie rien.
         Propres, dans l’ordre : 409 ETAT_INCOMPATIBLE (Manche en pause, puis Pilotage Automatique,
         puis courant actif) ; 409 COMMANDE_PERIMEE (compteur, Passage
         sorti de l’attente ou plus en position 1). Refus communs : 400 REQUETE_INVALIDE, 401
@@ -2521,10 +2567,13 @@ paths:
       description: 'Manche Karaoké active en Soirée EN_COURS. Joueur Interprète du Passage appelé, envoiId dans le
         corps. APPELE vers EN_COURS ; numeroModification augmente et la chronologie démarre aussitôt
         (demarreLe). Une lecture préparée pendant l’appel est figée ; sinon le Passage démarre en paroles
-        seules, motif ECRAN_NON_PRET, lecteurId nul. La confirmation reste acceptée après l’échéance, qui ne
-        publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
+        seules, motif ECRAN_NON_PRET, lecteurId nul. En Pilotage Manuel, la confirmation reste acceptée
+        après l’échéance, qui ne publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
         l’ordre : 404 RESSOURCE_INTROUVABLE (Joueur non Interprète, avant tout reçu) ; 409 ETAT_INCOMPATIBLE
-        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE). Refus communs :
+        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE) ;
+        409 HORS_DELAI en Pilotage Automatique (confirmation reçue à l’échéance de l’appel ou après,
+        tant que le Passage est encore APPELE), avec le détail « Le temps pour confirmer est écoulé. ».
+        Refus communs :
         400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE
         (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
         ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
@@ -3547,11 +3596,32 @@ components:
         application/problem+json:
           schema:
             $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur429:
+      description: 'TROP_DE_REQUETES : le seuil de requêtes est atteint pour ce jeton, cette clé d’Écran,
+        cette adresse IP ou ce couple e-mail et adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé :
+        aucun reçu, aucune mutation. Retry-After indique quand le seuil atteint permet un nouvel essai, décidé
+        par la personne et jamais automatique.'
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+        Retry-After:
+          description: Secondes à attendre avant de réessayer selon le seuil atteint, arrondies à l’entier supérieur.
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
     Erreur503:
       description: 'SERVICE_INDISPONIBLE : base ou transaction indisponible. SOURCE_PAROLES_INDISPONIBLE :
         consultation externe en échec sur les routes Karaoké prévues. SOURCE_MUSICALE_INDISPONIBLE : Deezer
-        indisponible à la création d’une Manche de Blind test. Aucun reçu ; pour une mutation
-        seulement, réessayer avec la même clé et le même contenu.'
+        injoignable, en panne ou trop lent à la création d’une Manche de Blind test. Aucun reçu. Pour réessayer une mutation
+        qui utilise une clé d’idempotence, conserver la clé et le contenu.'
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.

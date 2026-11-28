@@ -124,7 +124,12 @@ conditions sont remplies (issue #4) :
 
 1. la Console d'animation est protégée par un compte (#5) ;
 2. les routes `/api/test/` du prototype temps réel sont coupées en profil `prod` ;
-3. le Buzz, les Réponses et l'accès à une Soirée ont une limite de requêtes.
+3. le Buzz, les Réponses et l'accès à une Soirée ont une limite de requêtes ;
+4. la connexion de l'Animateur est limitée par e-mail normalisé et par adresse IP,
+   et l'inscription par adresse IP (#238).
+
+Vérifier les limites par adresse derrière Funnel avant la première démo publique
+(section « Limite de requêtes »).
 
 Tant qu'elles ne le sont pas, `tools/demo.sh demarrer --public` refuse d'ouvrir
 l'adresse. Une fois vérifiées, écrire `CROUSTYQUIZZ_PUBLIC=autorise` dans `.env`, puis :
@@ -165,6 +170,90 @@ Vérifié le 10/11 sur une installation d'essai : écriture refusée dans `/app`
 10001, base sans accès à Internet. Le secret de la base reste dans `.env`
 (`chmod 600`), jamais dans Git.
 
+## Limite de requêtes
+
+`LimiteDeRequetes` (package `tempsreel`) protège le Buzz, les Réponses, l'accès à une
+Soirée (#4), ainsi que la connexion et l'inscription de l'Animateur (#238). Chaque
+seuil a un seau à jetons par clé, en mémoire : une seule instance tourne,
+la mémoire locale suffit. Un seau accepte une rafale, puis regagne un jeton à chaque
+intervalle. Au-delà, le serveur répond `429 TROP_DE_REQUETES` avec `Retry-After`, sans
+reçu ni mutation métier. La Manette affiche le message sans réessayer automatiquement.
+
+| Route | Clé | Rafale | Puis | Pourquoi |
+|---|---|---|---|---|
+| Buzz | jeton du Joueur | 10 | 1 toutes les 200 ms | La Manette attend la réponse avant un nouveau Buzz ; un doigt ne tient pas 5 Buzz par seconde. |
+| Brouillon, Proposition, Vote, Réponse du Quiz | jeton, par route | 20 | 1 toutes les 100 ms | Le brouillon du Blind test part au plus toutes les 500 ms pendant la saisie. |
+| Arrivée par code, codes inconnus | adresse IP | 20 | 1 toutes les 3 s | Seuls les `404 CODE_ACCES_INVALIDE` comptent, une fois la réponse connue : au-delà, le `404` devient `429`. Le bon code n'est jamais refusé par ce seau. |
+| Arrivée par code, toutes | adresse IP | 120 | 1 toutes les 3 s | Deux salles de 60 Joueurs derrière le même Wi-Fi arrivent d'un coup ; les retardataires passent ensuite à 20 par minute, et un script qui crée des Joueurs en boucle est freiné. C'est aussi ce seuil qui borne un script qui cherche un code : à 20 essais par minute parmi 32⁶ codes (10⁹), une adresse mettrait en moyenne une dizaine d'années à tomber sur l'une de dix Soirées ouvertes. |
+| Accès de l'Écran de salle | adresse IP | 10 | 1 toutes les 6 s | L'Animateur ouvre un ou deux Écrans par Soirée. |
+| QR code | clé d'Écran | 10 | 1 par seconde | L'Écran ne le charge qu'au changement de code. |
+| Connexion de l'Animateur | adresse IP | 20 | 1 toutes les 3 s | Borne les calculs BCrypt depuis un réseau, même si les e-mails changent à chaque essai. |
+| Connexion de l'Animateur, échecs d'identification | couple e-mail normalisé et adresse IP | 5 | 1 toutes les 30 s | Les échecs depuis un réseau laissent les essais des autres réseaux disponibles. |
+| Inscription de l'Animateur | adresse IP | 20 | 1 toutes les 30 s | Accueille plusieurs Animateurs derrière le même NAT et freine la création en série de comptes. |
+
+Le seuil des codes est plus large que 10 par minute : dans un lieu, tous les téléphones
+sur le Wi-Fi sortent par la même adresse IP, et une salle de 60 se trompe de code plus
+d'une fois. Pour la même raison, une arrivée réussie ou refusée pour son pseudo ne
+consomme aucun essai de code : `BuzzDeSoireeHttpTest` fait arriver puis buzzer 60
+Manettes depuis la même adresse, avec la limite active, et `LimiteDeRequetesHttpTest` en
+fait arriver 60 en même temps. Le seau des codes n'est pris qu'après un `404` : un code
+qui mène à une Soirée ouverte passe toujours, même quand un voisin du même Wi-Fi a épuisé
+les essais du réseau. Comme le bon code n'est jamais refusé, un `429` sur un code faux
+n'apprend rien de plus qu'un `404` à un script : c'est la limite de toutes les arrivées qui
+le freine. Une requête sans jeton compte
+sur son adresse IP. Une adresse IPv6 compte par bloc de 64 bits, qu'un abonné reçoit en
+entier. Les seaux redevenus pleins sont oubliés une fois par minute. Chaque seuil a sa
+propre table, plafonnée à 20 000 clés : des jetons inventés ne remplissent que la table de
+leur route, et les arrivées ne comptent que des adresses. Au plafond, une nouvelle clé
+passe sans être comptée, sauf un code inconnu, qui reçoit `429` ; le journal l'avertit.
+Remplir la table des arrivées demande donc 20 000 adresses réelles : contre un tel
+attaquant, une limite par adresse ne peut rien de toute façon.
+
+**Adresse IP derrière un relais.** Le filtre lit `request.getRemoteAddr()`, jamais
+`X-Forwarded-For` lui-même. Avec `server.forward-headers-strategy: native`, Tomcat y
+place l'adresse du client tirée de `X-Forwarded-For`, mais seulement si la connexion
+vient d'un relais d'adresse locale ou privée (`127.0.0.0/8`, `10.0.0.0/8`,
+`172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10`…). Il parcourt l'en-tête de droite à
+gauche et s'arrête à la première adresse publique : un client qui envoie son propre
+`X-Forwarded-For` ne choisit donc pas sa clé, puisque le relais ajoute l'adresse réelle
+à droite. Sur le serveur de Tibxla, Funnel relaie vers `127.0.0.1:8080` et le conteneur
+voit la passerelle Docker (`172.x`), toutes deux de confiance. Chez Render, rien ne montre
+encore que le relais arrive par une adresse privée ni qu'il n'y a qu'un saut : à vérifier
+sur la recette comme ci-dessous. Si un relais public s'intercale (un CDN), ajouter ses
+plages dans `server.tomcat.remoteip.trusted-proxies`.
+
+À vérifier sur la recette, publique elle aussi, dès la fusion dans `develop`, puis avant
+la première démo publique : si le relais
+n'envoyait pas `X-Forwarded-For`, tous les téléphones auraient la même clé : toutes les
+arrivées du service partageraient 120 arrivées puis 1 toutes les 3 s, et 20 codes faux par
+minute suffiraient à faire refuser tous les codes faux suivants. Le seau des codes regagne un essai
+toutes les 3 s, à peu près le temps de taper un code à la main : les essais doivent
+partir en rafale. Depuis un téléphone en 4G en partage de connexion, ou depuis un
+ordinateur qui l'utilise, envoyer 25 codes faux d'un coup :
+
+```bash
+for i in $(seq 25); do
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST https://croustyquizz-recette.onrender.com/api/soirees/rejoindre \
+    -H 'Content-Type: application/json' -d '{"codeAcces":"ZZZZZZ","pseudo":"Essai"}'
+done | sort | uniq -c
+```
+
+Le résultat doit compter une vingtaine de `404`, et des `429` pour le reste. Sur la page
+d'arrivée, un code faux tapé aussitôt depuis ce réseau affiche « Trop de requêtes en peu de
+temps. Réessaie dans 3 secondes. » (ou moins) sous le formulaire. Le journal (`docker compose -f compose.prod.yaml logs app`, ou les
+journaux Render) doit montrer `Limite de requêtes atteinte : codes-inconnus pour
+ip:<adresse du téléphone>`, et non une adresse privée. Le bon code, tapé depuis ce même
+réseau, doit encore faire rejoindre, et un second téléphone, sur une autre connexion,
+aussi.
+
+**Régler.** Les seuils sont dans `application.yaml`, sous `croustyquizz.limites`, et se
+remplacent par des variables d'environnement : `CROUSTYQUIZZ_LIMITES_BUZZ_RAFALE=20`,
+`CROUSTYQUIZZ_LIMITES_CODESINCONNUS_INTERVALLE=5s`, `CROUSTYQUIZZ_LIMITES_PLAFONDCLES`…
+(une durée s'écrit `200ms`, `3s` ou `1m`). Chez Render, les ajouter aux variables du
+service. Pour couper la limite pendant une démo qu'elle gênerait, écrire
+`CROUSTYQUIZZ_LIMITES_ACTIF=false` dans `.env`, que `compose.prod.yaml` transmet, puis
+`tools/demo.sh arreter` et `tools/demo.sh demarrer` ; ne jamais garder l'adresse
+publique ouverte ainsi après la démo.
 
 ## Sauvegarder et restaurer la base
 
