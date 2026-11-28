@@ -139,6 +139,30 @@ class DeroulementFreestyleTest extends ContratDeroulementDeManche {
     }
 
     @Test
+    void sauteLAppelAutomatiqueSansVoteEtAppelleLePassageSuivant() {
+        deroulement = creer(contexte(true));
+        deroulement.demarrer();
+        Instant debut = horloge.maintenant();
+        Instant echeance = debut.plusSeconds(30);
+        UUID suivant = UUID.randomUUID();
+        deroulement.recevoir(uneAction(JOUEUR, debut));
+        deroulement.recevoir(inscrire(PUBLIC, debut, suivant, 2, INSTRUMENTALE.instrumentaleId(), List.of(INSTRUMENTALE)));
+        var avant = instantane();
+
+        var presenceTardive = new ConfirmerPresencePassage(joueur(JOUEUR), echeance, UUID.randomUUID(), cible(1), ETAPE);
+        assertThat(deroulement.recevoir(presenceTardive)).isInstanceOfSatisfying(Refuse.class,
+                refus -> assertThat(refus.code()).isEqualTo("HORS_DELAI"));
+        assertThat(instantane()).isEqualTo(avant);
+
+        horloge.avancer(Duration.ofSeconds(30));
+
+        assertThat(courant().etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(instantane().etat().cycle().passageId()).isEqualTo(suivant);
+        assertThat(fabrique.typeEvenementMinuteur(deroulement)).isEqualTo("passage-appele");
+        assertThat(instantane().etat().voteDuPublic().votes()).isEmpty();
+    }
+
+    @Test
     void refuseSansMutationUneInstrumentaleNonDeclareeOuUneGrilleImpossible() {
         deroulement.demarrer();
         var avant = instantane();

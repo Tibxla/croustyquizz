@@ -30,8 +30,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * {@link CatalogueMusical} sur l'API publique Deezer, sans clé. Toute panne (réseau, délai, statut inattendu, erreur
- * JSON de Deezer, réponse mal formée) devient {@link SourceMusicaleIndisponible}. Les liens d'extrait signés expirent :
- * ils sont redemandés à chaque appel, sans cache.
+ * JSON de Deezer, réponse mal formée) devient {@link SourceMusicaleIndisponible}, sauf l'erreur {@value #AUCUNE_DONNEE}
+ * (« no data ») : une playlist ou un genre inconnus deviennent {@link SourceMusicaleInvalide}, un Morceau inconnu n'a
+ * pas de lien. Les liens d'extrait signés expirent : ils sont redemandés à chaque appel, sans cache.
  */
 public final class AdaptateurDeezer implements CatalogueMusical {
 
@@ -39,6 +40,9 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 	static final int TAILLE_PAGE = 100;
 	/** Pages de playlist lues au plus, soit 2 000 Morceaux, la taille maximale d'une playlist Deezer. */
 	static final int PAGES_MAX = 20;
+	/** Erreur Deezer « no data » : l'objet demandé n'existe pas. */
+	static final int AUCUNE_DONNEE = 800;
+	private static final String A_CORRIGER = " : vérifie l’identifiant et le type (playlist ou genre).";
 
 	private final ProprietesCatalogueMusical proprietes;
 	private final HttpClient client;
@@ -57,14 +61,18 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 	public List<Morceau> morceauxDePlaylist(long playlistId) {
 		Map<Long, Morceau> morceaux = new LinkedHashMap<>();
 		int index = 0;
-		for (int page = 0; page < PAGES_MAX; page++) {
-			JsonNode racine = consulter("playlist/" + playlistId + "/tracks?index=" + index + "&limit=" + TAILLE_PAGE);
-			JsonNode donnees = donnees(racine);
-			retenirJouables(donnees, morceaux);
-			index += donnees.size();
-			if (donnees.isEmpty() || index >= racine.path("total").asLong(0)) {
-				break;
+		try {
+			for (int page = 0; page < PAGES_MAX; page++) {
+				JsonNode racine = consulter("playlist/" + playlistId + "/tracks?index=" + index + "&limit=" + TAILLE_PAGE);
+				JsonNode donnees = donnees(racine);
+				retenirJouables(donnees, morceaux);
+				index += donnees.size();
+				if (donnees.isEmpty() || index >= racine.path("total").asLong(0)) {
+					break;
+				}
 			}
+		} catch (AucuneDonnee inconnue) {
+			throw new SourceMusicaleInvalide("Deezer ne connaît aucune playlist " + playlistId + A_CORRIGER, inconnue);
 		}
 		return List.copyOf(morceaux.values());
 	}
@@ -72,13 +80,23 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 	@Override
 	public List<Morceau> morceauxDuGenre(long genreId) {
 		Map<Long, Morceau> morceaux = new LinkedHashMap<>();
-		retenirJouables(donnees(consulter("chart/" + genreId + "/tracks?limit=" + TAILLE_PAGE)), morceaux);
+		try {
+			retenirJouables(donnees(consulter("chart/" + genreId + "/tracks?limit=" + TAILLE_PAGE)), morceaux);
+		} catch (AucuneDonnee inconnu) {
+			throw new SourceMusicaleInvalide("Deezer ne connaît aucun genre " + genreId + A_CORRIGER, inconnu);
+		}
 		return List.copyOf(morceaux.values());
 	}
 
 	@Override
 	public Optional<URI> lienExtrait(long idDeezer) {
-		JsonNode morceau = consulter("track/" + idDeezer);
+		JsonNode morceau;
+		try {
+			morceau = consulter("track/" + idDeezer);
+		} catch (AucuneDonnee retire) {
+			// Un Morceau retiré de Deezer depuis le tirage n'a plus d'extrait : il sera sauté (ADR 0009, point 14).
+			return Optional.empty();
+		}
 		if (!morceau.isObject() || morceau.path("id").asLong() != idDeezer) {
 			throw new SourceMusicaleIndisponible("Détail de Morceau Deezer mal formé.");
 		}
@@ -178,6 +196,9 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 			}
 			if (racine.has("error")) {
 				// Deezer signale ses erreurs (quota, donnée absente) dans un corps JSON, avec un statut 200.
+				if (racine.path("error").path("code").asInt(-1) == AUCUNE_DONNEE) {
+					throw new AucuneDonnee();
+				}
 				throw new SourceMusicaleIndisponible("Erreur Deezer : " + racine.path("error").path("code").asString(""));
 			}
 			return racine;
@@ -202,6 +223,17 @@ public final class AdaptateurDeezer implements CatalogueMusical {
 	private URI racine() {
 		String base = proprietes.urlDeezer().toString();
 		return URI.create(base.endsWith("/") ? base : base + "/");
+	}
+
+	/** Erreur {@value #AUCUNE_DONNEE} de Deezer, que chaque méthode du catalogue traduit selon l'objet demandé. */
+	private static final class AucuneDonnee extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		private AucuneDonnee() {
+			super(null, null, false, false);
+		}
+
 	}
 
 	/** Réception bornée ; l'annulation ferme le flux sans le vider. */

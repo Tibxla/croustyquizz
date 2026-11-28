@@ -1004,7 +1004,9 @@ $defs:
     properties:
       morceauxDisponibles:
         type: boolean
-        description: Le dossier choisi contient au moins un fichier audio dans Attente.
+        description: >
+          Le dossier choisi contient au moins un fichier audio dans Attente que l’Écran de salle n’a pas
+          encore écarté comme illisible.
     required: [morceauxDisponibles]
   MusiqueDAttente:
     type: object
@@ -1548,6 +1550,7 @@ $defs:
         - DONNEES_INVALIDES
         - EMAIL_DEJA_UTILISE
         - SERVICE_INDISPONIBLE
+        - TROP_DE_REQUETES
         - PASSAGE_DEJA_INSCRIT
         - LIMITE_ATTEINTE
         - PHOTOS_COUPEES
@@ -1557,6 +1560,7 @@ $defs:
         - GRILLE_INDISPONIBLE
         - SOURCE_PAROLES_INDISPONIBLE
         - SOURCE_MUSICALE_INDISPONIBLE
+        - SOURCE_MUSICALE_INVALIDE
         - LECTEUR_NON_DESIGNE
         - VOTE_INTERDIT
         - VOTE_DEJA_ENREGISTRE

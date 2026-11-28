@@ -42,11 +42,14 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
         this.contenus = new HashMap<>(etat.contenus());
         this.file = FileAttente.depuis(etat.file());
         this.commandesDeFile = new CommandesDeFileAttente(file, contexte.soireeId(), contexte.mancheId());
-        this.cycle = new CycleDePassage(file, contexte.horloge(), delaiAppel, etat.cycle(), this::surCloturePassage);
-        this.vote = new VoteDuPublic(file, contexte.horloge(), dureeVote, etat.voteDuPublic(),
+        Horloge horloge = horlogeAvecEnchainement(contexte.horloge());
+        this.cycle = new CycleDePassage(file, horloge, delaiAppel, etat.cycle(), this::surCloturePassage,
+                contexte.pilotageAutomatique());
+        this.vote = new VoteDuPublic(file, horloge, dureeVote, etat.voteDuPublic(),
                 cloture -> { evenementDuMinuteur = "vote-clos"; });
         if (etatManche == EtatManche.EN_COURS) {
             cycle.reprogrammerFin();
+            cycle.reprogrammerEcheanceAppel();
             vote.reprogrammer(contexte.horloge().maintenant());
         }
     }
@@ -183,8 +186,22 @@ public final class DeroulementFreestyle implements DeroulementDeManche {
     private void surCloturePassage(CloturePassage cloture) {
         if (cloture.etat() == EtatPassage.TERMINE) {
             vote.ouvrir(cloture.passageId(), cloture.instant(), false);
-            evenementDuMinuteur = enchainer(cloture.instant()) ? PASSAGE_APPELE : "passage-termine";
         }
+        if (TraceTerminale.FIN_PREVUE.equals(cloture.motif())) { evenementDuMinuteur = "passage-termine"; }
+        if (TraceTerminale.ECHEANCE_APPEL.equals(cloture.motif())) { evenementDuMinuteur = "passage-saute"; }
+    }
+
+    private Horloge horlogeAvecEnchainement(Horloge horloge) {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+
+            @Override public Minuteur programmer(Duration delai, Runnable action) {
+                return horloge.programmer(delai, () -> {
+                    action.run();
+                    if (enchainer(horloge.maintenant())) { evenementDuMinuteur = PASSAGE_APPELE; }
+                });
+            }
+        };
     }
 
     private boolean enchainer(Instant maintenant) {
