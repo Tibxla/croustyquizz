@@ -365,7 +365,9 @@ class KaraokeTempsReelTest {
                 Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", note), null), 200);
     }
 
-    @Test void laFinPrevueEnAutomatiquePublieUnSeulAppelAToutesLesDestinations() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+    void leMinuteurRestaureEnAutomatiquePublieUnSeulAppelAToutesLesDestinations(boolean presenceConfirmee) throws Exception {
         pilotage.choisir(soiree, true);
         UUID manche = service.creer(soiree, Map.of());
         service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
@@ -379,10 +381,12 @@ class KaraokeTempsReelTest {
         KaraokeHttpTest.verifier("inscrirePassage", seconde, 201);
         String premier = json.readTree(premiere.getBody()).path("passageId").asString();
         String suivant = json.readTree(seconde.getBody()).path("passageId").asString();
-        var instantane = (InstantaneKaraoke) service.instantane(soiree, manche);
-        KaraokeHttpTest.verifier("confirmerPresencePassage",
-                envoyer(HttpMethod.POST, racine + "/passages/" + premier + "/presence", joueur,
-                        Map.of("envoiId", UUID.randomUUID(), "etapeId", instantane.cycle().etapeId(), "numeroModification", 1), null), 200);
+        if (presenceConfirmee) {
+            var instantane = (InstantaneKaraoke) service.instantane(soiree, manche);
+            KaraokeHttpTest.verifier("confirmerPresencePassage",
+                    envoyer(HttpMethod.POST, racine + "/passages/" + premier + "/presence", joueur,
+                            Map.of("envoiId", UUID.randomUUID(), "etapeId", instantane.cycle().etapeId(), "numeroModification", 1), null), 200);
+        }
 
         var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
         var salle = abonner(ecran, Canaux.salle(soiree), "salle");
@@ -397,7 +401,7 @@ class KaraokeTempsReelTest {
         var avantEviction = service.instantane(soiree, manche);
         socle.registre().retirer(manche);
         assertThat(service.instantane(soiree, manche)).isEqualTo(avantEviction);
-        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(presenceConfirmee ? 180 : 30));
 
         for (int i = 0; i < flux.size(); i++) {
             var abonne = flux.get(i);
@@ -406,11 +410,17 @@ class KaraokeTempsReelTest {
             assertThat(vue.at("/karaoke/courant/etat").asString()).isEqualTo("APPELE");
             assertThat(capturer(abonne).path("revision").asLong()).isEqualTo(revisions.get(i) + 1);
             assertThat(abonne.messages()).isEmpty();
-            if (abonne == console) {
+            if (!presenceConfirmee) {
+                assertThat(vue.at("/karaoke/votes").isEmpty()).isTrue();
+            } else if (abonne == console) {
                 assertThat(vue.at("/karaoke/votes/0/passageId").asString()).isEqualTo(premier);
                 assertThat(vue.at("/karaoke/votes/0/etat").asString()).isEqualTo("OUVERT");
             }
         }
+        // Les essais partagent l’Horloge et les identifiants de Joueurs de démonstration.
+        var etape = ((InstantaneKaraoke) service.instantane(soiree, manche)).cycle().etapeId();
+        KaraokeHttpTest.verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
+                Map.of("action", "TERMINER", "etapeId", etape), UUID.randomUUID()), 200);
     }
 
     private JsonNode lireEvenement(Abonnement abonne, String cause) throws Exception {
