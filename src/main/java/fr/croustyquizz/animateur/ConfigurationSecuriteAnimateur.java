@@ -78,6 +78,7 @@ class ConfigurationSecuriteAnimateur {
 				AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME);
 		// Dans ces préfixes, securityMatcher écarte les routes publiques et les accès Bearer de Soirée.
 		filtre.setUrlPatterns(List.of(AnimateurControleur.CSRF, AnimateurControleur.INSCRIPTION, AnimateurControleur.SESSION,
+				AnimateurControleur.INVITATIONS, AnimateurControleur.INVITATIONS + "/*",
 				"/api/soirees", "/api/soirees/*", "/api/test/soirees/*"));
 		return filtre;
 	}
@@ -87,16 +88,20 @@ class ConfigurationSecuriteAnimateur {
 			CsrfTokenRepository jetons, HttpSessionSecurityContextRepository sessions, ServiceSoiree soirees)
 			throws Exception {
 		var compte = new OrRequestMatcher(CHEMINS.matcher(AnimateurControleur.CSRF),
-				CHEMINS.matcher(AnimateurControleur.INSCRIPTION), CHEMINS.matcher(AnimateurControleur.SESSION));
+				CHEMINS.matcher(AnimateurControleur.INSCRIPTION), CHEMINS.matcher(AnimateurControleur.SESSION),
+				CHEMINS.matcher(AnimateurControleur.INVITATIONS), CHEMINS.matcher(AnimateurControleur.CONSULTATION_INVITATION),
+				CHEMINS.matcher(AnimateurControleur.ACCEPTATION_INVITATION));
 		return http.securityMatcher(new OrRequestMatcher(compte, mutationsParSession(soirees)))
 				.securityContext(contexte -> contexte.securityContextRepository(sessions))
 				.csrf(csrf -> csrf
 						.csrfTokenRepository(jetons)
-						.ignoringRequestMatchers(AVEC_BEARER)
+						.ignoringRequestMatchers(AVEC_BEARER,
+								CHEMINS.matcher(HttpMethod.POST, AnimateurControleur.CONSULTATION_INVITATION))
 						.csrfTokenRequestHandler(new JetonCsrfDansEntete()))
 				.authorizeHttpRequests(acces -> acces
 						.requestMatchers(AnimateurControleur.CSRF).permitAll()
 						.requestMatchers(new AndRequestMatcher(compte, AVEC_BEARER)).denyAll()
+						.requestMatchers(AnimateurControleur.INVITATIONS).authenticated()
 						.requestMatchers(HttpMethod.POST, AnimateurControleur.SESSION).permitAll()
 						.requestMatchers(AnimateurControleur.SESSION).authenticated()
 						.anyRequest().permitAll())

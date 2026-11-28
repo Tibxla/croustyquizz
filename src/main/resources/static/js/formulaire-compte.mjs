@@ -35,6 +35,25 @@ export function validerChamp(champ, inscription) {
 	return !value.trim() || value.includes('\0') || taille > 120 ? champsTexte[name] : '';
 }
 
+export function afficherErreurChamp(champ, message) {
+	const note = champ.ownerDocument.getElementById(`${champ.id}-erreur`);
+	note.textContent = message;
+	note.hidden = !message;
+	if (message) champ.setAttribute('aria-invalid', 'true');
+	else champ.removeAttribute('aria-invalid');
+}
+
+export function validerChamps(champs, inscription) {
+	let premier;
+	for (const champ of champs) {
+		const message = validerChamp(champ, inscription);
+		afficherErreurChamp(champ, message);
+		if (message && !premier) premier = champ;
+	}
+	premier?.focus();
+	return !premier;
+}
+
 function monterFormulaire(formulaire) {
 	const inscription = formulaire.dataset.compte === 'inscription';
 	const retour = retourApresConnexion(location.search);
@@ -48,14 +67,6 @@ function monterFormulaire(formulaire) {
 	if (confirmation && new URLSearchParams(location.search).get('inscription') === '1') confirmation.hidden = false;
 	lien.href = inscription ? adresseConnexion(retour) : `/inscription.html?${new URLSearchParams({ retour })}`;
 
-	function afficherErreurChamp(champ, message) {
-		const note = document.getElementById(`${champ.id}-erreur`);
-		note.textContent = message;
-		note.hidden = !message;
-		if (message) champ.setAttribute('aria-invalid', 'true');
-		else champ.removeAttribute('aria-invalid');
-	}
-
 	for (const champ of champs) {
 		champ.addEventListener('input', () => afficherErreurChamp(champ, ''));
 	}
@@ -63,16 +74,7 @@ function monterFormulaire(formulaire) {
 		evenement.preventDefault();
 		if (bouton.disabled) return;
 		erreur.hidden = true;
-		let premier;
-		for (const champ of champs) {
-			const message = validerChamp(champ, inscription);
-			afficherErreurChamp(champ, message);
-			if (message && !premier) premier = champ;
-		}
-		if (premier) {
-			premier.focus();
-			return;
-		}
+		if (!validerChamps(champs, inscription)) return;
 
 		const { email, motDePasse, lieuNom, ville, nom } = Object.fromEntries(new FormData(formulaire));
 		const corps = inscription ? { email, motDePasse, nom: nom.trim(), lieu: { nom: lieuNom.trim(), ville: ville.trim() } }

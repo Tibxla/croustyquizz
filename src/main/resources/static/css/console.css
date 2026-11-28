@@ -80,6 +80,16 @@
   font-size: 0.875rem;
 }
 
+.dialogue-invitation form,
+.dialogue-invitation [data-lien-invitation] {
+  display: grid;
+  justify-items: start;
+  gap: var(--espace-4);
+}
+.dialogue-invitation .champ { width: 100%; }
+.dialogue-invitation input[aria-invalid="true"] { border-color: var(--refus); }
+.dialogue-invitation [role="status"]:empty { margin: 0; }
+
 .indicateurs {
   display: flex;
   gap: var(--espace-4);

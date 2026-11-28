@@ -12,6 +12,7 @@ import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { appeler, memoire } from './api.js';
 import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
+import { monterInvitationConsole } from './invitation.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -109,6 +110,7 @@ async function demarrer() {
 			return;
 		}
 		if (!soiree.ok) throw new Error(soiree.detail ?? 'Impossible d’ouvrir la Soirée. Recharge la Console.');
+		monterInvitationConsole(element('inviter-animateur'), element('dialogue-invitation'));
 		activerDeconnexion(transport.envoyer, () => arreterTout?.());
 		arreterMaintien = maintenirSession();
 	}

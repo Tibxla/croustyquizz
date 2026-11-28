@@ -34,15 +34,20 @@ class AnimateurControleur {
 	static final String CSRF = "/api/csrf";
 	static final String INSCRIPTION = "/api/animateurs";
 	static final String SESSION = "/api/animateurs/session";
+	static final String INVITATIONS = "/api/animateurs/invitations";
+	static final String CONSULTATION_INVITATION = INVITATIONS + "/consultation";
+	static final String ACCEPTATION_INVITATION = INVITATIONS + "/acceptation";
 
 	private final ComptesAnimateur comptes;
+	private final InvitationsAnimateur invitations;
 	private final HttpSessionSecurityContextRepository sessions;
 	private final SessionAuthenticationStrategy renouvellement;
 	private final LogoutHandler fermeture;
 
-	AnimateurControleur(ComptesAnimateur comptes, HttpSessionSecurityContextRepository sessions,
+	AnimateurControleur(ComptesAnimateur comptes, InvitationsAnimateur invitations, HttpSessionSecurityContextRepository sessions,
 			SessionAuthenticationStrategy renouvellement) {
 		this.comptes = comptes;
+		this.invitations = invitations;
 		this.sessions = sessions;
 		this.renouvellement = renouvellement;
 		// Invalider la session suffit : le cookie restant ne désigne plus aucune session.
@@ -63,10 +68,38 @@ class AnimateurControleur {
 				.body(comptes.inscrire(saisie));
 	}
 
+	@PostMapping(INVITATIONS)
+	ResponseEntity<InvitationsAnimateur.InvitationCreee> creerInvitation(
+			@AuthenticationPrincipal ComptesAnimateur.IdentiteAnimateur identite,
+			@Valid @RequestBody SaisiesAnimateur.CreationInvitation saisie) {
+		return ResponseEntity.status(201).cacheControl(CacheControl.noStore())
+				.body(invitations.creer(identite.lieuId(), saisie.email()));
+	}
+
+	@PostMapping(CONSULTATION_INVITATION)
+	ResponseEntity<InvitationsAnimateur.Invitation> consulterInvitation(@RequestBody SaisiesAnimateur.ConsultationInvitation saisie) {
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(invitations.consulter(saisie.cle()));
+	}
+
+	@PostMapping(ACCEPTATION_INVITATION)
+	ResponseEntity<ComptesAnimateur.IdentiteAnimateur> accepterInvitation(
+			@Valid @RequestBody SaisiesAnimateur.AcceptationInvitation saisie,
+			HttpServletRequest requete, HttpServletResponse reponse) {
+		var identite = invitations.accepter(saisie);
+		ouvrirSession(identite, requete, reponse);
+		return ResponseEntity.created(URI.create(SESSION)).cacheControl(CacheControl.noStore()).body(identite);
+	}
+
 	@PostMapping(SESSION)
 	ResponseEntity<ComptesAnimateur.IdentiteAnimateur> connecterAnimateur(@Valid @RequestBody SaisiesAnimateur.Connexion saisie,
 			HttpServletRequest requete, HttpServletResponse reponse) {
 		var identite = comptes.reconnaitre(saisie);
+		ouvrirSession(identite, requete, reponse);
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(identite);
+	}
+
+	private void ouvrirSession(ComptesAnimateur.IdentiteAnimateur identite, HttpServletRequest requete,
+			HttpServletResponse reponse) {
 		var authentification = UsernamePasswordAuthenticationToken.authenticated(identite, null, List.of());
 		renouvellement.onAuthentication(authentification, requete, reponse);
 		var contexte = SecurityContextHolder.createEmptyContext();
@@ -75,7 +108,6 @@ class AnimateurControleur {
 		sessions.saveContext(contexte, requete, reponse);
 		new SessionAnimateur(new AnimateurConnecte(identite.id(), identite.lieuId()))
 				.attacher(requete.getSession());
-		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(identite);
 	}
 
 	@GetMapping(SESSION)

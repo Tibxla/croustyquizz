@@ -118,6 +118,64 @@ $defs:
     required:
     - animateur
     - lieu
+  CreationInvitationAnimateur:
+    type: object
+    additionalProperties: false
+    properties:
+      email:
+        $ref: '#/$defs/InscriptionAnimateur/properties/email'
+    required:
+    - email
+  InvitationAnimateurCreee:
+    type: object
+    additionalProperties: false
+    properties:
+      cle:
+        type: string
+        pattern: '^[A-Za-z0-9_-]{43}$'
+      expireLe:
+        type: string
+        format: date-time
+    required:
+    - cle
+    - expireLe
+  ConsultationInvitationAnimateur:
+    type: object
+    additionalProperties: false
+    properties:
+      cle:
+        type: string
+        description: Clé opaque. Une valeur inconnue ou invalide est traitée comme une invitation introuvable.
+    required:
+    - cle
+  InvitationAnimateur:
+    type: object
+    additionalProperties: false
+    properties:
+      nomLieu:
+        $ref: '#/$defs/InscriptionAnimateur/properties/lieu/properties/nom'
+      ville:
+        $ref: '#/$defs/InscriptionAnimateur/properties/lieu/properties/ville'
+      email:
+        $ref: '#/$defs/InscriptionAnimateur/properties/email'
+    required:
+    - nomLieu
+    - ville
+    - email
+  AcceptationInvitationAnimateur:
+    type: object
+    additionalProperties: false
+    properties:
+      cle:
+        $ref: '#/$defs/ConsultationInvitationAnimateur/properties/cle'
+      nom:
+        $ref: '#/$defs/InscriptionAnimateur/properties/nom'
+      motDePasse:
+        $ref: '#/$defs/InscriptionAnimateur/properties/motDePasse'
+    required:
+    - cle
+    - nom
+    - motDePasse
   CreationSoiree:
     type: object
     additionalProperties: false
@@ -1487,6 +1545,7 @@ $defs:
         - BUZZ_NON_AUTORISE
         - DONNEES_INVALIDES
         - EMAIL_DEJA_UTILISE
+        - INVITATION_INVALIDE
         - SERVICE_INDISPONIBLE
         - TROP_DE_REQUETES
         - PASSAGE_DEJA_INSCRIT

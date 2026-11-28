@@ -9,6 +9,7 @@
 .compte h1 {
   font-size: 1.75rem;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .compte__formulaire {

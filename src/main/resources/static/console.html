@@ -21,6 +21,7 @@
         <p id="musique-attente-statut" data-musique-attente-statut role="status"></p>
       </div>
       <button type="button" class="bouton" data-reprise disabled>Resynchroniser</button>
+      <button type="button" class="bouton" data-inviter-animateur aria-haspopup="dialog" hidden>Inviter un Animateur</button>
       <button type="button" class="bouton" data-deconnexion hidden>Se déconnecter</button>
       <button type="button" class="bouton" data-piloter-soiree="TERMINER" aria-disabled="true" aria-haspopup="dialog">Terminer la Soirée</button>
       <button type="button" class="bouton bouton--action" data-piloter-soiree="LANCER" aria-disabled="true">Lancer la Soirée</button>
@@ -106,5 +107,26 @@
   </main>
   <noscript>Active JavaScript pour recevoir la Vue synchronisée.</noscript>
 </div>
+<dialog class="dialogue dialogue-invitation" data-dialogue-invitation aria-labelledby="titre-invitation">
+  <h2 id="titre-invitation">Inviter un Animateur</h2>
+  <form method="post" novalidate>
+    <div class="champ">
+      <label for="invitation-email">E-mail de l’invité</label>
+      <input id="invitation-email" name="email" type="email" autocomplete="off" required autofocus aria-describedby="invitation-email-erreur">
+      <p id="invitation-email-erreur" class="champ--erreur" hidden></p>
+    </div>
+    <button type="submit" class="bouton bouton--action">Créer le lien</button>
+  </form>
+  <div data-lien-invitation hidden>
+    <div class="champ">
+      <label for="invitation-lien">Lien d’invitation</label>
+      <input id="invitation-lien" type="text" readonly aria-describedby="invitation-aide">
+      <p id="invitation-aide" class="champ__aide">Transmets ce lien à l’invité. Il expire au bout de 7 jours et ne sert qu’une fois.</p>
+    </div>
+    <button type="button" class="bouton bouton--action">Copier le lien</button>
+  </div>
+  <p role="status"></p>
+  <button type="button" class="bouton" data-fermer-invitation>Fermer</button>
+</dialog>
 </body>
 </html>

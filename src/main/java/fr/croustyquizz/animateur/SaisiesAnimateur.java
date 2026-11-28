@@ -12,6 +12,7 @@ final class SaisiesAnimateur {
 
 	/** Ni NUL ni surrogate isolé : le pilote JDBC remplacerait ce dernier par « ? » sans erreur. */
 	static final String TEXTE_ENREGISTRE = "[^\\x00\\p{Cs}]*";
+	private static final String MOT_DE_PASSE_UNICODE = "[^\\p{Cs}]*";
 
 	private SaisiesAnimateur() {
 	}
@@ -20,7 +21,7 @@ final class SaisiesAnimateur {
 			@Valid LieuSaisi lieu,
 			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String nom,
 			@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email,
-			@CodePointLength(min = 12, max = 128) @Pattern(regexp = "[^\\p{Cs}]*") String motDePasse) {
+			@CodePointLength(min = 12, max = 128) @Pattern(regexp = MOT_DE_PASSE_UNICODE) String motDePasse) {
 
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
 		static Inscription lire(JsonNode corps) {
@@ -44,7 +45,7 @@ final class SaisiesAnimateur {
 
 	record Connexion(
 			@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email,
-			@CodePointLength(min = 1, max = 128) @Pattern(regexp = "[^\\p{Cs}]*") String motDePasse) {
+			@CodePointLength(min = 1, max = 128) @Pattern(regexp = MOT_DE_PASSE_UNICODE) String motDePasse) {
 
 		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
 		static Connexion lire(JsonNode corps) {
@@ -55,6 +56,42 @@ final class SaisiesAnimateur {
 		@Override
 		public String toString() {
 			return "Connexion[***]";
+		}
+	}
+
+	record CreationInvitation(@NotBlank @Email @CodePointLength(max = 254) @Pattern(regexp = TEXTE_ENREGISTRE) String email) {
+		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+		static CreationInvitation lire(JsonNode corps) {
+			verifierObjet(corps, 1);
+			return new CreationInvitation(texte(corps, "email"));
+		}
+	}
+
+	record ConsultationInvitation(String cle) {
+		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+		static ConsultationInvitation lire(JsonNode corps) {
+			verifierObjet(corps, 1);
+			return new ConsultationInvitation(texte(corps, "cle"));
+		}
+
+		@Override
+		public String toString() {
+			return "ConsultationInvitation[***]";
+		}
+	}
+
+	record AcceptationInvitation(String cle,
+			@NotBlank @CodePointLength(max = 120) @Pattern(regexp = TEXTE_ENREGISTRE) String nom,
+			@CodePointLength(min = 12, max = 128) @Pattern(regexp = MOT_DE_PASSE_UNICODE) String motDePasse) {
+		@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+		static AcceptationInvitation lire(JsonNode corps) {
+			verifierObjet(corps, 3);
+			return new AcceptationInvitation(texte(corps, "cle"), texte(corps, "nom"), texte(corps, "motDePasse"));
+		}
+
+		@Override
+		public String toString() {
+			return "AcceptationInvitation[***]";
 		}
 	}
 
