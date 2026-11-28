@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Campagnes SMS · CroustyQuizz</title>
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/compte.css">
+	<link rel="stylesheet" href="/css/campagnes-sms.css">
+	<script type="module" src="/js/campagnes-sms.mjs"></script>
+</head>
+<body>
+	<header class="entete entete--campagnes">
+		<a class="marque" href="/" aria-label="CroustyQuizz, accueil">Crousty<span class="marque__accent">Quizz</span></a>
+		<div data-menu-compte></div>
+	</header>
+
+	<main class="compte campagnes">
+		<div class="campagnes__entete">
+			<a class="compte__retour" href="/soirees.html"><span class="icone icone--retour" aria-hidden="true"></span>Soirées du Lieu</a>
+			<h1 id="titre-campagnes" tabindex="-1">Campagnes SMS</h1>
+			<p class="compte__intro">Les envois sont simulés.</p>
+		</div>
+		<p id="statut-campagnes" class="envoi" role="status">Chargement des Campagnes…</p>
+		<div id="espace-campagnes" class="campagnes__contenu" hidden>
+			<div class="campagnes__redaction">
+				<section class="panneau" aria-labelledby="titre-redaction">
+					<h2 id="titre-redaction">Nouvelle Campagne</h2>
+					<p id="contacts-vides" class="campagnes__info" hidden>
+						Ton Lieu n’a encore aucun Contact. Les Joueurs pourront devenir Contacts en donnant leur Consentement depuis leur Manette.
+					</p>
+					<form id="redaction-campagne" class="compte__formulaire">
+						<div class="champ">
+							<label for="texte-campagne">Texte du SMS</label>
+							<textarea id="texte-campagne" rows="4" maxlength="918" required
+								aria-describedby="aide-sms compteur-campagne"></textarea>
+							<p id="compteur-campagne" class="campagnes__compteur">0 caractère · 0 segment</p>
+							<p id="aide-sms" class="champ__aide">Six segments maximum. Le compteur inclut le lien STOP d’exemple.</p>
+						</div>
+						<div class="campagnes__actions">
+							<button class="bouton bouton--action" id="previsualiser-campagne" disabled>Prévisualiser</button>
+						</div>
+					</form>
+				</section>
+				<section class="panneau campagnes__apercu" aria-labelledby="titre-apercu">
+					<h2 id="titre-apercu" tabindex="-1">Aperçu du SMS</h2>
+					<p id="apercu-vide" class="compte__intro">Vérifie le SMS, ses destinataires et son coût avant de confirmer.</p>
+					<div id="apercu-campagne" hidden>
+						<p id="exemple-sms" class="campagnes__sms"></p>
+						<dl class="campagnes__estimations">
+							<div><dt>Destinataires</dt><dd id="apercu-destinataires"></dd></div>
+							<div><dt>Segments</dt><dd id="apercu-segments"></dd></div>
+							<div><dt>Coût estimé</dt><dd id="apercu-cout"></dd></div>
+							<div><dt>Créneau · heure de Paris</dt><dd id="apercu-creneau"></dd></div>
+						</dl>
+						<div class="campagnes__actions">
+							<button type="button" class="bouton bouton--action" id="confirmer-campagne" disabled>Envoyer</button>
+						</div>
+					</div>
+				</section>
+			</div>
+			<section class="panneau" aria-labelledby="titre-historique">
+				<h2 id="titre-historique">Historique des Campagnes</h2>
+				<p id="historique-vide" class="compte__intro">Aucune Campagne SMS pour ce Lieu.</p>
+				<ul id="historique-campagnes" class="soirees__liste" role="list"></ul>
+			</section>
+		</div>
+		<noscript>Active JavaScript pour préparer une Campagne SMS.</noscript>
+	</main>
+
+	<dialog class="dialogue" id="validation-campagne" aria-labelledby="titre-validation" aria-describedby="resume-validation">
+		<h2 id="titre-validation">Confirmer la Campagne</h2>
+		<p id="resume-validation"></p>
+		<form method="dialog" class="campagnes__actions">
+			<button class="bouton" value="annuler" autofocus>Annuler</button>
+			<button class="bouton bouton--action" id="valider-campagne" value="valider">Envoyer</button>
+		</form>
+	</dialog>
+</body>
+</html>

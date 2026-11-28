@@ -2,7 +2,8 @@ import { appeler } from './api.js';
 
 export const ROUTE_SESSION = '/api/animateurs/session';
 export const SOIREES_DU_LIEU = '/soirees.html';
-const PAGES_PROTEGEES = new Set([SOIREES_DU_LIEU, '/preparer-soiree.html', '/console.html']);
+export const CAMPAGNES_SMS = '/campagnes-sms.html';
+const PAGES_PROTEGEES = new Set([SOIREES_DU_LIEU, CAMPAGNES_SMS, '/preparer-soiree.html', '/console.html']);
 
 export function adresseConnexion(retour) {
 	return `/connexion.html?${new URLSearchParams({ retour })}`;

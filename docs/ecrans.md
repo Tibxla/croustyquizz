@@ -328,3 +328,21 @@ de Léa, passe la première sur les deux Écrans, et un Écran rechargé retrouv
 L'affiche se vide après le dernier créneau. Couper les envois retire le champ des Manettes.
 Aucun des écrans ne déborde. Restent l'orientation EXIF, le HEIC, l'appareil photo sur
 téléphone et la lecture à 5 m.
+
+## Campagnes SMS (#33)
+
+1. Dans `/inscription.html`, crée un Lieu de test. Depuis **Soirées du Lieu**, ouvre **Campagnes SMS**.
+   Vérifie que le menu du compte propose aussi cette page et signale la page courante.
+2. Sans Contacts, vérifie le message sur le Consentement donné depuis la Manette. Rédige un SMS
+   puis clique sur **Prévisualiser**. Les compteurs évoluent pendant la saisie. L’aperçu affiche
+   la mention STOP avec un lien fictif, zéro destinataire et un coût de 0,00 €. L’envoi reste désactivé.
+3. Pour essayer l’envoi simulé, démarre localement avec le profil `dev` et la propriété
+   `croustyquizz.campagnes.contacts-demonstration=true`. Ouvre à nouveau la page et rédige un SMS.
+   L’aperçu compte trois Contacts fictifs. **Envoyer** ou **Programmer** ouvre une confirmation qui rappelle
+   le coût, les destinataires et le créneau en heure de Paris. Annule une première fois, puis confirme.
+   L’historique affiche la Campagne et ses compteurs. Une Campagne programmée garde ce statut jusqu’au créneau prévu.
+4. Sur téléphone, tablette et ordinateur, vérifie que le texte long et le lien STOP passent à la ligne,
+   que les commandes mesurent au moins 44 px et qu’Échap rend le focus au bouton qui a ouvert la confirmation.
+
+Le prestataire factice simule les envois sans connexion réseau. Les Contacts de démonstration sont
+réservés au développement et désactivés par défaut.

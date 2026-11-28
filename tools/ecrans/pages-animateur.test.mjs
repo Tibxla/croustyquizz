@@ -135,11 +135,14 @@ test('le menu du compte se nomme d’après l’Animateur et reste fermé au dé
 	assert.equal(panneau.hidden, true);
 });
 
-test('le menu du compte mène aux Soirées du Lieu, à la préparation et à la déconnexion', () => {
+test('le menu du compte mène aux Soirées du Lieu, à la préparation, aux Campagnes SMS et à la déconnexion', () => {
 	const { panneau } = banc();
 	const liens = panneau.querySelectorAll('a');
 	assert.deepEqual(liens.map(a => [a.getAttribute('href'), a.textContent]),
-		[['/soirees.html', 'Soirées du Lieu'], ['/preparer-soiree.html', 'Préparer une Soirée']]);
+		[
+			['/soirees.html', 'Soirées du Lieu'], ['/preparer-soiree.html', 'Préparer une Soirée'],
+			['/campagnes-sms.html', 'Campagnes SMS'],
+		]);
 	assert.equal(liens[0].getAttribute('aria-current'), 'page');
 	assert.equal(liens[1].getAttribute('aria-current'), null);
 	assert.equal(panneau.querySelector('[data-deconnexion]').textContent, 'Se déconnecter');
