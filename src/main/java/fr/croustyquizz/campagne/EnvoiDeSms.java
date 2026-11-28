@@ -1,9 +1,15 @@
 package fr.croustyquizz.campagne;
 
-/** Port d’envoi d’un SMS complet à un numéro au format international. */
+/** Port d’envoi d’un SMS à un numéro au format international. */
 @FunctionalInterface
 public interface EnvoiDeSms {
 	Resultat envoyer(String texte, String numeroInternational);
+
+	default Mode mode() {
+		return Mode.SIMULE;
+	}
+
+	enum Mode { SIMULE, TWILIO, TWILIO_ESSAI }
 
 	sealed interface Resultat permits Envoye, Echec { }
 

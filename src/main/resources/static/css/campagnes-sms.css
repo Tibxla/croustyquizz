@@ -66,6 +66,16 @@
   color: var(--refus);
 }
 
+.campagnes__encodage {
+  display: grid;
+  gap: var(--espace-2);
+  color: var(--texte-2);
+}
+
+.campagnes__encodage .bouton {
+  justify-self: start;
+}
+
 .campagnes__info {
   border-top: 1px dashed var(--fond-4);
   padding-top: var(--espace-3);

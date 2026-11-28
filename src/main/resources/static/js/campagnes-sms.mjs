@@ -7,6 +7,15 @@ const ROUTE = '/api/campagnes-sms';
 const LIEN_EXEMPLE = 'https://croustyquizz.invalid/stop/exemple';
 const GSM = '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
 const EXTENSION_GSM = '\f^{}\\[~]|€';
+const PONCTUATION_GSM = {
+	'‘': "'", '’': "'", '«': '"', '»': '"', '“': '"', '”': '"',
+	'…': '...', '–': '-', '—': '-', '\u00a0': ' ', '\u202f': ' ',
+};
+const MODES_ENVOI = {
+	SIMULE: 'Les envois sont simulés.',
+	TWILIO: 'Envoi réel par Twilio.',
+	TWILIO_ESSAI: "Compte d'essai Twilio : le SMS reçu est un message type de Twilio, pas ton texte, et seuls les numéros vérifiés le reçoivent.",
+};
 const ETATS = { PROGRAMMEE: 'Programmée', EN_COURS: 'En cours', TERMINEE: 'Terminée' };
 const euros = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const calendrier = new Intl.DateTimeFormat('fr-FR', {
@@ -14,9 +23,17 @@ const calendrier = new Intl.DateTimeFormat('fr-FR', {
 	hour: '2-digit', minute: '2-digit',
 });
 
+function horsGsm(caractere) {
+	return !GSM.includes(caractere) && !EXTENSION_GSM.includes(caractere);
+}
+
+export function remplacerCaracteresSpeciaux(texte) {
+	return Array.from(texte, caractere => PONCTUATION_GSM[caractere] ?? caractere).join('');
+}
+
 export function compterSegments(texte) {
 	const caracteres = Array.from(texte);
-	const gsm = caracteres.every(caractere => GSM.includes(caractere) || EXTENSION_GSM.includes(caractere));
+	const gsm = !caracteres.some(horsGsm);
 	const poids = caracteres.map(caractere => gsm && EXTENSION_GSM.includes(caractere) ? 2 : caractere.length);
 	if (poids.reduce((total, valeur) => total + valeur, 0) <= (gsm ? 160 : 70)) return 1;
 	const capacite = gsm ? 153 : 67;
@@ -35,7 +52,10 @@ export function compterSegments(texte) {
 export function decrireBrouillon(saisie) {
 	const texte = saisie.trim();
 	const segments = texte ? compterSegments(`${texte}\nSTOP : ${LIEN_EXEMPLE}`) : 0;
-	return { caracteres: Array.from(saisie).length, segments, valide: segments > 0 && segments <= 6 };
+	return {
+		caracteres: Array.from(saisie).length, segments, valide: segments > 0 && segments <= 6,
+		unicode: Array.from(texte).some(horsGsm),
+	};
 }
 
 function quantite(nombre, nom) {
@@ -44,6 +64,10 @@ function quantite(nombre, nom) {
 
 export function libelleEtat(etat) {
 	return ETATS[etat];
+}
+
+export function libelleModeEnvoi(mode) {
+	return MODES_ENVOI[mode] ?? '';
 }
 
 export function decrireEnvoi({ destinataires, coutEstimeCentimes, immediat, envoiPrevuLe }) {
@@ -78,6 +102,9 @@ export async function monterCampagnesSms(document) {
 	const parId = id => document.getElementById(id);
 	const texte = parId('texte-campagne');
 	const compteur = parId('compteur-campagne');
+	const modeEnvoi = parId('mode-envoi-campagnes');
+	const conseilEncodage = parId('conseil-encodage');
+	const boutonRemplacer = parId('remplacer-caracteres');
 	const boutonApercu = parId('previsualiser-campagne');
 	const boutonAction = parId('confirmer-campagne');
 	const dialogue = parId('validation-campagne');
@@ -101,6 +128,9 @@ export async function monterCampagnesSms(document) {
 		const brouillon = decrireBrouillon(texte.value);
 		compteur.textContent = `${quantite(brouillon.caracteres, 'caractère')} · ${quantite(brouillon.segments, 'segment')}`;
 		compteur.toggleAttribute('data-hors-limite', brouillon.segments > 6);
+		conseilEncodage.hidden = !brouillon.unicode;
+		boutonRemplacer.hidden = !brouillon.unicode || remplacerCaracteresSpeciaux(texte.value) === texte.value;
+		boutonRemplacer.disabled = creationEnCours;
 		boutonApercu.disabled = !brouillon.valide || previsualisationEnCours || creationEnCours;
 		boutonApercu.classList.toggle('bouton--action', !apercu?.possible);
 	}
@@ -111,6 +141,11 @@ export async function monterCampagnesSms(document) {
 		zoneApercu.hidden = true;
 	}
 
+	function afficherMode(mode) {
+		modeEnvoi.textContent = libelleModeEnvoi(mode);
+		modeEnvoi.hidden = !modeEnvoi.textContent;
+	}
+
 	async function chargerCampagnes() {
 		const resultat = await appeler('GET', ROUTE);
 		if (resultat.statut === 401) {
@@ -118,15 +153,23 @@ export async function monterCampagnesSms(document) {
 			return false;
 		}
 		if (!resultat.ok || !resultat.corps) return false;
+		afficherMode(resultat.corps.modeEnvoi);
 		contactsVides.hidden = resultat.corps.destinatairesEligibles > 0;
 		afficherHistorique(parId('historique-campagnes'), parId('historique-vide'), resultat.corps.campagnes);
 		return true;
 	}
 
-	texte.addEventListener('input', () => {
+	function modifierBrouillon() {
 		effacerApercu();
 		annoncer('');
 		actualiserBrouillon();
+	}
+
+	texte.addEventListener('input', modifierBrouillon);
+	boutonRemplacer.addEventListener('click', () => {
+		texte.value = remplacerCaracteresSpeciaux(texte.value);
+		texte.focus();
+		modifierBrouillon();
 	});
 
 	parId('redaction-campagne').addEventListener('submit', async evenement => {
@@ -150,6 +193,7 @@ export async function monterCampagnesSms(document) {
 			return;
 		}
 		apercu = decrireEnvoi(resultat.corps);
+		afficherMode(resultat.corps.modeEnvoi);
 		contactsVides.hidden = apercu.possible;
 		parId('exemple-sms').textContent = resultat.corps.exemple;
 		parId('apercu-destinataires').textContent = resultat.corps.destinataires;

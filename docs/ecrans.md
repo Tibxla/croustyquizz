@@ -343,6 +343,17 @@ téléphone et la lecture à 5 m.
    L’historique affiche la Campagne et ses compteurs. Une Campagne programmée garde ce statut jusqu’au créneau prévu.
 4. Sur téléphone, tablette et ordinateur, vérifie que le texte long et le lien STOP passent à la ligne,
    que les commandes mesurent au moins 44 px et qu’Échap rend le focus au bouton qui a ouvert la confirmation.
+5. Saisis un texte de 98 caractères avec une apostrophe typographique `’` et des caractères GSM-7
+   pour le reste. Le compteur du brouillon indique trois segments avec le lien STOP d’exemple.
+   Clique sur **Remplacer les caractères spéciaux** : l’apostrophe droite ramène le brouillon à un
+   segment. Prévisualise à nouveau pour obtenir le nombre de segments calculé par le serveur.
 
 Le prestataire factice simule les envois sans connexion réseau. Les Contacts de démonstration sont
 réservés au développement et désactivés par défaut.
+
+### Recette avec Twilio
+
+1. Sur Render, active Twilio en recette avec le modèle d’essai par défaut, `sms_marketing_promotions`. [Configuration Render](deploiement.md#campagnes-sms-avec-twilio-en-recette-33).
+2. Vérifie le numéro de Tibxla dans Twilio au format `+33 6…` (sans le `0` après `+33`), puis inscris-le comme unique Contact consentant du Lieu de test (#32).
+3. Dans **Campagnes SMS**, vérifie le bandeau **Compte d’essai Twilio**. Prévisualise un texte court, vérifie que l’aperçu compte un destinataire et confirme pendant un créneau d’envoi.
+4. Dans l’historique, vérifie que la Campagne se termine avec un envoi accepté. Sur le téléphone de Tibxla, constate la réception du message type et la mention d’essai.

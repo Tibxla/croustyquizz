@@ -65,6 +65,7 @@ class CampagnesSmsHttpTest {
 		var lieu = SessionAnimateurHttp.ouvrir(port, json);
 		var apercu = appeler(HttpMethod.POST, ROUTE + "/apercu", APERCU, lieu.entetes(), MESSAGE, 200);
 		assertThat(apercu.path("destinataires").asInt()).isZero();
+		assertThat(apercu.path("modeEnvoi").asString()).isEqualTo("SIMULE");
 		assertThat(apercu.path("coutEstimeCentimes").asInt()).isZero();
 		assertThat(apercu.path("exemple").asString()).isEqualTo(MESSAGE + "\nSTOP : https://croustyquizz.invalid/stop/exemple");
 
@@ -75,6 +76,7 @@ class CampagnesSmsHttpTest {
 		var liste = appeler(HttpMethod.GET, ROUTE, LISTER, lieu.entetes(), null, 200);
 		assertThat(liste.path("campagnes").size()).isZero();
 		assertThat(liste.path("destinatairesEligibles").asInt()).isZero();
+		assertThat(liste.path("modeEnvoi").asString()).isEqualTo("SIMULE");
 	}
 
 	@Test

@@ -501,9 +501,15 @@ Les réponses ne contiennent ni numéros de téléphone ni liens personnels de d
 L’aperçu calcule le prochain créneau en heure de Paris, le nombre de Contacts éligibles et un coût
 en centimes. L’estimation multiplie le nombre de destinataires par le tarif par segment et par le plus
 grand nombre de segments calculé pour le lien d’exemple et les liens des destinataires.
-Le tarif de simulation est de 5 centimes par segment par défaut, configurable avec
+Le tarif utilisé pour cette estimation est de 5 centimes par segment par défaut, configurable avec
 `croustyquizz.campagnes.tarif-par-segment`. Le texte nettoyé doit tenir, mention STOP comprise,
 dans six segments au plus. Le texte vide ou trop long donne 422 `TEXTE_SMS_INVALIDE`.
+Le champ obligatoire `modeEnvoi` indique le mode actif dans l’aperçu et la liste des Campagnes.
+Il vaut `SIMULE` pour les envois simulés, `TWILIO` pour l’envoi du texte composé par Twilio
+et `TWILIO_ESSAI` pour l’envoi d’un message type de Twilio aux numéros vérifiés. En mode d’essai,
+le texte de la Campagne et son lien STOP restent visibles dans l’aperçu. L’API Twilio reçoit le
+nom du modèle à envoyer. Le compteur de segments et le coût estimé portent dans les trois modes
+sur le texte composé par CroustyQuizz, lien STOP compris.
 
 La création renvoie 201 et la localisation de la Campagne. Une répétition de la même
 `Idempotency-Key` pour le même texte nettoyé dans le même Lieu rend 200 avec l’état courant.
@@ -513,6 +519,8 @@ La création retient les identifiants des Contacts éligibles à cet instant. Le
 au moment de l’envoi. Un Contact devenu inéligible n’a pas de résultat d’envoi et ne figure dans aucun compteur.
 L’aperçu reste une estimation, le nombre de destinataires étant susceptible d’évoluer.
 
-Les envois de cette tranche sont simulés. La liste affiche les Campagnes programmées, en cours et terminées,
-avec les compteurs d’envois simulés réussis et échoués. Elle fournit aussi le nombre courant de
-Contacts éligibles du Lieu. Les erreurs d’envoi ont un motif sans donnée de Contact.
+La liste affiche les Campagnes programmées, en cours et terminées avec les compteurs d’envois
+réussis et échoués. Elle fournit aussi le nombre courant de Contacts éligibles du Lieu. Avec Twilio,
+un envoi `ENVOYE` correspond à l’acceptation du SMS par l’API et son `identifiantPrestataire` contient
+le SID du message. La réception sur le téléphone se vérifie séparément. Les erreurs d’envoi ont un
+motif sans donnée de Contact.
