@@ -1,5 +1,6 @@
 package fr.croustyquizz.passage;
 
+import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.assertj.core.api.Assertions.*;
 
 import fr.croustyquizz.manche.Horloge;
@@ -24,9 +25,18 @@ class CycleDePassageTest {
     private final List<CloturePassage> clotures = new ArrayList<>();
 
     private CycleDePassage creer(Horloge temps) {
+        inscrirePassage();
+        return new CycleDePassage(file, temps, APPEL, EtatCyclePassage.vide(), clotures::add);
+    }
+
+    private CycleDePassage creerAvecSaut(Horloge temps) {
+        inscrirePassage();
+        return new CycleDePassage(file, temps, APPEL, EtatCyclePassage.vide(), clotures::add, true);
+    }
+
+    private void inscrirePassage() {
         file.inscrire(new NouveauPassage(PASSAGE, SOIREE, MANCHE, JOUEUR, List.of(JOUEUR),
                 "chanson", Duration.ofSeconds(100), 1, debut));
-        return new CycleDePassage(file, temps, APPEL, EtatCyclePassage.vide(), clotures::add);
     }
 
     @Test
@@ -71,6 +81,137 @@ class CycleDePassageTest {
         assertThat(cycle.etat()).isEqualTo(avant);
         assertThat(file.etat()).isEqualTo(fileAvant);
         assertThat(horloge.minuteursEnAttente()).isZero();
+    }
+
+    @Test
+    void sauteALEcheanceApresDeuxPausesSansCompterDeuxFoisLeTempsFige() {
+        var cycle = creerAvecSaut(horloge);
+        cycle.appeler(cible(), ETAPE, debut);
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+        avancer(20);
+        cycle.suspendre(horloge.maintenant());
+        assertThat(horloge.minuteursEnAttente()).isZero();
+        avancer(60);
+        cycle.suspendre(horloge.maintenant());
+        assertThat(projection(cycle, true).echeanceAppelLe()).isNull();
+        assertThat(projection(cycle, true).delaiAppelRestantMs()).isEqualTo(10_000L);
+        assertThat(clotures).isEmpty();
+
+        cycle.reprendre(horloge.maintenant());
+        assertThat(projection(cycle, false).echeanceAppelLe()).isEqualTo(debut.plusSeconds(90));
+        avancer(4);
+        cycle.suspendre(horloge.maintenant());
+        avancer(20);
+        assertThat(projection(cycle, true).delaiAppelRestantMs()).isEqualTo(6_000L);
+        cycle.reprendre(horloge.maintenant());
+        cycle.reprendre(horloge.maintenant());
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+        assertThat(projection(cycle, false).echeanceAppelLe()).isEqualTo(debut.plusSeconds(110));
+
+        avancer(5);
+        assertThat(cycle.courantActif().etat()).isEqualTo(EtatPassage.APPELE);
+        avancer(1);
+        assertThat(clotures).containsExactly(new CloturePassage(PASSAGE, ETAPE, EtatPassage.SAUTE,
+                "ECHEANCE_APPEL", debut.plusSeconds(110)));
+        assertThat(projection(cycle, false).etat()).isEqualTo("SAUTE");
+        assertThat(horloge.minuteursEnAttente()).isZero();
+    }
+
+    @Test
+    void leDepartUneMillisecondeAvantLEcheanceNeLaisseQueLeMinuteurDeFin() {
+        var cycle = creerAvecSaut(horloge);
+        cycle.appeler(cible(), ETAPE, debut);
+        horloge.avancer(APPEL.minusMillis(1));
+        assertThat(cycle.demarrer(cible(), ETAPE, Duration.ofSeconds(100), horloge.maintenant()))
+                .isInstanceOf(ResultatFile.Modifiee.class);
+        assertThat(horloge.minuteursEnAttente()).isEqualTo(1);
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(cycle.courantActif().etat()).isEqualTo(EtatPassage.EN_COURS);
+        assertThat(clotures).isEmpty();
+    }
+
+    @Test
+    void unDelaiTronqueEnMillisecondesNeSautePasLePassageAvantLEcheance() {
+        Horloge temps = new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+            @Override public Minuteur programmer(Duration delai, Runnable rappel) {
+                return horloge.programmer(delai.truncatedTo(MILLIS), rappel);
+            }
+        };
+        var cycle = creerAvecSaut(temps);
+        horloge.avancer(Duration.ofNanos(500_000));
+        cycle.appeler(cible(), ETAPE, debut);
+        horloge.avancer(APPEL.minusMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("APPELE");
+        assertThat(clotures).isEmpty();
+
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("SAUTE");
+        assertThat(clotures).singleElement().satisfies(cloture ->
+                assertThat(cloture.instant()).isAfterOrEqualTo(debut.plus(APPEL)));
+    }
+
+    @Test
+    void uneFinPrevueTronqueeEnMillisecondesNeTerminePasLePassageAvantLHeure() {
+        var cycle = creer(tronquee());
+        cycle.appeler(cible(), ETAPE, debut);
+        horloge.avancer(Duration.ofNanos(500_000));
+        cycle.demarrer(cible(), ETAPE, Duration.ofSeconds(10), debut);
+        horloge.avancer(Duration.ofSeconds(10).minusMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("EN_COURS");
+        assertThat(clotures).isEmpty();
+
+        horloge.avancer(Duration.ofMillis(1));
+        assertThat(projection(cycle, false).etat()).isEqualTo("TERMINE");
+        assertThat(clotures).singleElement().satisfies(cloture -> {
+            assertThat(cloture.motif()).isEqualTo("FIN_PREVUE");
+            assertThat(cloture.instant()).isAfterOrEqualTo(debut.plusSeconds(10));
+        });
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(longs = {30, 31})
+    void laRepriseApresUneEcheanceAtteinteSauteLePassageSansMontrerDAppelAZero(long pauseApresAppel) {
+        var cycle = creerAvecSaut(sansRappel());
+        cycle.appeler(cible(), ETAPE, debut);
+        avancer(pauseApresAppel);
+        cycle.suspendre(horloge.maintenant());
+        avancer(10);
+        cycle.reprendre(horloge.maintenant());
+
+        assertThat(clotures).containsExactly(new CloturePassage(PASSAGE, ETAPE, EtatPassage.SAUTE,
+                "ECHEANCE_APPEL", horloge.maintenant()));
+        assertThat(projection(cycle, false).etat()).isEqualTo("SAUTE");
+        assertThat(cycle.courantActif()).isNull();
+    }
+
+    @Test
+    void enPilotageManuelLaRepriseApresLEcheanceGardeLAppel() {
+        var manuel = new CycleDePassage(file, sansRappel(), APPEL, EtatCyclePassage.vide(), clotures::add);
+        inscrirePassage();
+        manuel.appeler(cible(), ETAPE, debut);
+        avancer(31);
+        manuel.suspendre(horloge.maintenant());
+        avancer(10);
+        manuel.reprendre(horloge.maintenant());
+        assertThat(clotures).isEmpty();
+        assertThat(manuel.courantActif().etat()).isEqualTo(EtatPassage.APPELE);
+    }
+
+    @Test
+    void ignoreUnRappelDAppelAnnulePourLaMemeEtape() {
+        var cycle = creerAvecSaut(sansAnnulation());
+        cycle.appeler(cible(), ETAPE, debut);
+        avancer(20);
+        cycle.suspendre(horloge.maintenant());
+        avancer(5);
+        cycle.reprendre(horloge.maintenant());
+        avancer(5);
+        assertThat(cycle.courantActif().etat()).isEqualTo(EtatPassage.APPELE);
+        assertThat(clotures).isEmpty();
+        avancer(5);
+        assertThat(clotures).containsExactly(new CloturePassage(PASSAGE, ETAPE, EtatPassage.SAUTE,
+                "ECHEANCE_APPEL", debut.plusSeconds(35)));
     }
 
     @Test
@@ -210,14 +351,7 @@ class CycleDePassageTest {
 
     @Test
     void ignoreLesRappelsAnnulesOuRemplacesMemePourLaMemeEtape() {
-        Horloge sansAnnulation = new Horloge() {
-            @Override public Instant maintenant() { return horloge.maintenant(); }
-            @Override public Minuteur programmer(Duration delai, Runnable rappel) {
-                horloge.programmer(delai, rappel);
-                return () -> { };
-            }
-        };
-        var cycle = creer(sansAnnulation);
+        var cycle = creer(sansAnnulation());
         cycle.appeler(cible(), ETAPE, debut);
         cycle.demarrer(cible(), ETAPE, Duration.ofSeconds(10), debut);
         avancer(2);
@@ -229,6 +363,32 @@ class CycleDePassageTest {
         avancer(3);
         assertThat(clotures).containsExactly(new CloturePassage(PASSAGE, ETAPE, EtatPassage.TERMINE,
                 "FIN_PREVUE", debut.plusSeconds(13)));
+    }
+
+    private Horloge tronquee() {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+            @Override public Minuteur programmer(Duration delai, Runnable rappel) {
+                return horloge.programmer(delai.truncatedTo(MILLIS), rappel);
+            }
+        };
+    }
+
+    private Horloge sansRappel() {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+            @Override public Minuteur programmer(Duration delai, Runnable rappel) { return () -> { }; }
+        };
+    }
+
+    private Horloge sansAnnulation() {
+        return new Horloge() {
+            @Override public Instant maintenant() { return horloge.maintenant(); }
+            @Override public Minuteur programmer(Duration delai, Runnable rappel) {
+                horloge.programmer(delai, rappel);
+                return () -> { };
+            }
+        };
     }
 
     @Test

@@ -2,7 +2,7 @@ package fr.croustyquizz.tempsreel;
 
 import java.util.UUID;
 
-/** Repli sous le verrou de la Soirée, uniquement avant la première publication. */
+/** Repli sous le verrou de la Soirée quand aucune vue publiée n'est conservée. */
 @FunctionalInterface
 public interface CaptureVueRepli {
 	Evenement capturerSalle(UUID soireeId);

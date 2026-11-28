@@ -17,6 +17,10 @@
  * ses jetons de démonstration sont décrits dans docs/api/README.md. Le Buzz anonyme /api/test
  * conserve ses vues et son cache distincts du métier sur les mêmes canaux.
  *
+ * <p>LimiteDeRequetes protège le Buzz, les Réponses, l'accès à une Soirée (#4), la connexion
+ * et l'inscription de l'Animateur (#238) : 429 TROP_DE_REQUETES avec Retry-After, seuils dans
+ * ReglagesDesLimites ({@code croustyquizz.limites}).
+ *
  * <p>Propriétaire : Tibxla.
  */
 package fr.croustyquizz.tempsreel;

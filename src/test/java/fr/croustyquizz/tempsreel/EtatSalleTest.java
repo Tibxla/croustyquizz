@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -28,7 +29,7 @@ class EtatSalleTest {
 		var horloge = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
 		var verrous = new VerrousSoiree();
 		var diffuseur = new DiffuseurStomp(new SimpMessagingTemplate(new ExecutorSubscribableChannel()),
-				horloge, verrous, new CaptureSalleFactice()::capturerSalle, new CaptureSalleFactice());
+				horloge, verrous, new CaptureSalleFactice()::capturerSalle, new CaptureSalleFactice(), Duration.ofHours(24));
 		var registre = new RegistreAbonnements();
 		var mvc = MockMvcBuilders.standaloneSetup(new EtatSalleControleur(diffuseur, registre)).build();
 		UUID soiree = UUID.randomUUID();
