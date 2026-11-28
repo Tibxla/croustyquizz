@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { creerAudioSalle, monterAudioSalle } from '../../src/main/resources/static/js/audio-salle.mjs';
 import { creerCoordinationSon } from '../../src/main/resources/static/js/coordination-son.mjs';
+import { creerContexte } from '../../src/main/resources/static/js/contexte.mjs';
+import { monterMusiqueDAttenteSalle } from '../../src/main/resources/static/js/pilotage-musique-attente.mjs';
 import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
 test('masquer le choix du dossier rend le focus au podium et l’activation du son respecte ce choix', async t => {
@@ -24,7 +26,7 @@ test('masquer le choix du dossier rend le focus au podium et l’activation du s
 	alerte.setAttribute('data-son-bloque', '');
 	zone.append(choisir, activer, aide, alerte, document.createElement('input'));
 	document.body.append(titre, zone);
-	const audio = monterAudioSalle(zone, titre);
+	const audio = monterAudioSalle(zone, 'soiree', titre);
 	t.after(() => audio.detruire());
 
 	choisir.focus();
@@ -58,7 +60,7 @@ test('le même lecteur joue la Musique d’attente pendant la préparation puis 
 	};
 	const sonde = { async charger() { assert.equal(audible, attente); return { dureeMs: 1200 }; }, detruire() {} };
 	const audio = creerAudioSalle({ lecteur, sonde, lecteurId: 'lecteur', coordonner: surAttente => creerCoordinationSon({
-		verrous: navigator.locks, canal: new BroadcastChannel('croustyquizz-test-lecteur'), ouverteA: 100, id: 'salle', surAttente,
+		verrous: navigator.locks, canal: new BroadcastChannel('croustyquizz-test-lecteur'), ouverteA: 100, id: 'salle', soireeId: 'soiree', surAttente,
 	}) });
 	t.after(() => audio.detruire());
 	audio.reglerMusiqueDAttente(true);
@@ -110,7 +112,7 @@ function fenetreDeSalle(t, ouverteA, id, { illisibles = [] } = {}) {
 	};
 	const audio = creerAudioSalle({ lecteur, sonde: { async charger() { return { dureeMs: null }; }, detruire() {} }, lecteurId: id,
 		coordonner: surAttente => creerCoordinationSon({ verrous: navigator.locks,
-			canal: new BroadcastChannel('croustyquizz-test-sans-dossier'), ouverteA, id, surAttente }) });
+			canal: new BroadcastChannel('croustyquizz-test-sans-dossier'), ouverteA, id, soireeId: 'soiree', surAttente }) });
 	t.after(() => audio.detruire());
 	audio.reglerMusiqueDAttente(true);
 	return Object.assign(fenetre, { audio, attendreLecture() {
@@ -192,8 +194,152 @@ test('une fenêtre de salle dont tous les morceaux d’Attente sont illisibles r
 	assert.equal(ancienne.audible, undefined);
 });
 
+// Un faux serveur qui, comme `ServiceMusiqueDAttente`, garde le dernier signal de disponibilité reçu, quelle que soit
+// la fenêtre de salle qui l'envoie : c'est ce que la Console affiche.
+function serveurDeDisponibilite(avantEnregistrement) {
+	const serveur = { dernier: null, envois: [] };
+	let attentes = [];
+	return Object.assign(serveur, {
+		brancher(t, fenetre) {
+			const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree', async envoyer(methode, route, { morceauxDisponibles }) {
+				const envoi = { fenetre: fenetre.audio.lecteurId, morceauxDisponibles };
+				serveur.envois.push(envoi);
+				await avantEnregistrement?.(envoi);
+				serveur.dernier = morceauxDisponibles;
+				for (const attente of attentes.filter(({ valeur }) => valeur === morceauxDisponibles)) attente.resolve();
+				attentes = attentes.filter(({ valeur }) => valeur !== morceauxDisponibles);
+				return { statut: 200 };
+			} });
+			const salle = monterMusiqueDAttenteSalle(fenetre.audio, contexte);
+			t.after(() => salle.demonter());
+			changerEtat('synchronisee');
+			// Sans vue où l'Animateur laisse jouer la musique, la salle la garde muette.
+			salle.afficher({ musiqueAttente: { etat: 'JOUE', morceauxDisponibles: serveur.dernier } });
+			return changerEtat;
+		},
+		attendre(valeur) {
+			if (serveur.dernier === valeur) return Promise.resolve();
+			return new Promise(resolve => attentes.push({ valeur, resolve }));
+		},
+		absences: () => serveur.envois.filter(({ morceauxDisponibles }) => !morceauxDisponibles),
+	});
+}
+
+test('les fenêtres de salle publient à tour de rôle et revérifient les morceaux avant une absence', { timeout: 3000 }, async t => {
+	const premierEnvoi = Promise.withResolvers(), confirmation = Promise.withResolvers();
+	const serveur = serveurDeDisponibilite(({ fenetre }) => {
+		if (fenetre !== 'première') return;
+		premierEnvoi.resolve();
+		return confirmation.promise;
+	});
+	const premiere = fenetreDeSalle(t, 100, 'première');
+	const deuxieme = fenetreDeSalle(t, 200, 'deuxième');
+	const troisieme = fenetreDeSalle(t, 300, 'troisième');
+	for (const fenetre of [premiere, deuxieme, troisieme]) serveur.brancher(t, fenetre);
+	premiere.audio.choisirDossier([]);
+	await premierEnvoi.promise;
+	deuxieme.audio.choisirDossier([]);
+	await laisserPasser();
+	troisieme.audio.choisirDossier([morceauAttente('Ambiance')]);
+	await laisserPasser();
+	const envoisAvantConfirmation = [...serveur.envois];
+	confirmation.resolve();
+	assert.deepEqual(envoisAvantConfirmation, [{ fenetre: 'première', morceauxDisponibles: false }],
+		'aucune autre écriture ne part avant la confirmation de la première');
+	await serveur.attendre(true);
+	assert.deepEqual(serveur.envois.slice(1), [{ fenetre: 'troisième', morceauxDisponibles: true }],
+		'la deuxième fenêtre voit les morceaux de la troisième quand vient son tour');
+});
+
+test('la Console n’affiche aucun morceau dans Attente que si aucune fenêtre de salle n’en a', { timeout: 3000 }, async t => {
+	const serveur = serveurDeDisponibilite();
+	const ancienne = fenetreDeSalle(t, 100, 'ancienne');
+	serveur.brancher(t, ancienne);
+	const morceau = morceauAttente('Ambiance');
+	const premiere = ancienne.attendreLecture();
+	ancienne.audio.choisirDossier([morceau]);
+	await ancienne.audio.activerSon();
+	assert.equal(await premiere, morceau);
+	await serveur.attendre(true);
+
+	const abime = morceauAttente('Abîmé');
+	const nouvelle = fenetreDeSalle(t, 200, 'nouvelle', { illisibles: [abime] });
+	serveur.brancher(t, nouvelle);
+	await nouvelle.audio.activerSon();
+	nouvelle.audio.choisirDossier([{ name: 'Artiste - Chanson.mp3', webkitRelativePath: 'Musique/Artiste - Chanson.mp3' }]);
+	await laisserPasser();
+	assert.equal(serveur.dernier, true, 'un dossier sans Attente ne cache pas les morceaux de l’autre fenêtre');
+
+	const reprise = ancienne.attendreLecture();
+	nouvelle.audio.choisirDossier([abime]);
+	assert.equal(await reprise, morceau);
+	assert.equal(nouvelle.audio.etat().morceauxDisponibles, false);
+	await laisserPasser();
+	assert.equal(serveur.dernier, true, 'des morceaux illisibles non plus');
+
+	// La plus récente prend la main, puis la rend avec un dossier vide : l'ancienne a toujours ses morceaux.
+	const autre = morceauAttente('Autre');
+	const relais = nouvelle.attendreLecture();
+	nouvelle.audio.choisirDossier([autre]);
+	assert.equal(await relais, autre);
+	const retour = ancienne.attendreLecture();
+	nouvelle.audio.choisirDossier([]);
+	assert.equal(await retour, morceau);
+	await laisserPasser();
+	assert.deepEqual(serveur.absences(), [], 'aucune absence signalée tant qu’une fenêtre a des morceaux');
+
+	// Plus aucune fenêtre n'a de morceaux : la Console l'apprend.
+	ancienne.audio.choisirDossier([]);
+	await serveur.attendre(false);
+	assert.notDeepEqual(serveur.absences(), []);
+});
+
+test('la fenêtre de salle sans morceaux signale leur absence quand se ferme celle qui en avait', { timeout: 3000 }, async t => {
+	const serveur = serveurDeDisponibilite();
+	const ancienne = fenetreDeSalle(t, 100, 'ancienne');
+	serveur.brancher(t, ancienne);
+	const premiere = ancienne.attendreLecture();
+	ancienne.audio.choisirDossier([morceauAttente('Ambiance')]);
+	await ancienne.audio.activerSon();
+	await premiere;
+	await serveur.attendre(true);
+
+	const nouvelle = fenetreDeSalle(t, 200, 'nouvelle');
+	serveur.brancher(t, nouvelle);
+	await nouvelle.audio.activerSon();
+	nouvelle.audio.choisirDossier([]);
+	await laisserPasser();
+	assert.equal(serveur.dernier, true);
+
+	await ancienne.audio.detruire();
+	await serveur.attendre(false);
+	assert.deepEqual(serveur.absences(), [{ fenetre: 'nouvelle', morceauxDisponibles: false }]);
+});
+
+test('une absence décidée pendant une coupure ne part pas si une autre fenêtre a pris des morceaux entre-temps', { timeout: 3000 }, async t => {
+	const serveur = serveurDeDisponibilite();
+	const ancienne = fenetreDeSalle(t, 100, 'ancienne');
+	const changerEtat = serveur.brancher(t, ancienne);
+	ancienne.audio.choisirDossier([morceauAttente('Ambiance')]);
+	await serveur.attendre(true);
+	changerEtat('coupure');
+	ancienne.audio.choisirDossier([]);
+	await laisserPasser();
+
+	const nouvelle = fenetreDeSalle(t, 200, 'nouvelle');
+	serveur.brancher(t, nouvelle);
+	nouvelle.audio.choisirDossier([morceauAttente('Autre')]);
+	await serveur.attendre(true);
+	changerEtat('synchronisee');
+	await laisserPasser();
+	assert.deepEqual(serveur.absences(), [], 'la nouvelle fenêtre a des morceaux depuis la coupure');
+
+	nouvelle.audio.choisirDossier([]);
+	await serveur.attendre(false);
+});
+
 // Une page `ecran.html` réduite à sa zone audio, avec de faux éléments média et les vrais Web Locks de Node.
-function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, urlsIllisibles = [] } = {}) {
+function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, soireeId = 'soiree', urlsIllisibles = [] } = {}) {
 	const document = creerDocument(), creer = document.createElement;
 	let lecture = Promise.withResolvers();
 	document.createElement = tag => {
@@ -232,7 +378,7 @@ function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, urlsIllisibles =
 		alerte: element('p', 'data-son-bloque'), activer: element('button', 'data-activer-son'),
 	};
 	document.body.append(zone);
-	ecran.salle = monterAudioSalle(zone);
+	ecran.salle = monterAudioSalle(zone, soireeId);
 	t.after(() => ecran.salle.detruire());
 	ecran.salle.reglerMusiqueDAttente(true);
 	return Object.assign(ecran, {
@@ -254,6 +400,40 @@ function ecranDeSalle(t, ouverteA, { verrous = navigator.locks, urlsIllisibles =
 		},
 	});
 }
+
+test('deux Soirées du même navigateur signalent chacune la disponibilité de leurs morceaux', { timeout: 3000 }, async t => {
+	const soireeA = 'ed44a21d-dc1c-4245-8bc3-ec7e91594210', soireeB = 'ed44a21d-dc1c-4245-8bc3-ec7e91594211';
+	const envois = [];
+	const envoiB = Promise.withResolvers(), confirmationB = Promise.withResolvers();
+	function ouvrirSalle(ouverteA, soireeId) {
+		const ecran = ecranDeSalle(t, ouverteA, { soireeId });
+		const { contexte, changerEtat } = creerContexte({ soireeId,
+			async envoyer(methode, route, { morceauxDisponibles }) {
+				envois.push({ route, morceauxDisponibles });
+				if (soireeId === soireeB) {
+					envoiB.resolve();
+					await confirmationB.promise;
+				}
+				return { statut: 200 };
+			},
+		});
+		const salle = monterMusiqueDAttenteSalle(ecran.salle, contexte);
+		t.after(() => salle.demonter());
+		changerEtat('synchronisee');
+		return ecran;
+	}
+	const premiere = ouvrirSalle(100, soireeA), deuxieme = ouvrirSalle(200, soireeB);
+	deuxieme.choisirDossier([morceauAttente('Ambiance')]);
+	await envoiB.promise;
+	premiere.choisirDossier([]);
+	await laisserPasser();
+	const envoisPendantB = [...envois];
+	confirmationB.resolve();
+	assert.deepEqual(envoisPendantB, [
+		{ route: `/api/soirees/${soireeB}/musique-attente/disponibilite`, morceauxDisponibles: true },
+		{ route: `/api/soirees/${soireeA}/musique-attente/disponibilite`, morceauxDisponibles: false },
+	], 'les morceaux et la publication en cours de l’autre Soirée ne bloquent pas mon absence');
+});
 
 test('l’Écran de salle qui annule « Choisir le dossier » laisse jouer celui qui a le dossier', { timeout: 3000 }, async t => {
 	const ancien = ecranDeSalle(t, 100);

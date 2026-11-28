@@ -289,11 +289,12 @@
 }
 .salle__classement p { font-size: 1.65vw; color: var(--texte-2); }
 
-.salle--coquille .salle__principal:has(.salle__classement--podium) {
+/* Les résultats gardent assez de place pour les noms sur deux lignes et le pied de salle. */
+.salle--coquille .salle__principal:has(.salle__classement--podium, .photos--affiche[hidden] ~ .palmares:not([hidden])) {
   gap: 0.65vw;
   padding-block: 2.2vw 4.6vw;
 }
-.salle__principal:has(.salle__classement--podium) .coquille__commun {
+.salle__principal:has(.salle__classement--podium, .photos--affiche[hidden] ~ .palmares:not([hidden])) .coquille__commun {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: baseline;
@@ -449,8 +450,6 @@
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   gap: 0.6vw 1.2vw;
-  max-block-size: 36vh;
-  overflow: auto;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -479,6 +478,16 @@
 .salle--coquille .palmares li[data-teinte="2"] { --teinte: var(--bleu); }
 .salle--coquille .palmares li[data-teinte="3"] { --teinte: var(--rose); }
 .salle--coquille .palmares p { font-size: 1.8vw; }
+.salle--coquille .palmares .palmares__suite {
+  /* Au-delà des trois premiers : une seule ligne courte, sans défilement sur la salle (#236). */
+  margin: 0.4vw 0 0;
+  color: var(--texte-2);
+  font-size: 1.55vw;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+/* Sous le Palmarès, la note d'attente est vide : elle ne prend pas d'écart en plus. */
+.salle--coquille .palmares:not([hidden]) ~ .coquille__note:empty { display: none; }
 
 .salle--coquille .palmares .palmares__ligne {
   display: grid;

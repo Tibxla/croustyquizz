@@ -253,6 +253,14 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 						proposition))));
 	}
 
+	/** Arbitrage de l'Animateur, dédupliqué par l'{@code Idempotency-Key} comme le pilotage (ADR 0009, point 15). */
+	public ResultatDeCommande arbitrer(UUID mancheId, UUID etapeId, EnvoiDeCommande envoi, UUID propositionId,
+			PartieDuMorceau partie, VerdictChamp verdict) {
+		return executer(mancheId, envoi, () -> PreparationDeCommande.prete((deroulement, recueLe) ->
+				deroulement.commander(new ArbitrerProposition(envoi.acteur(), recueLe, envoi.envoiId(), etapeId,
+						propositionId, partie, verdict))));
+	}
+
 	private void verifierPresence(Acteur acteur) {
 		if (!participants.estPresent(acteur.soireeId(), acteur.identifiant())) {
 			throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Manche ou Joueur introuvable.").exception();

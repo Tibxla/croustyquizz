@@ -330,6 +330,69 @@ test('Console : pause et reprise, « Passer » refusé pendant la pause, nouvel 
 	assert.equal(b.appels[2].args[3].signal.aborted, true, 'Le démontage annule la commande en cours.');
 });
 
+const propositionLea = { propositionId: 'p-lea', joueurId: 'lea', pseudo: 'Léa', points: 70,
+	titre: { saisie: 'halo', verdict: 'JUSTE', arbitre: false }, artiste: { saisie: 'Beyonse', verdict: 'FAUX', arbitre: false } };
+
+test('Console : en Pilotage Manuel, l’Animateur accorde un champ jugé faux, avec la même clé après une panne', async () => {
+	const b = bancConsole();
+	const vue = (extra = {}) => ({ ...vueConsole('EXTRAIT', { lecture: lectureEnCours(0), joueursBloques: ['lea'],
+		propositions: [propositionLea], ...extra }), soiree: { pilotage: 'MANUEL' } });
+	b.module.afficher(vue(), capture);
+	assert.match(texte(b.principale), /Léa · \+70 points/);
+	assert.match(texte(b.principale), /Artiste : « Beyonse », faux/);
+	const accorder = bouton(b.principale, 'Accorder');
+	assert.equal(accorder.disabled, true, 'Rien ne part avant la synchronisation.');
+	assert.ok(bouton(b.principale, 'Refuser'), 'Un champ juste peut être refusé.');
+	b.connecter('synchronisee');
+
+	bouton(b.principale, 'Accorder').click();
+	const [methode, chemin, corps, options] = b.appels[0].args;
+	assert.deepEqual([methode, chemin, corps, options.entetes], ['POST', '/api/soirees/s/manches/m/morceaux/e1/arbitrage',
+		{ propositionId: 'p-lea', partie: 'ARTISTE', verdict: 'JUSTE' }, { 'Idempotency-Key': 'cle-1' }]);
+	assert.equal(bouton(b.principale, 'Accorder').disabled, true, 'Une commande à la fois.');
+	b.appels[0].reject(new TypeError('réseau'));
+	await terminerMicrotaches();
+	bouton(b.principale, 'Accorder').click();
+	assert.equal(b.appels[1].args[3].entetes['Idempotency-Key'], 'cle-1', 'Le même geste reprend la même clé.');
+	b.appels[1].resolve({ statut: 200, corps: { modifie: true } });
+	await terminerMicrotaches();
+
+	b.module.afficher(vue({ phase: 'REVELATION', lecture: null, joueursBloques: [],
+		propositions: [{ ...propositionLea, points: 100, artiste: { saisie: 'Beyonse', verdict: 'JUSTE', arbitre: true } }] }),
+	evenement('morceau-revele'));
+	assert.match(texte(b.principale), /Artiste : « Beyonse », juste \(arbitré\)/);
+	assert.equal(bouton(b.principale, 'Accorder'), undefined);
+	b.module.demonter();
+});
+
+test('Console : en Pilotage Automatique, aucun geste d’arbitrage', () => {
+	const b = bancConsole();
+	b.connecter('synchronisee');
+	b.module.afficher({ ...vueConsole('EXTRAIT', { lecture: lectureEnCours(0), propositions: [propositionLea] }),
+		soiree: { pilotage: 'AUTOMATIQUE' } }, capture);
+	assert.match(texte(b.principale), /le verdict de la correction est définitif/);
+	assert.equal(bouton(b.principale, 'Accorder'), undefined);
+	assert.equal(bouton(b.principale, 'Refuser'), undefined);
+	b.module.demonter();
+});
+
+test('Écran : un verdict renversé est annoncé et animé sur son événement, gardé sans animation sur une capture', async () => {
+	const b = bancEcran();
+	const arbitrage = { partie: 'ARTISTE', joueurId: 'lea', pseudo: 'Léa', verdict: 'JUSTE' };
+	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(0), arbitrage: null }), capture);
+	const annonce = b.principale.querySelector('.blindtest__arbitrage');
+	assert.equal(annonce.hidden, true);
+	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(0), arbitrage }), evenement('verdict-renverse'));
+	assert.equal(annonce.hidden, false);
+	assert.equal(annonce.textContent, 'L’Animateur accorde l’artiste à Léa.');
+	assert.equal(annonce.classList.contains('blindtest--arrivee'), true);
+	b.module.afficher(vueSalle('EXTRAIT', { lecture: lectureEnCours(0), arbitrage }), capture);
+	assert.equal(annonce.hidden, false);
+	assert.equal(annonce.classList.contains('blindtest--arrivee'), false);
+	await terminerMicrotaches();
+	b.module.demonter();
+});
+
 test('Console : « Terminer la Manche » demande confirmation', () => {
 	const b = bancConsole();
 	b.connecter('synchronisee');

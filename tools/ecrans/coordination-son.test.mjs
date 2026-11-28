@@ -7,7 +7,7 @@ test('la fenêtre activée la plus récente prend la main après le silence de l
 	function fenetre(ouverteA, id) {
 		let debut = Promise.withResolvers();
 		const coordination = creerCoordinationSon({ verrous: navigator.locks,
-			canal: new BroadcastChannel('croustyquizz-test-son'), ouverteA, id,
+			canal: new BroadcastChannel('croustyquizz-test-son'), ouverteA, id, soireeId: 'soiree',
 			surAttente(autorisee) {
 				if (autorisee) audibles.add(id);
 				else audibles.delete(id);
