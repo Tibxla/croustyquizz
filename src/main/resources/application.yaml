@@ -78,6 +78,9 @@ croustyquizz:
     inscription-adresse:
       rafale: 20
       intervalle: 30s
+  manche:
+    # Transition du Pilotage Automatique entre deux Manches (#123).
+    dureeTransitionSecondes: 15
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30

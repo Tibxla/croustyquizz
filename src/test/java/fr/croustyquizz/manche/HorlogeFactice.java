@@ -70,6 +70,11 @@ public final class HorlogeFactice implements Horloge {
 		}
 	}
 
+	/** Simule l'arrêt du processus : les minuteurs en attente disparaissent sans s'exécuter. */
+	public synchronized void oublierLesMinuteurs() {
+		programmes.clear();
+	}
+
 	public synchronized int minuteursEnAttente() {
 		return programmes.size();
 	}

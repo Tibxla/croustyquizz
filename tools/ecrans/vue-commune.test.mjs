@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { decrireClassementDeSalle, decrirePalmaresDeSalle, decrireTransition, decrireVue, libellesTransition }
+	from '../../src/main/resources/static/js/vue-commune.mjs';
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
 	const description = decrireVue({ soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
@@ -121,4 +122,42 @@ test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, 
 	assert.equal(decrirePalmaresDeSalle(avecPalmares), null);
 	assert.deepEqual(decrireVue(avecPalmares).palmares.map(ligne => ligne.texte),
 		['1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)']);
+});
+
+test('la transition annonce le Mode suivant ou la fin de la Soirée, arrondie à la seconde supérieure', () => {
+	const finPrevueLe = '2026-11-25T20:30:15.000Z';
+	const fin = Date.parse(finPrevueLe);
+	assert.equal(decrireTransition({ transitionManche: null }, fin), null);
+	assert.equal(decrireTransition({}, fin), null);
+	assert.deepEqual(decrireTransition({ transitionManche: { finPrevueLe, modeSuivant: 'BLIND_TEST' } }, fin - 12_000),
+		{ annonce: 'Prochaine Manche : Blind test', restantSecondes: 12, finDeSoiree: false });
+	assert.equal(decrireTransition({ transitionManche: { finPrevueLe, modeSuivant: 'QUIZ' } }, fin - 11_001).restantSecondes, 12);
+	assert.equal(decrireTransition({ transitionManche: { finPrevueLe, modeSuivant: 'QUIZ' } }, fin - 1).restantSecondes, 1);
+	assert.deepEqual(decrireTransition({ transitionManche: { finPrevueLe, modeSuivant: null } }, fin - 3_000),
+		{ annonce: 'Fin de la Soirée', restantSecondes: 3, finDeSoiree: true });
+	for (const retard of [0, 400, 20_000]) {
+		assert.equal(Object.is(decrireTransition({ transitionManche: { finPrevueLe, modeSuivant: null } }, fin + retard)
+			.restantSecondes, 0), true, `retard de ${retard} ms`);
+	}
+});
+
+test('chaque écran a son libellé de transition', () => {
+	const versQuiz = { annonce: 'Prochaine Manche : Quiz', restantSecondes: 12, finDeSoiree: false };
+	const versFin = { annonce: 'Fin de la Soirée', restantSecondes: 4, finDeSoiree: true };
+	assert.deepEqual(libellesTransition('ecran', versQuiz), { annonce: 'Prochaine Manche : Quiz', delai: 'dans 12 s' });
+	assert.deepEqual(libellesTransition('console', versQuiz), { annonce: 'Transition : Prochaine Manche : Quiz', delai: 'dans 12 s' });
+	assert.deepEqual(libellesTransition('manette', versQuiz), { annonce: 'Prochaine Manche', delai: 'dans 12 s' });
+	assert.deepEqual(libellesTransition('manette', versFin), { annonce: 'Fin de la Soirée', delai: 'dans 4 s' });
+});
+
+test('pendant la transition, la salle montre le Palmarès, sinon trois lignes du Classement général s’il en a', () => {
+	const classement = Array.from({ length: 5 }, (_, i) => ({ rang: i + 1, nom: `Joueur ${i + 1}`, points: 9 - i }));
+	const transitionManche = { finPrevueLe: '2026-11-25T20:30:15.000Z', modeSuivant: 'QUIZ' };
+	const vue = { soiree: { etat: 'EN_COURS' }, modeEnCours: null, mancheActive: null, joueurs: [], classement, transitionManche };
+	assert.deepEqual(decrireClassementDeSalle(vue), { titre: 'Classement général', podium: false,
+		lignes: ['1. Joueur 1 · 9 points', '2. Joueur 2 · 8 points', '3. Joueur 3 · 7 points'] });
+	assert.equal(decrireClassementDeSalle({ ...vue, classement: [] }), null);
+	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: [] }), null);
+	assert.equal(decrireVue(vue).attente, '');
+	assert.equal(decrireClassementDeSalle({ ...vue, transitionManche: null }).titre, 'Classement général · Top 10');
 });

@@ -603,8 +603,21 @@ classDiagram
         +terminer(UUID soireeId)
     }
     class PilotageAutomatique {
-        +surFinDeManche(UUID mancheId)
+        +surFinDeManche(UUID soireeId, UUID mancheId, Instant)
+        +surDebutDeManche(UUID soireeId, UUID mancheId)
+        +fournir(UUID, Destination, Map) TransitionManche
     }
+    class ObservateurDeFinDeManche {
+        <<interface>>
+        +surFinDeManche(UUID soireeId, UUID mancheId, Instant)
+        +surDebutDeManche(UUID soireeId, UUID mancheId)
+    }
+    class EnchainementDeSoiree {
+        <<interface>>
+        +mancheSuivante(UUID soireeId, UUID mancheTermineeId)
+    }
+    class EnchainementDeSoireeEnregistree
+    class TransitionPersistante
     class RegistreDesModes {
         +FabriqueDeDeroulement pour(ModeDeJeu)
     }
@@ -1001,7 +1014,12 @@ classDiagram
 
     OrchestrateurDeSoiree --> RegistreDesModes
     OrchestrateurDeSoiree --> DiffuseurTempsReel
-    PilotageAutomatique --> OrchestrateurDeSoiree
+    ObservateurDeFinDeManche <|.. PilotageAutomatique
+    PilotageAutomatique --> EnchainementDeSoiree : à l'échéance
+    PilotageAutomatique --> EtatDeSoiree
+    PilotageAutomatique --> TransitionPersistante
+    EnchainementDeSoiree <|.. EnchainementDeSoireeEnregistree : soiree
+    EnchainementDeSoireeEnregistree --> OrchestrateurDeSoiree : MANCHE_SUIVANTE
     RegistreDesModes o-- FabriqueDeDeroulement
     ServiceSoiree --> FiltreDePseudos
     ServiceClassement ..> ServiceEquipe
@@ -1077,6 +1095,7 @@ classDiagram
     FournisseurDeBlocKaraoke --> ServiceKaraoke : instantané
     AssembleurDeVues o-- FournisseurDeChampCommun : champs de la vue
     FournisseurDeChampCommun <|.. FournisseurPalmaresKaraoke
+    FournisseurDeChampCommun <|.. PilotageAutomatique
     FournisseurPalmaresKaraoke --> ServiceKaraoke : Palmarès
     ServiceKaraoke ..> ClassementParVote
     ServiceKaraoke ..> LignePalmaresKaraoke

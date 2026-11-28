@@ -12,6 +12,7 @@ import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
 import { afficherPalmaresDeSalle } from './palmares.mjs';
+import { monterTransition } from './transition.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -128,12 +129,16 @@ async function demarrer() {
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
+	const zoneTransition = element('zone-transition');
+	const transition = zoneTransition
+		? monterTransition(zoneTransition, { ecran, maintenantServeur: contexte.maintenantServeur }) : null;
 	let connexionRefusee = false;
 	boutonReprise?.addEventListener('click', () => suivi?.resynchroniser({ explicite: true }));
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue);
+			transition?.afficher(vue);
 			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
 			photos?.afficher(vue);
@@ -163,7 +168,7 @@ async function demarrer() {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
-		pilotage?.demonter();
+		pilotage?.demonter(); transition?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();
 	});

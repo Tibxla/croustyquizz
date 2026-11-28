@@ -398,3 +398,36 @@
   font-size: 1.35vw;
   font-variant-numeric: tabular-nums;
 }
+
+/* Transition entre Manches (#123) : l'annonce et le compte à rebours ouvrent la scène, lisibles à 5 m.
+   Le chiffre reprend l'orange de la barre du minuteur ; aucun aplat citron. */
+.salle__transition {
+  display: grid;
+  gap: 0.4vw;
+}
+.salle__transition-annonce {
+  font-size: 3.6vw;
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.salle__transition-delai {
+  color: var(--orange);
+  font: 800 7vw/0.9 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Avec des Passages classés, garder le Palmarès et le talon dans la hauteur de la salle. */
+.salle--coquille .salle__principal:has(> .salle__transition:not([hidden]) ~ .palmares:not([hidden]) li) {
+  gap: 0.8vw;
+  padding-block: 2.4vw 4.8vw;
+
+  .coquille__commun { gap: 0.55vw; line-height: 1.2; }
+  .salle__transition {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 1.2vw;
+  }
+  .salle__transition-annonce { font-size: 2.8vw; }
+  .salle__transition-delai { font-size: 5vw; white-space: nowrap; }
+}

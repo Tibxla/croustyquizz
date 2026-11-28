@@ -32,11 +32,14 @@ public final class BancDuSocle {
 		this(horlogeDuSocle, soireeId -> false);
 	}
 	public BancDuSocle(Horloge horlogeDuSocle, PilotageDeSoiree pilotage) {
+		this(horlogeDuSocle, pilotage, List.of());
+	}
+	public BancDuSocle(Horloge horlogeDuSocle, PilotageDeSoiree pilotage, List<ObservateurDeFinDeManche> observateurs) {
 		FournisseurDeBloc bloc = new BlocFacticeDuSocle(this::serviceCourant, stockage);
 		assembleur = new AssembleurDeVues(commun, List.of(bloc), verrous, json);
 		var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur, evenement -> { });
 		service = new ServiceDeManche<>(mode, mode, new SocleDeManche(verrous, stockage, stockage, registre,
-				new RegistreDesEnvois(stockage, json), vues, horlogeDuSocle == null ? horloge : horlogeDuSocle, json, pilotage));
+				new RegistreDesEnvois(stockage, json), vues, horlogeDuSocle == null ? horloge : horlogeDuSocle, json, pilotage, observateurs));
 	}
 	private ServiceDeManche<?, ?> serviceCourant() { return service; }
 	public UUID creer(UUID soireeId) {

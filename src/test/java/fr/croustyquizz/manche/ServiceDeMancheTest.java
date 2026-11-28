@@ -361,7 +361,7 @@ class ServiceDeMancheTest {
 		var socle = new SocleDeManche(banc.verrous, banc.stockage, banc.stockage, banc.registre,
 				new RegistreDesEnvois(banc.stockage, banc.json),
 				new fr.croustyquizz.tempsreel.PublicationDeVues(banc.assembleur, banc.commun,
-						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur, evenement -> { }), banc.horloge, banc.json, soireeId -> false);
+						new fr.croustyquizz.tempsreel.PublicationApresCommit(), banc.diffuseur, evenement -> { }), banc.horloge, banc.json, soireeId -> false, java.util.List.of());
 		class ServiceAvecGarde extends ServiceDeManche<ModeFacticeDuSocle.Reglages, DeroulementFactice.Etat> {
 			ServiceAvecGarde() { super(banc.mode, banc.mode, socle); }
 			@Override protected Refuse verifierAvantPreparation(ManchePersistante manche, EnvoiDeCommande envoi, boolean demarrage) {
@@ -395,6 +395,53 @@ class ServiceDeMancheTest {
 		assertThat(ReponsesDeCommande.statut(rejeu)).isEqualTo(204);
 		assertThat(((Accepte) rejeu).accuse()).isNull();
 		assertThat(banc.diffuseur.envois()).hasSize(avant);
+	}
+
+	@Test
+	void lObservateurApprendLaFinNaturelleUneSeuleFoisDansLaTransaction() {
+		var fins = new java.util.ArrayList<String>();
+		var bancObserve = new BancDuSocle(null, id -> false, java.util.List.of((soireeId, mancheId, maintenant) -> {
+			assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+					.isTrue();
+			fins.add(soireeId + "/" + mancheId + "/" + maintenant);
+		}));
+		UUID manche = bancObserve.creer(soiree);
+		bancObserve.service.demarrer(manche, bancObserve.envoi(soiree, "/demarrer", Map.of()));
+		var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
+		var reprise = new InterventionDeManche(InterventionDeManche.Action.REPRENDRE, null);
+		bancObserve.service.piloter(manche, bancObserve.envoi(soiree, "/commandes", pause), pause);
+		bancObserve.service.piloter(manche, bancObserve.envoi(soiree, "/commandes", reprise), reprise);
+		bancObserve.horloge.avancer(Duration.ofSeconds(40));
+		assertThat(fins).isEmpty();
+
+		bancObserve.horloge.avancer(Duration.ofSeconds(20));
+		assertThat(fins).containsExactly(soiree + "/" + manche + "/" + bancObserve.horloge.maintenant());
+		var terminer = new InterventionDeManche(InterventionDeManche.Action.TERMINER, null);
+		assertThat(bancObserve.service.piloter(manche, bancObserve.envoi(soiree, "/commandes", terminer), terminer))
+				.isInstanceOf(Refuse.class);
+		bancObserve.horloge.avancer(Duration.ofMinutes(5));
+		assertThat(fins).hasSize(1);
+	}
+
+	@Test
+	void lObservateurApprendLaFinCommandeeMaisPasLaClotureParLaSoiree() {
+		var fins = new java.util.ArrayList<UUID>();
+		var bancObserve = new BancDuSocle(null, id -> false,
+				java.util.List.of((soireeId, mancheId, maintenant) -> fins.add(mancheId)));
+		UUID terminee = bancObserve.creer(soiree);
+		bancObserve.service.demarrer(terminee, bancObserve.envoi(soiree, "/demarrer", Map.of()));
+		var terminer = new InterventionDeManche(InterventionDeManche.Action.TERMINER, null);
+		var envoi = bancObserve.envoi(soiree, "/commandes", terminer);
+		bancObserve.service.piloter(terminee, envoi, terminer);
+		bancObserve.service.piloter(terminee, envoi, terminer);
+		assertThat(fins).containsExactly(terminee);
+
+		// La fin de Soirée clôt sa Manche active sans ouvrir de transition (#123, question 1).
+		UUID close = bancObserve.creer(soiree);
+		bancObserve.service.demarrer(close, bancObserve.envoi(soiree, "/demarrer", Map.of()));
+		assertThat(bancObserve.service.terminerPourSoiree(close, bancObserve.envoi(soiree, "/cloture", terminer)))
+				.isInstanceOf(Accepte.class);
+		assertThat(fins).containsExactly(terminee);
 	}
 
 	private UUID demarrer() {

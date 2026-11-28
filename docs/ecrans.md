@@ -319,6 +319,22 @@ Vérification dans un navigateur à effectuer.
 
 Vérification dans un navigateur à effectuer.
 
+## Transition entre Manches (#123)
+
+En Pilotage Automatique, la fin d’une Manche ouvre une transition de quinze secondes (`croustyquizz.manche.dureeTransitionSecondes`). Les trois coquilles la rendent dans leur zone `data-zone-transition` par `js/transition.mjs` : chaque rendu calcule le délai depuis `contexte.maintenantServeur()` et programme le suivant juste après la prochaine frontière de seconde de l’échéance, pour qu’une minuterie en retard ne saute ni ne répète aucune seconde. Cette minuterie unique s’arrête à zéro, quand `transitionManche` redevient nul ou au départ de la page. Sur l’Écran de salle, l’annonce et le compte à rebours ouvrent la scène ; dessous viennent les trois premiers Passages classés du Palmarès du Karaoké et, si nécessaire, le nombre des autres Passages. Après une autre Manche, la salle montre jusqu’à trois lignes du Classement général. La Console affiche « Transition : Prochaine Manche : Karaoké dans 12 s » dans son panneau principal, la Manette « Prochaine Manche dans 12 s » ou « Fin de la Soirée dans 12 s ».
+
+1. En profil `dev`, créer dans `/preparer-soiree.html` une Soirée en Pilotage Automatique. Ouvrir sa Console par `/test/identite.html?soiree=<UUID>`, rôle Animateur, Pilotage actuel et module factice décoché, puis ajouter deux Manches de Karaoké. Ouvrir la Soirée aux Joueurs, ouvrir l’Écran de salle depuis la préparation, puis une Manette par le QR code ou `/rejoindre.html`.
+2. Lancer la Soirée. Inscrire un Passage depuis la Manette, le jouer et attendre la clôture du vote avec la File vide. Rejouer en cliquant sur « Terminer la Manche » pendant un Passage pour vérifier la transition après une intervention de l’Animateur.
+3. Vérifier sur l’Écran de salle, en 1920 × 1080 : en tête « Prochaine Manche : Karaoké » et « dans 15 s », qui décompte chaque seconde ; dessous le Palmarès du Karaoké, sans aplat citron. Sur la Console : « Transition : Prochaine Manche : Karaoké dans 14 s », avec « Manche suivante » et « Terminer la Soirée » toujours disponibles. Sur la Manette, en 390 × 844 : « Prochaine Manche dans 14 s ».
+4. Recharger l’Écran de salle pendant la transition : le compte à rebours reprend où il en était, sans repartir de 15.
+5. À zéro, la deuxième Manche démarre seule sur les trois écrans et la transition disparaît.
+6. Terminer la deuxième Manche. Les trois écrans annoncent « Fin de la Soirée » ; quinze secondes plus tard, ils affichent « Soirée terminée » sans action de l’Animateur.
+7. Dans une Soirée neuve du même type, cliquer sur « Manche suivante » pendant la transition : la Manche démarre aussitôt et rien ne se passe à l’échéance. Rejouer avec « Terminer la Soirée » pendant la transition, puis pendant une Manche : aucune transition ne s’ouvre.
+8. Arrêter le serveur pendant une transition et le relancer avant l’échéance : la Manche suivante démarre au terme prévu. Relancé après l’échéance, elle démarre dès le redémarrage.
+9. Dans une Soirée en Pilotage Manuel, terminer une Manche : aucune transition, « Manche suivante » reste à l’Animateur.
+
+Après un Blind test qui a attribué des Points, la salle montre trois lignes du Classement général sous l’annonce ; le Blind test demande le catalogue réel. `PilotageAutomatiqueTest` exécute ces parcours avec PostgreSQL, deux Manches factices et une Horloge factice, redémarrage compris ; `tools/ecrans/transition.test.mjs` et `vue-commune.test.mjs` couvrent le compte à rebours et les libellés.
+
 ## Photos de la salle (#72)
 
 La Manette propose « Envoyer une photo » tant que les envois sont ouverts.

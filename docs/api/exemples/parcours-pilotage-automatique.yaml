@@ -1,4 +1,4 @@
-description: Extraits de deux Soirées fictives en Pilotage Automatique, avec une fin de Manche à l’échéance d’un appel et une autre à la clôture du dernier vote.
+description: Extraits de trois Soirées fictives en Pilotage Automatique, avec une fin de Manche à l’échéance d’un appel, une autre à la clôture du dernier vote et un enchaînement de Manches jusqu’à la fin de la Soirée.
 # Les publications intermédiaires de démarrage, de lecture, de File d’attente et de Vote du public sont omises.
 evenementsComplets: false
 parametresCommuns:
@@ -194,6 +194,170 @@ http:
     code: HORS_DELAI
     detail: Le temps pour confirmer est écoulé.
     instance: /api/soirees/11900000-0000-4000-8000-000000000001/manches/11900000-0000-4000-8000-000000000004/passages/11900000-0000-4000-8000-000000000011/presence
+- nom: Transition vers un Quiz — capture de la salle
+  operationId: retrouverEtatSalle
+  acteur: ecran:12300000-0000-4000-8000-000000000006
+  parametres:
+    soireeId: 12300000-0000-4000-8000-000000000001
+  statut: 200
+  reponse:
+    revision: 10
+    heureServeur: '2026-11-25T20:30:03.000Z'
+    abonnementId: null
+    vue: &trSalleVersQuiz
+      soiree: &trSoireeEnCours
+        id: 12300000-0000-4000-8000-000000000001
+        titre: Soirée fictive enchaînée
+        format: SOLO
+        pilotage: AUTOMATIQUE
+        etat: EN_COURS
+        codeAcces: ENCH23
+      mancheActive: null
+      modeEnCours: null
+      joueurs: &trJoueurs
+      - id: 12300000-0000-4000-8000-000000000004
+        pseudo: Alizé
+        connecte: true
+      classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: []
+      transitionManche: &trVersQuiz
+        finPrevueLe: '2026-11-25T20:30:15.000Z'
+        modeSuivant: QUIZ
+- nom: Transition vers un Quiz — capture de la Console
+  operationId: retrouverEtatConsole
+  acteur: animateur:12300000-0000-4000-8000-000000000005
+  parametres:
+    soireeId: 12300000-0000-4000-8000-000000000001
+  statut: 200
+  reponse:
+    revision: 10
+    heureServeur: '2026-11-25T20:30:03.000Z'
+    abonnementId: null
+    vue: &trConsoleVersQuiz
+      soiree: *trSoireeEnCours
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: []
+      transitionManche: *trVersQuiz
+      programme:
+      - &trKaraokeTermine
+        id: 12300000-0000-4000-8000-000000000002
+        ordre: 0
+        mode: KARAOKE
+        etat: TERMINEE
+        reglages: { limitePassagesEnAttente: 2 }
+      - &trQuizEnAttente
+        id: 12300000-0000-4000-8000-000000000003
+        ordre: 1
+        mode: QUIZ
+        etat: EN_ATTENTE
+        reglages: &trReglagesQuiz { nombreEtapes: 3, tempsParEtapeSecondes: 20 }
+- nom: Transition vers un Quiz — capture de la Manette
+  operationId: retrouverEtatManette
+  acteur: joueur:12300000-0000-4000-8000-000000000004
+  parametres:
+    soireeId: 12300000-0000-4000-8000-000000000001
+  statut: 200
+  reponse:
+    revision: 6
+    heureServeur: '2026-11-25T20:30:03.000Z'
+    abonnementId: null
+    vue: &trManetteVersQuiz
+      soiree: *trSoireeEnCours
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: []
+      dernierBuzz: null
+      transitionManche: *trVersQuiz
+      joueurId: 12300000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
+- nom: Transition vers la fin de la Soirée — capture de la salle
+  operationId: retrouverEtatSalle
+  acteur: ecran:12300000-0000-4000-8000-000000000006
+  parametres:
+    soireeId: 12300000-0000-4000-8000-000000000001
+  statut: 200
+  reponse:
+    revision: 15
+    heureServeur: '2026-11-25T20:35:04.000Z'
+    abonnementId: null
+    vue: &trSalleVersFin
+      soiree: *trSoireeEnCours
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: &trClassement
+      - concurrentId: 12300000-0000-4000-8000-000000000004
+        nom: Alizé
+        rang: 1
+        points: 1300
+        bonnesReponses: 2
+        tempsCumuleMs: 9100
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: null
+      transitionManche: &trVersFin
+        finPrevueLe: '2026-11-25T20:35:15.000Z'
+        modeSuivant: null
+- nom: Transition vers la fin de la Soirée — capture de la Console
+  operationId: retrouverEtatConsole
+  acteur: animateur:12300000-0000-4000-8000-000000000005
+  parametres:
+    soireeId: 12300000-0000-4000-8000-000000000001
+  statut: 200
+  reponse:
+    revision: 15
+    heureServeur: '2026-11-25T20:35:04.000Z'
+    abonnementId: null
+    vue: &trConsoleVersFin
+      soiree: *trSoireeEnCours
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: *trClassement
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: null
+      transitionManche: *trVersFin
+      programme:
+      - *trKaraokeTermine
+      - &trQuizTermine
+        id: 12300000-0000-4000-8000-000000000003
+        ordre: 1
+        mode: QUIZ
+        etat: TERMINEE
+        reglages: *trReglagesQuiz
+- nom: Transition vers la fin de la Soirée — capture de la Manette
+  operationId: retrouverEtatManette
+  acteur: joueur:12300000-0000-4000-8000-000000000004
+  parametres:
+    soireeId: 12300000-0000-4000-8000-000000000001
+  statut: 200
+  reponse:
+    revision: 11
+    heureServeur: '2026-11-25T20:35:04.000Z'
+    abonnementId: null
+    vue: &trManetteVersFin
+      soiree: *trSoireeEnCours
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: *trClassement
+      dernierBuzz: null
+      transitionManche: *trVersFin
+      joueurId: 12300000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
 evenements:
 - nom: Ouvrir la Soirée en Pilotage Automatique
   canal: console
@@ -604,7 +768,17 @@ evenements:
       classement: *classementKaraoke
       dernierBuzz: null
       karaoke: null
-      palmaresKaraoke: []
+      palmaresKaraoke:
+      - passageId: 11900000-0000-4000-8000-000000000010
+        numero: 1
+        chanson: *chansonAlize
+        interpretes: *interpretesAlize
+        rang: null
+        nombreVotes: 0
+        moyenneDixiemes: null
+      transitionManche:
+        finPrevueLe: '2026-11-23T20:02:15.000Z'
+        modeSuivant: null
 # Dans une autre Soirée, l’Animateur retire le seul Passage en attente pendant le chant.
 - nom: Dernier retrait pendant le chant, la Manche continue
   canal: salle
@@ -703,6 +877,9 @@ evenements:
       classement: []
       dernierBuzz: null
       karaoke: null
+      transitionManche: &transitionDernierVote
+        finPrevueLe: '2026-11-23T21:02:05.000Z'
+        modeSuivant: null
       palmaresKaraoke: &palmaresDernierVote
       - passageId: *passageDernierVoteId
         numero: 1
@@ -735,6 +912,7 @@ evenements:
           limitePassagesEnAttente: 2
       karaoke: null
       palmaresKaraoke: *palmaresDernierVote
+      transitionManche: *transitionDernierVote
 - nom: Clôture du dernier vote et fin de Manche — Manette
   canal: joueur
   message:
@@ -754,6 +932,182 @@ evenements:
       derniereReponse: null
       resultatPersonnel: null
       karaoke: null
+      transitionManche: *transitionDernierVote
+# La troisième Soirée illustre l’enchaînement de deux Manches.
+- nom: Fin du Karaoké, transition vers le Quiz — salle
+  canal: salle
+  message:
+    type: manche-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 10
+    emisLe: '2026-11-25T20:30:00.000Z'
+    donnees: *trSalleVersQuiz
+- nom: Fin du Karaoké, transition vers le Quiz — Console
+  canal: console
+  message:
+    type: manche-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 10
+    emisLe: '2026-11-25T20:30:00.000Z'
+    donnees: *trConsoleVersQuiz
+- nom: Fin du Karaoké, transition vers le Quiz — Alizé
+  canal: joueur
+  message:
+    type: manche-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 6
+    emisLe: '2026-11-25T20:30:00.000Z'
+    donnees: *trManetteVersQuiz
+- nom: Le Quiz démarre seul à l’échéance — salle
+  canal: salle
+  message:
+    type: manche-demarree
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 11
+    emisLe: '2026-11-25T20:30:15.000Z'
+    donnees:
+      soiree: *trSoireeEnCours
+      mancheActive: &trQuizEnCours
+        id: 12300000-0000-4000-8000-000000000003
+        ordre: 1
+        mode: QUIZ
+        etat: EN_COURS
+        reglages: *trReglagesQuiz
+      modeEnCours: QUIZ
+      joueurs: *trJoueurs
+      classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: null
+      transitionManche: null
+      quiz: null
+- nom: Le Quiz démarre seul à l’échéance — Console
+  canal: console
+  message:
+    type: manche-demarree
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 11
+    emisLe: '2026-11-25T20:30:15.000Z'
+    donnees:
+      soiree: *trSoireeEnCours
+      mancheActive: *trQuizEnCours
+      modeEnCours: QUIZ
+      joueurs: *trJoueurs
+      classement: []
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: null
+      transitionManche: null
+      programme:
+      - *trKaraokeTermine
+      - *trQuizEnCours
+      quiz: null
+- nom: Le Quiz démarre seul à l’échéance — Alizé
+  canal: joueur
+  message:
+    type: manche-demarree
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 7
+    emisLe: '2026-11-25T20:30:15.000Z'
+    donnees:
+      soiree: *trSoireeEnCours
+      mancheActive: *trQuizEnCours
+      modeEnCours: QUIZ
+      joueurs: *trJoueurs
+      classement: []
+      dernierBuzz: null
+      transitionManche: null
+      joueurId: 12300000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      quiz: null
+- nom: Fin de la dernière Manche, transition vers la fin de la Soirée — salle
+  canal: salle
+  message:
+    type: manche-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 15
+    emisLe: '2026-11-25T20:35:00.000Z'
+    donnees: *trSalleVersFin
+- nom: Fin de la dernière Manche, transition vers la fin de la Soirée — Console
+  canal: console
+  message:
+    type: manche-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 15
+    emisLe: '2026-11-25T20:35:00.000Z'
+    donnees: *trConsoleVersFin
+- nom: Fin de la dernière Manche, transition vers la fin de la Soirée — Alizé
+  canal: joueur
+  message:
+    type: manche-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 11
+    emisLe: '2026-11-25T20:35:00.000Z'
+    donnees: *trManetteVersFin
+- nom: La Soirée se termine seule à l’échéance — salle
+  canal: salle
+  message:
+    type: soiree-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 16
+    emisLe: '2026-11-25T20:35:15.000Z'
+    donnees:
+      soiree: &trSoireeTerminee
+        id: 12300000-0000-4000-8000-000000000001
+        titre: Soirée fictive enchaînée
+        format: SOLO
+        pilotage: AUTOMATIQUE
+        etat: TERMINEE
+        codeAcces: ENCH23
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: *trClassement
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: null
+      transitionManche: null
+- nom: La Soirée se termine seule à l’échéance — Console
+  canal: console
+  message:
+    type: soiree-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 16
+    emisLe: '2026-11-25T20:35:15.000Z'
+    donnees:
+      soiree: *trSoireeTerminee
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: *trClassement
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: true }
+      dernierBuzz: null
+      palmaresKaraoke: null
+      transitionManche: null
+      programme:
+      - *trKaraokeTermine
+      - *trQuizTermine
+- nom: La Soirée se termine seule à l’échéance — Alizé
+  canal: joueur
+  message:
+    type: soiree-terminee
+    soireeId: 12300000-0000-4000-8000-000000000001
+    revision: 12
+    emisLe: '2026-11-25T20:35:15.000Z'
+    donnees:
+      soiree: *trSoireeTerminee
+      mancheActive: null
+      modeEnCours: null
+      joueurs: *trJoueurs
+      classement: *trClassement
+      dernierBuzz: null
+      transitionManche: null
+      joueurId: 12300000-0000-4000-8000-000000000004
+      eligiblePourMancheActive: false
+      derniereReponse: null
+      resultatPersonnel: null
 resynchronisation:
   destination: /topic/soirees/11900000-0000-4000-8000-000000000001/console
   routeEtat: /api/soirees/11900000-0000-4000-8000-000000000001/etat/console
@@ -768,4 +1122,26 @@ resynchronisation:
   - *ouverture
   revisionFinale: 1
   vueFinale: *ouverte
-cases: []
+cases:
+- nom: 'Transition refusée : Mode de jeu suivant inconnu'
+  schema: TransitionManche
+  valeur:
+    finPrevueLe: '2026-11-25T20:30:15.000Z'
+    modeSuivant: DANSE
+  valide: false
+  correction:
+    chemin:
+    - modeSuivant
+    valeur: QUIZ
+- nom: 'Transition refusée : échéance absente'
+  schema: TransitionManche
+  valeur:
+    modeSuivant: QUIZ
+  valide: false
+- nom: 'Transition refusée : champ en trop'
+  schema: TransitionManche
+  valeur:
+    finPrevueLe: '2026-11-25T20:30:15.000Z'
+    modeSuivant: null
+    restantSecondes: 12
+  valide: false

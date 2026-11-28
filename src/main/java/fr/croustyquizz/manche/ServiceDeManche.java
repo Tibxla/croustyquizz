@@ -69,12 +69,12 @@ public class ServiceDeManche<R, E> {
 			d.demarrer();
 			return new Accepte(new AccuseCommande(envoi.envoiId(), recueLe, envoi.acteur().soireeId()),
 					TOUT, "manche-demarree");
-		}), EtatManche.EN_COURS, true);
+		}), EtatManche.EN_COURS, true, true);
 	}
 	public ResultatDeCommande piloter(UUID mancheId, EnvoiDeCommande envoi, InterventionDeManche intervention) {
 		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
 				intervention.appliquer(d, new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))),
-				intervention.etatCible(), false);
+				intervention.etatCible(), false, true);
 	}
 	ResultatDeCommande refuserPilotage(UUID mancheId, EnvoiDeCommande envoi, Refuse refus) {
 		return sousTransaction(envoi.acteur().soireeId(), mancheId, () -> {
@@ -85,10 +85,14 @@ public class ServiceDeManche<R, E> {
 		});
 	}
 
-	/** Clôture interne à la Soirée, quelle que soit l'étape de sa Manche active. */
+	/**
+	 * Clôture interne à la Soirée, quelle que soit l'étape de sa Manche active. La Soirée se termine juste après :
+	 * les observateurs de fin de Manche ne sont pas prévenus, aucune transition ne s'ouvre (#123).
+	 */
 	public final ResultatDeCommande terminerPourSoiree(UUID mancheId, EnvoiDeCommande envoi) {
 		return traiter(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
-				d.terminer(new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))), EtatManche.TERMINEE, false);
+				d.terminer(new CommandePilotage(envoi.acteur(), envoi.envoiId(), recueLe))), EtatManche.TERMINEE, false,
+				false);
 	}
 	/** La préparation externe est hors verrou ; sa fonction revalide ensuite le domaine sous verrou. */
 	public ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer) {
@@ -96,10 +100,10 @@ public class ServiceDeManche<R, E> {
 	}
 	protected ResultatDeCommande executer(UUID mancheId, EnvoiDeCommande envoi,
 			Supplier<PreparationDeCommande> preparer, EtatManche etatApresAcceptation) {
-		return traiter(mancheId, envoi, preparer, etatApresAcceptation, false);
+		return traiter(mancheId, envoi, preparer, etatApresAcceptation, false, true);
 	}
 	private ResultatDeCommande traiter(UUID id, EnvoiDeCommande envoi, Supplier<PreparationDeCommande> preparer,
-			EtatManche cible, boolean demarrage) {
+			EtatManche cible, boolean demarrage, boolean finObservee) {
 		UUID soireeId = envoi.acteur().soireeId();
 		// Une répétition évite aussi un nouvel appel externe, sans retenir le verrou pendant la préparation.
 		ResultatDeCommande repetition = sousTransaction(soireeId, id, () -> {
@@ -125,7 +129,7 @@ public class ServiceDeManche<R, E> {
 					Instant recueLe = socle.horloge().maintenant().truncatedTo(MICROS);
 					resultat = preparation.appliquer().apply(deroulement, recueLe);
 					if (resultat instanceof Accepte accepte) {
-						enregistrer(manche, deroulement, cible, accepte, deroulement.instantane(), recueLe);
+						enregistrer(manche, deroulement, cible, accepte, deroulement.instantane(), recueLe, finObservee);
 					}
 				}
 			}
@@ -148,7 +152,7 @@ public class ServiceDeManche<R, E> {
 			var d = deroulement(manche);
 			ResultatDeCommande resultat = action.apply(d);
 			if (resultat instanceof Accepte accepte) {
-				enregistrer(manche, d, null, accepte, d.instantane(), socle.horloge().maintenant().truncatedTo(MICROS));
+				enregistrer(manche, d, null, accepte, d.instantane(), socle.horloge().maintenant().truncatedTo(MICROS), true);
 			}
 			return resultat;
 		});
@@ -216,7 +220,7 @@ public class ServiceDeManche<R, E> {
 			Object apres = d.instantane();
 			if (!Objects.equals(avant, apres)) {
 				enregistrer(manche, d, null, new Accepte(null, TOUT, fabrique.typeEvenementMinuteur(d)), apres,
-						socle.horloge().maintenant());
+						socle.horloge().maintenant(), true);
 			}
 			return null;
 		});
@@ -227,10 +231,20 @@ public class ServiceDeManche<R, E> {
 	}
 
 	private void enregistrer(ManchePersistante manche, DeroulementDeManche d, EtatManche cible, Accepte accepte,
-			Object instantane, Instant recueLe) {
+			Object instantane, Instant recueLe, boolean finObservee) {
 		EtatManche etatParDefaut = cible == null ? manche.getEtat() : cible;
 		EtatManche etat = d.estTerminee() ? EtatManche.TERMINEE : etatApresAcceptation(etatParDefaut, instantane);
+		boolean fin = etat == EtatManche.TERMINEE && manche.getEtat() != EtatManche.TERMINEE;
+		boolean debut = manche.getEtat() == EtatManche.PRETE && etat != EtatManche.PRETE;
 		manche.changerEtat(etat, recueLe);
+		if (debut) {
+			socle.observateurs().forEach(o -> o.surDebutDeManche(manche.getSoireeId(), manche.getMancheId()));
+		}
+		if (fin && finObservee) {
+			// Avant la persistance et la publication : la vue publiée porte déjà ce que l'observateur enregistre.
+			Instant maintenant = socle.horloge().maintenant();
+			socle.observateurs().forEach(o -> o.surFinDeManche(manche.getSoireeId(), manche.getMancheId(), maintenant));
+		}
 		boolean classementModifie = manche.getMode().compteAuClassementGeneral() && manche.actualiserPoints(d.points());
 		persistance.enregistrer(manche.getMancheId(), instantane);
 		socle.depot().enregistrer(manche);
