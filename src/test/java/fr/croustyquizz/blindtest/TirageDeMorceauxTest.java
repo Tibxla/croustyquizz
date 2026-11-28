@@ -52,6 +52,17 @@ class TirageDeMorceauxTest {
 	}
 
 	@Test
+	void unTitreAvecOuSansArticleEstUnDoublon() {
+		FauxCatalogueMusical catalogue = new FauxCatalogueMusical().avecPlaylist(7,
+				new Morceau(10, "The Cure", "Groupe fictif", null), new Morceau(11, "Cure", "Groupe fictif", null));
+		TirageDeMorceaux tirage = new TirageDeMorceaux(catalogue, new Random(7));
+
+		assertThat(tirage.tirer(reglages(SourceDeMorceaux.Type.PLAYLIST, 7, 1))).hasSize(1);
+		assertThatThrownBy(() -> tirage.tirer(reglages(SourceDeMorceaux.Type.PLAYLIST, 7, 2)))
+				.isInstanceOf(SourceMusicaleInvalide.class);
+	}
+
+	@Test
 	void refuseUneSourceSansAssezDeMorceauxJouables() {
 		TirageDeMorceaux tirage = new TirageDeMorceaux(catalogue, new Random(4));
 

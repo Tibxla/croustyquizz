@@ -150,6 +150,22 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	}
 
 	@Test
+	void uneFauteDeFrappeEtUnArticleNEmpechentPasDeTrouver() {
+		demarrer();
+		horloge.avancer(Duration.ofSeconds(4));
+		buzz(LEA);
+
+		ResultatDeCommande resultat = valider(LEA, "halo", "la Beyonse");
+
+		assertThat(resultat).isInstanceOfSatisfying(Accepte.class, accepte -> {
+			AccuseProposition accuse = (AccuseProposition) accepte.accuse();
+			assertThat(accuse.titre()).isEqualTo(VerdictChamp.JUSTE);
+			assertThat(accuse.artiste()).isEqualTo(VerdictChamp.JUSTE);
+			assertThat(accuse.pointsGagnes()).isEqualTo(100);
+		});
+	}
+
+	@Test
 	void unePartieTrouveeEstMontreeEtLeMorceauContinue() {
 		demarrer();
 		horloge.avancer(Duration.ofSeconds(4));
@@ -612,7 +628,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 		demarrer();
 		horloge.avancer(Duration.ofSeconds(4));
 		buzz(LEA);
-		valider(LEA, "Halo", "Beyonse");
+		valider(LEA, "Halo", "Queen B");
 		assertThat(courant().bloques()).containsExactly(LEA);
 
 		ResultatDeCommande resultat = arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
@@ -629,7 +645,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 				.containsExactly(PartieDuMorceau.TITRE, PartieDuMorceau.ARTISTE);
 		assertThat(courant.arbitrage())
 				.isEqualTo(new ArbitrageMorceau(PartieDuMorceau.ARTISTE, LEA, "Léa", VerdictChamp.JUSTE));
-		assertThat(courant.propositions().getFirst().artiste()).isEqualTo(new ChampJuge("Beyonse", VerdictChamp.JUSTE, true));
+		assertThat(courant.propositions().getFirst().artiste()).isEqualTo(new ChampJuge("Queen B", VerdictChamp.JUSTE, true));
 		assertThat(blindTest.points())
 				.containsExactly(new AttributionDePoints(LEA, 100, "Titre et artiste trouvés", true, 4000));
 	}
@@ -677,12 +693,12 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	void revenirAuVerdictDeLaCorrectionEffaceLaMarqueDArbitrage() {
 		demarrer();
 		buzz(LEA);
-		valider(LEA, "Halo", "Beyonse");
+		valider(LEA, "Halo", "Queen B");
 		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
 
 		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.FAUX);
 
-		assertThat(courant().propositions().getFirst().artiste()).isEqualTo(new ChampJuge("Beyonse", VerdictChamp.FAUX, false));
+		assertThat(courant().propositions().getFirst().artiste()).isEqualTo(new ChampJuge("Queen B", VerdictChamp.FAUX, false));
 		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
 		assertThat(blindTest.points()).containsExactly(new AttributionDePoints(LEA, 70, "Titre trouvé", true, 0));
 	}
@@ -707,7 +723,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	void accorderUnePartieTrouveeDepuisParUnAutreJoueurEstRefuseSansMutation() {
 		demarrer();
 		buzz(LEA);
-		valider(LEA, "Halo", "Beyonse");
+		valider(LEA, "Halo", "Queen B");
 		buzz(SAM);
 		valider(SAM, "", "Beyoncé");
 		InstantaneBlindTest avant = blindTest.instantane();
@@ -737,7 +753,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	void enPilotageAutomatiqueLeVerdictDeLaCorrectionEstDefinitif() {
 		demarrerAutomatique();
 		buzz(LEA);
-		valider(LEA, "Halo", "Beyonse");
+		valider(LEA, "Halo", "Queen B");
 		InstantaneBlindTest avant = blindTest.instantane();
 
 		refusAttendu(arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE), "ETAT_INCOMPATIBLE");
@@ -829,7 +845,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	void unePartieAccordeePendantLaSaisieNEstPlusJugee() {
 		demarrer();
 		buzz(LEA);
-		valider(LEA, "Halo", "Beyonse");
+		valider(LEA, "Halo", "Queen B");
 		buzz(SAM);
 
 		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
@@ -842,7 +858,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	void lArbitrageResteOuvertPendantLaPause() {
 		demarrer();
 		buzz(LEA);
-		valider(LEA, "Halo", "Beyonse");
+		valider(LEA, "Halo", "Queen B");
 		blindTest.mettreEnPause(pilotage());
 
 		assertThat(arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE)).isInstanceOf(Accepte.class);
@@ -854,7 +870,7 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	void laRestaurationApresUnArbitrageRendLesMemesPoints() {
 		demarrer();
 		buzz(LEA);
-		valider(LEA, "Halo", "Beyonse");
+		valider(LEA, "Halo", "Queen B");
 		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
 		blindTest.passerEtape(pilotage());
 		InstantaneBlindTest avant = blindTest.instantane();

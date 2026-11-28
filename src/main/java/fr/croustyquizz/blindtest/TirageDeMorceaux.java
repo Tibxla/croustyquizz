@@ -3,9 +3,7 @@ package fr.croustyquizz.blindtest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.random.RandomGenerator;
@@ -33,17 +31,20 @@ public final class TirageDeMorceaux {
 			case PLAYLIST -> catalogue.morceauxDePlaylist(source.idDeezer());
 			case GENRE -> catalogue.morceauxDuGenre(source.idDeezer());
 		};
-		Map<String, Morceau> distincts = new LinkedHashMap<>();
+		List<Morceau> distincts = new ArrayList<>();
+		Set<String> formesRetenues = new HashSet<>();
 		Set<Long> identifiantsVus = new HashSet<>();
 		for (Morceau morceau : candidats) {
-			if (identifiantsVus.add(morceau.idDeezer())) {
-				distincts.putIfAbsent(cle(morceau), morceau);
+			Set<String> formes = formes(morceau);
+			if (identifiantsVus.add(morceau.idDeezer()) && Collections.disjoint(formes, formesRetenues)) {
+				distincts.add(morceau);
+				formesRetenues.addAll(formes);
 			}
 		}
 		if (distincts.size() < reglages.nombreMorceaux()) {
 			throw new SourceMusicaleInvalide(manque(source.type(), distincts.size(), reglages.nombreMorceaux()));
 		}
-		List<Morceau> melange = new ArrayList<>(distincts.values());
+		List<Morceau> melange = new ArrayList<>(distincts);
 		Collections.shuffle(melange, hasard);
 		return List.copyOf(melange.subList(0, reglages.nombreMorceaux()));
 	}
@@ -59,8 +60,18 @@ public final class TirageDeMorceaux {
 		};
 	}
 
-	private static String cle(Morceau morceau) {
-		return CorrecteurExact.normaliser(morceau.titre()) + "\n" + CorrecteurExact.normaliser(morceau.artiste());
+	/**
+	 * Couples titre et artiste que la correction accepte sans faute de frappe : deux Morceaux qui en partagent un ne
+	 * se distinguent pas, comme « The Cure » et « Cure » du même artiste, et forment un doublon.
+	 */
+	private static Set<String> formes(Morceau morceau) {
+		Set<String> formes = new HashSet<>();
+		for (String titre : CorrecteurTolerant.formesExactes(morceau.titre())) {
+			for (String artiste : CorrecteurTolerant.formesExactes(morceau.artiste())) {
+				formes.add(titre + "\n" + artiste);
+			}
+		}
+		return formes;
 	}
 
 }
