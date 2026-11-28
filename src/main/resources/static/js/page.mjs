@@ -53,13 +53,13 @@ function afficherPalmares(palmares) {
 		return li;
 	}));
 }
-function afficherCommun(vue) {
+function afficherCommun(vue, origine) {
 	const description = decrireVue(vue);
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
 	afficherPalmares(ecran === 'ecran' ? decrirePalmaresDeSalle(vue) : description.palmares);
-	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
+	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue, origine);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
@@ -95,7 +95,8 @@ async function demarrer() {
 	const zoneTalon = element('talon');
 	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
-	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio, acces.soireeId) : null;
+	const audioSalle = zoneAudio
+		? monterAudioSalle(zoneAudio, acces.soireeId, document.getElementById('titre-classement')) : null;
 	let suivi;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
@@ -133,7 +134,8 @@ async function demarrer() {
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
-			afficherCommun(vue);
+			afficherCommun(vue, origine);
+			audioSalle?.masquerChoix(vue.soiree.etat === 'TERMINEE');
 			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
 			photos?.afficher(vue);
@@ -147,6 +149,7 @@ async function demarrer() {
 			changerEtat(etat);
 			if (etat === 'coupure' && connexionRefusee) return;
 			connexionRefusee = false;
+			if (ecran === 'ecran') etatConnexion.className = etat === 'synchronisee' ? 'coupure coupure--synchronisee' : 'coupure';
 			etatConnexion.textContent = {
 				synchronisation: 'Synchronisation…', synchronisee: 'Vue synchronisée',
 				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',

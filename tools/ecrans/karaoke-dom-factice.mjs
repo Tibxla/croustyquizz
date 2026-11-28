@@ -20,6 +20,13 @@ export function creerDocument() {
 		removeAttribute(k) { this.attributes.delete(k); }
 		append(...enfants) { for (const e of enfants) { e.remove(); this.children.push(e); e.parentNode = this; } }
 		appendChild(e) { this.append(e); return e; }
+		insertBefore(e, repere) {
+			if (repere === null) return this.appendChild(e);
+			e.remove();
+			this.children.splice(this.children.indexOf(repere), 0, e);
+			e.parentNode = this;
+			return e;
+		}
 		replaceChildren(...enfants) { for (const e of this.children) e.parentNode = null; this.children = []; this.texte = ''; this.append(...enfants); }
 		remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(e => e !== this); this.parentNode = null; }
 		contains(cible) { return this === cible || this.children.some(e => e.contains(cible)); }

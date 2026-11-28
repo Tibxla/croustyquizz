@@ -87,7 +87,7 @@ function coordonnerDans(navigateur, id, soireeId, surAttente) {
 		ouverteA: navigateur.performance.timeOrigin, id, soireeId, surAttente });
 }
 
-export function monterAudioSalle(zone, soireeId) {
+export function monterAudioSalle(zone, soireeId, titrePodium) {
 	const document = zone.ownerDocument, navigateur = document.defaultView;
 	const ressources = {
 		document, creerUrl: fichier => navigateur.URL.createObjectURL(fichier), revoquerUrl: url => navigateur.URL.revokeObjectURL(url),
@@ -109,9 +109,10 @@ export function monterAudioSalle(zone, soireeId) {
 		choix.value = '';
 	});
 	audio.surChangement(({ fichiers, morceauxDisponibles, sonDebloque }) => {
-		const avaitFocus = document.activeElement === activer;
+		if (sonDebloque && document.activeElement === activer) {
+			(choisir.hidden ? titrePodium : choisir).focus();
+		}
 		alerte.hidden = activer.hidden = sonDebloque;
-		if (avaitFocus && activer.hidden) choisir.focus();
 		const nombre = fichiers?.length;
 		const compteur = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
 		const texte = morceauxDisponibles === false ? 'Aucun morceau lisible dans Attente' : compteur;
@@ -120,5 +121,11 @@ export function monterAudioSalle(zone, soireeId) {
 	// Le Blind test joue sans dossier de musique : le geste qui active le son doit être proposé dès le chargement.
 	activer.hidden = audio.etat().sonDebloque;
 	zone.hidden = false;
-	return audio;
+	return {
+		...audio,
+		masquerChoix(masquer) {
+			if (masquer && document.activeElement === choisir) titrePodium.focus();
+			choisir.hidden = masquer;
+		},
+	};
 }

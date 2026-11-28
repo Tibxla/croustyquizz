@@ -18,7 +18,7 @@ Ce parcours se joue sur `develop` déployée (recette Render) après chaque vagu
 4. **La Musique d'attente.** Sur l'Écran de salle, « Activer le son » : un morceau de la Bibliothèque de base joue, avec son crédit en bas de l'écran. Couper puis relancer la musique depuis la Console. Ouvrir un second Écran de salle : la musique ne se dédouble pas.
 5. **Le Karaoké.** Ajouter une Manche de Karaoké au programme et la lancer. Sur un téléphone, chercher et inscrire une Chanson de la Bibliothèque de base, en duo avec l'autre Joueur. L'appeler depuis la Console, confirmer « Je suis prêt » : la musique joue, les paroles défilent en mesure, le crédit reste affiché. Noter le Passage depuis le second téléphone, puis terminer la Manche : le Palmarès s'affiche.
 6. **Le Freestyle.** Lancer une Manche de Freestyle à plusieurs, sur une Instrumentale, puis le vote du meilleur Interprète.
-7. **La fin.** Terminer la Soirée : le Podium final s'affiche sur l'Écran de salle, puis le Palmarès.
+7. **La fin.** Terminer la Soirée : le Podium final s'affiche sur l'Écran de salle. Si le Palmarès du Karaoké était affiché, il reste visible sur la Console.
 8. **Les coupures.** À n'importe quel moment, fermer puis rouvrir un téléphone : le Joueur passe hors ligne puis revient. Recharger l'Écran de salle : il retrouve son état.
 
 ### À vérifier à chaque étape
