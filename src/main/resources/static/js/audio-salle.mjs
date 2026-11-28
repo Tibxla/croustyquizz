@@ -73,7 +73,7 @@ function coordonnerDans(navigateur, id, surAttente) {
 		ouverteA: navigateur.performance.timeOrigin, id, surAttente });
 }
 
-export function monterAudioSalle(zone) {
+export function monterAudioSalle(zone, titrePodium) {
 	const document = zone.ownerDocument, navigateur = document.defaultView;
 	const ressources = {
 		document, creerUrl: fichier => navigateur.URL.createObjectURL(fichier), revoquerUrl: url => navigateur.URL.revokeObjectURL(url),
@@ -95,12 +95,19 @@ export function monterAudioSalle(zone) {
 		choix.value = '';
 	});
 	audio.surChangement(({ fichiers, sonDebloque }) => {
-		const avaitFocus = document.activeElement === activer;
+		if (sonDebloque && document.activeElement === activer) {
+			(choisir.hidden ? titrePodium : choisir).focus();
+		}
 		alerte.hidden = activer.hidden = sonDebloque;
-		if (avaitFocus && activer.hidden) choisir.focus();
 		const nombre = fichiers?.length;
 		aide.textContent = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
 	});
 	zone.hidden = false;
-	return audio;
+	return {
+		...audio,
+		masquerChoix(masquer) {
+			if (masquer && document.activeElement === choisir) titrePodium.focus();
+			choisir.hidden = masquer;
+		},
+	};
 }

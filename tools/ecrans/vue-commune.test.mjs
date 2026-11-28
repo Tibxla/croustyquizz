@@ -67,24 +67,66 @@ test('le podium réunit les ex æquo sur la même marche et distingue le rang, l
 	]);
 });
 
-test('seul le premier affichage du podium par événement déclenche son entrée', () => {
+test('chaque marche affiche jusqu’à trois noms et annonce combien de concurrents restent', () => {
+	const zone = creerZoneClassement();
+	const classement = Array.from({ length: 5 }, (_, i) => ({ rang: 1, nom: `Joueur ${i + 1}`, points: 10 }));
+	for (const nombre of [2, 3, 4, 5]) {
+		afficherClassementDeSalle(zone, { soiree: { etat: 'TERMINEE' }, classement: classement.slice(0, nombre) },
+			{ source: 'capture' });
+		const marche = zone.querySelector('.salle__podium-marche');
+		assert.equal(marche.getAttribute('data-nombre'), String(nombre));
+		assert.deepEqual(marche.querySelectorAll('.salle__podium-nom').map(nom => nom.textContent),
+			nombre === 2 ? ['Joueur 1', 'Joueur 2'] : ['Joueur 1', 'Joueur 2', 'Joueur 3']);
+		const lignes = marche.querySelector('.salle__podium-concurrents').children;
+		assert.equal(lignes.length, Math.min(nombre, 4));
+		if (nombre > 3) assert.equal(lignes.at(-1).textContent, nombre === 4 ? 'et 1 autre' : 'et 2 autres');
+	}
+});
+
+test('une capture de la fin de Soirée affiche le podium immobile, même avant un événement', () => {
 	const vue = { soiree: { etat: 'TERMINEE' }, classement: [{ rang: 1, nom: 'Lou', points: 10 }] };
-	const capture = { source: 'capture', type: 'capture' };
+	const zone = creerZoneClassement();
+	const entree = 'salle__classement--entree';
+	afficherClassementDeSalle(zone, vue, { source: 'capture' });
+	assert.equal(zone.classList.contains(entree), false);
+	afficherClassementDeSalle(zone, vue, { source: 'evenement', type: 'classement-modifie' });
+	assert.equal(zone.classList.contains(entree), false);
+});
+
+test('un événement reçu pendant l’entrée du podium conserve ses marches jusqu’à la dernière fin d’animation', () => {
+	const vue = { soiree: { etat: 'TERMINEE' }, classement: [
+		{ rang: 1, nom: 'Lou', points: 10 }, { rang: 2, nom: 'Sam', points: 5 },
+	] };
 	const evenement = { source: 'evenement', type: 'soiree-terminee' };
-	const zoneEnDirect = creerZoneClassement();
-	const zoneRestauree = creerZoneClassement();
+	const zone = creerZoneClassement();
 	const entree = 'salle__classement--entree';
 
-	afficherClassementDeSalle(zoneRestauree, vue, capture);
-	assert.equal(zoneRestauree.classList.contains(entree), false);
-	afficherClassementDeSalle(zoneRestauree, vue, evenement);
-	assert.equal(zoneRestauree.classList.contains(entree), false);
+	afficherClassementDeSalle(zone, vue, evenement);
+	assert.equal(zone.classList.contains(entree), true);
+	const liste = zone.querySelector('ol');
+	const [premiere, deuxieme] = liste.children;
+	const vueSuivante = { ...vue, classement: vue.classement.map(ligne => ({ ...ligne })) };
+	afficherClassementDeSalle(zone, vueSuivante, { source: 'evenement', type: 'classement-modifie' });
+	assert.equal(zone.classList.contains(entree), true);
+	assert.equal(liste.children[0] === premiere && liste.children[1] === deuxieme, true);
+	afficherClassementDeSalle(zone, vueSuivante, { source: 'capture' });
+	assert.equal(zone.classList.contains(entree), true);
 
-	afficherClassementDeSalle(zoneEnDirect, { ...vue, soiree: { etat: 'EN_COURS' } }, capture);
-	afficherClassementDeSalle(zoneEnDirect, vue, evenement);
-	assert.equal(zoneEnDirect.classList.contains(entree), true);
-	afficherClassementDeSalle(zoneEnDirect, vue, capture);
-	assert.equal(zoneEnDirect.classList.contains(entree), false);
+	liste.dispatchEvent({ type: 'animationend', animationName: 'entree-marche', target: deuxieme });
+	assert.equal(zone.classList.contains(entree), true);
+	liste.dispatchEvent({ type: 'animationend', animationName: 'entree-marche', target: premiere });
+	assert.equal(zone.classList.contains(entree), false);
+	afficherClassementDeSalle(zone, vueSuivante, evenement);
+	assert.equal(zone.classList.contains(entree), false);
+	assert.equal(liste.children[0] === premiere, true);
+});
+
+test('quitter la fin de Soirée pendant l’entrée retire l’animation', () => {
+	const vue = { soiree: { etat: 'TERMINEE' }, classement: [{ rang: 1, nom: 'Lou', points: 10 }] };
+	const zone = creerZoneClassement();
+	afficherClassementDeSalle(zone, vue, { source: 'evenement', type: 'soiree-terminee' });
+	afficherClassementDeSalle(zone, { ...vue, soiree: { etat: 'EN_COURS' } }, { source: 'capture' });
+	assert.equal(zone.classList.contains('salle__classement--entree'), false);
 });
 
 test('sans point attribué, la fin de Soirée affiche le message à la place des marches', () => {

@@ -3,6 +3,11 @@ const etats = { PREPARATION: 'En préparation', OUVERTE: 'Ouverte', EN_COURS: 'E
 	EN_PAUSE: 'En pause', TERMINEE: 'Terminée', EN_ATTENTE: 'En attente' };
 const libellePoints = points => `${points} ${points === 1 ? 'point' : 'points'}`;
 const decrireLigne = ligne => `${ligne.rang}. ${ligne.nom} · ${libellePoints(ligne.points)}`;
+const maximumParMarche = 3;
+const contenusDesMarches = new WeakMap();
+const finsDEntree = new WeakMap();
+const classeEntree = 'salle__classement--entree';
+const classeMarcheEnEntree = 'salle__podium-marche--entree';
 
 export function decrireManche(manche) {
 	return `${manche.ordre + 1}. ${modes[manche.mode] ?? manche.mode} · ${etats[manche.etat] ?? manche.etat}`;
@@ -47,7 +52,7 @@ export function decrireClassementDeSalle(vue) {
 	return { titre: 'Classement général · Top 10', podium: false, lignes: vue.classement.slice(0, 10).map(decrireLigne) };
 }
 
-function rendreMarche(document, { rang, concurrents }) {
+function creerMarche(document, rang) {
 	const marche = document.createElement('li');
 	marche.className = 'salle__podium-marche';
 	marche.setAttribute('data-rang', rang);
@@ -58,7 +63,18 @@ function rendreMarche(document, { rang, concurrents }) {
 	const liste = document.createElement('ul');
 	liste.className = 'salle__podium-concurrents';
 	liste.setAttribute('role', 'list');
-	for (const concurrent of concurrents) {
+	marche.append(numero, liste);
+	return marche;
+}
+
+function actualiserMarche(marche, concurrents) {
+	const visibles = concurrents.slice(0, maximumParMarche);
+	const contenu = JSON.stringify([concurrents.length, visibles.map(({ nom, points }) => [nom, points])]);
+	if (contenusDesMarches.get(marche) === contenu) return;
+	contenusDesMarches.set(marche, contenu);
+	marche.setAttribute('data-nombre', concurrents.length);
+	const document = marche.ownerDocument;
+	const lignes = visibles.map(concurrent => {
 		const ligne = document.createElement('li');
 		const nom = document.createElement('span');
 		nom.className = 'salle__podium-nom';
@@ -67,32 +83,75 @@ function rendreMarche(document, { rang, concurrents }) {
 		points.className = 'salle__podium-points';
 		points.textContent = libellePoints(concurrent.points);
 		ligne.append(nom, points);
-		liste.append(ligne);
+		return ligne;
+	});
+	const restants = concurrents.length - visibles.length;
+	if (restants > 0) {
+		const ligne = document.createElement('li');
+		ligne.className = 'salle__podium-restants';
+		ligne.textContent = `et ${restants} ${restants === 1 ? 'autre' : 'autres'}`;
+		lignes.push(ligne);
 	}
-	marche.append(numero, liste);
-	return marche;
+	marche.querySelector('ul').replaceChildren(...lignes);
+}
+
+function afficherMarches(liste, marches) {
+	const enPlace = new Map(Array.from(liste.children, marche => [Number(marche.getAttribute('data-rang')), marche]));
+	for (const [rang, marche] of enPlace) {
+		if (!marches.some(description => description.rang === rang)) marche.remove();
+	}
+	marches.forEach(({ rang, concurrents }, index) => {
+		const marche = enPlace.get(rang) ?? creerMarche(liste.ownerDocument, rang);
+		actualiserMarche(marche, concurrents);
+		if (!enPlace.has(rang)) liste.insertBefore(marche, liste.children[index] ?? null);
+	});
+}
+
+function lancerEntree(zone, liste) {
+	if (!liste.children.length || zone.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+	for (const marche of liste.children) marche.classList.add(classeMarcheEnEntree);
+	zone.classList.add(classeEntree);
+
+	function terminer() {
+		zone.classList.remove(classeEntree);
+		liste.removeEventListener('animationend', finirMarche);
+		liste.removeEventListener('animationcancel', finirMarche);
+		finsDEntree.delete(zone);
+	}
+	function finirMarche(evenement) {
+		if (evenement.animationName !== 'entree-marche' || evenement.target.parentNode !== liste) return;
+		evenement.target.classList.remove(classeMarcheEnEntree);
+		if (!liste.querySelector(`.${classeMarcheEnEntree}`)) terminer();
+	}
+	finsDEntree.set(zone, terminer);
+	liste.addEventListener('animationend', finirMarche);
+	liste.addEventListener('animationcancel', finirMarche);
 }
 
 export function afficherClassementDeSalle(zone, vue, origine) {
 	const classement = decrireClassementDeSalle(vue);
 	const podium = classement?.podium ?? false;
-	const entreSurEvenement = podium && origine?.source === 'evenement' && !zone.classList.contains('salle__classement--podium');
+	const etaitPodium = zone.classList.contains('salle__classement--podium');
 	zone.hidden = classement === null;
 	zone.classList.toggle('salle__classement--podium', podium);
-	zone.classList.toggle('salle__classement--entree', entreSurEvenement);
+	if (!podium) finsDEntree.get(zone)?.();
 	if (!classement) return false;
-	zone.querySelector('h2').textContent = classement.titre;
+	const titre = zone.querySelector('h2');
+	if (titre.textContent !== classement.titre) titre.textContent = classement.titre;
 	const liste = zone.querySelector('ol');
-	const document = liste.ownerDocument;
-	const elements = classement.podium
-		? classement.marches.map(marche => rendreMarche(document, marche))
-		: classement.lignes.map(texte => {
-			const li = document.createElement('li');
+	if (podium) {
+		if (!etaitPodium) liste.replaceChildren();
+		afficherMarches(liste, classement.marches);
+		if (!liste.querySelector(`.${classeMarcheEnEntree}`)) finsDEntree.get(zone)?.();
+		if (!etaitPodium && origine?.source === 'evenement') lancerEntree(zone, liste);
+	} else {
+		liste.replaceChildren(...classement.lignes.map(texte => {
+			const li = liste.ownerDocument.createElement('li');
 			li.textContent = texte;
 			return li;
-		});
-	liste.replaceChildren(...elements);
-	liste.hidden = elements.length === 0;
-	zone.querySelector('p').hidden = elements.length > 0;
+		}));
+	}
+	liste.hidden = liste.childElementCount === 0;
+	zone.querySelector('p').hidden = !liste.hidden;
 	return true;
 }

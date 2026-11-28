@@ -41,8 +41,6 @@ function afficherCommun(vue, origine) {
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue, origine);
-	const choisirDossier = element('choisir-dossier');
-	if (choisirDossier) choisirDossier.hidden = vue.soiree.etat === 'TERMINEE';
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
@@ -78,7 +76,7 @@ async function demarrer() {
 	const zoneTalon = element('talon');
 	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
-	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
+	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio, document.getElementById('titre-classement')) : null;
 	let suivi;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
@@ -116,6 +114,7 @@ async function demarrer() {
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
 			afficherCommun(vue, origine);
+			audioSalle?.masquerChoix(vue.soiree.etat === 'TERMINEE');
 			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
 			photos?.afficher(vue);
@@ -127,6 +126,7 @@ async function demarrer() {
 		},
 		surEtat(etat) {
 			changerEtat(etat);
+			if (ecran === 'ecran') etatConnexion.className = etat === 'synchronisee' ? 'coupure coupure--synchronisee' : 'coupure';
 			etatConnexion.textContent = {
 				synchronisation: 'Synchronisation…', synchronisee: 'Vue synchronisée',
 				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',
