@@ -175,9 +175,9 @@ deux Manettes de la même Soirée de démonstration.
    notes 5, 4, 3, et que le Classement général conserve ses Points. Vérifier que la Manette
    n’affiche pas de Palmarès. Recharger la salle et la Console et contrôler le même résultat.
 3. Refaire le parcours avec un quatrième Passage sans note. Vérifier qu’il figure à la fin de
-   la liste de la Console, sans rang et avec « Aucun vote ». Sur la salle, vérifier que les trois
-   souches prennent la teinte du numéro de leur Passage et que les lignes restent lisibles à
-   1920 × 1080 et à 1280 × 720.
+   la liste de la Console, sans rang et avec « Aucun vote ». Sur la salle, vérifier qu’il n’apparaît
+   pas, que « et 1 autre Passage » suit les trois lignes, que les trois souches prennent la teinte
+   du numéro de leur Passage et que les lignes restent lisibles à 1920 × 1080 et à 1280 × 720.
 4. Démarrer la Manche suivante selon la recette #114. Vérifier que le Palmarès disparaît de
    la salle et de la Console à la réception de la nouvelle vue.
    Tant que le Palmarès est présent, il prend sur la salle la place du Classement général
@@ -189,6 +189,41 @@ deux Manettes de la même Soirée de démonstration.
 6. Terminer la Soirée juste après une Manche de Karaoké notée. Vérifier que la salle
    affiche le « Podium final » sans le Palmarès, et que la Console affiche toujours
    le Palmarès du Karaoké.
+
+### Recette du Palmarès au-delà de trois Passages (#236)
+
+L’Écran de salle reçoit le Palmarès complet, comme la Console, mais n’en montre que les trois
+premiers Passages classés, suivis d’une ligne « et N autres Passages » quand il y en a d’autres.
+N compte aussi les Passages sans vote. La salle ne défile pas et la liste n’a pas de cadre à
+hauteur bornée. La Console garde la liste complète.
+
+Le Palmarès réunit les Passages de toutes les Manches de Karaoké de la Soirée : on obtient 3, 5
+puis 10 Passages notés en enchaînant trois Manches de Karaoké dans la même Soirée de démonstration,
+en Pilotage Manuel, avec la Console, l’Écran de salle et deux Manettes. Noter chaque Passage
+depuis une Manette, avec des notes différentes pour départager les rangs. Faire chaque contrôle
+à 1920 × 1080 puis à 1280 × 720, en rechargeant la salle à chaque résolution.
+
+1. **3 Passages.** Terminer la première Manche après trois Passages notés. Vérifier sur la salle
+   les trois lignes en entier, la troisième comprise, sans ligne « et … autres », sans barre de
+   défilement, et le talon d’accès entièrement visible en bas de l’écran.
+2. **5 Passages.** Démarrer une deuxième Manche de Karaoké, noter deux Passages de plus, puis la
+   terminer. Vérifier sur la salle les trois premiers du Palmarès, puis « et 2 autres Passages »
+   sur une seule ligne, sous la liste. La Console affiche les cinq Passages. Le talon reste
+   visible et rien ne déborde de la colonne principale.
+3. **10 Passages.** Avec une troisième Manche, noter cinq Passages de plus. Vérifier
+   « et 7 autres Passages », la même hauteur de liste qu’à l’étape 2 et les dix Passages sur la
+   Console. Recharger la salle : même affichage, sans animation.
+4. **Passage sans vote.** Dans une quatrième Manche, terminer un Passage sans le noter, puis
+   terminer la Manche. Vérifier « et 8 autres Passages » sur la salle, et le Passage sans rang
+   en fin de liste sur la Console.
+5. **Aucun Passage classé.** Dans une Soirée neuve, terminer une Manche de Karaoké après un ou
+   deux Passages sans note. Vérifier « Aucun Passage noté. » seul sur la salle, sans ligne
+   « et … autres », et les Passages « Aucun vote » sur la Console.
+6. Avec un lecteur d’écran sur la salle, vérifier que la liste annonce trois éléments, chacun lu
+   une seule fois, puis la ligne « et N autres Passages ».
+7. **Noms longs.** Refaire l’étape 2 avec, sur les trois premiers Passages, un duo de pseudos
+   de 30 caractères, dont les Interprètes passent sur deux lignes. Vérifier à 1920 × 1080 puis à
+   1280 × 720 que le talon d’accès reste entier à l’écran.
 
 ### Musique d'attente (#140)
 
