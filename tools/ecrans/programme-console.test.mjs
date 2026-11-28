@@ -255,6 +255,26 @@ test('une source Deezer refusée en 422 s’affiche sous le formulaire, pas dans
 	b.programme.demonter();
 });
 
+test('un refus tardif d’une saisie déjà modifiée passe par le bandeau, pas sous le formulaire', async () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'BLIND_TEST';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.source.value = 'PLAYLIST';
+	b.idDeezer.value = '0';
+	b.nombreMorceaux.value = '10';
+	b.formulaire.dispatchEvent({ type: 'submit' });
+
+	b.idDeezer.value = '1306931615';
+	const detail = 'Deezer ne connaît aucune playlist 0 : vérifie l’identifiant et le type (playlist ou genre).';
+	b.appels[0].resoudre({ statut: 422, corps: { code: 'SOURCE_MUSICALE_INVALIDE', detail } });
+	await terminerMicrotaches();
+	assert.equal(b.erreurAjout.hidden, true, 'Le formulaire ne montre plus la source refusée.');
+	assert.deepEqual(b.annonces, ['en-cours', 'refuse'], 'La coquille annonce le refus avec son détail.');
+	b.programme.demonter();
+});
+
 test('le Karaoké envoie un objet de réglages vide et le démontage annule l’envoi', async () => {
 	const b = banc();
 	b.afficher([], 'OUVERTE');

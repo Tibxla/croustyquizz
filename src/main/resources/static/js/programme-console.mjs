@@ -48,7 +48,11 @@ export function monterProgramme(panneau, contexte) {
 	// 400 : réglages hors contrat ; 422 : réglages à corriger, comme une source Deezer inconnue ou trop courte.
 	const aCorriger = statut => statut === 400 || statut === 422;
 
-	async function modifier(methode, chemin, corps, surRequeteInvalide) {
+	/**
+	 * surRequeteInvalide affiche un 400 ou un 422 sous le formulaire ; encoreAffiche dit si le formulaire montre
+	 * toujours ce qui a été envoyé. Sinon, un refus tardif passe par le bandeau de la coquille.
+	 */
+	async function modifier(methode, chemin, corps, surRequeteInvalide, encoreAffiche = () => true) {
 		if (!peutEnvoyer()) return;
 		const annulation = new AbortController();
 		envoi = annulation;
@@ -56,11 +60,11 @@ export function monterProgramme(panneau, contexte) {
 		try {
 			const { statut, corps: reponse } = await contexte.envoyer(methode, route + chemin, corps, {
 				signal: annulation.signal,
-				annoncer: ({ statut }) => !aCorriger(statut) || !surRequeteInvalide || !modifiable,
+				annoncer: ({ statut }) => !aCorriger(statut) || !surRequeteInvalide || !modifiable || !encoreAffiche(),
 			});
 			if (annulation.signal.aborted) return;
 			if (statut === 400 || (statut === 422 && surRequeteInvalide)) {
-				if (modifiable) surRequeteInvalide?.(reponse);
+				if (modifiable && encoreAffiche()) surRequeteInvalide?.(reponse);
 				return;
 			}
 			// Récupère l’état courant avant une autre édition, même si la Console a manqué l’événement.
@@ -119,6 +123,12 @@ export function monterProgramme(panneau, contexte) {
 		contexte.effacerAnnonce();
 	}
 
+	/** Saisie brute du formulaire, pour savoir si un refus tardif vise encore ce qui est affiché. */
+	function saisieCourante() {
+		return JSON.stringify([mode.value, nombre.champ.value, temps.champ.value,
+			mode.value === 'BLIND_TEST' ? reglagesBlindTest() : null]);
+	}
+
 	function ajouter(evenement) {
 		evenement.preventDefault();
 		if (!peutEnvoyer()) return;
@@ -134,12 +144,13 @@ export function monterProgramme(panneau, contexte) {
 		} else if (modeDemande === 'BLIND_TEST') {
 			reglages = reglagesBlindTest();
 		}
+		const envoyee = saisieCourante();
 		void modifier('POST', '/manches', { mode: modeDemande, reglages }, reponse => {
 			// Le Probleme ne désigne aucun champ : le refus s'affiche sous le formulaire, sans en marquer un,
 			// et s'annonce par son rôle alert. Le focus reste où l'Animateur l'a laissé.
 			erreurAjout.textContent = reponse?.detail || 'Vérifie le Mode de jeu et les réglages de la Manche.';
 			erreurAjout.hidden = false;
-		});
+		}, () => saisieCourante() === envoyee);
 	}
 
 	function ligne(manche, index, programme) {
