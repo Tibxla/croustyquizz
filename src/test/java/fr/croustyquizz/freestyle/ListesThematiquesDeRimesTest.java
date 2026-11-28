@@ -1,0 +1,84 @@
+package fr.croustyquizz.freestyle;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+class ListesThematiquesDeRimesTest {
+    @ParameterizedTest
+    @CsvSource({
+        "SOIREE, soirée, préparer",
+        "SOIREE, chanson, boisson",
+        "VILLE, village, passage",
+        "VILLE, lumière, rivière",
+        "SPORT, jouer, marquer",
+        "SPORT, ballon, peloton"
+    })
+    void chaqueFamilleRemplitTrenteDeuxMesuresDistinctes(ThemeDeRimes theme, String depart, String exemple) {
+        DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.partage();
+
+        assertThat(dictionnaire.rimesDe(depart, theme))
+                .hasSizeGreaterThanOrEqualTo(32)
+                .doesNotHaveDuplicates()
+                .doesNotContain(depart)
+                .contains(exemple);
+    }
+
+    @Test
+    void prefereLeThemeDemandeQuandSaFamilleRemplitUneGrille() {
+        DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.partage();
+
+        assertThat(dictionnaire.rimesDe("ballon")).contains("bouchon", "peloton").doesNotHaveDuplicates();
+        assertThat(dictionnaire.rimesDe("ballon", ThemeDeRimes.SPORT))
+                .contains("peloton").doesNotContain("bouchon");
+        assertThat(dictionnaire.rimesDe("ballon", ThemeDeRimes.SOIREE))
+                .contains("bouchon").doesNotContain("peloton");
+        assertThat(dictionnaire.rimesDe("ballon", ThemeDeRimes.VILLE))
+                .as("le thème Ville n'a aucun mot en « on » : le lexique général le complète")
+                .contains("bouchon", "peloton", "maison").doesNotHaveDuplicates();
+    }
+
+    @Test
+    void neDevinePasLaPrononciationDUnMotAbsent() {
+        DictionnaireDeRimes dictionnaire = DictionnaireDeRimesFourni.partage();
+
+        assertThat(dictionnaire.rimesDe("croustimolle")).isEmpty();
+        assertThat(dictionnaire.rimesDe(" ")).isEmpty();
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "néon\tn  e ɔ̃\t55",
+        "néon\tn\t55",
+        "néon\t\t55"
+    })
+    void situeUneTerminaisonSansVoyelleDesLaLecture(String ligneInvalide) {
+        String contenu = "mot\tterminaison\tfréquence\nsoirée\ta ʁ e\t98\n" + ligneInvalide + "\n";
+
+        assertThatThrownBy(() -> lire(contenu))
+                .isInstanceOf(IOException.class).hasMessageContaining("essai.tsv:3")
+                .rootCause().hasMessageContaining("néon");
+    }
+
+    @Test
+    void lesEntreesDUneListePortentLeurTheme() throws IOException {
+        List<EntreePhonetique> entrees = lire("mot\tterminaison\tfréquence\nsoirée\ta ʁ e\t98\n");
+
+        assertThat(entrees).singleElement().satisfies(entree -> {
+            assertThat(entree.theme()).isEqualTo(ThemeDeRimes.SOIREE);
+            assertThat(entree.famille()).containsExactly("e");
+        });
+    }
+
+    private static List<EntreePhonetique> lire(String contenu) throws IOException {
+        return ListesThematiquesDeRimes.lire(new BufferedReader(new StringReader(contenu)), "essai.tsv",
+                ThemeDeRimes.SOIREE);
+    }
+}

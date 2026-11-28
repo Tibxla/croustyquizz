@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -46,7 +47,7 @@ class FournisseurCommunDemonstrationTest {
 		var canal = new ExecutorSubscribableChannel();
 		canal.subscribe(message -> destinations.add(SimpMessageHeaderAccessor.getDestination(message.getHeaders())));
 		var diffuseur = new DiffuseurStomp(new SimpMessagingTemplate(canal), Clock.fixed(Instant.EPOCH, ZoneOffset.UTC),
-				banc.verrous, banc.assembleur, new CaptureSalleFactice());
+				banc.verrous, banc.assembleur, new CaptureSalleFactice(), Duration.ofHours(24));
 		var vue = banc.assembleur.capturerJoueur(soiree, joueur);
 		diffuseur.envoyerJoueur(soiree, joueur, vue);
 		var autreCapture = diffuseur.capturerJoueur(autreSoiree, autreJoueur, null);

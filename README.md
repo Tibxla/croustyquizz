@@ -93,6 +93,8 @@ La couverture porte sur le code existant, pas sur les fonctionnalités encore à
 
 Le code du projet est distribué sous [licence MIT](LICENSE).
 
+Contient un extrait de Lexique 3.83 (CC BY-SA 4.0) : voir [`src/main/resources/freestyle/LISEZMOI.md`](src/main/resources/freestyle/LISEZMOI.md).
+
 ## Documentation
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) : branches, format des commits, pull requests. À lire avant le premier commit.

@@ -16,6 +16,8 @@ import java.util.random.RandomGenerator;
  */
 public final class TirageDeMorceaux {
 
+	private static final String CORRECTION = "demandes-en moins ou choisis une autre source.";
+
 	private final CatalogueMusical catalogue;
 	private final RandomGenerator hasard;
 
@@ -24,7 +26,7 @@ public final class TirageDeMorceaux {
 		this.hasard = Objects.requireNonNull(hasard, "hasard");
 	}
 
-	/** Rend {@code nombreMorceaux} Morceaux distincts, ou lève {@link SourceMusicaleIndisponible} s'il en manque. */
+	/** Rend {@code nombreMorceaux} Morceaux distincts, ou lève {@link SourceMusicaleInvalide} s'il en manque. */
 	public List<Morceau> tirer(ReglagesBlindTest reglages) {
 		SourceDeMorceaux source = reglages.source();
 		List<Morceau> candidats = switch (source.type()) {
@@ -39,11 +41,22 @@ public final class TirageDeMorceaux {
 			}
 		}
 		if (distincts.size() < reglages.nombreMorceaux()) {
-			throw new SourceMusicaleIndisponible("Cette source n'a pas assez de Morceaux jouables.");
+			throw new SourceMusicaleInvalide(manque(source.type(), distincts.size(), reglages.nombreMorceaux()));
 		}
 		List<Morceau> melange = new ArrayList<>(distincts.values());
 		Collections.shuffle(melange, hasard);
 		return List.copyOf(melange.subList(0, reglages.nombreMorceaux()));
+	}
+
+	/** Ce qui manque, et quoi corriger : le message est montré tel quel à l'Animateur. */
+	private static String manque(SourceDeMorceaux.Type type, int jouables, int demandes) {
+		String source = type == SourceDeMorceaux.Type.GENRE ? "Ce genre" : "Cette playlist";
+		return switch (jouables) {
+			case 0 -> source + " n’a aucun Morceau jouable : choisis une autre source.";
+			case 1 -> source + " n’a qu’un Morceau jouable pour " + demandes + " demandés : " + CORRECTION;
+			default -> source + " n’a que " + jouables + " Morceaux jouables pour " + demandes + " demandés : "
+					+ CORRECTION;
+		};
 	}
 
 	private static String cle(Morceau morceau) {

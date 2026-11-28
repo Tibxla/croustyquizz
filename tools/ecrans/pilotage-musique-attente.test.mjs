@@ -147,3 +147,34 @@ test('la salle signale seulement la disponibilité du dossier choisi, dans l’o
 	salle.demonter();
 	assert.equal(dossierChoisi, undefined);
 });
+
+test('la salle signale l’absence de morceaux quand elle a écarté tous ceux du dossier comme illisibles', async () => {
+	const envois = [];
+	const illisible = { name: 'Abîmé.ogg', webkitRelativePath: 'Musique/Attente/Abîmé.ogg' };
+	const audio = creerAudioSalle({ lecteur: {
+		async debloquer() {},
+		async charger() { throw new Error('Fichier audio illisible.'); },
+		async lire() {},
+		detruire() {},
+		position: () => 0, surFin: () => () => {}, surErreur: () => () => {},
+	}, coordonner(surAttente) {
+		return { activer: surAttente, signalerSonDeManche() {}, attendreSonDeManche: async () => true, detruire() {} };
+	} });
+	const { contexte, changerEtat } = creerContexte({ soireeId: 'soiree',
+		async envoyer(methode, route, corps) { envois.push({ methode, route, corps }); return { statut: 200 }; } });
+	const salle = monterMusiqueDAttenteSalle(audio, contexte);
+	changerEtat('synchronisee');
+	await audio.activerSon();
+	audio.choisirDossier([illisible]);
+	await terminerMicrotaches();
+	assert.deepEqual(envois.map(({ corps }) => corps), [{ morceauxDisponibles: true }]);
+
+	salle.afficher(vue('JOUE', true));
+	await terminerMicrotaches();
+	assert.deepEqual(envois, [
+		{ methode: 'PUT', route: chemin + '/disponibilite', corps: { morceauxDisponibles: true } },
+		{ methode: 'PUT', route: chemin + '/disponibilite', corps: { morceauxDisponibles: false } },
+	]);
+	salle.demonter();
+	await audio.detruire();
+});
