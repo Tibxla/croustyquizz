@@ -995,7 +995,10 @@ paths:
       operationId: piloterManche
       summary: Intervenir sur la Manche active
       description: 'Uniquement la Manche active en Soirée EN_COURS. Une nouvelle commande de Manche hors de cet
-        état de Soirée donne 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key. Quiz :
+        état de Soirée donne 409 ETAT_INCOMPATIBLE. Idempotence selon Idempotency-Key. Après validation de
+        etapeId, si phase est fournie et que le Mode de jeu déclare une phase courante différente, la commande
+        reçoit 409 COMMANDE_PERIMEE, sans mutation de la Manche ni publication. Sans phase fournie ou déclarée
+        par le Mode de jeu, les règles habituelles s’appliquent. Quiz :
         METTRE_EN_PAUSE gèle une Question ouverte ; REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la
         Question ouverte et révèle la correction, ou passe de CORRECTION à la Question suivante ; après la dernière
         correction, termine la Manche. TERMINER arrête la Manche sans révéler une Question abandonnée ni lui

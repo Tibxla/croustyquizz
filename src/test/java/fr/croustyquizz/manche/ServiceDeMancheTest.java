@@ -72,11 +72,38 @@ class ServiceDeMancheTest {
 	}
 
 	@Test
+	void passerEtapeRefuseUnePhasePerimeeSansChangerLInstantaneNiPublier() {
+		UUID manche = demarrer();
+		String route = "/commandes";
+		var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, null, "QUESTION_OUVERTE");
+		var action = new DeroulementFactice.ActionFactice(banc.commun.joueurs(soiree).getFirst(), banc.horloge.maintenant());
+		assertThat(banc.service.executer(manche, banc.envoi(soiree, "/action", action),
+				() -> PreparationDeCommande.prete(d -> d.recevoir(action)))).isInstanceOf(Accepte.class);
+		Object avant = banc.service.instantane(soiree, manche);
+		int publications = banc.diffuseur.envois().size();
+
+		assertThat(banc.service.piloter(manche, banc.envoi(soiree, route, passer), passer))
+				.isInstanceOfSatisfying(Refuse.class, refus -> {
+					assertThat(refus.statutHttp()).isEqualTo(409);
+					assertThat(refus.code()).isEqualTo("COMMANDE_PERIMEE");
+				});
+		assertThat(banc.service.instantane(soiree, manche)).isEqualTo(avant);
+		assertThat(banc.diffuseur.envois()).hasSize(publications);
+
+		var passerEnCorrection = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, null, "CORRECTION");
+		assertThat(banc.service.piloter(manche, banc.envoi(soiree, route, passerEnCorrection), passerEnCorrection))
+				.isInstanceOf(Accepte.class);
+		assertThat(((DeroulementFactice.Etat) banc.service.instantane(soiree, manche)).etape()).isEqualTo(2);
+	}
+
+	@Test
 	void repeterUnPilotageRendLeRecuInitialSansRepublierMemeApresRestauration() {
 		UUID manche = demarrer();
 		var pause = new InterventionDeManche(InterventionDeManche.Action.METTRE_EN_PAUSE, null);
 		var envoi = banc.envoi(soiree, "/commandes", pause);
-		var initial = banc.service.piloter(manche, envoi, pause);
+		var ancienCorps = banc.json.readTree("{\"action\":\"METTRE_EN_PAUSE\",\"etapeId\":null}");
+		var ancienEnvoi = new EnvoiDeCommande(envoi.acteur(), envoi.route(), envoi.envoiId(), ancienCorps);
+		var initial = banc.service.piloter(manche, ancienEnvoi, pause);
 		int publications = banc.diffuseur.envois().size();
 		banc.registre.retirer(manche);
 		banc.horloge.avancer(Duration.ofHours(1));

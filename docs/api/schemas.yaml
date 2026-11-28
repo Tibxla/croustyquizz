@@ -734,6 +734,9 @@ $defs:
       etapeId:
         type: string
         format: uuid
+      phase:
+        type: string
+        description: Phase affichée par la Console au clic, pour l’étape visée.
     required:
     - action
     description: etapeId désigne l’étape courante et doit alors lui correspondre, sinon 409 ETAPE_INACTIVE. Pour
