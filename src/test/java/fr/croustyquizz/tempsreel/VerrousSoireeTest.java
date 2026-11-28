@@ -2,7 +2,7 @@ package fr.croustyquizz.tempsreel;
 
 import static fr.croustyquizz.Attentes.PLAFOND;
 import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
-import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
+import static fr.croustyquizz.Attentes.retenir;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import java.util.UUID;
@@ -22,7 +22,7 @@ class VerrousSoireeTest {
 		try (var fils = Executors.newFixedThreadPool(2)) {
 			try {
 				var lente = fils.submit(() -> verrous.executer(premiere, () -> {
-					entree.countDown(); attendre(sortir); return "première";
+					entree.countDown(); retenir(sortir); return "première";
 				}));
 				assertThat(entree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
 				assertThat(fils.submit(() -> verrous.executer(seconde, () -> "seconde")).get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isEqualTo("seconde");
@@ -41,7 +41,7 @@ class VerrousSoireeTest {
 		try (var fils = Executors.newFixedThreadPool(2)) {
 			try {
 				// Un fil bloqué ailleurs que sur le verrou (ici un loquet) n'attend pas la Soirée.
-				var ailleurs = fils.submit(() -> { autreFil.set(Thread.currentThread()); attendre(sortir); });
+				var ailleurs = fils.submit(() -> { autreFil.set(Thread.currentThread()); retenir(sortir); });
 				await().atMost(PLAFOND).until(() -> autreFil.get() != null && autreFil.get().getState() == Thread.State.TIMED_WAITING);
 				assertThat(verrous.estAttenduPar(soiree, autreFil.get())).isFalse();
 
@@ -61,8 +61,4 @@ class VerrousSoireeTest {
 		}
 	}
 
-	private static void attendre(CountDownLatch verrou) {
-		try { assertThat(verrou.await(RETENUE_SECONDES, TimeUnit.SECONDS)).isTrue(); }
-		catch (InterruptedException interruption) { Thread.currentThread().interrupt(); throw new IllegalStateException(interruption); }
-	}
 }

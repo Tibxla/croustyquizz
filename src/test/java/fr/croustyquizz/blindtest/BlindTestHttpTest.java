@@ -220,14 +220,21 @@ class BlindTestHttpTest {
 		assertThat(second.path("partiesTrouvees")).isEmpty();
 
 		// Chaque vue de salle publiée respecte le contrat et ne dit rien du Morceau avant sa Révélation.
+		List<String> attendus = List.of("manche-demarree", "morceau-ouvert", "buzz-recu", "proposition-jugee",
+				"buzz-recu", "morceau-revele", "morceau-en-preparation", "morceau-ouvert");
 		List<String> types = new ArrayList<>();
-		// Le premier événement doit arriver ; les 200 ms suivantes guettent la fin de la série : une absence, gardée courte.
-		for (JsonNode evenement = salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS); evenement != null; evenement = salle.poll(200, TimeUnit.MILLISECONDS)) {
-			types.add(evenement.path("type").asString());
+		// La série est lue jusqu'à son dernier type attendu, sous le plafond : une diffusion en retard ne la tronque pas.
+		long limite = System.nanoTime() + PLAFOND.toNanos();
+		int trouves = 0;
+		while (trouves < attendus.size()) {
+			JsonNode evenement = salle.poll(limite - System.nanoTime(), TimeUnit.NANOSECONDS);
+			if (evenement == null) { break; }
+			String type = evenement.path("type").asString();
+			types.add(type);
+			if (type.equals(attendus.get(trouves))) { trouves++; }
 			verifierVueSalle(evenement.path("donnees"));
 		}
-		assertThat(types).containsSubsequence("manche-demarree", "morceau-ouvert", "buzz-recu", "proposition-jugee",
-				"buzz-recu", "morceau-revele", "morceau-en-preparation", "morceau-ouvert");
+		assertThat(types).containsSubsequence(attendus);
 		assertThat(types).doesNotContain("brouillon-depose");
 	}
 
@@ -306,12 +313,19 @@ class BlindTestHttpTest {
 
 		await().atMost(PLAFOND).until(() -> capture(soiree, "salle", soiree.cleEcran())
 				.path("vue").path("mancheActive").isNull());
+		List<String> attendus = List.of("manche-demarree", "morceau-saute", "manche-terminee");
 		List<String> types = new ArrayList<>();
-		// Le premier événement doit arriver ; les 200 ms suivantes guettent la fin de la série : une absence, gardée courte.
-		for (JsonNode evenement = salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS); evenement != null; evenement = salle.poll(200, TimeUnit.MILLISECONDS)) {
-			types.add(evenement.path("type").asString());
+		// La série est lue jusqu'à son dernier type attendu, sous le plafond : une diffusion en retard ne la tronque pas.
+		long limite = System.nanoTime() + PLAFOND.toNanos();
+		int trouves = 0;
+		while (trouves < attendus.size()) {
+			JsonNode evenement = salle.poll(limite - System.nanoTime(), TimeUnit.NANOSECONDS);
+			if (evenement == null) { break; }
+			String type = evenement.path("type").asString();
+			types.add(type);
+			if (type.equals(attendus.get(trouves))) { trouves++; }
 		}
-		assertThat(types).containsSubsequence("manche-demarree", "morceau-saute", "manche-terminee");
+		assertThat(types).containsSubsequence(attendus);
 	}
 
 	@Test

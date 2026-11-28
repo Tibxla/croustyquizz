@@ -2,6 +2,8 @@ package fr.croustyquizz.karaoke;
 
 import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.attendre;
+import static fr.croustyquizz.Attentes.retenir;
 import static org.assertj.core.api.Assertions.*;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
@@ -289,14 +291,14 @@ class KaraokeJpaTest {
                 var premier = fils.submit(() -> transaction.executeWithoutResult(s -> {
                     calages.memoriser(chansonId, 1, fichier, 100, maintenant);
                     ecrit.countDown();
-                    ServiceKaraokeTest.retenir(liberer);
+                    retenir(liberer);
                 }));
-                ServiceKaraokeTest.attendre(ecrit);
+                attendre(ecrit);
                 var second = fils.submit(() -> transaction.executeWithoutResult(s -> {
                     concurrent.countDown();
                     calages.memoriser(chansonId, 1, fichier, 200, maintenant.plusSeconds(1));
                 }));
-                ServiceKaraokeTest.attendre(concurrent);
+                attendre(concurrent);
                 liberer.countDown();
                 premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
                 second.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
