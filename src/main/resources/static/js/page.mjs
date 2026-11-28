@@ -8,6 +8,7 @@ import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterBuzz } from './buzz-manette.mjs';
+import { monterContactManette } from './contact-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { appeler, memoire } from './api.js';
@@ -155,6 +156,8 @@ async function demarrer() {
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
+	const zoneContact = element('contact');
+	const contact = accesManette && zoneContact ? monterContactManette(zoneContact, contexte) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
 	let connexionRefusee = false;
 	boutonReprise?.addEventListener('click', () => suivi?.resynchroniser({ explicite: true }));
@@ -166,6 +169,7 @@ async function demarrer() {
 			programme?.afficher(vue);
 			photos?.afficher(vue);
 			buzz?.afficher(vue);
+			contact?.afficher(vue);
 			pilotage?.afficher(vue);
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
@@ -196,6 +200,7 @@ async function demarrer() {
 		arreterMaintien?.();
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
+		contact?.demonter();
 		pilotage?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();

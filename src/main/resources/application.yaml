@@ -36,13 +36,15 @@ server:
         same-site: lax
 
 croustyquizz:
+  contacts:
+    adresse-publique: ${RENDER_EXTERNAL_URL:http://localhost:${server.port:8080}${server.servlet.context-path:}}
   tempsreel:
     delai-eviction-vues: 24h
   # Limite de requêtes (#4) : une rafale, puis un jeton regagné à chaque intervalle, par route et par clé.
   # Justification de chaque seuil dans ReglagesDesLimites ; réglage dans docs/deploiement.md.
   limites:
     actif: true
-    # Par route : chacune a sa table. Environ 200 octets par clé : au pire, 9 routes × 20 000 clés font 40 Mo.
+    # Par route : chacune a sa table. Environ 200 octets par clé : au pire, 10 routes × 20 000 clés font 40 Mo.
     plafond-cles: 20000
     # Par jeton. La Manette attend la réponse avant un nouveau Buzz : 5 par seconde reste hors de portée d'un doigt.
     buzz:
@@ -69,6 +71,10 @@ croustyquizz:
     qr-code:
       rafale: 10
       intervalle: 1s
+    # Par adresse IP : une salle peut s’inscrire d’un coup, puis les essais sont espacés.
+    inscription-contact:
+      rafale: 60
+      intervalle: 6s
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30

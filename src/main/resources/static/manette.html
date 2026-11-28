@@ -31,6 +31,45 @@
     <button type="button" class="bouton bouton--action bouton--grand" data-buzzer hidden disabled>Buzzer</button>
     <button type="button" class="bouton" data-reprise disabled>Resynchroniser</button>
   </div>
+  <section class="manette__contact" data-contact hidden>
+    <p class="manette__aide" data-contact-fin hidden>La Soirée est terminée. Tu peux garder le lien avec le Lieu.</p>
+    <button class="bouton bouton--lien" type="button">Recevoir les offres du Lieu par SMS</button>
+    <dialog class="dialogue contact-dialogue" aria-labelledby="titre-contact">
+      <div class="contact-dialogue__entete">
+        <h2 id="titre-contact" tabindex="-1" autofocus>Les offres du Lieu par SMS</h2>
+        <button type="button" class="bouton contact-dialogue__fermer" data-fermer-contact aria-label="Fermer le formulaire">
+          <span class="icone icone--fermer" aria-hidden="true"></span>
+        </button>
+      </div>
+      <p class="contact-dialogue__statut" role="status" tabindex="-1" data-statut-contact></p>
+      <form class="contact-dialogue__formulaire" hidden>
+        <div class="contact-dialogue__noms">
+          <div class="champ">
+            <label for="contact-prenom">Prénom</label>
+            <input id="contact-prenom" name="prenom" autocomplete="given-name" maxlength="120" required>
+          </div>
+          <div class="champ">
+            <label for="contact-nom">Nom</label>
+            <input id="contact-nom" name="nom" autocomplete="family-name" maxlength="120" required>
+          </div>
+        </div>
+        <div class="champ">
+          <label for="contact-numero">Numéro de téléphone</label>
+          <input id="contact-numero" name="numero" type="tel" autocomplete="tel" maxlength="40"
+            aria-describedby="aide-numero-contact" required>
+          <p class="champ__aide" id="aide-numero-contact">Numéro mobile français, au format 06, 07 ou +33.</p>
+        </div>
+        <p class="contact-dialogue__mention" id="mention-contact" data-mention-contact></p>
+        <label class="contact-dialogue__consentement">
+          <input type="checkbox" name="consentement" aria-describedby="mention-contact" required>
+          <span data-declaration-contact></span>
+        </label>
+        <button type="submit" class="bouton bouton--action" data-envoyer-contact>M’inscrire aux offres</button>
+      </form>
+      <button type="button" class="bouton" data-reessayer-contact hidden>Recharger le formulaire</button>
+      <a class="bouton" data-lien-contact target="_blank" rel="noopener noreferrer" hidden>Ouvrir mon lien de désinscription</a>
+    </dialog>
+  </section>
   <noscript>Active JavaScript pour recevoir la Vue synchronisée.</noscript>
 </main>
 </body>

@@ -141,7 +141,8 @@ test('le menu du compte mène aux Soirées du Lieu, à la préparation, aux Camp
 	assert.deepEqual(liens.map(a => [a.getAttribute('href'), a.textContent]),
 		[
 			['/soirees.html', 'Soirées du Lieu'], ['/preparer-soiree.html', 'Préparer une Soirée'],
-			['/campagnes-sms.html', 'Campagnes SMS'],
+			['/contacts.html', 'Contacts du Lieu'],
+		['/campagnes-sms.html', 'Campagnes SMS'],
 		]);
 	assert.equal(liens[0].getAttribute('aria-current'), 'page');
 	assert.equal(liens[1].getAttribute('aria-current'), null);

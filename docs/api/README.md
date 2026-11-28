@@ -516,3 +516,43 @@ L’aperçu reste une estimation, le nombre de destinataires étant susceptible 
 Les envois de cette tranche sont simulés. La liste affiche les Campagnes programmées, en cours et terminées,
 avec les compteurs d’envois simulés réussis et échoués. Elle fournit aussi le nombre courant de
 Contacts éligibles du Lieu. Les erreurs d’envoi ont un motif sans donnée de Contact.
+
+## Contacts du Lieu (#32)
+
+Une Manette authentifiée lit la mention d’information du Lieu de sa Soirée. Elle
+l’affiche avant la case de Consentement, décochée au départ. Elle renvoie
+la mention et le libellé exact de la case avec le formulaire. Si le texte a changé, elle affiche la
+nouvelle version et redemande le Consentement. Une Soirée terminée reste utilisable
+par les Joueurs qui l’ont rejointe. Le POST est limité par adresse IP, toutes Soirées
+confondues, avec une rafale de 60 puis un nouvel essai toutes les 6 secondes.
+
+Les numéros mobiles de France métropolitaine sont acceptés en format national
+(06 ou 07) et international (+33 ou 0033), avec ou sans séparateurs usuels.
+Le serveur les conserve au format international compact. Chaque Lieu enregistre
+une seule fiche par numéro, avec l’heure et le texte exact du dernier
+Consentement. La preuve réunit la mention d’information et le libellé de la case. Les coordonnées expirent trois ans après ce Consentement et sont
+purgées toutes les heures. L’expiration les exclut immédiatement des listes,
+exports et Campagnes.
+
+Le reçu de la première inscription contient le lien personnel. Un renouvellement
+met à jour le Consentement et conserve le même lien sans le rediffuser dans le
+reçu. Chaque SMS contient ce lien. Le fragment de la page publique est retiré
+après lecture. La clé voyage seulement dans le corps JSON du POST de
+désinscription. La désinscription efface les coordonnées et le Consentement.
+Une empreinte protégée du numéro par Lieu et l’identifiant technique du lien
+suffisent à bloquer une nouvelle inscription et à confirmer un rejeu de la
+désinscription. Ces données d’opposition sont gardées tant que le Lieu existe.
+
+Seule la session d’un Animateur permet de lister et d’exporter les Contacts
+actifs de son Lieu. Le fichier CSV est encodé en UTF-8. Les cellules qui
+pourraient être lues comme des formules, dont les numéros commençant par « + »,
+commencent par une apostrophe. Aucun numéro, Consentement ni lien de Contact
+ne figure dans les Vues synchronisées ni dans les événements.
+
+Voir [le parcours complet](exemples/parcours-contacts.yaml).
+
+L’adresse absolue utilisée dans les SMS vient de
+`CROUSTYQUIZZ_CONTACTS_ADRESSE_PUBLIQUE` si elle est configurée, puis de
+`RENDER_EXTERNAL_URL` sur Render. En développement, elle utilise l’adresse
+locale et le port de l’application. Sur un autre hébergement, définir l’adresse
+HTTPS publique, chemin de contexte compris s’il y en a un.

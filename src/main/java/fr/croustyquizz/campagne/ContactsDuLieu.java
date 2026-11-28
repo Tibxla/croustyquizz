@@ -17,7 +17,7 @@ public interface ContactsDuLieu {
 	/** Chaque identifiant apparaît au plus une fois. Les liens sont absolus et propres à chaque Contact. */
 	List<Contact> eligibles(UUID lieuId);
 
-	/** Relit le Consentement au moment de l’envoi. Le raccordement #32 peut cibler ce Contact en base. */
+	/** Relit le Consentement dans la transaction d’envoi. */
 	default Optional<Contact> eligible(UUID lieuId, UUID contactId) {
 		return eligibles(lieuId).stream().filter(contact -> contact.id().equals(contactId)).findFirst();
 	}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Contacts du Lieu · CroustyQuizz</title>
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/compte.css">
+	<link rel="stylesheet" href="/css/contacts.css">
+	<script type="module" src="/js/contacts-du-lieu.mjs"></script>
+</head>
+<body>
+	<header class="entete">
+		<a class="marque" href="/" aria-label="CroustyQuizz, accueil">Crousty<span class="marque__accent">Quizz</span></a>
+		<div data-menu-compte></div>
+	</header>
+	<main class="compte compte--large" data-contacts-du-lieu>
+		<a class="compte__retour" href="/soirees.html">
+			<span class="icone icone--retour" aria-hidden="true"></span>Soirées du Lieu
+		</a>
+		<section class="panneau" aria-labelledby="titre-contacts">
+			<div class="soirees__entete">
+				<h1 id="titre-contacts">Contacts du Lieu</h1>
+				<a class="bouton" href="/api/contacts/export" data-export-contacts hidden>Exporter en CSV</a>
+			</div>
+			<p class="compte__intro" role="status" data-statut-contacts>Chargement des Contacts…</p>
+			<table class="contacts-liste" aria-labelledby="titre-contacts" data-tableau-contacts hidden>
+				<thead>
+					<tr>
+						<th scope="col">Contact</th>
+						<th scope="col">Téléphone</th>
+						<th scope="col">Consentement donné le</th>
+						<th scope="col">Mention d’information</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+			<noscript>Active JavaScript pour consulter les Contacts du Lieu.</noscript>
+		</section>
+	</main>
+</body>
+</html>
