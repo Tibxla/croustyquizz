@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,10 @@ class AnimateurHttpTest {
 	private static final String INSCRIPTION = "/api/animateurs";
 	private static final String SESSION = "/api/animateurs/session";
 	private static final String CSRF = "X-CSRF-TOKEN";
+	private static final AtomicInteger DERNIERE_ADRESSE = new AtomicInteger();
+
+	// Le serveur est partagé par la classe. Chaque test dispose de son propre quota par adresse.
+	private final String adresse = "198.51.100." + DERNIERE_ADRESSE.incrementAndGet();
 
 	@LocalServerPort
 	private int port;
@@ -274,8 +279,7 @@ class AnimateurHttpTest {
 
 	private HttpResponse<String> envoyer(HttpClient client, String methode, String chemin, Map<String, String> entetes,
 			Object corps) throws Exception {
-		var requete = HttpRequest.newBuilder(URI.create("http://localhost:" + port + chemin));
-		entetes.forEach(requete::header);
+		var requete = requete(chemin, entetes);
 		if (corps == null) {
 			requete.method(methode, HttpRequest.BodyPublishers.noBody());
 		} else {
@@ -287,10 +291,15 @@ class AnimateurHttpTest {
 
 	private HttpResponse<String> envoyerBrut(HttpClient client, String methode, String chemin,
 			Map<String, String> entetes, String corps) throws Exception {
-		var requete = HttpRequest.newBuilder(URI.create("http://localhost:" + port + chemin));
-		entetes.forEach(requete::header);
-		requete.method(methode, HttpRequest.BodyPublishers.ofString(corps));
+		var requete = requete(chemin, entetes).method(methode, HttpRequest.BodyPublishers.ofString(corps));
 		return client.send(requete.build(), HttpResponse.BodyHandlers.ofString());
+	}
+
+	private HttpRequest.Builder requete(String chemin, Map<String, String> entetes) {
+		var requete = HttpRequest.newBuilder(URI.create("http://localhost:" + port + chemin))
+				.header("X-Forwarded-For", adresse);
+		entetes.forEach(requete::header);
+		return requete;
 	}
 
 	private JsonNode verifier(String operation, int statut, HttpResponse<String> reponse) throws Exception {

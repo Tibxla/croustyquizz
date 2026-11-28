@@ -2,7 +2,8 @@ package fr.croustyquizz.karaoke;
 
 import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
-import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
+import static fr.croustyquizz.Attentes.attendre;
+import static fr.croustyquizz.Attentes.retenir;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.*;
@@ -613,15 +614,6 @@ class ServiceKaraokeTest {
         return banc.service.inscrirePassage(manche, envoi(joueur, id, "POST", "/passages", corps), corps);
     }
     AccusePassage inscrire(UUID manche, long chanson) { return (AccusePassage) ((Accepte) inscrireResultat(manche, chanson, UUID.randomUUID())).accuse(); }
-    /** L'observateur attend un signal qui doit venir. */
-    static void attendre(CountDownLatch signal) { attendre(signal, PLAFOND_SECONDES); }
-    /** Le fil reste retenu jusqu'au feu vert du test, que celui-ci donne toujours dans un {@code finally}. */
-    static void retenir(CountDownLatch signal) { attendre(signal, RETENUE_SECONDES); }
-    private static void attendre(CountDownLatch signal, long secondes) {
-        try { assertThat(signal.await(secondes, TimeUnit.SECONDS)).isTrue(); }
-        catch (InterruptedException erreur) { Thread.currentThread().interrupt(); throw new IllegalStateException(erreur); }
-    }
-
     UUID demarrer() {
         UUID manche = banc.service.creer(soiree, Map.of());
         assertThat(banc.service.demarrer(manche, envoi(animateur, UUID.randomUUID(), "POST", "/demarrer", Map.of()))).isInstanceOf(Accepte.class);

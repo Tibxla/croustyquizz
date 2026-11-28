@@ -1,7 +1,7 @@
 package fr.croustyquizz.karaoke;
 
 import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
-import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
+import static fr.croustyquizz.Attentes.retenir;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -287,8 +287,7 @@ class AdaptateurLrclibTest {
         tls.setExecutor(executant);
         tls.setHttpsConfigurator(new HttpsConfigurator(SSLContext.getDefault()) {
             @Override public void configure(HttpsParameters parametres) {
-                try { retenir(liberer); }
-                catch (IOException erreur) { throw new IllegalStateException(erreur); }
+                retenir(liberer);
                 super.configure(parametres);
             }
         });
@@ -399,15 +398,6 @@ class AdaptateurLrclibTest {
         horloge.avancer(Duration.ofSeconds(9));
         assertThat(source.rechercher("titre")).isEmpty();
         assertThat(appels).hasValue(3);
-    }
-
-    private static void retenir(CountDownLatch signal) throws IOException {
-        try {
-            if (!signal.await(RETENUE_SECONDES, TimeUnit.SECONDS)) { throw new IOException("Signal de test non reçu"); }
-        } catch (InterruptedException erreur) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Serveur de test interrompu", erreur);
-        }
     }
 
     @ParameterizedTest

@@ -2,6 +2,7 @@ package fr.croustyquizz;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,8 @@ public record SessionAnimateurHttp(String cookie, String csrf) {
 	private static final String CONTRAT = "docs/api/openapi.yaml";
 	private static final String SESSION = "/api/animateurs/session";
 	private static final String CSRF = "X-CSRF-TOKEN";
+	/** Chaque session vient de sa propre adresse (198.18.0.0/15, réservée aux tests) : la limite d'inscription et de connexion par adresse (#238) ne la bloque pas. */
+	private static final AtomicInteger ADRESSES = new AtomicInteger();
 
 	public static SessionAnimateurHttp ouvrir(int port, JsonMapper json) throws Exception {
 		return ouvrir("http://localhost:" + port, json);
@@ -22,7 +25,9 @@ public record SessionAnimateurHttp(String cookie, String csrf) {
 
 	/** Pour un serveur servi sous un chemin de contexte, {@code adresse} le contient. */
 	public static SessionAnimateurHttp ouvrir(String adresse, JsonMapper json) throws Exception {
-		var client = RestClient.create(adresse);
+		int numero = ADRESSES.getAndIncrement() % 65_536;
+		String adresseClient = "198.18." + numero / 256 + "." + numero % 256;
+		var client = RestClient.builder().baseUrl(adresse).defaultHeader("X-Forwarded-For", adresseClient).build();
 		var initial = client.get().uri("/api/csrf").retrieve().toEntity(String.class);
 		ContratApi.verifier(CONTRAT, "obtenirCsrf", initial);
 		var anonyme = new SessionAnimateurHttp(cookie(initial), json.readTree(initial.getBody()).path("token").asString());

@@ -2,7 +2,7 @@ package fr.croustyquizz.manche;
 
 import static fr.croustyquizz.Attentes.PLAFOND;
 import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
-import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
+import static fr.croustyquizz.Attentes.retenir;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
@@ -218,7 +218,7 @@ class ServiceDeMancheTest {
 				var premier = fils.submit(() -> banc.service.executer(manche, banc.envoi(soiree, "/lent", Map.of()),
 						() -> PreparationDeCommande.prete(d -> {
 							maximum.accumulateAndGet(simultanes.incrementAndGet(), Math::max); entree.countDown();
-							attendre(sortir); simultanes.decrementAndGet();
+							retenir(sortir); simultanes.decrementAndGet();
 							return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet.");
 						})));
 				assertThat(entree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
@@ -308,7 +308,7 @@ class ServiceDeMancheTest {
 			try {
 				var premiere = fils.submit(() -> banc.service.executer(manche, banc.envoi(soiree, "/premiere", Map.of()),
 						() -> PreparationDeCommande.prete(d -> {
-							ordre.add(1); entree.countDown(); attendre(sortir);
+							ordre.add(1); entree.countDown(); retenir(sortir);
 							return new Refuse(409, "ETAT_INCOMPATIBLE", "Sans effet.");
 						})));
 				assertThat(entree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
@@ -332,7 +332,7 @@ class ServiceDeMancheTest {
 		try (var fils = Executors.newFixedThreadPool(2)) {
 			try {
 				var externe = fils.submit(() -> banc.service.executer(manche, banc.envoi(soiree, "/externe", Map.of()), () -> {
-					preparation.countDown(); attendre(finir);
+					preparation.countDown(); retenir(finir);
 					return PreparationDeCommande.refusee(new Refuse(404, "RESSOURCE_INTROUVABLE", "Contenu absent."));
 				}));
 				assertThat(preparation.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
@@ -402,9 +402,5 @@ class ServiceDeMancheTest {
 		assertThat(banc.service.demarrer(manche, banc.envoi(soiree, "/demarrer", Map.of()))).isInstanceOf(Accepte.class);
 		assertThat(banc.diffuseur.envois()).hasSize(6);
 		return manche;
-	}
-	private static void attendre(CountDownLatch verrou) {
-		try { assertThat(verrou.await(RETENUE_SECONDES, TimeUnit.SECONDS)).isTrue(); }
-		catch (InterruptedException interruption) { Thread.currentThread().interrupt(); throw new IllegalStateException(interruption); }
 	}
 }

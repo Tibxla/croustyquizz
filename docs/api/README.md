@@ -133,7 +133,7 @@ La pause gèle le temps restant ; la reprise crée une nouvelle échéance serve
 
 ## Limite de requêtes
 
-Avant toute exposition publique (#4), le serveur limite le Buzz, les Réponses et l’accès à une Soirée. Au-delà, il répond `429 TROP_DE_REQUETES` au format `Probleme` (réponse réutilisable `Erreur429`), avec `Cache-Control: no-store` et `Retry-After` en secondes. La requête ne change rien : ni reçu ni mutation. Une Manette affiche le `detail` comme tout refus ; rien ne réessaie automatiquement. Chaque route a sa propre limite et chaque clé son propre compteur : une Manette qui martèle ne gêne pas sa voisine. Les seuils par défaut sont réglables (`docs/deploiement.md`, « Limite de requêtes ») :
+Avant toute exposition publique (#4), le serveur limite le Buzz, les Réponses, l’accès à une Soirée, ainsi que la connexion et l’inscription de l’Animateur (#238). Au-delà, il répond `429 TROP_DE_REQUETES` au format `Probleme` (réponse réutilisable `Erreur429`), avec `Cache-Control: no-store` et `Retry-After` en secondes. La requête ne change rien : ni reçu ni mutation. Une Manette affiche le `detail` comme tout refus ; rien ne réessaie automatiquement. Chaque seuil a un compteur par clé, si bien qu’une Manette qui martèle ne gêne pas sa voisine. Les seuils par défaut sont réglables (`docs/deploiement.md`, « Limite de requêtes ») :
 
 | Routes | Clé | Rafale, puis rythme |
 |---|---|---|
@@ -143,16 +143,23 @@ Avant toute exposition publique (#4), le serveur limite le Buzz, les Réponses e
 | `rejoindreSoiree`, toutes les arrivées | adresse IP | 120, puis 1 toutes les 3 s |
 | `creerAccesEcran` | adresse IP | 10, puis 1 toutes les 6 s |
 | `consulterQrCodeSoiree` | jeton | 10, puis 1 par seconde |
+| `connecterAnimateur` | adresse IP | 20, puis 1 toutes les 3 s |
+| `connecterAnimateur`, échecs d’identification (`401 IDENTIFIANTS_INVALIDES`) | couple e-mail normalisé et adresse IP | 5, puis 1 toutes les 30 s |
+| `inscrireAnimateur` | adresse IP | 20, puis 1 toutes les 30 s |
 
-Une requête sans `Authorization` est comptée sur son adresse IP. Une arrivée acceptée ou refusée pour son pseudo ne consomme pas d’essai de code, si bien qu’une salle de 60 Joueurs derrière le même Wi-Fi peut arriver d’un coup. Le seau des codes n’est consulté qu’une fois la réponse connue : un code inconnu au-delà de la limite reçoit `429` au lieu de `404`, mais un code qui mène à une Soirée ouverte n’est jamais refusé par ce seau, même si d’autres téléphones du même réseau ont épuisé leurs essais. Seule la limite de toutes les arrivées vaut aussi pour lui.
+Le seuil par adresse IP borne les vérifications BCrypt, y compris quand les e-mails diffèrent. Après validation de la saisie, un couple e-mail et adresse IP qui a épuisé ses essais reçoit `429` avant la vérification du mot de passe. Sur le même réseau, les variantes de casse d’un e-mail partagent ce seau, même si le compte est inconnu. Une autre adresse IP a son propre seau pour le même e-mail. Seul un échec d’identification crée ou débite un seau pour ce couple. La rafale de 20 inscriptions permet à plusieurs Animateurs de créer leur compte en même temps derrière un NAT commun.
 
-Chaque route garde au plus un nombre fixe de clés en mémoire (`plafond-cles`). Au plafond, une clé nouvelle passe sans être comptée, sauf pour les codes inconnus : un code inconnu d’une adresse nouvelle reçoit alors `429`, un bon code passe toujours. Remplir la table d’une route ne touche pas celle d’une autre.
+Sur une route limitée par jeton, une requête sans `Authorization` est comptée sur son adresse IP. Une arrivée acceptée ou refusée pour son pseudo ne consomme pas d’essai de code, si bien qu’une salle de 60 Joueurs derrière le même Wi-Fi peut arriver d’un coup. Le seau des codes n’est consulté qu’une fois la réponse connue : un code inconnu au-delà de la limite reçoit `429` au lieu de `404`, mais un code qui mène à une Soirée ouverte n’est jamais refusé par ce seau, même si d’autres téléphones du même réseau ont épuisé leurs essais. Seule la limite de toutes les arrivées vaut aussi pour lui.
+
+Chaque seuil garde au plus un nombre fixe de clés en mémoire (`plafond-cles`). Au plafond, une clé nouvelle passe sans être comptée, sauf pour les codes inconnus : un code inconnu d’une adresse nouvelle reçoit alors `429`, un bon code passe toujours. Remplir une table n’affecte pas les autres.
+
+Si la table des couples e-mail et adresse IP est pleine, les couples déjà suivis restent limités. Les nouveaux couples relèvent du seul seuil par adresse IP jusqu’à ce qu’une place se libère. Ce fonctionnement permet aux Animateurs de continuer à se connecter quand la table est saturée.
 
 ## Blind test
 
 Les règles sont celles de l’[ADR 0009](../adr/0009-deroulement-du-blind-test.md). Ce qui suit les décrit vues du réseau ; [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) les illustre.
 
-**Préparation.** `ajouterManche` accepte `BLIND_TEST` avec `ReglagesBlindTest` : une source (`PLAYLIST` ou `GENRE` Deezer, par son identifiant) et un nombre de Morceaux de 1 à 50. Le serveur tire les Morceaux qui ont un extrait, hors du verrou de la Soirée. Ces réglages sont publics : la partie commune les publie tels quels à toutes les destinations (`mancheActive.reglages`). La sélection tirée reste donc dans l’état privé du mode et n’y figure jamais. Deezer indisponible, ou une source sans assez de Morceaux jouables : `503 SOURCE_MUSICALE_INDISPONIBLE`, sans Manche ajoutée.
+**Préparation.** `ajouterManche` accepte `BLIND_TEST` avec `ReglagesBlindTest` : une source (`PLAYLIST` ou `GENRE` Deezer, par son identifiant) et un nombre de Morceaux de 1 à 50. Le serveur tire les Morceaux qui ont un extrait, hors du verrou de la Soirée. Ces réglages sont publics : la partie commune les publie tels quels à toutes les destinations (`mancheActive.reglages`). La sélection tirée reste donc dans l’état privé du mode et n’y figure jamais. Une source que Deezer ne connaît pas (son erreur `800`, « pas de données »), ou qui n’a pas assez de Morceaux jouables pour le nombre demandé : `422 SOURCE_MUSICALE_INVALIDE`, avec un `detail` qui dit quoi corriger. Réessayer sans changer les réglages ne servira à rien. Deezer injoignable, en panne, trop lent ou qui signale une autre erreur (quota, service occupé) : `503 SOURCE_MUSICALE_INDISPONIBLE`. Dans les deux cas, aucune Manche n’est ajoutée.
 
 **Phases d’un Morceau.** `PREPARATION` (le serveur demande le lien d’extrait hors du verrou), `EXTRAIT`, `PROPOSITION` (un Joueur a la main), `REVELATION`. `etapeId` identifie le Morceau courant ; il est attribué par le serveur et n’est jamais l’identifiant Deezer. `lecture` décrit les 30 s d’extrait menées par l’Horloge du serveur : en lecture depuis `positionMs` à l’instant `depuisLe`, ou en pause à `positionMs`. Les 30 s partent de la mise en lecture et s’arrêtent pendant la saisie et les pauses de la Manche. L’Écran de salle s’aligne sur `lecture` sans rien signaler ; un Écran rechargé reprend à la bonne position.
 

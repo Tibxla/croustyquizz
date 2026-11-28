@@ -53,7 +53,8 @@ paths:
         de casse (409 EMAIL_DEJA_UTILISE). Ce 409 révèle qu’un compte existe pour cet e-mail : sans confirmation
         par e-mail, l’inscription ne peut pas répondre de façon neutre. Le mot de passe est haché côté serveur et
         absent des réponses. L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une
-        extension de #5.
+        extension de #5. Au-delà de la limite d’inscription par adresse IP, 429 TROP_DE_REQUETES avec
+        Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Accès
       security: []
@@ -83,6 +84,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -105,8 +108,10 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe. Limite connue : le nombre d’essais n’est pas encore limité ; une
-        limite est à ajouter avant toute exposition publique.'
+        sans distinguer e-mail et mot de passe. Une adresse IP qui a épuisé ses tentatives, ou un couple
+        e-mail normalisé et adresse IP qui a épuisé ses essais d’identification, reçoit 429 TROP_DE_REQUETES
+        avec Retry-After. Seuls les échecs d’identification alimentent le compteur du couple
+        (README.md, « Limite de requêtes »).'
       tags:
       - Accès
       security: []
@@ -135,6 +140,8 @@ paths:
           $ref: '#/components/responses/Erreur403'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -568,8 +575,10 @@ paths:
         en fin de programme et publie programme-modifie sur la Console. KARAOKE résout la limite initiale
         configurée si elle est absente. BLIND_TEST tire les Morceaux dans la playlist ou le genre Deezer, hors
         du verrou de la Soirée, parmi ceux qui ont un extrait ; la sélection reste privée et n’apparaît jamais
-        dans les réglages, publiés à toutes les destinations. Deezer indisponible ou source sans assez de
-        Morceaux jouables : 503 SOURCE_MUSICALE_INDISPONIBLE, rien n’est ajouté. Un mode ou des réglages hors
+        dans les réglages, publiés à toutes les destinations. Une source que Deezer ne connaît pas, ou qui n’a
+        pas assez de Morceaux jouables, donne 422 SOURCE_MUSICALE_INVALIDE, avec un detail qui dit quoi
+        corriger ; Deezer injoignable, en panne ou trop lent donne 503 SOURCE_MUSICALE_INDISPONIBLE. Dans les
+        deux cas, rien n’est ajouté. Un mode ou des réglages hors
         schéma donnent 400 REQUETE_INVALIDE. Aucun Idempotency-Key ajouté à cette route.'
       tags:
       - Soirée
@@ -3456,10 +3465,10 @@ components:
           schema:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur429:
-      description: 'TROP_DE_REQUETES : la limite de requêtes de la route est atteinte pour ce jeton, cette clé
-        d’Écran ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé : aucun
-        reçu, aucune mutation. Un nouvel essai, décidé par la personne et jamais automatique, passe après
-        Retry-After.'
+      description: 'TROP_DE_REQUETES : le seuil de requêtes est atteint pour ce jeton, cette clé d’Écran,
+        cette adresse IP ou ce couple e-mail et adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé :
+        aucun reçu, aucune mutation. Retry-After indique quand le seuil atteint permet un nouvel essai, décidé
+        par la personne et jamais automatique.'
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.
@@ -3467,7 +3476,7 @@ components:
             type: string
             const: no-store
         Retry-After:
-          description: Secondes à attendre avant qu’un nouvel essai puisse passer, arrondies à l’entier supérieur.
+          description: Secondes à attendre avant de réessayer selon le seuil atteint, arrondies à l’entier supérieur.
           required: true
           schema:
             type: integer
@@ -3479,7 +3488,7 @@ components:
     Erreur503:
       description: 'SERVICE_INDISPONIBLE : base ou transaction indisponible. SOURCE_PAROLES_INDISPONIBLE :
         consultation externe en échec sur les routes Karaoké prévues. SOURCE_MUSICALE_INDISPONIBLE : Deezer
-        indisponible à la création d’une Manche de Blind test. Aucun reçu. Pour réessayer une mutation
+        injoignable, en panne ou trop lent à la création d’une Manche de Blind test. Aucun reçu. Pour réessayer une mutation
         qui utilise une clé d’idempotence, conserver la clé et le contenu.'
       headers:
         Cache-Control:

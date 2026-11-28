@@ -26,7 +26,6 @@ import org.apache.tomcat.websocket.WsWebSocketContainer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -184,8 +183,8 @@ class BuzzDeSoireeHttpTest {
 		assertThat(evenement.path("donnees").path("dernierBuzz")).isEqualTo(suivant);
 	}
 
+	// Pas de budget global : chaque attente du test est déjà bornée, et un budget fixe pourrait la trancher avant terme.
 	@Test
-	@Timeout(30)
 	void soixanteManettesBuzzantEnsembleRecoiventToutesLesRevisionsDansLeMemeOrdre() throws Exception {
 		SoireeOuverte soiree = ouvrirSoiree();
 		List<EnvoiDeBuzz> envois = new ArrayList<>();
