@@ -1006,6 +1006,24 @@ $defs:
         type: boolean
         description: Le dossier choisi contient au moins un fichier audio dans Attente.
     required: [morceauxDisponibles]
+  SignalSonEcran:
+    type: object
+    additionalProperties: false
+    properties:
+      abonnementId:
+        type: string
+        format: uuid
+        description: Abonnement actif de cet Écran de salle au canal de salle.
+      sonActive:
+        type: boolean
+        description: Le navigateur de cet Écran a autorisé le son.
+    required: [abonnementId, sonActive]
+  EtatSonEcran:
+    type: string
+    enum: [ABSENT, COUPE, ACTIVE]
+    description: >
+      ACTIVE si au moins un Écran connecté a activé le son, COUPE si tous les Écrans
+      qui ont signalé leur état ont le son coupé, ABSENT sans signal actif.
   MusiqueDAttente:
     type: object
     additionalProperties: false
@@ -1125,6 +1143,9 @@ $defs:
         $ref: '#/$defs/Soiree'
       musiqueAttente:
         $ref: '#/$defs/MusiqueDAttente'
+      sonEcran:
+        $ref: '#/$defs/EtatSonEcran'
+        default: ABSENT
       mancheActive:
         oneOf:
         - $ref: '#/$defs/Manche'
@@ -1456,6 +1477,7 @@ $defs:
         - calage-chanson-modifie
         - instrumentales-modifiees
         - musique-attente-modifiee
+        - son-ecran-modifie
       soireeId:
         type: string
         format: uuid

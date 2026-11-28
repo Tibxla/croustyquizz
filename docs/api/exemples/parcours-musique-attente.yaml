@@ -1,4 +1,4 @@
-description: L’Écran de salle signale son dossier, puis l’Animateur coupe la Musique d’attente hors Manche.
+description: Hors Manche, l’Écran de salle signale son dossier et son état sonore, et l’Animateur coupe la Musique d’attente.
 parametresCommuns:
   soireeId: &soireeId 14100000-0000-4000-8000-000000000001
 http:
@@ -22,6 +22,30 @@ http:
   requete: *coupure
   statut: 200
   reponse: *coupure
+- nom: Signaler le son coupé au chargement
+  operationId: signalerSonEcran
+  acteur: ecran
+  requete: &sonCoupe { abonnementId: &abonnementEcran 14100000-0000-4000-8000-000000000002, sonActive: false }
+  statut: 200
+  reponse: *sonCoupe
+- nom: Signaler l’activation du son
+  operationId: signalerSonEcran
+  acteur: ecran
+  requete: &sonActive { abonnementId: *abonnementEcran, sonActive: true }
+  statut: 200
+  reponse: *sonActive
+- nom: Refuser le signal d’un Écran déconnecté
+  operationId: signalerSonEcran
+  acteur: ecran
+  requete: *sonActive
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: ABONNEMENT_INACTIF
+    detail: L’abonnement de l’Écran de salle n’est plus actif.
+    instance: /api/soirees/14100000-0000-4000-8000-000000000001/son-ecran
 evenements:
 - nom: Actualiser la Console après le signal du dossier
   canal: console
@@ -30,7 +54,7 @@ evenements:
     soireeId: *soireeId
     revision: 1
     emisLe: 2026-11-24T20:00:01.000Z
-    donnees:
+    donnees: &consoleInitiale
       soiree: &soiree
         id: *soireeId
         titre: Soirée fictive
@@ -60,6 +84,39 @@ evenements:
       joueurs: []
       classement: []
       dernierBuzz: null
+- nom: Prévenir la Console que le son est coupé
+  canal: console
+  message:
+    type: son-ecran-modifie
+    soireeId: *soireeId
+    revision: 3
+    emisLe: 2026-11-24T20:00:03.000Z
+    donnees:
+      <<: *consoleInitiale
+      musiqueAttente: { etat: COUPEE, morceauxDisponibles: false }
+      sonEcran: COUPE
+- nom: Prévenir la Console que le son est activé
+  canal: console
+  message:
+    type: son-ecran-modifie
+    soireeId: *soireeId
+    revision: 4
+    emisLe: 2026-11-24T20:00:04.000Z
+    donnees:
+      <<: *consoleInitiale
+      musiqueAttente: { etat: COUPEE, morceauxDisponibles: false }
+      sonEcran: ACTIVE
+- nom: Oublier le son quand l’Écran se déconnecte
+  canal: console
+  message:
+    type: son-ecran-modifie
+    soireeId: *soireeId
+    revision: 5
+    emisLe: 2026-11-24T20:00:05.000Z
+    donnees:
+      <<: *consoleInitiale
+      musiqueAttente: { etat: COUPEE, morceauxDisponibles: false }
+      sonEcran: ABSENT
 resynchronisation:
   destination: /topic/soirees/14100000-0000-4000-8000-000000000001/salle
   routeEtat: /api/soirees/14100000-0000-4000-8000-000000000001/etat/salle
@@ -79,4 +136,23 @@ resynchronisation:
   tampon: [*coupureSalle, *coupureSalle]
   revisionFinale: 2
   vueFinale: *salleCoupee
-cases: []
+cases:
+- nom: L’abonnement est requis pour signaler le son
+  schema: SignalSonEcran
+  valide: false
+  valeur: { sonActive: true }
+- nom: L’état du son est requis
+  schema: SignalSonEcran
+  valide: false
+  valeur: { abonnementId: *abonnementEcran }
+- nom: Un signal du son refuse les champs inconnus
+  schema: SignalSonEcran
+  valide: false
+  valeur:
+    <<: *sonActive
+    morceauxDisponibles: true
+- nom: L’état du son est un booléen JSON
+  schema: SignalSonEcran
+  valide: false
+  valeur: { abonnementId: *abonnementEcran, sonActive: 'true' }
+  correction: { chemin: [sonActive], valeur: true }

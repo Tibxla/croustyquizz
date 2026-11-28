@@ -91,7 +91,7 @@ export function suivreVue({ destination, routeEtat, surVue, surEtat = () => {} }
 				appliquer(suivi, message);
 			}
 			suivi.tampon = [];
-			if (actif(suivi)) surEtat('synchronisee');
+			if (actif(suivi)) surEtat('synchronisee', suivi.id);
 		} catch {
 			recommencer(suivi);
 		}
