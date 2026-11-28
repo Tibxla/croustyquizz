@@ -1,16 +1,21 @@
 package fr.croustyquizz.passage;
 
+import fr.croustyquizz.manche.Accepte;
+import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.Horloge;
 import fr.croustyquizz.manche.Minuteur;
 import fr.croustyquizz.manche.Refuse;
+import fr.croustyquizz.manche.ResultatDeCommande;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -40,6 +45,16 @@ public final class VoteDuPublic {
         if (votes.putIfAbsent(passageId, vote) == null && !enPause) {
             programmer(vote, horloge.maintenant());
         }
+    }
+
+    public ResultatDeCommande recevoir(VoterPassage action, boolean enPause) {
+        var refus = voter(action.joueurId(), action.cible(), action.note(), action.recueLe(), enPause);
+        if (refus.isPresent()) { return refus.get(); }
+        Passage passage = file.trouver(action.cible().passageId());
+        var accuse = new AccuseVote(action.envoiId(), passage.soireeId(), passage.mancheId(),
+                passage.id(), action.note(), action.recueLe());
+        return new Accepte(accuse, Set.of(Destination.SALLE, Destination.CONSOLE, Destination.joueur(action.joueurId())),
+                "vote-enregistre");
     }
 
     public Optional<Refuse> voter(UUID joueurId, CiblePassage cible, int note, Instant recueLe, boolean enPause) {
@@ -149,6 +164,19 @@ public final class VoteDuPublic {
     public static Integer moyenneDixiemes(long nombreVotes, long sommeNotes) {
         if (nombreVotes == 0) { return null; }
         return (int) ((20 * sommeNotes + nombreVotes) / (2 * nombreVotes));
+    }
+
+    /** Les Votes ouverts et le dernier Vote clos, du plus récent au plus ancien. */
+    public static List<EtatVotePassage> visibles(EtatVoteDuPublic etat, FileAttente file) {
+        var votes = etat.votes();
+        var visibles = new ArrayList<>(votes.stream().filter(EtatVotePassage::ouvert).toList());
+        votes.stream().filter(vote -> !vote.ouvert())
+                .max(Comparator.comparing(EtatVotePassage::clotureLe)
+                        .thenComparingLong(vote -> file.trouver(vote.passageId()).numero()))
+                .ifPresent(visibles::add);
+        visibles.sort(Comparator.comparing(EtatVotePassage::ouvertLe).reversed()
+                .thenComparing(Comparator.comparingLong((EtatVotePassage vote) -> file.trouver(vote.passageId()).numero()).reversed()));
+        return List.copyOf(visibles);
     }
 
     public static ProjectionVote projeter(EtatVotePassage vote, Instant maintenant) {

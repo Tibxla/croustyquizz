@@ -1,6 +1,6 @@
 asyncapi: 3.1.0
 info:
-  title: CroustyQuizz — événements du Quiz, du Blind test et du Karaoké
+  title: CroustyQuizz — événements du Quiz, du Blind test, du Karaoké et du Freestyle
   version: 0.1.0
   description: 'Application décrite : serveur CroustyQuizz. Contrat cible à relire (#34, #82, #98).
     STOMP 1.2 sur WebSocket, du serveur vers les écrans seulement : toute commande passe par HTTP, celles
@@ -49,7 +49,9 @@ channels:
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
       Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele, morceau-saute et verdict-renverse (arbitrage de l’Animateur, annoncé par blindtest.arbitrage) ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon ni texte de Proposition publié.
       Photos : photos-modifiees au changement d’affiche ; le bloc photos est nul sans affiche,
-      sinon limité à l’UUID de la photo et à son échéance."
+      sinon limité à l’UUID de la photo et à son échéance.
+      Freestyle : les causes de File d’attente, de cycle et de Vote du public sont
+      partagées. La salle reçoit la Grille masquée du Passage démarré."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -84,7 +86,10 @@ channels:
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait.
       Photos : photos-modifiees à l’arrivée, à la modération, au changement de réglage et à l’oubli
       des photos après douze heures d’inactivité. Le bloc photos indique le réglage et les photos en
-      attente dans l’ordre d’arrivée."
+      attente dans l’ordre d’arrivée.
+      Freestyle : les causes de File d’attente, de cycle et de Vote du public sont
+      partagées. La Console reçoit la Grille complète du Passage démarré. La déclaration des fiches
+      publie instrumentales-modifiees sur la Console et les Manettes dont la sélection disponible change."
     parameters:
       soireeId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.
@@ -118,7 +123,11 @@ channels:
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle, chaque Joueur recevant sa propre vue ; brouillon-depose uniquement à la Manette de l’auteur d’un brouillon retenu ; bloc blindtest (BlocBlindTestManette : main, blocage, champs encore demandés et brouillon de son seul auteur), sans lien d’extrait ni réponse avant la Révélation.
       Photos : photos-modifiees au changement de réglage ; le bloc photos indique
-      seulement si les envois sont ouverts."
+      seulement si les envois sont ouverts.
+      Freestyle : les causes de File d’attente, de cycle et de Vote du public sont partagées.
+      La Manette reçoit la Grille masquée du Passage démarré, les fiches sélectionnées et disponibles,
+      ses Passages et ses votes personnels. Une déclaration modifiant les fiches de sa sélection publie
+      instrumentales-modifiees."
     parameters:
       joueurId:
         description: UUID attribué par le serveur et contrôlé par l’autorisation.

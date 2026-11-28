@@ -109,7 +109,7 @@ public final class VuesKaraoke {
                 yield new BlocKaraokeManette(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
                         etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
                         personnels, personnels.size(), true, peutInscrire, peutInscrire ? null : "LIMITE_ATTEINTE", peutConfirmer,
-                        votesVisibles(instantane, file).stream()
+                        VoteDuPublic.visibles(instantane.voteDuPublic(), file).stream()
                                 .map(vote -> projeterVoteManette(instantane, file, pseudos, maintenant, vote, joueur)).toList());
             }
             default -> throw new IllegalArgumentException("Une destination concrète est requise.");
@@ -118,20 +118,8 @@ public final class VuesKaraoke {
 
     private static List<VoteDuPassage> projeterVotesPublics(InstantaneKaraoke instantane, FileAttente file,
             Map<UUID, String> pseudos, Instant maintenant) {
-        return votesVisibles(instantane, file).stream()
+        return VoteDuPublic.visibles(instantane.voteDuPublic(), file).stream()
                 .map(vote -> projeterVote(instantane, file, pseudos, maintenant, vote)).toList();
-    }
-
-    private static List<EtatVotePassage> votesVisibles(InstantaneKaraoke instantane, FileAttente file) {
-        var votes = instantane.voteDuPublic().votes();
-        var visibles = new ArrayList<>(votes.stream().filter(EtatVotePassage::ouvert).toList());
-        votes.stream().filter(vote -> !vote.ouvert())
-                .max(Comparator.comparing(EtatVotePassage::clotureLe)
-                        .thenComparingLong(vote -> file.trouver(vote.passageId()).numero()))
-                .ifPresent(visibles::add);
-        visibles.sort(Comparator.comparing(EtatVotePassage::ouvertLe).reversed()
-                .thenComparing(Comparator.comparingLong((EtatVotePassage vote) -> file.trouver(vote.passageId()).numero()).reversed()));
-        return visibles;
     }
 
     private static VoteDuPassage projeterVote(InstantaneKaraoke instantane, FileAttente file,

@@ -2,12 +2,15 @@ package fr.croustyquizz.passage;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
 
+import fr.croustyquizz.manche.Accepte;
+import fr.croustyquizz.manche.Destination;
 import fr.croustyquizz.manche.Horloge;
 import fr.croustyquizz.manche.Minuteur;
 import fr.croustyquizz.manche.Refuse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -81,8 +84,11 @@ public final class CycleDePassage {
     public ResultatFile demarrer(CiblePassage cible, UUID etapeId, Duration dureeReference, Instant maintenant) {
         Passage courant = courantActif();
         if (courant == null || courant.etat() != EtatPassage.APPELE || !courant.id().equals(cible.passageId())
-                || !chronologie.etapeId().equals(etapeId)) {
+                || courant.numeroModification() != cible.numeroModification() || !chronologie.etapeId().equals(etapeId)) {
             return new ResultatFile.Refus(FileAttente.perimee());
+        }
+        if (sauterALEcheance && !maintenant.isBefore(chronologie.echeanceAppelLe())) {
+            return new ResultatFile.Refus(new Refuse(409, "HORS_DELAI", "Le temps pour confirmer est écoulé."));
         }
         var depart = new EtatCyclePassage(chronologie.passageId(), chronologie.etapeId(), chronologie.appeleLe(), chronologie.echeanceAppelLe(),
                 maintenant, dureeReference, Duration.ZERO, null, null);
@@ -92,6 +98,14 @@ public final class CycleDePassage {
             reprogrammerFin();
         }
         return resultat;
+    }
+
+    /** Construit le reçu d’un appel ou d’un démarrage déjà accepté. */
+    public Accepte acquitter(UUID envoiId, Instant recueLe, String action, String cause) {
+        Passage courant = courantActif();
+        var accuse = new AccuseCyclePassage(envoiId, courant.soireeId(), courant.mancheId(), courant.id(),
+                chronologie.etapeId(), courant.numeroModification(), action, recueLe, courant.etat());
+        return new Accepte(accuse, Set.of(Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES), cause);
     }
 
     public ResultatFile clore(EtatPassage etatTerminal, String motif, UUID acteurId, Instant maintenant) {

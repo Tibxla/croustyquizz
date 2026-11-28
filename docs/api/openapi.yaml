@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: CroustyQuizz — contrats du Quiz et du Karaoké
+  title: CroustyQuizz — contrats du Quiz, du Karaoké et du Freestyle
   version: 0.1.0
   description: 'Contrat cible à relire (#34, #82, #98), pas une déclaration d’endpoints déjà déployés.
     Format Solo, Pilotage Manuel, Quiz, File d’attente et cycle du Passage du Karaoké ; socle de Buzz
-    inclus. README.md fait partie du contrat.'
+    inclus. README.md fait partie du contrat. Le Freestyle (#70) étend le socle des Passages.'
 servers:
 - url: http://localhost:8080
   description: Développement local
@@ -20,6 +20,7 @@ tags:
 - name: Socle
 - name: Photos
 - name: Karaoké
+- name: Freestyle
 paths:
   /api/csrf:
     get:
@@ -569,16 +570,17 @@ paths:
   /api/soirees/{soireeId}/manches:
     post:
       operationId: ajouterManche
-      summary: Ajouter une Manche de Quiz, de Blind test ou de Karaoké
+      summary: Ajouter une Manche de Quiz, de Blind test, de Karaoké ou de Freestyle
       description: 'PREPARATION ou OUVERTE uniquement, sinon 409 ETAT_INCOMPATIBLE. Le serveur ajoute la Manche
         en fin de programme et publie programme-modifie sur la Console. KARAOKE résout la limite initiale
         configurée si elle est absente. BLIND_TEST tire les Morceaux dans la playlist ou le genre Deezer, hors
         du verrou de la Soirée, parmi ceux qui ont un extrait ; la sélection reste privée et n’apparaît jamais
         dans les réglages, publiés à toutes les destinations. Une source que Deezer ne connaît pas, ou qui n’a
         pas assez de Morceaux jouables, donne 422 SOURCE_MUSICALE_INVALIDE, avec un detail qui dit quoi
-        corriger ; Deezer injoignable, en panne ou trop lent donne 503 SOURCE_MUSICALE_INDISPONIBLE. Dans les
-        deux cas, rien n’est ajouté. Un mode ou des réglages hors
-        schéma donnent 400 REQUETE_INVALIDE. Aucun Idempotency-Key ajouté à cette route.'
+        corriger. Deezer injoignable, en panne ou trop lent donne 503 SOURCE_MUSICALE_INDISPONIBLE. FREESTYLE reçoit
+        les identifiants choisis dans les fiches déclarées par l’Écran de salle pour cette Soirée. Une sélection qui
+        ne correspond plus aux fiches disponibles donne 422 INSTRUMENTALE_INDISPONIBLE. Un mode ou des réglages hors
+        schéma donnent 400 REQUETE_INVALIDE. Ces refus laissent le programme intact. Aucun Idempotency-Key ajouté à cette route.'
       tags:
       - Soirée
       security:
@@ -999,14 +1001,14 @@ paths:
         METTRE_EN_PAUSE gèle une Question ouverte ; REPRENDRE rétablit son délai restant. PASSER_ETAPE clôt la
         Question ouverte et révèle la correction, ou passe de CORRECTION à la Question suivante ; après la dernière
         correction, termine la Manche. TERMINER arrête la Manche sans révéler une Question abandonnée ni lui
-        attribuer de points. etapeId absent ou non courant : 409 ETAPE_INACTIVE. Karaoké : etapeId est celui du
+        attribuer de points. etapeId absent ou non courant : 409 ETAPE_INACTIVE. Karaoké et Freestyle : etapeId est celui du
         courant actif (APPELE, EN_COURS ou EN_PAUSE), créé à l’appel, et il est omis sans courant actif ; 409
         ETAPE_INACTIVE s’il est absent ou différent avec un courant actif, présent sans courant actif, et pour
         PASSER_ETAPE sans courant actif, etapeId omis ou non, même si le courant affiché est TERMINE ou SAUTE.
         METTRE_EN_PAUSE fige le délai d’appel restant ou la chronologie du Passage, REPRENDRE les restitue ; 409
-        ETAT_INCOMPATIBLE pour REPRENDRE pendant une lecture EN_ERREUR. PASSER_ETAPE saute le courant actif
+        ETAT_INCOMPATIBLE au Karaoké pour REPRENDRE pendant une lecture EN_ERREUR. PASSER_ETAPE saute le courant actif
         (SAUTE, Tour conservé, passage-saute), et une Manche en pause le reste. TERMINER annule le courant actif
-        (ANNULE, Tour conservé, lecture arrêtée) et le bloc karaoke devient null. Conditions : README.md,
+        (ANNULE, Tour conservé, lecture arrêtée) et le bloc du Mode devient null. Conditions : README.md,
         section Karaoké, « Passage : appel, lecture et calage ». Blind test : etapeId est toujours celui du Morceau
         affiché, même révélé (absent ou différent : 409 ETAPE_INACTIVE). PASSER_ETAPE sur un Morceau en
         PREPARATION, EXTRAIT ou PROPOSITION le termine et le révèle (morceau-revele, sans points pour une saisie
@@ -1914,12 +1916,97 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '503':
           $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/freestyle/instrumentales:
+    get:
+      operationId: consulterInstrumentales
+      summary: Consulter les Instrumentales disponibles pour préparer une Manche de Freestyle
+      description: Animateur du Lieu. Rend une liste vide tant que l’Écran de salle n’a fourni aucune fiche.
+      tags: [Freestyle]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Fiches disponibles dans cette Soirée.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/InstrumentalesDisponibles
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+    put:
+      operationId: declarerInstrumentales
+      summary: Remplacer les fiches d’Instrumentales disponibles
+      description: >-
+        Écran de salle de la Soirée, avant ou pendant son déroulement. Le serveur reçoit les seules
+        fiches et remplace la déclaration précédente. Deux fiches portant le même identifiant donnent
+        422 DONNEES_INVALIDES. Une déclaration identique est sans effet. Le rejeu d’un envoi restitue
+        le reçu sans publication ; réutiliser sa clé avec un autre corps donne 409 ENVOI_REUTILISE.
+        Soirée terminée, 409 ETAT_INCOMPATIBLE. Pendant une Manche active de Freestyle, un changement
+        publie instrumentales-modifiees. Les Passages déjà inscrits conservent leur fiche et leur Grille.
+      tags: [Freestyle]
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/InstrumentalesDisponibles
+      responses:
+        '200':
+          description: Reçu de la déclaration.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseCommande
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '422':
+          $ref: '#/components/responses/Erreur422'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/manches/{mancheId}/passages:
     post:
       operationId: inscrirePassage
       summary: Inscrire son Passage
-      description: 'Joueur présent, retardataire compris : eligiblePourMancheActive n’est jamais une
-        garde. chansonId de 1 à 128 caractères, sinon REQUETE_INVALIDE. Reçu consulté avant le métier,
+      description: 'Karaoké ou Freestyle. Joueur présent, retardataire compris : eligiblePourMancheActive n’est jamais une
+        garde. Au Karaoké, chansonId de 1 à 128 caractères, sinon REQUETE_INVALIDE. Reçu consulté avant le métier,
         source consultée hors verrou, revalidation sous verrou. Gardes dans l’ordre : sans voix, paroles
         non synchronisées (absentes et inconnues incluses), durée inconnue, doublon personnel en
         attente, quota EN_ATTENTE. Détail de la Chanson figé à l’inscription ; la même Chanson reste
@@ -1933,9 +2020,17 @@ paths:
         SERVICE_INDISPONIBLE, 503 SOURCE_PAROLES_INDISPONIBLE. Propres à cette route : 409
         PASSAGE_DEJA_INSCRIT (doublon personnel en attente), 409 LIMITE_ATTEINTE (quota EN_ATTENTE
         atteint), 422 CHANSON_INDISPONIBLE (contenu inutilisable, detail motivé). Conditions de chaque
-        code : tableau des groupes de refus, README.md, section Karaoké, « Routes et codes de refus ».'
+        code : tableau des groupes de refus, README.md, section Karaoké, « Routes et codes de refus ».
+        En Freestyle, instrumentaleId est obligatoire et null demande le hasard. Les fiches admissibles
+        sont sélectionnées pour la Manche et disponibles dans la Soirée. Explicitement choisie, une
+        Instrumentale non admissible à ce titre donne 422 INSTRUMENTALE_INDISPONIBLE ; sans fiche
+        disponible pour le tirage, même refus. Un doublon en attente ou un quota atteint donne 409
+        PASSAGE_DEJA_INSCRIT ou LIMITE_ATTEINTE. La fiche et la Grille sont figées à l’inscription ;
+        une Grille impossible à composer donne 422 GRILLE_INDISPONIBLE. Le corps doit correspondre
+        au Mode de la Manche, sinon 400 REQUETE_INVALIDE.'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - jetonJoueur: []
       parameters:
@@ -1956,7 +2051,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: ./schemas.yaml#/$defs/InscriptionPassage
+              $ref: ./schemas.yaml#/$defs/InscriptionSelonMode
       responses:
         '201':
           description: Reçu immuable. Ne remplace pas une vue plus récente.
@@ -1999,6 +2094,7 @@ paths:
         section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - jetonJoueur: []
       parameters:
@@ -2070,6 +2166,7 @@ paths:
         Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Karaoké
+      - Freestyle
       security:
       - jetonJoueur: []
       parameters:
@@ -2139,6 +2236,7 @@ paths:
         et codes de refus ».'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - sessionAnimateur: []
       parameters:
@@ -2220,6 +2318,7 @@ paths:
         Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - sessionAnimateur: []
       parameters:
@@ -2303,6 +2402,7 @@ paths:
         et codes de refus ».'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - sessionAnimateur: []
       parameters:
@@ -2377,6 +2477,7 @@ paths:
         tableau des groupes de refus, README.md, section Karaoké, « Routes et codes de refus ».'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - sessionAnimateur: []
       parameters:
@@ -2440,7 +2541,7 @@ paths:
     post:
       operationId: appelerPassage
       summary: Appeler le Passage en tête de la File d’attente
-      description: 'Manche Karaoké active en Soirée EN_COURS. Animateur du Lieu. Appelle le Passage en position 1 :
+      description: 'Manche de Karaoké ou de Freestyle active en Soirée EN_COURS. Animateur du Lieu. Appelle le Passage en position 1 :
         EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
         numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
         recalculée sur la salle, la Console et toutes les Manettes. En Pilotage Automatique, le serveur
@@ -2458,6 +2559,7 @@ paths:
         README.md, section Karaoké, « Passage : appel, lecture et calage ».'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - sessionAnimateur: []
       parameters:
@@ -2527,11 +2629,13 @@ paths:
     post:
       operationId: confirmerPresencePassage
       summary: Confirmer « Je suis prêt »
-      description: 'Manche Karaoké active en Soirée EN_COURS. Joueur Interprète du Passage appelé, envoiId dans le
+      description: 'Manche de Karaoké ou de Freestyle active en Soirée EN_COURS. Joueur Interprète du Passage appelé, envoiId dans le
         corps. APPELE vers EN_COURS ; numeroModification augmente et la chronologie démarre aussitôt
-        (demarreLe). Une lecture préparée pendant l’appel est figée ; sinon le Passage démarre en paroles
-        seules, motif ECRAN_NON_PRET, lecteurId nul. En Pilotage Manuel, la confirmation reste acceptée
-        après l’échéance, qui ne publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
+        (demarreLe). Au Karaoké, une lecture préparée pendant l’appel est figée ; sinon le Passage démarre en paroles
+        seules, motif ECRAN_NON_PRET, lecteurId nul. Au Freestyle, la Grille figée à l’inscription devient visible.
+        L’Horloge termine le Passage après le départ du beat et le nombre de mesures choisi. En Pilotage Manuel,
+        la confirmation reste acceptée après l’échéance, qui ne publie rien. Publie passage-demarre sur la salle,
+        la Console et toutes les Manettes. Refus propres à cette commande, dans
         l’ordre : 404 RESSOURCE_INTROUVABLE (Joueur non Interprète, avant tout reçu) ; 409 ETAT_INCOMPATIBLE
         (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE) ;
         409 HORS_DELAI en Pilotage Automatique (confirmation reçue à l’échéance de l’appel ou après,
@@ -2545,6 +2649,7 @@ paths:
         README.md, section Karaoké, « Passage : appel, lecture et calage ».'
       tags:
       - Karaoké
+      - Freestyle
       security:
       - jetonJoueur: []
       parameters:

@@ -1,0 +1,429 @@
+description: Passage fictif en Pilotage Manuel sur une Instrumentale locale, avec Grille et Vote du public.
+parametresCommuns:
+  soireeId: &soireeId 70000000-0000-4000-8000-000000000001
+  mancheId: &mancheId 70000000-0000-4000-8000-000000000002
+  passageId: &passageId 70000000-0000-4000-8000-000000000003
+  X-CSRF-TOKEN: csrf_session_freestyle_fictif_70
+http:
+- nom: Déclarer les fiches du dossier local
+  operationId: declarerInstrumentales
+  acteur: ecran
+  parametres:
+    Idempotency-Key: &declaration 70000000-0000-4000-8000-000000000010
+  requete: &declarationInstrumentales
+    instrumentales: &instrumentales
+    - &instrumentale
+      instrumentaleId: &instrumentaleId 70000000-0000-4000-8000-000000000004
+      titre: À la lueur
+      tempoBpm: 120
+      departBeatMs: 250
+  statut: 200
+  reponse:
+    envoiId: *declaration
+    soireeId: *soireeId
+    recueLe: '2026-11-24T20:00:00Z'
+- nom: Relire les fiches dans la Console
+  operationId: consulterInstrumentales
+  acteur: animateur
+  statut: 200
+  reponse: *declarationInstrumentales
+- nom: Préparer une Manche de huit mesures
+  operationId: ajouterManche
+  acteur: animateur
+  requete:
+    mode: FREESTYLE
+    reglages: &reglages
+      theme: VILLE
+      schemaDeRimes: ABAB
+      difficulte: PREMIER
+      nombreMesures: 8
+      instrumentaleIds: [*instrumentaleId]
+  statut: 201
+  reponse:
+    id: *mancheId
+    ordre: 0
+    mode: FREESTYLE
+    etat: EN_ATTENTE
+    reglages: *reglages
+- nom: Refuser une Instrumentale absente de la sélection
+  operationId: inscrirePassage
+  requete:
+    envoiId: 70000000-0000-4000-8000-000000000011
+    instrumentaleId: 70000000-0000-4000-8000-000000000099
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Inscription refusée
+    status: 422
+    code: INSTRUMENTALE_INDISPONIBLE
+    detail: Cette Instrumentale n’est pas disponible dans la sélection.
+    instance: /api/soirees/70000000-0000-4000-8000-000000000001/manches/70000000-0000-4000-8000-000000000002/passages
+- nom: S’inscrire en laissant le choix au hasard
+  operationId: inscrirePassage
+  requete:
+    envoiId: &inscription 70000000-0000-4000-8000-000000000012
+    instrumentaleId: null
+  statut: 201
+  reponse:
+    envoiId: *inscription
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    numeroModification: 0
+    action: INSCRIRE
+    recueLe: '2026-11-24T20:00:02Z'
+    etatApres: EN_ATTENTE
+- nom: Appeler le Passage en tête
+  operationId: appelerPassage
+  acteur: animateur
+  parametres:
+    Idempotency-Key: &appel 70000000-0000-4000-8000-000000000013
+  requete:
+    numeroModification: 0
+  statut: 200
+  reponse:
+    envoiId: *appel
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    etapeId: &etapeId 70000000-0000-4000-8000-000000000007
+    numeroModification: 1
+    action: APPELER
+    recueLe: '2026-11-24T20:00:04Z'
+    etatApres: APPELE
+- nom: Confirmer « Je suis prêt »
+  operationId: confirmerPresencePassage
+  requete:
+    envoiId: &presence 70000000-0000-4000-8000-000000000014
+    etapeId: *etapeId
+    numeroModification: 1
+  statut: 200
+  reponse:
+    envoiId: *presence
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    etapeId: *etapeId
+    numeroModification: 2
+    action: CONFIRMER_PRESENCE
+    recueLe: &depart '2026-11-24T20:00:05Z'
+    etatApres: EN_COURS
+- nom: Retrouver la Grille masquée sur la salle
+  operationId: retrouverEtatSalle
+  parametres:
+    abonnementId: &abonnement 70000000-0000-4000-8000-000000000020
+  statut: 200
+  reponse: &capture
+    revision: 4
+    heureServeur: '2026-11-24T20:00:08Z'
+    abonnementId: *abonnement
+    vue: &vueSalle
+      soiree: &soiree
+        id: *soireeId
+        titre: À la tombée de la nuit
+        format: SOLO
+        pilotage: MANUEL
+        etat: EN_COURS
+        codeAcces: RIMES7
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: &manche
+        id: *mancheId
+        ordre: 0
+        mode: FREESTYLE
+        etat: EN_COURS
+        reglages: *reglages
+      modeEnCours: FREESTYLE
+      joueurs: &joueurs
+      - id: &interpreteId 70000000-0000-4000-8000-000000000005
+        pseudo: Inès
+        connecte: true
+      - id: &publicId 70000000-0000-4000-8000-000000000006
+        pseudo: Maël
+        connecte: true
+      classement: &classement []
+      dernierBuzz: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: PREMIER
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: &courant
+          passageId: *passageId
+          numeroModification: 2
+          numero: 1
+          instrumentale: *instrumentale
+          interprete: &interprete
+            joueurId: *interpreteId
+            pseudo: Inès
+          etapeId: *etapeId
+          etat: EN_COURS
+          delaiAppelRestantMs: null
+          demarreLe: *depart
+          finPrevueLe: &fin '2026-11-24T20:00:21.250Z'
+          positionChronologiqueMs: 0
+          calculeLe: *depart
+        votes: []
+        grille: &masquee
+          nombreMesures: 8
+          mots:
+          - { mesure: 1, temps: 3, positionMs: 1250, famille: A, mot: lumière }
+          - { mesure: 2, temps: 3, positionMs: 3250, famille: B, mot: nuit }
+          - { mesure: 3, temps: 3, positionMs: 5250, famille: A, mot: null }
+          - { mesure: 4, temps: 3, positionMs: 7250, famille: B, mot: null }
+          - { mesure: 5, temps: 3, positionMs: 9250, famille: A, mot: null }
+          - { mesure: 6, temps: 3, positionMs: 11250, famille: B, mot: null }
+          - { mesure: 7, temps: 3, positionMs: 13250, famille: A, mot: null }
+          - { mesure: 8, temps: 3, positionMs: 15250, famille: B, mot: null }
+- nom: Noter le Passage après sa fin prévue
+  operationId: voterPassage
+  acteur: joueur-public
+  requete:
+    envoiId: &vote 70000000-0000-4000-8000-000000000015
+    numeroModification: 3
+    note: 4
+  statut: 200
+  reponse:
+    envoiId: *vote
+    soireeId: *soireeId
+    mancheId: *mancheId
+    passageId: *passageId
+    note: 4
+    recueLe: '2026-11-24T20:00:22Z'
+evenements:
+- nom: Le Passage démarre sur la salle
+  canal: salle
+  message: &demarreSalle
+    type: passage-demarre
+    soireeId: *soireeId
+    revision: 4
+    emisLe: *depart
+    donnees: *vueSalle
+- nom: La Console reçoit tous les mots
+  canal: console
+  message:
+    type: passage-demarre
+    soireeId: *soireeId
+    revision: 6
+    emisLe: *depart
+    donnees:
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      programme: [*manche]
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: PREMIER
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: *courant
+        grille: &complete
+          nombreMesures: 8
+          mots:
+          - { mesure: 1, temps: 3, positionMs: 1250, famille: A, mot: lumière }
+          - { mesure: 2, temps: 3, positionMs: 3250, famille: B, mot: nuit }
+          - { mesure: 3, temps: 3, positionMs: 5250, famille: A, mot: pierre }
+          - { mesure: 4, temps: 3, positionMs: 7250, famille: B, mot: bruit }
+          - { mesure: 5, temps: 3, positionMs: 9250, famille: A, mot: rivière }
+          - { mesure: 6, temps: 3, positionMs: 11250, famille: B, mot: fuit }
+          - { mesure: 7, temps: 3, positionMs: 13250, famille: A, mot: poussière }
+          - { mesure: 8, temps: 3, positionMs: 15250, famille: B, mot: luit }
+        peutAppeler: false
+        peutPasser: true
+        instrumentales: *instrumentales
+        votes: []
+- nom: La Manette reçoit la même Grille que la salle
+  canal: joueur
+  message:
+    type: passage-demarre
+    soireeId: *soireeId
+    revision: 9
+    emisLe: *depart
+    donnees:
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      joueurId: *publicId
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: PREMIER
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: *courant
+        grille: *masquee
+        instrumentales: *instrumentales
+        mesPassagesEnAttente: []
+        peutInscrire: true
+        peutConfirmerPresence: false
+        votes: []
+- nom: L’Horloge clôt le Passage et la salle retire la Grille
+  canal: salle
+  message: &passageTermine
+    type: passage-termine
+    soireeId: *soireeId
+    revision: 5
+    emisLe: *fin
+    donnees: &vueFinie
+      soiree: *soiree
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: PREMIER
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: &courantClos
+          passageId: *passageId
+          numeroModification: 3
+          numero: 1
+          instrumentale: *instrumentale
+          interprete: *interprete
+          etapeId: *etapeId
+          etat: TERMINE
+          delaiAppelRestantMs: null
+          demarreLe: *depart
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          calculeLe: *fin
+        grille: null
+        votes:
+        - passageId: *passageId
+          numeroModification: 3
+          numero: 1
+          instrumentale: *instrumentale
+          interprete: *interprete
+          etat: OUVERT
+          delaiRestantMs: 30000
+          calculeLe: *fin
+          clotureLe: null
+          nombreVotes: 0
+- nom: Le votant reçoit sa note personnelle
+  canal: joueur
+  message:
+    type: vote-enregistre
+    soireeId: *soireeId
+    revision: 11
+    emisLe: &noteLe '2026-11-24T20:00:22Z'
+    donnees:
+      soiree: *soiree
+      mancheActive: *manche
+      modeEnCours: FREESTYLE
+      joueurs: *joueurs
+      classement: *classement
+      dernierBuzz: null
+      joueurId: *publicId
+      eligiblePourMancheActive: true
+      derniereReponse: null
+      resultatPersonnel: null
+      freestyle:
+        mancheId: *mancheId
+        etat: EN_COURS
+        difficulte: PREMIER
+        nombreEnAttente: 0
+        limitePassagesEnAttente: 1
+        tourOuvert: 1
+        passagePrioritaireId: null
+        passagesEnAttente: []
+        courant: *courantClos
+        grille: null
+        instrumentales: *instrumentales
+        mesPassagesEnAttente: []
+        peutInscrire: true
+        peutConfirmerPresence: false
+        votes:
+        - passageId: *passageId
+          numeroModification: 3
+          numero: 1
+          instrumentale: *instrumentale
+          interprete: *interprete
+          etat: OUVERT
+          delaiRestantMs: 29250
+          calculeLe: *noteLe
+          clotureLe: null
+          maNote: 4
+          peutVoter: false
+cases:
+- nom: Inscription avec un choix explicite
+  schema: InscriptionSelonMode
+  valide: true
+  valeur:
+    envoiId: *inscription
+    instrumentaleId: *instrumentaleId
+- nom: Une fiche ne peut pas transporter de chemin local
+  schema: Instrumentale
+  valide: false
+  valeur:
+    instrumentaleId: *instrumentaleId
+    titre: À la lueur
+    tempoBpm: 120
+    departBeatMs: 250
+    chemin: Instrumentales/À la lueur.mp3
+- nom: Configuration Freestyle refusée avec neuf mesures
+  schema: CreationManche
+  valide: false
+  valeur:
+    mode: FREESTYLE
+    reglages:
+      theme: VILLE
+      schemaDeRimes: ABAB
+      difficulte: PREMIER
+      nombreMesures: 9
+      instrumentaleIds: [*instrumentaleId]
+  correction:
+    chemin: [reglages, nombreMesures]
+    valeur: 8
+- nom: La Salle refuse tous les mots transmis sous AUCUN
+  schema: BlocFreestyleSalle
+  valide: false
+  valeur:
+    mancheId: *mancheId
+    etat: EN_COURS
+    difficulte: AUCUN
+    nombreEnAttente: 0
+    limitePassagesEnAttente: 1
+    tourOuvert: 1
+    passagePrioritaireId: null
+    passagesEnAttente: []
+    courant: *courant
+    grille: *complete
+    votes: []
+  correction:
+    chemin: [difficulte]
+    valeur: TOUS
+resynchronisation:
+  destination: /topic/soirees/70000000-0000-4000-8000-000000000001/salle
+  routeEtat: /api/soirees/70000000-0000-4000-8000-000000000001/etat/salle
+  typeEvenementFinal: passage-termine
+  etat: *capture
+  tampon: [*demarreSalle, *passageTermine, *passageTermine]
+  revisionFinale: 5
+  vueFinale: *vueFinie
