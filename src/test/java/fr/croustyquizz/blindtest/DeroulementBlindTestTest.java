@@ -761,6 +761,83 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 				new AttributionDePoints(LEA, 100, "Titre et artiste trouvés", true, 0));
 	}
 
+	/** Relecture de #297, point 1 : un Joueur déjà jugé ne reprend jamais la main, même débloqué par un arbitrage. */
+	@Test
+	void unJoueurDebloqueParUnArbitrageNeRebuzzePas() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "", "Beyoncé");
+		buzz(SAM);
+		valider(SAM, "Hallo", "");
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.FAUX);
+		arbitrer(SAM, PartieDuMorceau.TITRE, VerdictChamp.JUSTE);
+		assertThat(courant().bloques()).containsExactly(LEA);
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.EXTRAIT);
+
+		refusAttendu(buzz(SAM), "BUZZ_NON_AUTORISE");
+
+		assertThat(VuesBlindTest.projeter(MANCHE, blindTest.instantane(), Destination.joueur(SAM)))
+				.asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP).containsEntry("peutBuzzer", false);
+		horloge.avancer(DeroulementBlindTest.DUREE_SAISIE);
+		assertThat(courant().propositions()).hasSize(2);
+		assertThat(blindTest.points()).containsExactly(new AttributionDePoints(SAM, 70, "Titre trouvé", true, 0));
+	}
+
+	/** Un Joueur débloqué mais déjà jugé ne peut plus buzzer : il compte avec les bloqués pour la Révélation. */
+	@Test
+	void quandPlusPersonneNePeutBuzzerLeMorceauSeRevele() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Hallo", "Beyoncé");
+		buzz(SAM);
+		valider(SAM, "Hallo", "");
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.FAUX);
+		arbitrer(SAM, PartieDuMorceau.TITRE, VerdictChamp.JUSTE);
+		buzz(NOE);
+
+		valider(NOE, "", "Rihanna");
+
+		assertThat(courant().bloques()).containsExactlyInAnyOrder(LEA, NOE);
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+	}
+
+	/** Relecture de #297, point 2 : la Proposition est jugée sur les parties que son formulaire demandait. */
+	@Test
+	void unePartieRouverteParUnArbitragePendantLaSaisieNEstPasJugee() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "");
+		buzz(SAM);
+
+		arbitrer(LEA, PartieDuMorceau.TITRE, VerdictChamp.FAUX);
+
+		assertThat(VuesBlindTest.projeter(MANCHE, blindTest.instantane(), Destination.joueur(SAM)))
+				.asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+				.containsEntry("champsDemandes", List.of("ARTISTE"));
+		assertThat(valider(SAM, "", "Beyoncé")).isInstanceOfSatisfying(Accepte.class, accepte -> {
+			AccuseProposition accuse = (AccuseProposition) accepte.accuse();
+			assertThat(accuse.titre()).isEqualTo(VerdictChamp.NON_DEMANDE);
+			assertThat(accuse.artiste()).isEqualTo(VerdictChamp.JUSTE);
+		});
+		assertThat(courant().bloques()).containsExactly(LEA);
+		assertThat(courant().partiesDemandees()).containsExactly(PartieDuMorceau.TITRE);
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.EXTRAIT);
+	}
+
+	/** Une partie trouvée par arbitrage pendant la saisie n'est plus jugée : elle n'a qu'un auteur. */
+	@Test
+	void unePartieAccordeePendantLaSaisieNEstPlusJugee() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		buzz(SAM);
+
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
+
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		assertThat(courant().partiesTrouvees()).extracting(PartieTrouvee::joueurId).containsExactly(LEA, LEA);
+	}
+
 	@Test
 	void lArbitrageResteOuvertPendantLaPause() {
 		demarrer();

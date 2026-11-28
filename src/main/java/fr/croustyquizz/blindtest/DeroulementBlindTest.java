@@ -164,14 +164,14 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		Instant maintenant = maintenant();
 		// L'extrait arrivé à 30 s ferme le Buzz, même si le rappel de fin d'extrait attend encore le verrou.
 		if (courant.phase() != PhaseBlindTest.EXTRAIT || etatManche != EtatManche.EN_COURS
-				|| courant.bloques().contains(buzz.joueurId())
+				|| neBuzzePlus(buzz.joueurId())
 				|| courant.lecture().positionA(maintenant) >= LectureExtrait.DUREE_MS) {
 			return new Refuse(409, "BUZZ_NON_AUTORISE", "Le Buzz n'est pas ouvert pour ce Joueur.");
 		}
 		minuteur.annuler();
 		LectureExtrait enPause = courant.lecture().geleeA(maintenant);
 		MainBlindTest main = MainBlindTest.donnee(buzz.joueurId(), buzz.pseudo(),
-				Delai.depuis(maintenant, DUREE_SAISIE), enPause.positionMs());
+				Delai.depuis(maintenant, DUREE_SAISIE), enPause.positionMs(), courant.partiesDemandees());
 		courant = courant.mainDonnee(main, enPause);
 		dernierBuzz = new AccuseBuzz(buzz.envoiId(), buzz.joueurId(), buzz.pseudo(), buzz.recueLe(),
 				courant.buzzAcceptes());
@@ -234,7 +234,7 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		minuteur.annuler();
 		MainBlindTest main = courant.main();
 		Morceau morceau = morceau();
-		Set<PartieDuMorceau> demandees = courant.partiesDemandees();
+		Set<PartieDuMorceau> demandees = main.demandeesParmi(courant.partiesDemandees());
 		List<PartieTrouvee> trouvees = new ArrayList<>();
 		ChampJuge[] champs = new ChampJuge[PartieDuMorceau.values().length];
 		for (PartieDuMorceau partie : PartieDuMorceau.values()) {
@@ -281,7 +281,15 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 
 	/** Plus aucun Joueur présent ne peut buzzer : tous sont bloqués (ADR 0009, point 11). */
 	private boolean tousBloques() {
-		return courant.bloques().containsAll(joueursPresents.de(contexte.soireeId()));
+		return joueursPresents.de(contexte.soireeId()).stream().allMatch(this::neBuzzePlus);
+	}
+
+	/**
+	 * Un Joueur bloqué, ou déjà jugé sur ce Morceau, ne reprend plus la main : un arbitrage peut le débloquer sans lui
+	 * rendre une seconde Proposition (relecture de #297).
+	 */
+	private boolean neBuzzePlus(UUID joueurId) {
+		return courant.bloques().contains(joueurId) || courant.ontPropose().contains(joueurId);
 	}
 
 	private void reprendreExtrait() {

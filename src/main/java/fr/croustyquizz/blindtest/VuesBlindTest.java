@@ -99,10 +99,14 @@ final class VuesBlindTest {
 		boolean bloque = courant.bloques().contains(joueurId);
 		MainBlindTest main = courant.main();
 		boolean aLaMain = main != null && main.joueurId().equals(joueurId);
-		bloc.put("peutBuzzer", courant.phase() == PhaseBlindTest.EXTRAIT && etat == EtatManche.EN_COURS && !bloque);
+		boolean dejaJuge = courant.ontPropose().contains(joueurId);
+		bloc.put("peutBuzzer", courant.phase() == PhaseBlindTest.EXTRAIT && etat == EtatManche.EN_COURS && !bloque
+				&& !dejaJuge);
 		bloc.put("bloque", bloque);
 		bloc.put("aLaMain", aLaMain);
-		bloc.put("champsDemandes", courant.partiesDemandees().stream().map(Enum::name).toList());
+		// Le Joueur qui a la main voit les parties de son formulaire, celles qui seront jugées.
+		var demandees = aLaMain ? main.demandeesParmi(courant.partiesDemandees()) : courant.partiesDemandees();
+		bloc.put("champsDemandes", demandees.stream().sorted().map(Enum::name).toList());
 		bloc.put("monBrouillon", aLaMain && main.numeroBrouillon() > 0 ? brouillon(main) : null);
 	}
 
