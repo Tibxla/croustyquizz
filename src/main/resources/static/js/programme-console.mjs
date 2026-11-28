@@ -4,18 +4,21 @@ import { decrireManche } from './vue-commune.mjs';
  * Emplacement des réglages propres à chaque Mode de jeu (#9). Pour proposer un mode dans la Console, lui
  * ajouter une entrée ici, puis son option dans « Mode de jeu » de console.html et, s'il a des champs, un
  * fieldset `data-<zone>` dans le formulaire d'ajout. `lire` rend l'objet `reglages` de CreationManche
- * (docs/api/schemas.yaml), que le serveur valide avec la fabrique du mode ; `decrire` résume les réglages
- * d'une Manche du programme. Le Blind test (ReglagesBlindTest) n'a pas encore ses champs dans la Console.
+ * (docs/api/schemas.yaml) ou `undefined` si la saisie est invalide. `decrire` résume les réglages
+ * d'une Manche du programme.
  */
 export const REGLAGES_DES_MODES = {
 	QUIZ: {
 		zone: 'reglages-communs',
-		lire: element => ({
-			nombreEtapes: Number(element('nombre-etapes').value),
-			tempsParEtapeSecondes: Number(element('temps-par-etape').value),
-		}),
+		lire: reglagesQuiz,
 		decrire: ({ nombreEtapes, tempsParEtapeSecondes }) => nombreEtapes === undefined ? ''
 			: `${nombreEtapes} étape${nombreEtapes === 1 ? '' : 's'} · ${tempsParEtapeSecondes} s par étape`,
+	},
+	BLIND_TEST: {
+		zone: 'reglages-blindtest',
+		lire: reglagesBlindTest,
+		decrire: ({ nombreMorceaux, source }) => nombreMorceaux === undefined ? ''
+			: `${nombreMorceaux} Morceau${nombreMorceaux === 1 ? '' : 'x'} · ${source.type === 'GENRE' ? 'genre' : 'playlist'} Deezer ${source.idDeezer}`,
 	},
 	KARAOKE: {
 		// Sans champ : le serveur applique sa limite de Passages en attente.
@@ -29,6 +32,21 @@ function decrireReglages({ mode, reglages }) {
 	return REGLAGES_DES_MODES[mode]?.decrire(reglages) ?? '';
 }
 
+function reglagesQuiz({ lireEntier }) {
+	const nombreEtapes = lireEntier('nombre-etapes', (min, max) => `Indique un nombre entier d’étapes entre ${min} et ${max}.`);
+	if (nombreEtapes === undefined) return;
+	const tempsParEtapeSecondes = lireEntier('temps-par-etape', (min, max) => `Indique une durée entière entre ${min} et ${max} secondes.`);
+	if (tempsParEtapeSecondes === undefined) return;
+	return { nombreEtapes, tempsParEtapeSecondes };
+}
+
+function reglagesBlindTest({ element }) {
+	return {
+		source: { type: element('source-blindtest').value, idDeezer: Number(element('id-deezer').value) },
+		nombreMorceaux: Number(element('nombre-morceaux').value),
+	};
+}
+
 /** Les mutations passent par HTTP et le programme affiché vient de la vue synchronisée. */
 export function monterProgramme(panneau, contexte) {
 	const document = panneau.ownerDocument;
@@ -37,8 +55,10 @@ export function monterProgramme(panneau, contexte) {
 	const mode = element('mode-manche');
 	const zonesDeReglages = Object.entries(REGLAGES_DES_MODES).filter(([, { zone }]) => zone)
 		.map(([modeDeJeu, { zone }]) => [modeDeJeu, element(zone)]);
+	const champAvecErreur = nom => ({ champ: element(nom), erreur: element(`${nom}-erreur`) });
+	const champsAvecErreur = ['mode-manche', 'nombre-etapes', 'temps-par-etape'].map(champAvecErreur);
+	const erreurAjout = element('ajout-manche-erreur');
 	const ajout = element('soumettre-manche');
-	const erreurAjout = element('erreur-ajout');
 	const liste = element('programme');
 	const route = `/api/soirees/${contexte.soireeId}`;
 	let modifiable = false;
@@ -54,15 +74,23 @@ export function monterProgramme(panneau, contexte) {
 		}
 	}
 
-	async function modifier(methode, chemin, corps) {
+	async function modifier(methode, chemin, corps, surRequeteInvalide) {
 		if (!peutEnvoyer()) return;
 		const annulation = new AbortController();
 		envoi = annulation;
 		actualiserCommandes();
 		try {
-			const { statut } = await contexte.envoyer(methode, route + chemin, corps, { signal: annulation.signal });
+			const { statut, corps: reponse } = await contexte.envoyer(methode, route + chemin, corps, {
+				signal: annulation.signal,
+				annoncer: ({ statut }) => statut !== 400 || !surRequeteInvalide || !modifiable,
+			});
+			if (annulation.signal.aborted) return;
+			if (statut === 400) {
+				if (modifiable) surRequeteInvalide?.(reponse);
+				return;
+			}
 			// Récupère l’état courant avant une autre édition, même si la Console a manqué l’événement.
-			if (!annulation.signal.aborted && statut !== 400) contexte.resynchroniser();
+			contexte.resynchroniser();
 		} catch {
 			if (!annulation.signal.aborted) contexte.resynchroniser();
 		} finally {
@@ -72,25 +100,61 @@ export function monterProgramme(panneau, contexte) {
 	}
 
 	function actualiserReglages() {
-		erreurAjout.hidden = true;
+		effacerErreurs();
 		for (const [modeDeJeu, zone] of zonesDeReglages) {
 			zone.hidden = mode.value !== modeDeJeu;
 			zone.disabled = zone.hidden;
 		}
 	}
 
+	function effacerErreurs() {
+		for (const { champ, erreur } of champsAvecErreur) {
+			erreur.hidden = true;
+			erreur.textContent = '';
+			champ.removeAttribute('aria-invalid');
+		}
+		erreurAjout.hidden = true;
+		erreurAjout.textContent = '';
+	}
+
+	function signalerChamp({ champ, erreur }, message) {
+		erreur.textContent = message;
+		erreur.hidden = false;
+		champ.setAttribute('aria-invalid', 'true');
+		champ.focus();
+	}
+
+	function lireEntier(nom, consigne) {
+		const saisie = champAvecErreur(nom);
+		const { champ } = saisie;
+		const valeur = Number(champ.value);
+		const min = Number(champ.getAttribute('min'));
+		const max = Number(champ.getAttribute('max'));
+		if (Number.isInteger(valeur) && valeur >= min && valeur <= max) return valeur;
+		signalerChamp(saisie, consigne(min, max));
+		// Rien ne part : le bandeau d'un envoi précédent ne doit pas rester à côté de cette erreur.
+		contexte.effacerAnnonce();
+	}
+
 	function ajouter(evenement) {
 		evenement.preventDefault();
-		const reglagesDuMode = REGLAGES_DES_MODES[mode.value];
+		if (!peutEnvoyer()) return;
+		effacerErreurs();
+		const modeDemande = mode.value;
+		const reglagesDuMode = REGLAGES_DES_MODES[modeDemande];
 		if (!reglagesDuMode) {
-			// Une option de « Mode de jeu » sans entrée dans REGLAGES_DES_MODES : le dire plutôt qu'un bouton inerte.
-			if (!peutEnvoyer()) return;
 			erreurAjout.textContent = 'Ce Mode de jeu n’a pas encore ses réglages dans la Console : il ne peut pas être ajouté.';
 			erreurAjout.hidden = false;
 			return;
 		}
-		erreurAjout.hidden = true;
-		void modifier('POST', '/manches', { mode: mode.value, reglages: reglagesDuMode.lire(element) });
+		const reglages = reglagesDuMode.lire({ element, lireEntier });
+		if (reglages === undefined) return;
+		void modifier('POST', '/manches', { mode: modeDemande, reglages }, reponse => {
+			// Le Probleme ne désigne aucun champ : le refus s'affiche sous le formulaire, sans en marquer un,
+			// et s'annonce par son rôle alert. Le focus reste où l'Animateur l'a laissé.
+			erreurAjout.textContent = reponse?.detail || 'Vérifie le Mode de jeu et les réglages de la Manche.';
+			erreurAjout.hidden = false;
+		});
 	}
 
 	function ligne(manche, index, programme) {

@@ -10,7 +10,7 @@ import { monterProgramme } from './programme-console.mjs';
 import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
-import { appeler, appelerAvecCsrf, memoire } from './api.js';
+import { appeler, memoire } from './api.js';
 import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION, SOIREES_DU_LIEU } from './compte.mjs';
 import { monterInvitationConsole } from './invitation.mjs';
 
@@ -48,19 +48,22 @@ function afficherCommun(vue) {
 	zoneErreur.hidden = true;
 }
 
-function activerDeconnexion(arreter) {
+function activerDeconnexion(envoyer, arreter) {
 	const bouton = element('deconnexion');
 	bouton.hidden = false;
 	bouton.addEventListener('click', async () => {
 		bouton.disabled = true;
+		const erreur = 'Impossible de confirmer la déconnexion. Réessaie.';
 		try {
-			const sortie = await appelerAvecCsrf('DELETE', ROUTE_SESSION);
-			if (sortie.ok || sortie.statut === 401) {
+			const { statut, corps } = await envoyer('DELETE', ROUTE_SESSION);
+			if (statut === 204 || statut === 401) {
 				arreter();
 				renvoyerVersConnexion();
 			} else {
-				afficherErreur(sortie.detail ?? 'Impossible de confirmer la déconnexion. Réessaie.');
+				afficherErreur(corps?.detail ?? erreur);
 			}
+		} catch {
+			afficherErreur(erreur);
 		} finally {
 			bouton.disabled = false;
 		}
@@ -78,7 +81,6 @@ async function demarrer() {
 	const jetonEnMemoire = accesManette?.jeton ?? cleEnMemoire ?? (ecran === 'console' && !demoConsole ? null : memorise);
 	const consoleConnectee = ecran === 'console' && !jetonEnMemoire;
 	let identite;
-	let csrf;
 	let suivi;
 	let arreterTout;
 	let arreterMaintien;
@@ -87,7 +89,6 @@ async function demarrer() {
 		if (session.statut === 401) return;
 		if (!session.ok || !session.corps?.id) throw new Error(session.detail ?? 'Impossible de vérifier ta session. Recharge la Console.');
 		identite = session.corps;
-		activerDeconnexion(() => arreterTout?.());
 		if (soireeId === null) {
 			location.replace(SOIREES_DU_LIEU);
 			return;
@@ -95,6 +96,7 @@ async function demarrer() {
 	}
 	const { cleEcran, ...acces } = lireAcces(ecran, location.search, jetonEnMemoire, accesManette?.joueurId, location.hash);
 	const jeton = cleEcran ?? jetonEnMemoire;
+	const transport = creerTransport({ jeton, sessionAnimateur: consoleConnectee });
 	if (cleEcran !== null) {
 		memoire.ecrire('croustyquizz.cleEcran', cleEcran);
 		memoire.ecrire('croustyquizz.soireeEcran', soireeId);
@@ -109,13 +111,10 @@ async function demarrer() {
 		}
 		if (!soiree.ok) throw new Error(soiree.detail ?? 'Impossible d’ouvrir la Soirée. Recharge la Console.');
 		monterInvitationConsole(element('inviter-animateur'), element('dialogue-invitation'));
-		const reponse = await creerTransport().envoyer('GET', '/api/csrf');
-		if (reponse.statut !== 200 || !reponse.corps?.token) throw new Error(reponse.corps?.detail ?? 'Impossible d’obtenir le jeton de session. Recharge la Console.');
-		csrf = reponse.corps.token;
+		activerDeconnexion(transport.envoyer, () => arreterTout?.());
 		arreterMaintien = maintenirSession();
 	}
 
-	const transport = creerTransport({ jeton, csrf });
 	// Un jeton que le serveur ne reconnaît plus renvoie à l'arrivée, au lieu de boucler en reconnexion.
 	if (accesManette && await controlerJeton(transport.envoyer, acces.soireeId) === 'refuse') {
 		stockageManette.oublier(acces.soireeId);
@@ -157,7 +156,8 @@ async function demarrer() {
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
-	boutonReprise?.addEventListener('click', contexte.resynchroniser);
+	let connexionRefusee = false;
+	boutonReprise?.addEventListener('click', () => suivi?.resynchroniser({ explicite: true }));
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
@@ -174,10 +174,18 @@ async function demarrer() {
 		surEtat(etat) {
 			if (etat === 'coupure' && consoleConnectee) void consulterSession();
 			changerEtat(etat);
+			if (etat === 'coupure' && connexionRefusee) return;
+			connexionRefusee = false;
 			etatConnexion.textContent = {
 				synchronisation: 'Synchronisation…', synchronisee: 'Vue synchronisée',
 				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',
 			}[etat];
+		},
+		// Refus du serveur au CONNECT : pas de reconnexion automatique, le motif reste affiché.
+		surRefus(motif) {
+			connexionRefusee = true;
+			etatConnexion.textContent = 'Connexion refusée.';
+			afficherErreur(motif);
 		},
 	}, { transport });
 	let arrete = false;
