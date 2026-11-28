@@ -1,7 +1,10 @@
 package fr.croustyquizz.manche;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.InstantSource;
+import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
@@ -30,6 +33,10 @@ public final class HorlogeFactice implements Horloge {
 	@Override
 	public synchronized Instant maintenant() {
 		return maintenant;
+	}
+
+	public Clock commeClock() {
+		return ((InstantSource) this::maintenant).withZone(ZoneOffset.UTC);
 	}
 
 	@Override

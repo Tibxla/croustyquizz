@@ -41,7 +41,13 @@ Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée. L
 
 Pour la session Animateur, obtenir un jeton par `GET /api/csrf`, puis envoyer `X-CSRF-TOKEN` avec les opérations mutantes. L’inscription et la connexion sont également protégées contre les requêtes intersites. Après connexion/déconnexion, récupérer un nouveau jeton. Le cookie de session est `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS.
 
-Pour STOMP 1.2, le sous-protocole est `v12.stomp`. Le navigateur envoie le jeton CSRF dans `CONNECT`, ainsi que `Authorization: Bearer …` pour un Joueur ou un Écran de salle ; la Console utilise la session du handshake. Il s’agit de **headers STOMP de CONNECT**, pas d’un header HTTP arbitraire ajouté par le constructeur WebSocket du navigateur. Si un jeton Bearer est présent, l’identité est celle de ce jeton ; une session Animateur présente dans le même navigateur ne permet pas d’élargir ses droits. Le serveur vérifie l’origine, l’identité et chaque `SUBSCRIBE`, refuse les commandes métier `SEND`, et ferme les connexions dont l’accès a expiré ou été invalidé. L’utilisation de la clé d’Écran est limitée au canal et aux vues décrits dans le tableau, et aux commandes HTTP de son lecteur décrites dans « Passage : appel, lecture et calage ».
+Sur les routes de compte, un en-tête `Authorization: Bearer …` entraîne un refus sans contrôle CSRF : `403 ACCES_REFUSE` pour l’inscription et la connexion, `401 AUTHENTIFICATION_REQUISE` pour la consultation et la déconnexion. Pour les requêtes de la session navigateur, un jeton CSRF absent ou invalide entraîne `403 CSRF_INVALIDE`. Pour l’instant, la session ne sert qu’à ces routes de compte : la déconnexion l’invalide, sans effet sur les connexions STOMP ouvertes avec un Bearer.
+
+Pour STOMP 1.2, le sous-protocole est `v12.stomp`. Le navigateur envoie le jeton CSRF dans `CONNECT`, ainsi que `Authorization: Bearer …` pour un Joueur ou un Écran de salle. En `dev` et `recette`, la Console utilise encore le Bearer `demo:ANIMATEUR` tant que la session du Lieu (#5) ne couvre pas STOMP ; elle utilisera ensuite la session du handshake. Il s’agit de **headers STOMP de CONNECT**, pas d’un header HTTP arbitraire ajouté par le constructeur WebSocket du navigateur. Si un jeton Bearer est présent, l’identité est celle de ce jeton ; une session Animateur présente dans le même navigateur ne permet pas d’élargir ses droits. Le serveur vérifie l’origine, l’identité et chaque `SUBSCRIBE`, refuse les commandes métier `SEND`, et ferme les connexions dont l’accès a expiré ou été invalidé. Un `CONNECT` refusé (identité ou accès rejetés) reçoit une trame `ERROR` dont l’en-tête `message` porte un motif affichable en français, puis le serveur ferme la WebSocket (code 1002) ; aucune trame `CONNECTED` n’est envoyée. La coquille affiche ce motif et ne se reconnecte pas d’elle-même : seul le bouton de reprise relance la connexion. Une trame `ERROR` reçue après `CONNECTED` reste une coupure ordinaire, suivie de la reconnexion habituelle. Une panne du serveur pendant le `CONNECT` n’est pas un refus : elle ne produit pas de trame `ERROR`, et le client réessaie comme après une coupure. L’utilisation de la clé d’Écran est limitée au canal et aux vues décrits dans le tableau, et aux commandes HTTP de son lecteur décrites dans « Passage : appel, lecture et calage ».
+
+Lorsqu’un secret Bearer opaque de forme valide ne permet pas d’identifier son porteur, le serveur renvoie le même motif pour une clé d’Écran invalide ou expirée et pour un jeton de Manette inconnu. Le motif conseille de rouvrir l’Écran de salle depuis la préparation de la Soirée pour obtenir une nouvelle clé ou de rejoindre la Soirée avec son code depuis la Manette.
+
+Si le jeton de reconnexion correspond à un Joueur exclu, le serveur répond « Tu ne fais plus partie de cette Soirée. »
 
 ## Vues et événements
 
@@ -76,6 +82,8 @@ Un simple « lire l’état puis s’abonner » peut perdre un événement entre
 3. Tant que l’abonnement n’est pas installé ou autorisé pour cet acteur et cette vue, le serveur répond `409 ABONNEMENT_INACTIF`. Réessayer après une courte attente, avec un nombre de tentatives borné ; si la connexion tombe, recommencer avec un nouvel UUID. On ne suppose pas que le broker simple Spring implémente les `RECEIPT` de STOMP.
 4. Après vérification de l’abonnement, le serveur capture une vue et sa révision au même point cohérent. La réponse restitue l’UUID d’abonnement, cette révision et l’heure du serveur.
 5. Installer la vue reçue, ignorer les événements de révision inférieure ou égale à la capture, puis appliquer dans l’ordre ceux qui la suivent. Ignorer également les doublons. Si une révision manque, abandonner cette synchronisation et récupérer une nouvelle vue cohérente.
+
+Après le délai de conservation des vues d’une Soirée terminée (24 h par défaut), les captures reconstruisent la vue en révision `0` et le serveur cesse de publier sur les destinations de la Soirée.
 6. Une réponse HTTP appartenant à un ancien abonnement ne peut remplacer la vue du nouvel abonnement. Borner le tampon ; si sa capacité est dépassée, recommencer la synchronisation. L’écran reste en état de reconnexion tant que cette procédure n’a pas réussi.
 
 L’ordre « abonnement effectivement installé avant capture » empêche la fenêtre de perte, y compris lorsque la réponse HTTP est retardée et qu’un événement plus récent arrive avant elle. Les détails de registre d’abonnement appartiennent à l’adaptateur temps réel ; l’interface promise aux écrans est la vérification de l’UUID et la capture cohérente. Sans paramètre `abonnementId`, les routes d’état restent des lectures ponctuelles, sans garantie de raccordement à un flux.
@@ -108,6 +116,23 @@ Un accusé HTTP retrouvé après répétition est un reçu de l’opération ini
 Le Buzz du socle est disponible dans une Soirée ouverte ou en cours hors Manche active. Son UUID peut être envoyé comme `envoiId` JSON ou comme `Idempotency-Key` ; les deux formes désignent le même envoi. Un Buzz accepté reçoit un rang croissant à partir de 1 dans la Soirée. Le reçu est conservé, et `buzz-recu` transporte ce Buzz dans `dernierBuzz` des vues complètes de la salle, de la Console et des Manettes. Les captures et événements ultérieurs conservent le dernier Buzz accepté.
 
 La pause gèle le temps restant ; la reprise crée une nouvelle échéance serveur. En Manuel, `PASSER_ETAPE` clôt d’abord une Question ouverte et montre sa correction ; un nouvel appel, avec un nouvel identifiant d’envoi, passe à la Question suivante. Après la dernière correction, la Manche est terminée. L’Animateur demande ensuite `MANCHE_SUIVANTE`, qui clôt la Soirée si le programme est épuisé. L’arrêt explicite d’une Manche abandonne l’étape non corrigée sans lui attribuer de points.
+
+## Limite de requêtes
+
+Avant toute exposition publique (#4), le serveur limite le Buzz, les Réponses et l’accès à une Soirée. Au-delà, il répond `429 TROP_DE_REQUETES` au format `Probleme` (réponse réutilisable `Erreur429`), avec `Cache-Control: no-store` et `Retry-After` en secondes. La requête ne change rien : ni reçu ni mutation. Une Manette affiche le `detail` comme tout refus ; rien ne réessaie automatiquement. Chaque route a sa propre limite et chaque clé son propre compteur : une Manette qui martèle ne gêne pas sa voisine. Les seuils par défaut sont réglables (`docs/deploiement.md`, « Limite de requêtes ») :
+
+| Routes | Clé | Rafale, puis rythme |
+|---|---|---|
+| `envoyerBuzz` | jeton (`Authorization`) | 10, puis 5 par seconde |
+| `envoyerReponse`, `deposerBrouillonProposition`, `validerProposition`, `voterPassage` | jeton | 20, puis 10 par seconde |
+| `rejoindreSoiree`, codes inconnus (`404 CODE_ACCES_INVALIDE`) | adresse IP | 20, puis 1 toutes les 3 s |
+| `rejoindreSoiree`, toutes les arrivées | adresse IP | 120, puis 1 toutes les 3 s |
+| `creerAccesEcran` | adresse IP | 10, puis 1 toutes les 6 s |
+| `consulterQrCodeSoiree` | jeton | 10, puis 1 par seconde |
+
+Une requête sans `Authorization` est comptée sur son adresse IP. Une arrivée acceptée ou refusée pour son pseudo ne consomme pas d’essai de code, si bien qu’une salle de 60 Joueurs derrière le même Wi-Fi peut arriver d’un coup. Le seau des codes n’est consulté qu’une fois la réponse connue : un code inconnu au-delà de la limite reçoit `429` au lieu de `404`, mais un code qui mène à une Soirée ouverte n’est jamais refusé par ce seau, même si d’autres téléphones du même réseau ont épuisé leurs essais. Seule la limite de toutes les arrivées vaut aussi pour lui.
+
+Chaque route garde au plus un nombre fixe de clés en mémoire (`plafond-cles`). Au plafond, une clé nouvelle passe sans être comptée, sauf pour les codes inconnus : un code inconnu d’une adresse nouvelle reçoit alors `429`, un bon code passe toujours. Remplir la table d’une route ne touche pas celle d’une autre.
 
 ## Blind test
 

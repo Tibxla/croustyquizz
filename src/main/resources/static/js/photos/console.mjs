@@ -1,7 +1,8 @@
+import { creerUuid } from '../uuid.mjs';
 import { creerImage, element, routePhotos } from './commun.mjs';
 
 export function monter(zone, contexte, adaptations = {}) {
-	const { cle = () => crypto.randomUUID() } = adaptations;
+	const { cle = () => creerUuid() } = adaptations;
 	const document = zone.ownerDocument;
 	// tabindex="-1" : le focus y revient quand la dernière photo est modérée.
 	const titre = element(document, 'h2', { id: 'titre-photos', tabindex: '-1' }, 'Photos de la salle');

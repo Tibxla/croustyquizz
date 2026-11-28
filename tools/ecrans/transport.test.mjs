@@ -75,3 +75,28 @@ test('une page d’erreur HTML d’un proxy donne un refus lisible, jamais une S
 	await assert.rejects(transport.envoyer('POST', '/commande', {}), { message: 'Le serveur ne répond pas correctement.' });
 	assert.deepEqual(await transport.envoyer('GET', '/etat'), { statut: 200, corps: { ok: true } });
 });
+
+test('la trame ERROR d’un CONNECT refusé transmet son motif déséchappé ; une erreur WebSocket n’en a pas', () => {
+	let options;
+	const appels = [];
+	const transport = creerTransport({}, {
+		adresse: 'https://exemple.test/ecran.html',
+		Client: class { constructor(o) { options = o; } activate() {} },
+	});
+	transport.ouvrir({
+		surConnexion: () => appels.push(['connexion']),
+		surTrameErreur: motif => appels.push(['refus', motif]),
+		surErreur: (...args) => appels.push(['erreur', ...args]),
+	});
+	// Avant CONNECTED, stompjs livre la valeur telle que Spring l'a échappée.
+	options.onStompError({ command: 'ERROR', headers: { message: 'Accès refusé \\c rejoins la Soirée \\\\ avec son code.' }, body: '' });
+	options.onStompError({ command: 'ERROR', headers: {}, body: '' });
+	options.onWebSocketError(new Event('error'));
+	// Après CONNECTED, stompjs déséchappe lui-même : la valeur passe telle quelle.
+	options.onConnect();
+	options.onStompError({ command: 'ERROR', headers: { message: 'Déjà lisible \\c tel quel' }, body: '' });
+	assert.deepEqual(appels, [
+		['refus', 'Accès refusé : rejoins la Soirée \\ avec son code.'], ['refus', undefined], ['erreur'],
+		['connexion'], ['refus', 'Déjà lisible \\c tel quel'],
+	]);
+});
