@@ -21,6 +21,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,9 @@ class LimiteDeRequetesHttpTest {
 
 	private static final String CONTRAT = "docs/api/openapi.yaml";
 	private static final String SOIREES = "/api/soirees";
+	private static final String ANIMATEURS = "/api/animateurs";
+	private static final String SESSION = ANIMATEURS + "/session";
+	private static final String MOT_DE_PASSE = "les-étoiles-de-test";
 
 	@LocalServerPort private int port;
 	@Autowired private JsonMapper json;
@@ -60,6 +64,84 @@ class LimiteDeRequetesHttpTest {
 	@AfterEach
 	void fermer() {
 		clientHttp.close();
+	}
+
+	@Test
+	void lesConnexionsDepuisUneMemeAdresseSontLimiteesMemeAvecDesEmailsDifferents() throws Exception {
+		var navigateur = navigateur("198.51.100.51");
+		for (int i = 0; i < 20; i++) {
+			verifier("connecterAnimateur", connecter(navigateur, "essai-" + i + "@exemple.test", MOT_DE_PASSE), 401);
+		}
+		String email = "autre-essai@exemple.test";
+		verifierLimite("connecterAnimateur", connecter(navigateur, email, MOT_DE_PASSE), "3");
+		verifier("connecterAnimateur", connecter(navigateur("198.51.100.52"), email, MOT_DE_PASSE), 401);
+
+		horloge.avancer(Duration.ofSeconds(3).minusMillis(1));
+		verifierLimite("connecterAnimateur", connecter(navigateur, email, MOT_DE_PASSE), "1");
+		horloge.avancer(Duration.ofMillis(1));
+		verifier("connecterAnimateur", connecter(navigateur, email, MOT_DE_PASSE), 401);
+	}
+
+	@Test
+	void laLimiteSuitLEmailSansDistinctionDeCasseSurLaMemeAdresseSeulement() throws Exception {
+		var navigateur = navigateur("198.51.100.55");
+		String email = "élise.animateur@exemple.test";
+		String mauvaisMotDePasse = "un-mot-de-passe-incorrect";
+		verifier("inscrireAnimateur", inscrire(navigateur, email), 201);
+		for (int i = 0; i < 4; i++) {
+			verifier("connecterAnimateur", connecter(navigateur, email, mauvaisMotDePasse), 401);
+		}
+
+		// Le succès d'un autre Animateur, sur le même réseau, laisse le dernier essai de cet e-mail disponible.
+		var voisin = navigateur("198.51.100.55");
+		String autreEmail = "autre-animateur@exemple.test";
+		verifier("inscrireAnimateur", inscrire(voisin, autreEmail), 201);
+		verifier("connecterAnimateur", connecter(voisin, autreEmail, MOT_DE_PASSE), 200);
+		verifier("connecterAnimateur", connecter(navigateur, email, mauvaisMotDePasse), 401);
+
+		String emailMajuscule = "ÉLISE.ANIMATEUR@EXEMPLE.TEST";
+		verifierLimite("connecterAnimateur", connecter(navigateur, emailMajuscule, MOT_DE_PASSE), "30");
+		var autreReseau = navigateur("198.51.100.56");
+		verifier("connecterAnimateur", connecter(autreReseau, emailMajuscule, MOT_DE_PASSE), 200);
+		horloge.avancer(Duration.ofSeconds(30).minusMillis(1));
+		verifierLimite("connecterAnimateur", connecter(navigateur, emailMajuscule, MOT_DE_PASSE), "1");
+		horloge.avancer(Duration.ofMillis(1));
+		verifier("connecterAnimateur", connecter(navigateur, emailMajuscule, MOT_DE_PASSE), 200);
+	}
+
+	@Test
+	void lesConnexionsReussiesLaissentLaRafaleDEchecsDisponible() throws Exception {
+		String adresse = "198.51.100.57";
+		String email = "connexions-reussies@exemple.test";
+		verifier("inscrireAnimateur", inscrire(navigateur(adresse), email), 201);
+		for (int i = 0; i < 6; i++) {
+			verifier("connecterAnimateur", connecter(navigateur(adresse), email, MOT_DE_PASSE), 200);
+		}
+
+		var navigateur = navigateur(adresse);
+		for (int i = 0; i < 5; i++) {
+			verifier("connecterAnimateur", connecter(navigateur, email, "incorrect"), 401);
+		}
+		verifierLimite("connecterAnimateur", connecter(navigateur, email, "incorrect"), "30");
+	}
+
+	@Test
+	void laLimiteDInscriptionParAdresseSeRouvreAuDelaiAnnonce() throws Exception {
+		var navigateur = navigateur("198.51.100.53");
+		for (int i = 0; i < 20; i++) {
+			verifier("inscrireAnimateur", inscrire(navigateur, "inscription-" + i + "@exemple.test"), 201);
+		}
+
+		String autreEmail = "autre-inscription@exemple.test";
+		verifierLimite("inscrireAnimateur", inscrire(navigateur, autreEmail), "30");
+		verifier("inscrireAnimateur", inscrire(navigateur("198.51.100.54"), autreEmail), 201);
+
+		horloge.avancer(Duration.ofSeconds(30).minusMillis(1));
+		String dernierEmail = "derniere-inscription@exemple.test";
+		verifierLimite("inscrireAnimateur", inscrire(navigateur, dernierEmail), "1");
+		horloge.avancer(Duration.ofMillis(1));
+		verifier("inscrireAnimateur", inscrire(navigateur, dernierEmail), 201);
+		verifierLimite("inscrireAnimateur", inscrire(navigateur, "inscription-suivante@exemple.test"), "30");
 	}
 
 	@Test
@@ -184,6 +266,36 @@ class LimiteDeRequetesHttpTest {
 		return "ZZZZZZ".equals(soiree.code()) ? "YYYYYY" : "ZZZZZZ";
 	}
 
+	private Navigateur navigateur(String adresse) throws Exception {
+		var reponse = http.get().uri("http://localhost:" + port + "/api/csrf")
+				.header("X-Forwarded-For", adresse).retrieve().toEntity(String.class);
+		JsonNode jeton = verifier("obtenirCsrf", reponse, 200);
+		String cookie = reponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE).split(";", 2)[0];
+		return new Navigateur(adresse, cookie, jeton.path("token").asString());
+	}
+
+	private ResponseEntity<String> connecter(Navigateur navigateur, String email, String motDePasse) {
+		return envoyerCompte(navigateur, SESSION, Map.of("email", email, "motDePasse", motDePasse));
+	}
+
+	private ResponseEntity<String> inscrire(Navigateur navigateur, String email) {
+		return envoyerCompte(navigateur, ANIMATEURS, Map.of("email", email, "motDePasse", MOT_DE_PASSE,
+				"nom", "Camille", "lieu", Map.of("nom", "Les Étoiles", "ville", "Nanterre")));
+	}
+
+	private ResponseEntity<String> envoyerCompte(Navigateur navigateur, String route, Map<String, ?> corps) {
+		return http.post().uri("http://localhost:" + port + route)
+				.header("X-Forwarded-For", navigateur.adresse()).header(HttpHeaders.COOKIE, navigateur.cookie())
+				.header("X-CSRF-TOKEN", navigateur.csrf()).contentType(MediaType.APPLICATION_JSON).body(corps)
+				.retrieve().onStatus(statut -> statut.isError(), (q, r) -> { }).toEntity(String.class);
+	}
+
+	private void verifierLimite(String operation, ResponseEntity<String> reponse, String delai) throws Exception {
+		assertThat(verifier(operation, reponse, 429).path("code").asString()).isEqualTo("TROP_DE_REQUETES");
+		assertThat(reponse.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo(delai);
+		assertThat(reponse.getHeaders().getCacheControl()).isEqualTo("no-store");
+	}
+
 	private ResponseEntity<String> envoyer(HttpMethod methode, String route, String secret, Object corps, String adresse) {
 		var requete = http.method(methode).uri("http://localhost:" + port + route)
 				.header("X-Forwarded-For", adresse)
@@ -201,5 +313,7 @@ class LimiteDeRequetesHttpTest {
 	}
 
 	private record SoireeOuverte(String route, String code, String animateur, String cleEcran) { }
+
+	private record Navigateur(String adresse, String cookie, String csrf) { }
 
 }
