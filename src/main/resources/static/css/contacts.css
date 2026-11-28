@@ -1,0 +1,61 @@
+.contacts-liste {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.contacts-liste th,
+.contacts-liste td {
+  border-bottom: 1px solid var(--fond-3);
+  vertical-align: top;
+  padding: var(--espace-3) var(--espace-3) var(--espace-3) 0;
+}
+.contacts-liste thead th {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+.contacts-liste time,
+.contacts-liste__numero {
+  font-variant-numeric: tabular-nums;
+}
+.contacts-liste__numero {
+  white-space: nowrap;
+}
+.contacts-liste summary {
+  display: list-item;
+  min-height: 44px;
+  width: fit-content;
+  padding: var(--espace-3) var(--espace-2);
+  color: var(--texte);
+  cursor: pointer;
+}
+.contacts-liste details p {
+  max-width: 36ch;
+  white-space: pre-line;
+  margin: 0 var(--espace-2) var(--espace-2);
+  color: var(--texte-2);
+}
+
+@media (max-width: 640px) {
+  .contacts-liste, .contacts-liste tbody, .contacts-liste tr, .contacts-liste td, .contacts-liste tbody th {
+    display: block;
+  }
+  .contacts-liste thead {
+    position: absolute;
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .contacts-liste tbody tr {
+    padding-block: var(--espace-3);
+    border-bottom: 1px solid var(--fond-3);
+  }
+  .contacts-liste th, .contacts-liste td {
+    border: 0;
+    padding-block: var(--espace-1);
+  }
+  .contacts-liste summary {
+    padding-inline: 0;
+  }
+}

@@ -336,13 +336,31 @@ téléphone et la lecture à 5 m.
 2. Sans Contacts, vérifie le message sur le Consentement donné depuis la Manette. Rédige un SMS
    puis clique sur **Prévisualiser**. Les compteurs évoluent pendant la saisie. L’aperçu affiche
    la mention STOP avec un lien fictif, zéro destinataire et un coût de 0,00 €. L’envoi reste désactivé.
-3. Pour essayer l’envoi simulé, démarre localement avec le profil `dev` et la propriété
-   `croustyquizz.campagnes.contacts-demonstration=true`. Ouvre à nouveau la page et rédige un SMS.
-   L’aperçu compte trois Contacts fictifs. **Envoyer** ou **Programmer** ouvre une confirmation qui rappelle
+3. Pour essayer l’envoi simulé, inscris un Contact depuis la Manette selon la recette ci-dessous.
+   Ouvre à nouveau la page et rédige un SMS. L’aperçu compte un Contact. **Envoyer** ou **Programmer** ouvre une confirmation qui rappelle
    le coût, les destinataires et le créneau en heure de Paris. Annule une première fois, puis confirme.
    L’historique affiche la Campagne et ses compteurs. Une Campagne programmée garde ce statut jusqu’au créneau prévu.
 4. Sur téléphone, tablette et ordinateur, vérifie que le texte long et le lien STOP passent à la ligne,
    que les commandes mesurent au moins 44 px et qu’Échap rend le focus au bouton qui a ouvert la confirmation.
 
-Le prestataire factice simule les envois sans connexion réseau. Les Contacts de démonstration sont
-réservés au développement et désactivés par défaut.
+Le prestataire factice simule les envois sans connexion réseau.
+
+## Contacts du Lieu (#32)
+
+1. Crée un Lieu fictif depuis `/inscription.html`, puis prépare et ouvre une Soirée aux Joueurs.
+   Dans un autre profil de navigateur, rejoins la Soirée par son code et choisis un pseudo.
+2. Sur la Manette, ouvre **Recevoir les offres du Lieu par SMS**, sous la zone de jeu.
+   Vérifie que la mention nomme le Lieu, explique l’usage des coordonnées, les trois ans de
+   conservation et le retrait par lien personnel. Vérifie que la case est décochée et
+   que le formulaire se ferme avec Échap ou le bouton de fermeture. En fin de Soirée,
+   l’invitation apparaît et le formulaire reste fermé.
+3. Saisis un prénom et un nom de fiction et le numéro fictif `06 39 98 00 32`.
+   Tente l’inscription sans cocher la case, puis coche-la et valide. Garde le lien personnel
+   indiqué dans le reçu.
+4. Dans le menu du compte du gérant, ouvre **Contacts du Lieu**. Vérifie le numéro
+   normalisé, la date et **Texte accepté**. Exporte le CSV et ouvre ensuite **Campagnes SMS**.
+   Prévisualise un message et vérifie que l’aperçu compte un destinataire. Avec la session
+   d’un autre Lieu, la liste et le CSV sont vides.
+5. Ouvre le lien personnel et confirme avec **Me désinscrire**. Recharge la liste du gérant.
+   Le Contact a disparu de la liste et du CSV et le prochain aperçu compte zéro destinataire.
+   Rouvre le même lien et confirme à nouveau. La désinscription est toujours confirmée.

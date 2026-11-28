@@ -2,10 +2,10 @@
 // sans role="menu" ni navigation aux flèches). Échap le ferme et rend le focus au bouton ; un clic ou un focus hors
 // du menu le ferme sans déplacer le focus.
 import { appelerAvecCsrf } from './api.js';
-import { adresseConnexion, CAMPAGNES_SMS, ROUTE_SESSION, SOIREES_DU_LIEU } from './compte.mjs';
+import { adresseConnexion, CAMPAGNES_SMS, CONTACTS, ROUTE_SESSION, SOIREES_DU_LIEU } from './compte.mjs';
 
 const LIENS = [
-	[SOIREES_DU_LIEU, 'Soirées du Lieu'], ['/preparer-soiree.html', 'Préparer une Soirée'], [CAMPAGNES_SMS, 'Campagnes SMS'],
+	[SOIREES_DU_LIEU, 'Soirées du Lieu'], ['/preparer-soiree.html', 'Préparer une Soirée'], [CONTACTS, 'Contacts du Lieu'], [CAMPAGNES_SMS, 'Campagnes SMS'],
 ];
 let compteur = 0;
 
