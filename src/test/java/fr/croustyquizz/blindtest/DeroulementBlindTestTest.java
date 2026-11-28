@@ -605,6 +605,270 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 		assertThat(apresRedemarrage.minuteursEnAttente()).isZero();
 	}
 
+	// --- Arbitrage de l'Animateur (ADR 0009, point 15) ---
+
+	@Test
+	void accorderUnChampFauxDonneSesPointsDebloqueLeJoueurEtReveleLeMorceau() {
+		demarrer();
+		horloge.avancer(Duration.ofSeconds(4));
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		assertThat(courant().bloques()).containsExactly(LEA);
+
+		ResultatDeCommande resultat = arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
+
+		assertThat(resultat).isInstanceOfSatisfying(Accepte.class, accepte -> {
+			assertThat(accepte.typeEvenement()).isEqualTo("morceau-revele");
+			assertThat(accepte.aRepublier()).contains(Destination.SALLE, Destination.CONSOLE);
+			assertThat(((AccuseArbitrage) accepte.accuse()).modifie()).isTrue();
+		});
+		MorceauEnCours courant = courant();
+		assertThat(courant.phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		assertThat(courant.bloques()).isEmpty();
+		assertThat(courant.partiesTrouvees()).extracting(PartieTrouvee::partie)
+				.containsExactly(PartieDuMorceau.TITRE, PartieDuMorceau.ARTISTE);
+		assertThat(courant.arbitrage())
+				.isEqualTo(new ArbitrageMorceau(PartieDuMorceau.ARTISTE, LEA, "Léa", VerdictChamp.JUSTE));
+		assertThat(courant.propositions().getFirst().artiste()).isEqualTo(new ChampJuge("Beyonse", VerdictChamp.JUSTE, true));
+		assertThat(blindTest.points())
+				.containsExactly(new AttributionDePoints(LEA, 100, "Titre et artiste trouvés", true, 4000));
+	}
+
+	@Test
+	void refuserUnChampJusteAvantLaRevelationLeRedemandeAuxAutres() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "");
+
+		ResultatDeCommande resultat = arbitrer(LEA, PartieDuMorceau.TITRE, VerdictChamp.FAUX);
+
+		assertThat(resultat).isInstanceOfSatisfying(Accepte.class,
+				accepte -> assertThat(accepte.typeEvenement()).isEqualTo("verdict-renverse"));
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.EXTRAIT);
+		assertThat(courant().partiesTrouvees()).isEmpty();
+		assertThat(courant().partiesDemandees()).containsExactlyInAnyOrder(PartieDuMorceau.TITRE, PartieDuMorceau.ARTISTE);
+		assertThat(courant().bloques()).containsExactly(LEA);
+		assertThat(blindTest.points()).isEmpty();
+
+		horloge.avancer(Duration.ofSeconds(2));
+		buzz(SAM);
+		assertThat(valider(SAM, "Halo", "Beyoncé")).isInstanceOfSatisfying(Accepte.class,
+				accepte -> assertThat(((AccuseProposition) accepte.accuse()).pointsGagnes()).isEqualTo(100));
+	}
+
+	@Test
+	void refuserUnChampApresLaRevelationLaMaintient() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyoncé");
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+
+		ResultatDeCommande resultat = arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.FAUX);
+
+		assertThat(resultat).isInstanceOfSatisfying(Accepte.class,
+				accepte -> assertThat(accepte.typeEvenement()).isEqualTo("verdict-renverse"));
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		assertThat(courant().partiesTrouvees()).extracting(PartieTrouvee::partie).containsExactly(PartieDuMorceau.TITRE);
+		assertThat(courant().bloques()).containsExactly(LEA);
+		assertThat(blindTest.points()).containsExactly(new AttributionDePoints(LEA, 70, "Titre trouvé", true, 0));
+	}
+
+	@Test
+	void revenirAuVerdictDeLaCorrectionEffaceLaMarqueDArbitrage() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
+
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.FAUX);
+
+		assertThat(courant().propositions().getFirst().artiste()).isEqualTo(new ChampJuge("Beyonse", VerdictChamp.FAUX, false));
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		assertThat(blindTest.points()).containsExactly(new AttributionDePoints(LEA, 70, "Titre trouvé", true, 0));
+	}
+
+	@Test
+	void redemanderLeVerdictCourantEstSansEffetNiPublication() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "");
+		InstantaneBlindTest avant = blindTest.instantane();
+
+		ResultatDeCommande resultat = arbitrer(LEA, PartieDuMorceau.TITRE, VerdictChamp.JUSTE);
+
+		assertThat(resultat).isInstanceOfSatisfying(Accepte.class, accepte -> {
+			assertThat(accepte.aRepublier()).isEmpty();
+			assertThat(((AccuseArbitrage) accepte.accuse()).modifie()).isFalse();
+		});
+		assertThat(blindTest.instantane()).isEqualTo(avant);
+	}
+
+	@Test
+	void accorderUnePartieTrouveeDepuisParUnAutreJoueurEstRefuseSansMutation() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		buzz(SAM);
+		valider(SAM, "", "Beyoncé");
+		InstantaneBlindTest avant = blindTest.instantane();
+
+		refusAttendu(arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE), "ETAT_INCOMPATIBLE");
+
+		assertThat(blindTest.instantane()).isEqualTo(avant);
+		assertThat(blindTest.points()).extracting(AttributionDePoints::concurrentId).containsExactly(LEA, SAM);
+	}
+
+	@Test
+	void unChampVideOuNonDemandeNeSAccordePas() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "");
+		buzz(SAM);
+		valider(SAM, "Halo", "Rihanna");
+		InstantaneBlindTest avant = blindTest.instantane();
+
+		refusAttendu(arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE), "ETAT_INCOMPATIBLE");
+		refusAttendu(arbitrer(SAM, PartieDuMorceau.TITRE, VerdictChamp.JUSTE), "ETAT_INCOMPATIBLE");
+
+		assertThat(blindTest.instantane()).isEqualTo(avant);
+	}
+
+	@Test
+	void enPilotageAutomatiqueLeVerdictDeLaCorrectionEstDefinitif() {
+		demarrerAutomatique();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		InstantaneBlindTest avant = blindTest.instantane();
+
+		refusAttendu(arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE), "ETAT_INCOMPATIBLE");
+
+		assertThat(blindTest.instantane()).isEqualTo(avant);
+	}
+
+	@Test
+	void unePropositionInconnueOuUnMorceauQuitteSontRefuses() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyoncé");
+		UUID morceau1 = etape();
+		assertThat(arbitrer(SAM, PartieDuMorceau.TITRE, VerdictChamp.FAUX)).isInstanceOfSatisfying(Refuse.class,
+				refus -> assertThat(refus.statutHttp()).isEqualTo(404));
+
+		blindTest.passerEtape(pilotage());
+
+		refusAttendu(arbitrer(morceau1, LEA, PartieDuMorceau.TITRE, VerdictChamp.FAUX), "COMMANDE_PERIMEE");
+		assertThat(blindTest.points()).containsExactly(
+				new AttributionDePoints(LEA, 100, "Titre et artiste trouvés", true, 0));
+	}
+
+	/** Relecture de #297, point 1 : un Joueur déjà jugé ne reprend jamais la main, même débloqué par un arbitrage. */
+	@Test
+	void unJoueurDebloqueParUnArbitrageNeRebuzzePas() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "", "Beyoncé");
+		buzz(SAM);
+		valider(SAM, "Hallo", "");
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.FAUX);
+		arbitrer(SAM, PartieDuMorceau.TITRE, VerdictChamp.JUSTE);
+		assertThat(courant().bloques()).containsExactly(LEA);
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.EXTRAIT);
+
+		refusAttendu(buzz(SAM), "BUZZ_NON_AUTORISE");
+
+		assertThat(VuesBlindTest.projeter(MANCHE, blindTest.instantane(), Destination.joueur(SAM)))
+				.asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP).containsEntry("peutBuzzer", false);
+		horloge.avancer(DeroulementBlindTest.DUREE_SAISIE);
+		assertThat(courant().propositions()).hasSize(2);
+		assertThat(blindTest.points()).containsExactly(new AttributionDePoints(SAM, 70, "Titre trouvé", true, 0));
+	}
+
+	/** Un Joueur débloqué mais déjà jugé ne peut plus buzzer : il compte avec les bloqués pour la Révélation. */
+	@Test
+	void quandPlusPersonneNePeutBuzzerLeMorceauSeRevele() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Hallo", "Beyoncé");
+		buzz(SAM);
+		valider(SAM, "Hallo", "");
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.FAUX);
+		arbitrer(SAM, PartieDuMorceau.TITRE, VerdictChamp.JUSTE);
+		buzz(NOE);
+
+		valider(NOE, "", "Rihanna");
+
+		assertThat(courant().bloques()).containsExactlyInAnyOrder(LEA, NOE);
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+	}
+
+	/** Relecture de #297, point 2 : la Proposition est jugée sur les parties que son formulaire demandait. */
+	@Test
+	void unePartieRouverteParUnArbitragePendantLaSaisieNEstPasJugee() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "");
+		buzz(SAM);
+
+		arbitrer(LEA, PartieDuMorceau.TITRE, VerdictChamp.FAUX);
+
+		assertThat(VuesBlindTest.projeter(MANCHE, blindTest.instantane(), Destination.joueur(SAM)))
+				.asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+				.containsEntry("champsDemandes", List.of("ARTISTE"));
+		assertThat(valider(SAM, "", "Beyoncé")).isInstanceOfSatisfying(Accepte.class, accepte -> {
+			AccuseProposition accuse = (AccuseProposition) accepte.accuse();
+			assertThat(accuse.titre()).isEqualTo(VerdictChamp.NON_DEMANDE);
+			assertThat(accuse.artiste()).isEqualTo(VerdictChamp.JUSTE);
+		});
+		assertThat(courant().bloques()).containsExactly(LEA);
+		assertThat(courant().partiesDemandees()).containsExactly(PartieDuMorceau.TITRE);
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.EXTRAIT);
+	}
+
+	/** Une partie trouvée par arbitrage pendant la saisie n'est plus jugée : elle n'a qu'un auteur. */
+	@Test
+	void unePartieAccordeePendantLaSaisieNEstPlusJugee() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		buzz(SAM);
+
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
+
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		assertThat(courant().partiesTrouvees()).extracting(PartieTrouvee::joueurId).containsExactly(LEA, LEA);
+	}
+
+	@Test
+	void lArbitrageResteOuvertPendantLaPause() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		blindTest.mettreEnPause(pilotage());
+
+		assertThat(arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE)).isInstanceOf(Accepte.class);
+		assertThat(courant().phase()).isEqualTo(PhaseBlindTest.REVELATION);
+		assertThat(horloge.minuteursEnAttente()).isZero();
+	}
+
+	@Test
+	void laRestaurationApresUnArbitrageRendLesMemesPoints() {
+		demarrer();
+		buzz(LEA);
+		valider(LEA, "Halo", "Beyonse");
+		arbitrer(LEA, PartieDuMorceau.ARTISTE, VerdictChamp.JUSTE);
+		blindTest.passerEtape(pilotage());
+		InstantaneBlindTest avant = blindTest.instantane();
+
+		DeroulementBlindTest restaure = fabrique().restaurer(
+				new ContexteDeManche(SOIREE, MANCHE, reglages(), horloge, () -> finsSignalees++),
+				REGLAGES, avant.etat(), avant.etatManche());
+
+		assertThat(restaure.instantane()).isEqualTo(avant);
+		assertThat(restaure.points()).isEqualTo(blindTest.points())
+				.containsExactly(new AttributionDePoints(LEA, 100, "Titre et artiste trouvés", true, 0));
+		assertThat(restaure.instantane().courant().arbitrage()).isNull();
+	}
+
 	// --- Fabrique ---
 
 	@Test
@@ -677,6 +941,15 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	private ResultatDeCommande valider(UUID joueurId, String titre, String artiste) {
 		return blindTest.recevoir(new ValiderProposition(joueurId, horloge.maintenant(), UUID.randomUUID(), etape(),
 				new BrouillonProposition(titre, artiste)));
+	}
+
+	private ResultatDeCommande arbitrer(UUID joueurId, PartieDuMorceau partie, VerdictChamp verdict) {
+		return arbitrer(etape(), joueurId, partie, verdict);
+	}
+
+	private ResultatDeCommande arbitrer(UUID etapeId, UUID joueurId, PartieDuMorceau partie, VerdictChamp verdict) {
+		return blindTest.commander(new ArbitrerProposition(pilotage().acteur(), horloge.maintenant(), UUID.randomUUID(),
+				etapeId, DeroulementBlindTest.propositionId(etapeId, joueurId), partie, verdict));
 	}
 
 	private static String pseudo(UUID joueurId) {

@@ -17,6 +17,9 @@ import java.util.UUID;
 @SuppressWarnings("PMD.TestClassWithoutTestCases")
 final class VuesBlindTest {
 
+	private static final String JOUEUR_ID = "joueurId";
+	private static final String PSEUDO = "pseudo";
+
 	private VuesBlindTest() {
 	}
 
@@ -34,6 +37,8 @@ final class VuesBlindTest {
 			case CONSOLE -> {
 				bloc.put("reponse", revelation(morceau));
 				bloc.put("joueursBloques", courant.bloques());
+				// Le texte saisi ne sort que vers la Console, pour l'arbitrage (ADR 0009, point 15).
+				bloc.put("propositions", courant.propositions().stream().map(VuesBlindTest::proposition).toList());
 			}
 			case JOUEUR -> completerManette(bloc, instantane.etatManche(), courant, destination.joueurId());
 			case TOUTES_LES_MANETTES -> throw new IllegalArgumentException("Chaque Manette reçoit sa propre vue.");
@@ -54,7 +59,39 @@ final class VuesBlindTest {
 		bloc.put("main", main(courant.main()));
 		bloc.put("partiesTrouvees", courant.partiesTrouvees().stream().map(VuesBlindTest::partie).toList());
 		bloc.put("revelation", courant.phase() == PhaseBlindTest.REVELATION ? revelation(morceau) : null);
+		bloc.put("arbitrage", arbitrage(courant.arbitrage()));
 		return bloc;
+	}
+
+	private static Object arbitrage(ArbitrageMorceau arbitrage) {
+		if (arbitrage == null) {
+			return null;
+		}
+		Map<String, Object> vue = new LinkedHashMap<>();
+		vue.put("partie", arbitrage.partie().name());
+		vue.put(JOUEUR_ID, arbitrage.joueurId());
+		vue.put(PSEUDO, arbitrage.pseudo());
+		vue.put("verdict", arbitrage.verdict().name());
+		return vue;
+	}
+
+	private static Map<String, Object> proposition(PropositionJugee proposition) {
+		Map<String, Object> vue = new LinkedHashMap<>();
+		vue.put("propositionId", proposition.propositionId());
+		vue.put(JOUEUR_ID, proposition.joueurId());
+		vue.put(PSEUDO, proposition.pseudo());
+		vue.put("titre", champ(proposition.titre()));
+		vue.put("artiste", champ(proposition.artiste()));
+		vue.put("points", proposition.points());
+		return vue;
+	}
+
+	private static Map<String, Object> champ(ChampJuge champ) {
+		Map<String, Object> vue = new LinkedHashMap<>();
+		vue.put("saisie", champ.saisie());
+		vue.put("verdict", champ.verdict().name());
+		vue.put("arbitre", champ.arbitre());
+		return vue;
 	}
 
 	private static void completerManette(Map<String, Object> bloc, EtatManche etat, MorceauEnCours courant,
@@ -62,10 +99,14 @@ final class VuesBlindTest {
 		boolean bloque = courant.bloques().contains(joueurId);
 		MainBlindTest main = courant.main();
 		boolean aLaMain = main != null && main.joueurId().equals(joueurId);
-		bloc.put("peutBuzzer", courant.phase() == PhaseBlindTest.EXTRAIT && etat == EtatManche.EN_COURS && !bloque);
+		boolean dejaJuge = courant.ontPropose().contains(joueurId);
+		bloc.put("peutBuzzer", courant.phase() == PhaseBlindTest.EXTRAIT && etat == EtatManche.EN_COURS && !bloque
+				&& !dejaJuge);
 		bloc.put("bloque", bloque);
 		bloc.put("aLaMain", aLaMain);
-		bloc.put("champsDemandes", courant.partiesDemandees().stream().map(Enum::name).toList());
+		// Le Joueur qui a la main voit les parties de son formulaire, celles qui seront jugées.
+		var demandees = aLaMain ? main.demandeesParmi(courant.partiesDemandees()) : courant.partiesDemandees();
+		bloc.put("champsDemandes", demandees.stream().sorted().map(Enum::name).toList());
 		bloc.put("monBrouillon", aLaMain && main.numeroBrouillon() > 0 ? brouillon(main) : null);
 	}
 
@@ -93,8 +134,8 @@ final class VuesBlindTest {
 			return null;
 		}
 		Map<String, Object> vue = new LinkedHashMap<>();
-		vue.put("joueurId", main.joueurId());
-		vue.put("pseudo", main.pseudo());
+		vue.put(JOUEUR_ID, main.joueurId());
+		vue.put(PSEUDO, main.pseudo());
 		vue.put("echeanceLe", instant(main.saisie().echeanceLe()));
 		vue.put("tempsRestantMs", main.saisie().restantMs());
 		return vue;
@@ -104,8 +145,8 @@ final class VuesBlindTest {
 		Map<String, Object> vue = new LinkedHashMap<>();
 		vue.put("partie", partie.partie().name());
 		vue.put("valeur", partie.valeur());
-		vue.put("joueurId", partie.joueurId());
-		vue.put("pseudo", partie.pseudo());
+		vue.put(JOUEUR_ID, partie.joueurId());
+		vue.put(PSEUDO, partie.pseudo());
 		vue.put("points", partie.points());
 		return vue;
 	}

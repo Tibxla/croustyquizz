@@ -1,10 +1,17 @@
 const PREFIXE = 'croustyquizz:son:';
 const PRESENCE = `${PREFIXE}fenetre:`;
 const AUDIO = `${PREFIXE}lecture`;
+// Tenu par chaque fenêtre dont le dossier a des morceaux dans Attente, que son son soit activé ou non.
+const MORCEAUX = `${PREFIXE}morceaux:`;
+const PUBLICATION = `${PREFIXE}publication:`;
 
-export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente }) {
+export function creerCoordinationSon({ verrous, canal, ouverteA, id, soireeId, surAttente }) {
 	const candidature = `${PRESENCE}${ouverteA.toFixed(3).padStart(18, '0')}:${id}`;
-	let presence, attente, manche, surveillance, revision = 0, fermeture;
+	const portee = soireeId.toLowerCase();
+	const prefixeMorceaux = `${MORCEAUX}${portee}:`;
+	const nomVerrouMorceaux = `${prefixeMorceaux}${id}`;
+	const nomVerrouPublication = `${PUBLICATION}${portee}`;
+	let presence, attente, manche, surveillance, revision = 0, fermeture, verrouMorceaux, liberationMorceaux;
 
 	function prendre(nom, mode) {
 		const controle = new AbortController();
@@ -60,6 +67,11 @@ export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente 
 		canal.postMessage(null);
 		void actualiser();
 	}
+	async function autresFenetresAvecMorceaux() {
+		const { held, pending } = await verrous.query();
+		return new Set([...held, ...pending].filter(verrou => verrou.mode === 'exclusive'
+			&& verrou.name.startsWith(prefixeMorceaux) && verrou.name !== nomVerrouMorceaux).map(verrou => verrou.name));
+	}
 	canal.onmessage = () => { void actualiser(); };
 
 	return {
@@ -92,11 +104,37 @@ export function creerCoordinationSon({ verrous, canal, ouverteA, id, surAttente 
 			}
 		},
 		attendreSonDeManche: () => manche?.prise ?? Promise.resolve(false),
+		annoncerMorceaux(disponibles) {
+			if (fermeture || disponibles === Boolean(verrouMorceaux)) return;
+			if (disponibles) {
+				verrouMorceaux = prendre(nomVerrouMorceaux, 'exclusive');
+			} else {
+				liberationMorceaux = verrouMorceaux.liberer();
+				verrouMorceaux = undefined;
+			}
+		},
+		async publierDisponibilite(morceauxDisponibles, signal, publier) {
+			// Si deux fenêtres perdent leurs morceaux ensemble, chacune rend le sien avant de regarder les autres.
+			if (!morceauxDisponibles) await liberationMorceaux;
+			for (;;) {
+				const autres = await verrous.request(nomVerrouPublication, { mode: 'exclusive', signal }, async () => {
+					const avecMorceaux = morceauxDisponibles ? null : await autresFenetresAvecMorceaux();
+					signal.throwIfAborted();
+					if (avecMorceaux?.size) return avecMorceaux;
+					await publier();
+				});
+				if (!autres) return;
+				// Attendre hors du verrou de publication, puis revérifier en le reprenant.
+				// Le navigateur libère aussi les verrous des fenêtres qui se ferment.
+				await Promise.all([...autres].map(nom => verrous.request(nom, { mode: 'shared', signal }, () => {})));
+				signal.throwIfAborted();
+			}
+		},
 		detruire() {
 			if (fermeture) return fermeture;
 			revision++;
 			surveiller();
-			fermeture = Promise.all([taireAttente(), manche?.liberer(), presence?.liberer()]).then(() => {
+			fermeture = Promise.all([taireAttente(), manche?.liberer(), presence?.liberer(), verrouMorceaux?.liberer()]).then(() => {
 				canal.postMessage(null);
 				canal.close();
 			});

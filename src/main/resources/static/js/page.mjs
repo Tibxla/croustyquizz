@@ -12,7 +12,7 @@ import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { appeler, memoire } from './api.js';
 import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
-import { creerLignePalmaresSalle } from './palmares.mjs';
+import { afficherPalmaresDeSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -43,9 +43,12 @@ function afficherPalmares(palmares) {
 	zone.hidden = palmares === null;
 	const liste = element('palmares');
 	const vide = element('palmares-vide');
+	if (ecran === 'ecran') {
+		afficherPalmaresDeSalle(document, { liste, suite: element('palmares-suite'), vide }, palmares);
+		return;
+	}
 	vide.hidden = palmares?.length !== 0;
 	liste.replaceChildren(...(palmares ?? []).map(ligne => {
-		if (ecran === 'ecran') return creerLignePalmaresSalle(document, ligne);
 		const li = document.createElement('li');
 		li.textContent = ligne.texte;
 		return li;
@@ -138,7 +141,7 @@ async function demarrer() {
 	const zoneTalon = element('talon');
 	const talon = zoneTalon ? monterTalonSalle(zoneTalon, { soireeId, chargerQrCode: transport.chargerQrCode }) : null;
 	const zoneAudio = element('audio-salle');
-	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio) : null;
+	const audioSalle = zoneAudio ? monterAudioSalle(zoneAudio, acces.soireeId) : null;
 	const { contexte, changerEtat } = creerContexte({ ...acces,
 		envoyer: transport.envoyer,
 		resynchroniser: () => suivi?.resynchroniser(),

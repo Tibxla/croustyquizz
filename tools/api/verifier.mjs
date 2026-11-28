@@ -66,10 +66,12 @@ function dependances(nom, vues = new Set()) {
 }
 // Le fichier local ne sort que vers la Console. Paroles et lecture restent hors de la Manette pour la
 // légèreté de sa vue, pas pour le secret : la vue salle est lisible par un Joueur.
+// Le texte des Propositions de titre ne sort que vers la Console, pour l'arbitrage du Blind test.
 const interditsParVue = {
-  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg'],
+  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg', 'PropositionJugee'],
   console: ['ParolesDuPassage'],
-  joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg'],
+  joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg',
+    'PropositionJugee'],
 };
 for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console'], ['VueManette', 'joueur'],
   ['EvenementSalle', 'salle'], ['EvenementConsole', 'console'], ['EvenementJoueur', 'joueur']]) {

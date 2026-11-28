@@ -282,6 +282,47 @@ class BlindTestHttpTest {
 		assertThat(capture(soiree, "console", soiree.animateur()).path("vue").path("programme")).isEmpty();
 	}
 
+	// --- Arbitrage (ADR 0009, point 15) ---
+
+	@Test
+	void lAnimateurAccordeUnChampJugeFauxEtLaSalleLAnnonceSansVoirLaSaisie() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		Joueur lea = rejoindre(soiree, "Léa");
+		String mancheId = ajouterBlindTest(soiree);
+		lancer(soiree);
+		String etape = attendrePhase(soiree, "EXTRAIT", 1).path("etapeId").asString();
+		Morceau morceau = morceauRevele(soiree);
+		verifier("envoyerBuzz", buzzer(soiree, lea, mancheId, etape, UUID.randomUUID()), 200);
+		String route = soiree.route() + "/manches/" + mancheId + "/morceaux/" + etape;
+		verifier("validerProposition", envoyer(HttpMethod.POST, route + "/proposition", lea.jeton(),
+				Map.of("envoiId", UUID.randomUUID(), "titre", morceau.titre(), "artiste", "Arbitrage soufflé"), null), 200);
+
+		// La Console reçoit la saisie pour arbitrer ; la salle et la Manette jamais.
+		JsonNode proposition = capture(soiree, "console", soiree.animateur()).path("vue").path("blindtest")
+				.path("propositions").get(0);
+		assertThat(proposition.path("artiste").path("saisie").asString()).isEqualTo("Arbitrage soufflé");
+		assertThat(proposition.path("artiste").path("verdict").asString()).isEqualTo("FAUX");
+		assertThat(capture(soiree, "salle", soiree.cleEcran()).toString()).doesNotContain("Arbitrage soufflé");
+		assertThat(capture(soiree, "manette", lea.jeton()).toString()).doesNotContain("Arbitrage soufflé");
+
+		Map<String, Object> corps = Map.of("propositionId", proposition.path("propositionId").asString(),
+				"partie", "ARTISTE", "verdict", "JUSTE");
+		verifierRefus("arbitrerProposition", envoyer(HttpMethod.POST, route + "/arbitrage", lea.jeton(), corps,
+				UUID.randomUUID()), 403, "ACCES_REFUSE");
+		UUID cle = UUID.randomUUID();
+		JsonNode accuse = verifier("arbitrerProposition",
+				envoyer(HttpMethod.POST, route + "/arbitrage", soiree.animateur(), corps, cle), 200);
+		assertThat(accuse.path("modifie").asBoolean()).isTrue();
+		assertThat(verifier("arbitrerProposition",
+				envoyer(HttpMethod.POST, route + "/arbitrage", soiree.animateur(), corps, cle), 200)).isEqualTo(accuse);
+
+		JsonNode salle = capture(soiree, "salle", soiree.cleEcran()).path("vue");
+		assertThat(salle.path("blindtest").path("phase").asString()).isEqualTo("REVELATION");
+		assertThat(salle.path("blindtest").path("arbitrage").path("pseudo").asString()).isEqualTo("Léa");
+		assertThat(salle.path("blindtest").path("arbitrage").path("verdict").asString()).isEqualTo("JUSTE");
+		assertThat(points(salle, "Léa")).isEqualTo(100);
+	}
+
 	@Test
 	void uneSourceSansAssezDeMorceauxRendUn422QuiDitQuoiCorrigerSansAjouterDeManche() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
