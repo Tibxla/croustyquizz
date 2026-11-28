@@ -27,9 +27,12 @@ public final class FournisseurDeBlocKaraoke implements FournisseurDeBloc {
         var active = depot.deLaSoiree(soireeId).stream().filter(m -> m.getMode() == mode()
                 && (m.getEtat() == EtatManche.EN_COURS || m.getEtat() == EtatManche.EN_PAUSE)).findFirst();
         if (active.isEmpty()) { return destination -> null; }
-        var instantane = (InstantaneKaraoke) service.getObject().instantane(soireeId, active.get().getMancheId());
+        var karaoke = service.getObject();
+        var mancheId = active.get().getMancheId();
+        var instantane = (InstantaneKaraoke) karaoke.instantane(soireeId, mancheId);
+        var accords = karaoke.accordsEnregistrement(soireeId, mancheId);
         var pseudos = participants.pseudos(soireeId);
         var maintenant = active.get().getModifieLe();
-        return destination -> VuesKaraoke.projeter(instantane, destination, pseudos, maintenant, proprietes, source);
+        return destination -> VuesKaraoke.projeter(instantane, destination, pseudos, maintenant, proprietes, source, accords);
     }
 }

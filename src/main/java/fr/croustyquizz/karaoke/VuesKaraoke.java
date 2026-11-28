@@ -47,20 +47,20 @@ public final class VuesKaraoke {
             List<PassageEnAttentePublic> passagesEnAttente, boolean peutGererFile, boolean peutReglerLimite, boolean peutRechercher,
             boolean lecteurDesigne, boolean peutAppeler, boolean peutPasser, boolean peutReprendre, boolean peutCaler,
             boolean peutReprendreEnParolesSeules, LectureDeChanson lecture, FichierAudioLocal fichierLocal,
-            List<VoteDuPassage> votes) { }
+            List<VoteDuPassage> votes, boolean enregistrementAutorise) { }
     public record BlocKaraokeManette(UUID mancheId, EtatManche etat, long limitePassagesEnAttente, long nombreEnAttente, long tourOuvert,
             UUID passagePrioritaireId, CourantPourFile courant, ConfigurationInterfaceKaraoke configurationInterface,
             List<PassageEnAttentePublic> prochainsPassages, long nombreAutresPassages,
             List<PassageEnAttentePublic> mesPassagesEnAttente, long nombrePersonnelEnAttente,
             boolean peutRechercher, boolean peutInscrire, String motifInscriptionRefusee, boolean peutConfirmerPresence,
-            List<VoteDuPassageManette> votes) { }
+            List<VoteDuPassageManette> votes, boolean enregistrementAutorise, List<UUID> mesAccordsEnregistrement) { }
     public record DemandePositionLecture(UUID demandeId, Instant demandeeLe) { }
     public record LectureDeChanson(UUID lectureId, UUID lecteurId, EtatLecture etat, SourceLecture source,
             MotifParolesSeules motifParolesSeules, OrigineParoles origineParoles, long decalageMs,
             long numeroModificationCalage, DemandePositionLecture demandePosition) { }
 
     public static Object projeter(InstantaneKaraoke instantane, Destination destination, Map<UUID, String> pseudos,
-            Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
+            Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source, AccordsEnregistrement accords) {
         var etat = instantane.file();
         if (destination.type() == Destination.Type.JOUEUR && !pseudos.containsKey(destination.joueurId())) {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Joueur introuvable.").exception();
@@ -99,7 +99,7 @@ public final class VuesKaraoke {
                     projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
                             && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
                     lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier(),
-                    projeterVotesPublics(instantane, file, pseudos, maintenant));
+                    projeterVotesPublics(instantane, file, pseudos, maintenant), accords.autorise());
             case JOUEUR -> {
                 UUID joueur = destination.joueurId();
                 var personnels = publics.stream().filter(p -> p.interpretes().stream().anyMatch(i -> i.joueurId().equals(joueur))).toList();
@@ -110,7 +110,8 @@ public final class VuesKaraoke {
                         etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, trois, publics.size() - trois.size(),
                         personnels, personnels.size(), true, peutInscrire, peutInscrire ? null : "LIMITE_ATTEINTE", peutConfirmer,
                         votesVisibles(instantane, file).stream()
-                                .map(vote -> projeterVoteManette(instantane, file, pseudos, maintenant, vote, joueur)).toList());
+                                .map(vote -> projeterVoteManette(instantane, file, pseudos, maintenant, vote, joueur)).toList(),
+                        accords.autorise(), accords.de(joueur));
             }
             default -> throw new IllegalArgumentException("Une destination concrète est requise.");
         };

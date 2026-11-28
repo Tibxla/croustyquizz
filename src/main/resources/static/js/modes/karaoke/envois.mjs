@@ -88,8 +88,11 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			}
 			const cle = creerUuid();
 			const e = { ...commande, cle, empreinte, corps: structuredClone(commande.corps), entetes: { ...commande.entetes }, tentatives: new Set() };
-			if (commande.acteurType === 'JOUEUR') e.corps.envoiId = cle;
-			if (commande.acteurType !== 'JOUEUR' || commande.type === 'VOTER') e.entetes['Idempotency-Key'] = cle;
+			const accordEnregistrement = commande.type === 'ACCORD_ENREGISTREMENT';
+			if (commande.acteurType === 'JOUEUR' && !accordEnregistrement) e.corps.envoiId = cle;
+			if (commande.acteurType !== 'JOUEUR' || commande.type === 'VOTER' || accordEnregistrement) {
+				e.entetes['Idempotency-Key'] = cle;
+			}
 			envois.set(cle, e); return partir(e);
 		},
 		reessayer(cle) {

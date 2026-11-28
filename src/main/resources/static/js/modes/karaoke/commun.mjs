@@ -7,6 +7,13 @@ import { creerUuid } from '../../uuid.mjs';
 // Réexport pour les modules du Karaoké qui l'importent d'ici.
 export { creerUuid };
 
+function cibleAccord(bloc, joueurId, passageId) {
+	const courant = bloc.courant;
+	if (courant?.passageId === passageId && courant.etat === 'APPELE'
+		&& courant.interpretes.some(i => i.joueurId === joueurId)) return courant;
+	return bloc.mesPassagesEnAttente.find(p => p.passageId === passageId);
+}
+
 export const texteAutresPassages = n => (n ? `et ${n} ${n > 1 ? 'autres' : 'autre'}` : '');
 
 const styles = new WeakMap();
@@ -92,6 +99,12 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 		capacite(commande) {
 			if (!bloc) return false;
 			switch (commande.type) {
+				case 'ACCORD_ENREGISTREMENT': {
+					const passage = cibleAccord(bloc, contexte.acteur.identifiant, commande.passageId);
+					// L'interdiction bloque un nouvel accord, jamais le retrait d'un accord suspendu.
+					return (bloc.enregistrementAutorise !== false || commande.corps.accord === false)
+						&& passage?.numeroModification === commande.corps.numeroModification;
+				}
 				case 'VOTER': return (bloc.votes ?? []).some(vote => vote.passageId === commande.passageId && vote.peutVoter);
 				case 'CONFIRMER_PRESENCE':
 					return bloc.peutConfirmerPresence && commande.passageId === bloc.courant?.passageId;
@@ -149,7 +162,8 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 			const actif = document.activeElement, avaitFocus = liste.contains(actif);
 			const id = actif?.getAttribute('data-passage-id') ?? actif?.getAttribute('data-chanson-id');
 			liste.replaceChildren(...enfants);
-			if (avaitFocus) {
+			if (avaitFocus && actif.isConnected && !actif.hidden && !actif.disabled) actif.focus();
+			else if (avaitFocus) {
 				(Array.from(liste.querySelectorAll('[data-passage-id], [data-chanson-id]')).find(e =>
 					e.tagName === actif.tagName && (e.getAttribute('data-passage-id') ?? e.getAttribute('data-chanson-id')) === id) ?? titre)?.focus();
 			}
@@ -177,6 +191,7 @@ export function creerInterface(zones, contexte, { annoncerConnexion = true } = {
 					if (acteurType !== 'JOUEUR' || !passageId) continue;
 					const visible = type === 'VOTER' ? voteAttendUnRecu(bloc, passageId, e.etat)
 						: type === 'CONFIRMER_PRESENCE' ? bloc.courant?.passageId === passageId
+						: type === 'ACCORD_ENREGISTREMENT' ? Boolean(cibleAccord(bloc, contexte.acteur.identifiant, passageId))
 							: personnels.some(p => p.passageId === passageId);
 					if (!visible) { machine.oublier(cle); envois.delete(cle); }
 				}

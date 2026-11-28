@@ -68,8 +68,9 @@ function dependances(nom, vues = new Set()) {
 // légèreté de sa vue, pas pour le secret : la vue salle est lisible par un Joueur.
 // Le texte des Propositions de titre ne sort que vers la Console, pour l'arbitrage du Blind test.
 const interditsParVue = {
-  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg', 'PropositionJugee'],
-  console: ['ParolesDuPassage'],
+  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg', 'AccordEnregistrement', 'AccuseAccordEnregistrement',
+    'PropositionJugee'],
+  console: ['ParolesDuPassage', 'AccordEnregistrement', 'AccuseAccordEnregistrement'],
   joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg',
     'PropositionJugee'],
 };
@@ -108,6 +109,11 @@ for (const [chemin, element] of Object.entries(ouvert.paths)) {
     assert.ok(operation.operationId, `${methode} ${chemin} sans operationId`);
     assert.ok(!operations.has(operation.operationId), `operationId dupliqué : ${operation.operationId}`);
     operations.set(operation.operationId, { ...operation, chemin, methode });
+    // Seules les photos de la salle (#72) déposent des octets : jamais de son (ADR 0005).
+    if (operation.requestBody) {
+      assert.ok(Object.keys(operation.requestBody.content).every((type) => ['application/json', 'image/jpeg'].includes(type)),
+        `${operation.operationId} : aucun dépôt audio dans le contrat HTTP`);
+    }
     const session = operation.security.some((securite) => 'sessionAnimateur' in securite);
     if (session && ['post', 'put', 'patch', 'delete'].includes(methode)) {
       assert.ok(operation.parameters?.some((p) => p.in === 'header' && p.name === 'X-CSRF-TOKEN' && p.required),
@@ -126,7 +132,8 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos',
+  'enregistrement-karaoke'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();

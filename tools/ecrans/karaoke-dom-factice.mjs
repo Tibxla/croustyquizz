@@ -20,8 +20,8 @@ export function creerDocument() {
 		removeAttribute(k) { this.attributes.delete(k); }
 		append(...enfants) { for (const e of enfants) { e.remove(); this.children.push(e); e.parentNode = this; } }
 		appendChild(e) { this.append(e); return e; }
-		replaceChildren(...enfants) { for (const e of this.children) e.parentNode = null; this.children = []; this.texte = ''; this.append(...enfants); }
-		remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(e => e !== this); this.parentNode = null; }
+		replaceChildren(...enfants) { for (const e of this.children) { e.parentNode = null; perdreFocus(e); } this.children = []; this.texte = ''; this.append(...enfants); }
+		remove() { if (this.parentNode) { this.parentNode.children = this.parentNode.children.filter(e => e !== this); perdreFocus(this); } this.parentNode = null; }
 		contains(cible) { return this === cible || this.children.some(e => e.contains(cible)); }
 		matches(selecteur) {
 			if (selecteur.includes(',')) return selecteur.split(',').some(s => this.matches(s.trim()));
@@ -41,6 +41,8 @@ export function creerDocument() {
 		showModal() { this.open = true; }
 		close() { this.open = false; this.dispatchEvent({ type: 'close' }); }
 	}
+	// Comme un navigateur : détacher l'élément actif, même pour le déplacer, rend le focus au body.
+	const perdreFocus = sousArbre => { if (sousArbre.contains(document.activeElement)) document.activeElement = document.body; };
 	const document = { isConnected: true, createElement: tag => new Element(tag), createDocumentFragment: () => new Element('fragment') };
 	document.head = document.createElement('head'); document.body = document.createElement('body'); document.activeElement = document.body;
 	const evenementsDocument = document.createElement('document');

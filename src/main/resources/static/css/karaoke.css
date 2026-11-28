@@ -171,3 +171,37 @@
   .karaoke .ticket--detache .ticket__corps,
   .karaoke .mon-ticket--detachement .mon-ticket__bas { animation: none; }
 }
+
+.karaoke__autorisation-enregistrement,
+.karaoke__enregistrement-fichier {
+	display: grid;
+	gap: var(--espace-2);
+	justify-items: start;
+}
+
+.karaoke__enregistrement .bouton,
+.karaoke__autorisation-enregistrement .bouton {
+	white-space: normal;
+}
+
+.karaoke__enregistrement > p {
+	flex-basis: 100%;
+}
+
+/* Sur la teinte du ticket, le focus prend l'encre, comme « Je suis prêt ». */
+.karaoke .mon-ticket .karaoke__enregistrement .bouton:focus-visible {
+	outline-color: var(--encre);
+}
+
+.karaoke__enregistrement-fichier a.bouton {
+	color: var(--texte);
+	text-decoration: none;
+}
+
+.karaoke__autorisation-enregistrement > p:empty {
+	display: none;
+}
+
+.karaoke__enregistrements audio {
+	max-width: 100%;
+}

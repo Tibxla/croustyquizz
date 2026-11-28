@@ -246,6 +246,38 @@ La Console coupe ou relance la Musique d’attente depuis la barre de pilotage, 
 3. Couper de nouveau et redémarrer le serveur avec la même base. Après resynchronisation, vérifier que la Console propose toujours de relancer et que la salle reste silencieuse. Choisir un dossier sans morceaux dans `Attente` et vérifier le message dans la Console.
 4. Avec un dossier contenant des morceaux, vérifier que la relance pendant un Passage laisse la Chanson audible seule et que la Musique d’attente reprend à la clôture.
 
+### Enregistrement (#71)
+
+Le son reste sur le téléphone de l’Interprète : la Manette capte le micro avec `MediaRecorder`, et le serveur ne reçoit que l’autorisation de la Soirée et l’accord de l’Interprète (ADR 0005, `docs/api/README.md`, « Enregistrement d’un Passage »). La machine d’états de la prise (`modes/karaoke/enregistrement.mjs`) et sa mise en page sur la Manette (`enregistrement-manette.mjs`) sont testées dans `tools/ecrans/karaoke-enregistrement.test.mjs`, avec un faux `MediaRecorder`. Le micro n’existe que dans un contexte sécurisé : sur un vrai téléphone, passer par la recette en HTTPS (Render) ou par un tunnel HTTPS, pas par l’adresse locale du poste en HTTP.
+
+Reprendre la Soirée de démonstration de la recette #114 avec la Console, l’Écran de salle et deux Manettes.
+
+1. Sur la Manette du Joueur 1, inscrire une Chanson. Le ticket en attente propose « Enregistrer mon Passage ». Le toucher : après le reçu, le bouton devient « Retirer mon accord » et « Autoriser le micro » apparaît. Aucun dialogue du navigateur ne s’ouvre avant ce second geste.
+2. Toucher « Autoriser le micro » et accepter. La Manette affiche « Micro prêt » et garde l’écran allumé (verrou d’écran) jusqu’à la fin de la prise. Vérifier que la Manette du Joueur 2 et l’Écran de salle n’affichent rien de l’accord, et que la Console ne montre que son bouton « Interdire les Enregistrements ».
+3. Appeler le Passage, confirmer « Je suis prêt » et chanter quelques secondes. La Manette affiche « Enregistrement en cours ». Mettre la Manche en pause puis la reprendre, et laisser le Passage se terminer. La Manette annonce « Ton Enregistrement est prêt », et « Tes Enregistrements » propose « Télécharger mon Enregistrement », un lecteur et « Retirer ». Le retrait demande une confirmation. Écouter la prise : la pause n’y laisse pas de blanc. Le fichier porte le titre de la Chanson et la date du Passage.
+4. Rejouer en refusant le micro. La Manette affiche « Le micro est refusé. Ton Passage aura lieu sans Enregistrement. » et le Passage se déroule normalement.
+5. Rejouer en rechargeant la Manette pendant le Passage. La prise est perdue et la Manette affiche « Le Passage a déjà commencé. Une prise ne redémarre pas après un rechargement. » Couper puis rétablir le réseau pendant une autre prise : elle continue, car le micro ne dépend pas de la connexion. Faire manquer `passage-demarre` à la Manette (couper le réseau juste après « Je suis prêt », puis le rétablir dans les secondes qui suivent) : la capture de reprise lance la prise, en retard. Au-delà de 15 secondes après le départ, la Manette dit que la prise n’a pas pu démarrer avec le Passage. Laisser partir un Passage sans avoir autorisé le micro, puis pendant la demande du navigateur : chaque cas a son propre message, sans parler de rechargement.
+6. Depuis la Console, choisir « Interdire les Enregistrements » pendant qu’un Joueur a donné son accord. L’option disparaît des Manettes sans accord. Si une prise tournait, elle s’arrête : la prise interrompue par l’interdiction reste proposée au Joueur, avec la mention « Cette prise a été interrompue. » Pendant l’interdiction, l’Interprète qui avait donné son accord garde seulement « Retirer mon accord », avec « Ton accord est suspendu » ; « Autoriser le micro » ne revient pas. Réautoriser : l’accord donné avant l’interdiction revient, sauf si l’Interprète l’a retiré entre-temps, et le micro attend de nouveau son geste.
+7. Terminer la Manche avant de télécharger, puis démarrer une autre Manche de Karaoké : le fichier revient dans « Tes Enregistrements ». Il vit dans la page, hors du module de la Manche, jusqu’au retrait ou à la fermeture de la page. Rien n’est écrit sur le téléphone : un rechargement le perd, et la Manette le dit sous « Tes Enregistrements ».
+8. Verrouiller l’écran pendant « Micro prêt » : si le système coupe le micro, la Manette revient à « Autoriser le micro ». Pendant la prise, un micro coupé arrête la prise, et le fichier partiel est proposé comme interrompu. Une prise sans aucun son reste affichée comme un échec.
+9. Ouvrir la Manette en HTTP, sur l’adresse locale du poste : « Enregistrer mon Passage » n’est pas proposé, et la Manette explique que la page n’est pas en HTTPS.
+
+L’interdiction ne se règle que depuis la Console, pendant une Manche de Karaoké active, en attendant #180 qui la rattachera au Lieu. Hors Manche de Karaoké, le dernier réglage de la Soirée reste en vigueur.
+
+Le serveur gère déjà un accord par Interprète dans un Passage à plusieurs, mais l’inscription à plusieurs arrive avec #66 : ce cas reste à vérifier à ce moment-là.
+
+À vérifier à la main, sur un téléphone Android (Chrome) et sur un iPhone (Safari) :
+
+- la demande de permission au geste, puis son refus et son blocage durable dans les réglages du site ;
+- le format choisi : `audio/mp4` (fichier `.m4a`) dès que le navigateur le sait, sinon `audio/webm;codecs=opus` (fichier `.webm`) ; le fichier se lit hors du navigateur (Fichiers, lecteur du téléphone) ;
+- le téléchargement : sur iPhone, le lien `blob:` ouvre un aperçu ou propose « Télécharger » selon la version d’iOS ; vérifier que le fichier arrive dans Fichiers avec son nom ;
+- la prise quand l’écran se verrouille ou que l’Interprète change d’application, malgré le verrou d’écran : iOS coupe le micro d’une page en arrière-plan, Android peut le garder ; noter ce qui reste dans le fichier partiel ;
+- le micro ouvert entre « Autoriser le micro » et le départ : l’indicateur du système reste allumé pendant l’attente de l’appel ;
+- le niveau du son dans un Lieu bruyant, près des enceintes, et la durée d’une prise de quatre minutes ;
+- le mode silencieux de l’iPhone et un casque Bluetooth branché pendant la prise.
+
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans interface, avec le faux micro de Chromium (`--use-fake-device-for-media-stream`). Le Joueur 1 s'inscrit, donne son accord, puis autorise le micro (« Micro prêt »). « Je suis prêt » lance la prise (« Enregistrement en cours »). La pause de la Manche la suspend, et la reprise la relance. Après « Passer », la Manette propose « Télécharger mon Enregistrement » : un WebM d'environ 97 Ko, nommé `Metro Station - Shake It - 2026-11-24.webm`, avec « Écouter ». « Interdire les Enregistrements » retire l'option des Manettes. Rien ne déborde à 390 px. Le format MP4 de Safari, le micro réel et le téléchargement sur iOS restent à vérifier sur téléphone.
+
 ### Recharger l’Écran pendant l’appel (#144)
 
 1. Appeler un Passage dont la Chanson correspond à un fichier audio lisible. Pendant l’appel, recharger l’Écran de salle.

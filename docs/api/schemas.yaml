@@ -1372,6 +1372,7 @@ $defs:
         - verdict-renverse
         - file-attente-modifiee
         - limite-passages-modifiee
+        - autorisation-enregistrement-modifiee
         - passage-appele
         - passage-demarre
         - passage-termine
@@ -1432,6 +1433,8 @@ $defs:
         - resultat-personnel
         - file-attente-modifiee
         - limite-passages-modifiee
+        - autorisation-enregistrement-modifiee
+        - accord-enregistrement-modifie
         - passage-appele
         - passage-demarre
         - passage-termine
@@ -1516,6 +1519,7 @@ $defs:
         - VOTE_INTERDIT
         - VOTE_DEJA_ENREGISTRE
         - VOTE_CLOS
+        - ENREGISTREMENT_INTERDIT
       detail:
         type: string
         minLength: 1
@@ -3325,6 +3329,10 @@ $defs:
     - $ref: '#/$defs/KaraokeCommun'
     - type: object
       properties:
+        enregistrementAutorise:
+          type: boolean
+          default: true
+          description: Autorisation valable pour la Soirée en attendant le Lieu (#180).
         votes:
           type: array
           items:
@@ -3406,6 +3414,18 @@ $defs:
     - $ref: '#/$defs/KaraokeCommun'
     - type: object
       properties:
+        enregistrementAutorise:
+          type: boolean
+          default: true
+          description: Autorisation valable pour la Soirée en attendant le Lieu (#180).
+        mesAccordsEnregistrement:
+          type: array
+          uniqueItems: true
+          default: []
+          items:
+            type: string
+            format: uuid
+          description: Identifiants des Passages en attente ou actifs pour lesquels ce Joueur a donné son accord. Pendant une interdiction, la liste garde ces accords suspendus, sans effet tant que enregistrementAutorise vaut false.
         votes:
           type: array
           items:
@@ -3463,6 +3483,39 @@ $defs:
           motifInscriptionRefusee:
             const: LIMITE_ATTEINTE
     unevaluatedProperties: false
+  AccordEnregistrement:
+    type: object
+    additionalProperties: false
+    required: [accord, numeroModification]
+    properties:
+      accord: { type: boolean }
+      numeroModification: { type: integer, minimum: 0, maximum: 9007199254740991 }
+  AutorisationEnregistrement:
+    type: object
+    additionalProperties: false
+    required: [autorise]
+    properties:
+      autorise: { type: boolean }
+  AccuseAccordEnregistrement:
+    type: object
+    additionalProperties: false
+    required: [envoiId, soireeId, mancheId, passageId, accord, recueLe]
+    properties:
+      envoiId: { type: string, format: uuid }
+      soireeId: { type: string, format: uuid }
+      mancheId: { type: string, format: uuid }
+      passageId: { type: string, format: uuid }
+      accord: { type: boolean }
+      recueLe: { type: string, format: date-time }
+  AccuseAutorisationEnregistrement:
+    type: object
+    additionalProperties: false
+    required: [envoiId, soireeId, autorise, recueLe]
+    properties:
+      envoiId: { type: string, format: uuid }
+      soireeId: { type: string, format: uuid }
+      autorise: { type: boolean }
+      recueLe: { type: string, format: date-time }
   AppelPassage:
     type: object
     additionalProperties: false

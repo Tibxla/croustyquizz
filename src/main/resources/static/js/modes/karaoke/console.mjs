@@ -197,7 +197,17 @@ export function monter(zones, contexte) {
 	limite.append(label, champ, appliquer, erreur, valeurSoumise);
 	const file = e('ol', 'rouleau a-venir'), vide = e('p', '', 'Aucun Passage en attente.');
 	const commandes = e('div', 'karaoke__commandes'), message = e('p'); message.setAttribute('role', 'status');
-	ui.principale.append(titre, limite, file, vide, commandes, message);
+	const autorisation = e('div', 'karaoke__autorisation-enregistrement');
+	const enregistrementsPermis = () => ui.bloc.enregistrementAutorise !== false;
+	const envoiAutorisation = () => ui.dernierEnvoi(e => e.commande.type === 'AUTORISATION_ENREGISTREMENT');
+	const regler = bouton('', () => ui.commande(commande('PUT', '/autorisation-enregistrement',
+		{ autorise: !enregistrementsPermis() }, { type: 'AUTORISATION_ENREGISTREMENT' })));
+	const reessayerAutorisation = bouton('Réessayer le réglage des Enregistrements',
+		() => ui.reessayer(envoiAutorisation()?.cle));
+	const statutAutorisation = e('p');
+	statutAutorisation.setAttribute('role', 'status');
+	autorisation.append(regler, reessayerAutorisation, statutAutorisation);
+	ui.principale.append(titre, limite, autorisation, file, vide, commandes, message);
 	const catalogue = creerCatalogue(ui, ui.laterale);
 	let selection = null;
 	ui.messageInvalidation = () => { message.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
@@ -238,6 +248,13 @@ export function monter(zones, contexte) {
 	ui.surRendu = () => {
 		if (!ui.bloc) return;
 		passage.rendre(automatique);
+		const envoi = envoiAutorisation();
+		const rejouable = ui.reessaiPossible(envoi);
+		regler.textContent = enregistrementsPermis() ? 'Interdire les Enregistrements' : 'Autoriser les Enregistrements';
+		regler.disabled = !ui.mutationsPermises || envoi?.etat === 'en-cours' || rejouable;
+		reessayerAutorisation.hidden = !rejouable;
+		const statut = texteEnvoi(envoi);
+		if (statutAutorisation.textContent !== statut) statutAutorisation.textContent = statut;
 		if (!passages().some(p => p.passageId === selection)) selection = null;
 		const envoiLimite = [...ui.envois.values()].filter(e => e.commande.chemin.endsWith('/limite')).at(-1);
 		if (ui.document.activeElement !== champ && envoiLimite?.etat !== 'en-cours') champ.value = String(ui.bloc.limitePassagesEnAttente);

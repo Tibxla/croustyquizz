@@ -2124,6 +2124,129 @@ paths:
           $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/accord-enregistrement:
+    put:
+      operationId: definirAccordEnregistrement
+      summary: Donner ou retirer son accord pour enregistrer un Passage sur sa Manette
+      description: >-
+        L’Interprète donne ou retire son propre accord en attente ou après appel, jusqu’au départ du
+        Passage. Par défaut, aucun accord. Seule sa Manette reçoit accord-enregistrement-modifie
+        si son choix change. Un rejeu identique rend le reçu initial sans publication.
+        Refus : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE,
+        404 RESSOURCE_INTROUVABLE, 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE,
+        409 ETAT_INCOMPATIBLE (Manche terminée), 409 ENREGISTREMENT_INTERDIT (nouvel accord pendant
+        l’interdiction de la Soirée ; le retrait reste accepté et publié),
+        409 COMMANDE_PERIMEE (Passage démarré, sorti de la File ou compteur dépassé),
+        503 SERVICE_INDISPONIBLE.
+      tags: [Karaoké]
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: mancheId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: passageId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/AccordEnregistrement
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseAccordEnregistrement
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/manches/{mancheId}/autorisation-enregistrement:
+    put:
+      operationId: reglerAutorisationEnregistrement
+      summary: Autoriser ou interdire les Enregistrements pour la Soirée
+      description: >-
+        L’Animateur règle l’autorisation depuis la Manche active de Karaoké. Le réglage vaut pour
+        toute la Soirée en attendant le Lieu (#180) et autorise les Enregistrements par défaut.
+        Un changement utile publie autorisation-enregistrement-modifiee à la Console et aux Manettes.
+        Une interdiction suspend les accords existants et arrête les prises sur les Manettes.
+        Un rejeu identique rend le reçu initial sans publication.
+        Refus : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE,
+        403 CSRF_INVALIDE, 404 RESSOURCE_INTROUVABLE, 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE,
+        409 ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE.
+      tags: [Karaoké]
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: mancheId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        schema: { type: string, minLength: 16 }
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/AutorisationEnregistrement
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseAutorisationEnregistrement
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/retrait:
     post:
       operationId: retirerPassage

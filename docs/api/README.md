@@ -12,7 +12,8 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-passage-karaoke.yaml](exemples/parcours-passage-karaoke.yaml) | Cycle du Passage : appel, « Je suis prêt », lecture de l’Écran de salle, calage, erreur, fin, refus, reçus et reconnexion de la salle |
 | [exemples/parcours-pilotage-manuel.yaml](exemples/parcours-pilotage-manuel.yaml) | Lancement, enchaînement des Manches et fin de la Soirée sur les trois écrans |
 | [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
-| [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture, reconnexion, appel et saut d’un Passage en Pilotage Automatique |
+| [exemples/parcours-enregistrement-karaoke.yaml](exemples/parcours-enregistrement-karaoke.yaml) | Enregistrement d’un Passage : accord de l’Interprète, interdiction pour la Soirée, rejeu, refus et cas sans son |
+| [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture et reconnexion de la Console, appel et saut d’un Passage en Pilotage Automatique |
 | [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) | Blind test : extrait, Buzz, brouillon et Proposition de titre, partie trouvée, blocage, Révélation, refus, confidentialité et reconnexion de la salle |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
@@ -82,9 +83,9 @@ Un simple « lire l’état puis s’abonner » peut perdre un événement entre
 3. Tant que l’abonnement n’est pas installé ou autorisé pour cet acteur et cette vue, le serveur répond `409 ABONNEMENT_INACTIF`. Réessayer après une courte attente, avec un nombre de tentatives borné ; si la connexion tombe, recommencer avec un nouvel UUID. On ne suppose pas que le broker simple Spring implémente les `RECEIPT` de STOMP.
 4. Après vérification de l’abonnement, le serveur capture une vue et sa révision au même point cohérent. La réponse restitue l’UUID d’abonnement, cette révision et l’heure du serveur.
 5. Installer la vue reçue, ignorer les événements de révision inférieure ou égale à la capture, puis appliquer dans l’ordre ceux qui la suivent. Ignorer également les doublons. Si une révision manque, abandonner cette synchronisation et récupérer une nouvelle vue cohérente.
+6. Une réponse HTTP appartenant à un ancien abonnement ne peut remplacer la vue du nouvel abonnement. Borner le tampon ; si sa capacité est dépassée, recommencer la synchronisation. L’écran reste en état de reconnexion tant que cette procédure n’a pas réussi.
 
 Après le délai de conservation des vues d’une Soirée terminée (24 h par défaut), les captures reconstruisent la vue en révision `0` et le serveur cesse de publier sur les destinations de la Soirée.
-6. Une réponse HTTP appartenant à un ancien abonnement ne peut remplacer la vue du nouvel abonnement. Borner le tampon ; si sa capacité est dépassée, recommencer la synchronisation. L’écran reste en état de reconnexion tant que cette procédure n’a pas réussi.
 
 L’ordre « abonnement effectivement installé avant capture » empêche la fenêtre de perte, y compris lorsque la réponse HTTP est retardée et qu’un événement plus récent arrive avant elle. Les détails de registre d’abonnement appartiennent à l’adaptateur temps réel ; l’interface promise aux écrans est la vérification de l’UUID et la capture cohérente. Sans paramètre `abonnementId`, les routes d’état restent des lectures ponctuelles, sans garantie de raccordement à un flux.
 
@@ -349,6 +350,37 @@ la pause, d’après l’heure du serveur. Le champ persistant `suivantDemarre`,
 après sa fin ou son saut. Un Passage simplement appelé ne le change pas.
 `configurationInterface.dureeVoteMs` expose le réglage `croustyquizz.passage.dureeVoteSecondes`.
 
+### Enregistrement d’un Passage (#71)
+
+Le son d’un Enregistrement reste sur le téléphone de l’Interprète (ADR 0005). Les deux commandes
+d’Enregistrement transmettent en `application/json` l’autorisation de la Soirée ou l’accord de
+l’Interprète. Le vérificateur contrôle l’absence de dépôt audio dans tout le contrat HTTP.
+
+L’Animateur règle l’autorisation par `PUT M/autorisation-enregistrement` avec
+`AutorisationEnregistrement` (`{ "autorise": false }` pour interdire). Le réglage vaut pour toute
+la Soirée, toutes Manches confondues, et il est permis par défaut. La table réserve une colonne
+`lieu_id` que #180 remplira pour rattacher l’interdiction au Lieu. Un changement publie
+`autorisation-enregistrement-modifiee` à la Console et à toutes les Manettes, jamais à la salle.
+Un réglage identique rend son reçu sans publication.
+
+L’Interprète donne ou retire son accord par `PUT M/passages/{passageId}/accord-enregistrement`,
+avec `Idempotency-Key`, `accord` et le compteur du Passage. L’accord est désactivé par défaut et
+vaut pour lui seul, même dans un Passage à plusieurs. Il se change en `EN_ATTENTE` et en `APPELE`,
+jusqu’au départ du Passage. Après les gardes communes, le serveur refuse dans l’ordre un Passage
+inconnu (`RESSOURCE_INTROUVABLE`), un Joueur qui n’en est pas Interprète (`ACCES_REFUSE`), un
+nouvel accord pendant l’interdiction de la Soirée (`ENREGISTREMENT_INTERDIT`), puis un compteur
+périmé ou un Passage déjà parti (`COMMANDE_PERIMEE`). Un choix qui change publie
+`accord-enregistrement-modifie` vers la seule Manette de cet Interprète. Pendant l’interdiction, le
+retrait (`accord: false`) reste accepté : il efface l’accord suspendu, qui ne reviendra pas avec
+l’autorisation, et publie lui aussi `accord-enregistrement-modifie` vers cette seule Manette.
+
+`BlocKaraokeConsole` et `BlocKaraokeManette` portent `enregistrementAutorise`. Seul
+`BlocKaraokeManette` porte `mesAccordsEnregistrement`, la liste des Passages en attente ou actifs
+que ce Joueur accepte d’enregistrer. L’interdiction suspend ces accords sans les effacer : la liste
+les garde, pour que l’Interprète puisse encore retirer le sien, et `enregistrementAutorise: false`
+dit qu’aucun ne vaut. Ils reprennent effet si l’Animateur autorise de nouveau l’Enregistrement. La
+salle ne voit ni l’autorisation ni les accords.
+
 ### Configuration par défaut
 
 | Clé | Valeur |
@@ -372,7 +404,7 @@ npm ci --prefix tools/api --ignore-scripts --no-fund --no-audit
 npm test --prefix tools/api
 ```
 
-Le job `contrats-api` de GitHub Actions exécute les mêmes commandes. Les versions des validateurs et leurs dépendances sont verrouillées dans `tools/api/package-lock.json`. Les vérifications portent sur la structure OpenAPI/AsyncAPI, les références locales, la compilation de tous les schémas, les requêtes et réponses des trois parcours, les événements, les cas de refus de données sensibles et leur raccordement entre capture et tampon via le vrai `suivreVue`. Chaque YAML paramètre `destination`, `routeEtat` et `typeEvenementFinal`, avec ses captures, événements couverts et doublon final. Projections, chronologies et reçus sont isolés par parcours ; la couverture des `operationId` porte sur leur union. Les reçus 200/201 sont comparés par acteur, route concrète et envoiId, statut et corps compris. Les cas couvrent les trois blocs Karaoké, la confidentialité du Quiz, les motifs, limites de recherche et de configuration, bornes de la limite de Passages et de `chansonId`, commandes fermées, fin et réessais transitoires, ainsi que le cycle du Passage : états du courant, lecture, paroles et fichier par destination, calage et rejeu. Le vérificateur interdit `LectureDeChanson`, `ParolesDuPassage` et `FichierAudioLocal` dans les vues et événements de la Manette, `FichierAudioLocal` dans ceux de la salle et `ParolesDuPassage` dans ceux de la Console ; il contrôle dans toutes les vues des exemples que l’échéance d’appel est nulle exactement en pause et qu’un Passage `EN_PAUSE` n’apparaît que dans une Manche en pause. Les exemples utilisent des UUID, secrets et adresses fictifs.
+Le job `contrats-api` de GitHub Actions exécute les mêmes commandes. Les versions des validateurs et leurs dépendances sont verrouillées dans `tools/api/package-lock.json`. Les vérifications portent sur la structure OpenAPI/AsyncAPI, les références locales, la compilation de tous les schémas, les requêtes et réponses des parcours, les événements, les cas de refus de données sensibles et leur raccordement entre capture et tampon via le vrai `suivreVue`. Chaque YAML paramètre `destination`, `routeEtat` et `typeEvenementFinal`, avec ses captures, événements couverts et doublon final. Projections, chronologies et reçus sont isolés par parcours ; la couverture des `operationId` porte sur leur union. Les reçus 200/201 sont comparés par acteur, route concrète et envoiId, statut et corps compris. Les cas couvrent les trois blocs Karaoké, la confidentialité du Quiz, les motifs, limites de recherche et de configuration, bornes de la limite de Passages et de `chansonId`, commandes fermées, fin et réessais transitoires, ainsi que le cycle du Passage : états du courant, lecture, paroles et fichier par destination, calage et rejeu. Le vérificateur interdit `LectureDeChanson`, `ParolesDuPassage` et `FichierAudioLocal` dans les vues et événements de la Manette, `FichierAudioLocal` dans ceux de la salle et `ParolesDuPassage` dans ceux de la Console. Il interdit aussi l’accord d’Enregistrement et son reçu dans les vues de la salle et de la Console, ainsi que les corps de requête autres que le JSON ou le JPEG. Il contrôle dans toutes les vues des exemples que l’échéance d’appel est nulle exactement en pause et qu’un Passage `EN_PAUSE` n’apparaît que dans une Manche en pause. Les exemples utilisent des UUID, secrets et adresses fictifs.
 
 Ces contrôles **ne prouvent pas la conformité d’un serveur non implémenté**. Les futures tâches #5, #6, #7, #8, #10, #12 et #14 devront vérifier les mêmes échanges contre Spring Boot : isolement entre Lieux et Joueurs, abonnements non autorisés, CSRF, autorité temporelle, pause/reprise, perte de confirmation, répétition après clôture, modification refusée et événement survenant pendant la reconnexion. Les tests utiliseront PostgreSQL via Testcontainers, une Horloge factice, des commandes HTTP et des clients STOMP ; la charge de soixante Joueurs reste à mesurer sur ce parcours réel.
 
