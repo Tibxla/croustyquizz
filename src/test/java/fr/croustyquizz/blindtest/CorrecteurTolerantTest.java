@@ -46,6 +46,15 @@ class CorrecteurTolerantTest {
 		// Un nom fait d'articles reste entier.
 		"the the, The The",
 		"7 rings, 7 Rings",
+		// Une liaison collée aux mots voisins, dans chacune de ses écritures (relecture de #293, point 3).
+		"SimonAndGarfunkel, Simon and Garfunkel",
+		"simonetgarfunkel, Simon & Garfunkel",
+		// Un nom fait de ponctuation se retrouve à l'identique (point 4).
+		"!!!, !!!",
+		// Le budget suit la distance non restreinte : « CA » devient « ABC » en deux fautes.
+		"Rock CADE, Rock ABCDE",
+		// Une saisie exacte avec signes vocaliques (point 5).
+		"कला, कला",
 	})
 	void accepte(String saisie, String attendu) {
 		assertThat(correcteur.estJuste(saisie, attendu)).isTrue();
@@ -77,6 +86,16 @@ class CorrecteurTolerantTest {
 		"'   ', Halo",
 		"'', Halo",
 		"'!?!', Halo",
+		// L'article de tête n'augmente pas le budget : « cure » n'a que 4 lettres (relecture de #293, point 1).
+		"The Pure, The Cure",
+		"Pure, The Cure",
+		// Un nom fait de ponctuation : ni une autre ponctuation, ni une saisie vide (point 4).
+		"?, !!!",
+		"'  ', !!!",
+		// Les signes vocaliques ne sont pas de la ponctuation : « कल » n'est pas « कला » (point 5).
+		"कल, कला",
+		// « l » n'est un article que suivi d'une apostrophe : « OVE » n'est pas « L-O-V-E ».
+		"OVE, L-O-V-E",
 	})
 	void refuse(String saisie, String attendu) {
 		assertThat(correcteur.estJuste(saisie, attendu)).isFalse();
@@ -104,6 +123,21 @@ class CorrecteurTolerantTest {
 		assertThat(CorrecteurTolerant.distance("", "halo")).isEqualTo(4);
 	}
 
+	@Test
+	void laDistanceNEstPasRestreinteAuxInversionsIsolees() {
+		assertThat(CorrecteurTolerant.distance("ca", "abc")).isEqualTo(2);
+		assertThat(CorrecteurTolerant.distance("rockcade", "rockabcde")).isEqualTo(2);
+	}
+
+	/** Le budget compte les points de code, comme la distance : une lettre hors du plan de base compte pour une. */
+	@Test
+	void leBudgetCompteLesPointsDeCode() {
+		String quatre = "𐐨𐐨𐐨𐐨";
+		assertThat(quatre.length()).isEqualTo(8);
+		assertThat(correcteur.estJuste("𐐨𐐨𐐨", quatre)).isFalse();
+		assertThat(correcteur.estJuste(quatre, quatre)).isTrue();
+	}
+
 	@ParameterizedTest(name = "{0} lettres : {1} faute(s)")
 	@CsvSource({ "1, 0", "4, 0", "5, 1", "8, 1", "9, 2", "40, 2" })
 	void fautesPermisesSelonLaLongueur(int longueur, int fautes) {
@@ -111,9 +145,13 @@ class CorrecteurTolerantTest {
 	}
 
 	@Test
-	void laCleRapprocheDeuxEcrituresDuMemeTitre() {
-		assertThat(CorrecteurTolerant.cle("Don't Stop Me Now")).isEqualTo(CorrecteurTolerant.cle("dont stop me now"));
-		assertThat(CorrecteurTolerant.cle("Halo")).isNotEqualTo(CorrecteurTolerant.cle("Hello"));
+	void lesFormesExactesRapprochentDeuxEcrituresDuMemeTitre() {
+		assertThat(CorrecteurTolerant.formesExactes("Don't Stop Me Now"))
+				.containsAnyElementsOf(CorrecteurTolerant.formesExactes("dont stop me now"));
+		assertThat(CorrecteurTolerant.formesExactes("The Cure"))
+				.containsAnyElementsOf(CorrecteurTolerant.formesExactes("Cure"));
+		assertThat(CorrecteurTolerant.formesExactes("Halo"))
+				.doesNotContainAnyElementsOf(CorrecteurTolerant.formesExactes("Hello"));
 	}
 
 }
