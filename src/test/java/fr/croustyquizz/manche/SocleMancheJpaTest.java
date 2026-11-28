@@ -2,6 +2,7 @@ package fr.croustyquizz.manche;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -145,7 +146,11 @@ class SocleMancheJpaTest {
 		@org.springframework.context.annotation.Primary
 		HorlogeFactice horlogeFacticeJpa() { return new HorlogeFactice(); }
 
-		/** Pannes à la demande du service factice, pour les échecs de l'enchaînement automatique (#123). */
+		@Bean
+		@org.springframework.context.annotation.Primary
+		Clock clock(HorlogeFactice horloge) { return horloge.commeClock(); }
+
+		/** Pannes à la demande du service factice, pour les échecs de l’enchaînement automatique (#123). */
 		@Bean
 		PannesDuServiceFactice pannesDuServiceFactice() { return new PannesDuServiceFactice(); }
 

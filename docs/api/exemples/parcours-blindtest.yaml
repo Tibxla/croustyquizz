@@ -44,6 +44,42 @@ http:
     code: SOURCE_MUSICALE_INDISPONIBLE
     detail: Le catalogue musical ne répond pas. Réessaie dans un instant.
     instance: /api/soirees/17400000-0000-4000-8000-000000000001/manches
+- nom: "Playlist que Deezer ne connaît pas : la Manche n’est pas ajoutée, l’Animateur corrige l’identifiant"
+  operationId: ajouterManche
+  acteur: animateur:17400000-0000-4000-8000-000000000006
+  requete:
+    mode: BLIND_TEST
+    reglages:
+      source:
+        type: PLAYLIST
+        idDeezer: 0
+      nombreMorceaux: 10
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 422
+    code: SOURCE_MUSICALE_INVALIDE
+    detail: "Deezer ne connaît aucune playlist 0 : vérifie l’identifiant et le type (playlist ou genre)."
+    instance: /api/soirees/17400000-0000-4000-8000-000000000001/manches
+- nom: "Playlist trop courte : la Manche n’est pas ajoutée, l’Animateur demande moins de Morceaux"
+  operationId: ajouterManche
+  acteur: animateur:17400000-0000-4000-8000-000000000006
+  requete:
+    mode: BLIND_TEST
+    reglages:
+      source:
+        type: PLAYLIST
+        idDeezer: 1306931615
+      nombreMorceaux: 10
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 422
+    code: SOURCE_MUSICALE_INVALIDE
+    detail: "Cette playlist n’a que 3 Morceaux jouables pour 10 demandés : demandes-en moins ou choisis une autre source."
+    instance: /api/soirees/17400000-0000-4000-8000-000000000001/manches
 - nom: L’Écran de salle reçoit le lien d’extrait, sans titre ni identifiant Deezer
   operationId: retrouverEtatSalle
   acteur: ecran

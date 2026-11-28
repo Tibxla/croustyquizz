@@ -1,5 +1,5 @@
-description: Extraits de deux Soirées fictives en Pilotage Automatique, de l’ouverture à l’appel du deuxième Passage, puis la transition entre deux Manches et vers la fin de la Soirée (#123).
-# Les publications intermédiaires de démarrage, de lecture et de File d’attente sont omises.
+description: Extraits de deux Soirées fictives en Pilotage Automatique. La première illustre l’ouverture, les appels et les sauts de Passages à l’échéance. La seconde illustre les transitions entre Manches et vers la fin de la Soirée.
+# Les publications intermédiaires de démarrage, de lecture, de File d’attente et de Vote du public sont omises.
 evenementsComplets: false
 parametresCommuns:
   soireeId: &soireeId 11900000-0000-4000-8000-000000000001
@@ -176,6 +176,24 @@ http:
     recueLe: '2026-11-23T20:01:00.000Z'
     lecteurId: 11900000-0000-4000-8000-000000000008
     lectureId: 11900000-0000-4000-8000-000000000009
+- nom: Refuser la confirmation de Basile à l’échéance de son appel
+  operationId: confirmerPresencePassage
+  acteur: joueur:11900000-0000-4000-8000-000000000006
+  parametres:
+    mancheId: 11900000-0000-4000-8000-000000000004
+    passageId: 11900000-0000-4000-8000-000000000011
+  requete:
+    envoiId: 11900000-0000-4000-8000-000000000023
+    numeroModification: 1
+    etapeId: 11900000-0000-4000-8000-000000000013
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: HORS_DELAI
+    detail: Le temps pour confirmer est écoulé.
+    instance: /api/soirees/11900000-0000-4000-8000-000000000001/manches/11900000-0000-4000-8000-000000000004/passages/11900000-0000-4000-8000-000000000011/presence
 - nom: Transition vers un Quiz — capture de la salle
   operationId: retrouverEtatSalle
   acteur: ecran:12300000-0000-4000-8000-000000000006
@@ -676,6 +694,122 @@ evenements:
         peutInscrire: true
         motifInscriptionRefusee: null
         peutConfirmerPresence: true
+- nom: L’échéance de Basile appelle Alizé pour son deuxième Tour
+  canal: salle
+  message:
+    type: passage-appele
+    soireeId: *soireeId
+    revision: 11
+    emisLe: '2026-11-23T20:01:30.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant:
+          passageId: &passageDeuxiemeTour 11900000-0000-4000-8000-000000000014
+          numero: 3
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          numeroModification: 1
+          etapeId: &etapeDeuxiemeTour 11900000-0000-4000-8000-000000000015
+          etat: APPELE
+          prochainAppelPrevuLe: '2026-11-23T20:03:00.000Z'
+          appeleLe: &appelDeuxiemeTour '2026-11-23T20:01:30.000Z'
+          echeanceAppelLe: '2026-11-23T20:02:00.000Z'
+          delaiAppelRestantMs: 30000
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: *appelDeuxiemeTour
+          clotureLe: null
+        configurationInterface: *configurationKaraoke
+        votes:
+        - passageId: 11900000-0000-4000-8000-000000000010
+          numero: 1
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          etat: CLOS
+          delaiRestantMs: 0
+          calculeLe: *appelDeuxiemeTour
+          clotureLe: *appelDeuxiemeTour
+          nombreVotes: 0
+          suivantDemarre: false
+          moyenneDixiemes: null
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: 11900000-0000-4000-8000-000000000008
+        lecture: null
+        paroles: null
+- nom: L’échéance d’Alizé saute le Passage quand la File d’attente est vide
+  canal: salle
+  message:
+    type: passage-saute
+    soireeId: *soireeId
+    revision: 12
+    emisLe: &finDeuxiemeTour '2026-11-23T20:02:00.000Z'
+    donnees:
+      soiree: *soireeEnCours
+      musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
+      mancheActive: *mancheKaraoke
+      modeEnCours: KARAOKE
+      joueurs: *joueursKaraoke
+      classement: *classementKaraoke
+      dernierBuzz: null
+      karaoke:
+        mancheId: 11900000-0000-4000-8000-000000000004
+        etat: EN_COURS
+        limitePassagesEnAttente: 2
+        nombreEnAttente: 0
+        tourOuvert: 2
+        passagePrioritaireId: null
+        courant:
+          passageId: *passageDeuxiemeTour
+          numero: 3
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          numeroModification: 2
+          etapeId: *etapeDeuxiemeTour
+          etat: SAUTE
+          prochainAppelPrevuLe: null
+          appeleLe: *appelDeuxiemeTour
+          echeanceAppelLe: null
+          delaiAppelRestantMs: null
+          demarreLe: null
+          finPrevueLe: null
+          positionChronologiqueMs: null
+          tempsPauseMs: 0
+          calculeLe: *finDeuxiemeTour
+          clotureLe: *finDeuxiemeTour
+        configurationInterface: *configurationKaraoke
+        votes:
+        - passageId: 11900000-0000-4000-8000-000000000010
+          numero: 1
+          chanson: *chansonAlize
+          interpretes: *interpretesAlize
+          etat: CLOS
+          delaiRestantMs: 0
+          calculeLe: *finDeuxiemeTour
+          clotureLe: *appelDeuxiemeTour
+          nombreVotes: 0
+          suivantDemarre: false
+          moyenneDixiemes: null
+        prochainsPassages: []
+        nombreAutresPassages: 0
+        lecteurDesigneId: 11900000-0000-4000-8000-000000000008
+        lecture: null
+        paroles: null
 - nom: Fin du Karaoké, transition vers le Quiz — salle
   canal: salle
   message:

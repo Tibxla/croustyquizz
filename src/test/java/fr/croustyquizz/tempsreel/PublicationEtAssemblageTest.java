@@ -3,6 +3,7 @@ package fr.croustyquizz.tempsreel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -164,7 +165,7 @@ class PublicationEtAssemblageTest {
 		List<String> messages = new ArrayList<>();
 		var canal = new ExecutorSubscribableChannel(); canal.subscribe(message -> messages.add(message.getPayload().toString()));
 		var diffuseur = new DiffuseurStomp(new SimpMessagingTemplate(canal), Clock.fixed(Instant.EPOCH, ZoneOffset.UTC),
-				new VerrousSoiree(), new CaptureSalleFactice()::capturerSalle, new CaptureSalleFactice());
+				new VerrousSoiree(), new CaptureSalleFactice()::capturerSalle, new CaptureSalleFactice(), Duration.ofHours(24));
 		UUID soiree = UUID.randomUUID(); UUID joueur = UUID.randomUUID();
 		var vue = new VueComposee("manche-reprise", Map.of("joueurId", joueur));
 		diffuseur.envoyerJoueur(soiree, joueur, vue);

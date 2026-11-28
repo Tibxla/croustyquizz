@@ -1,0 +1,107 @@
+/* Blind test : composition des zones du mode. Le pied, le talon, le son et le pilotage commun restent aux coquilles. */
+.blindtest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-4);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.blindtest [hidden] { display: none; }
+.blindtest h2, .blindtest h3, .blindtest p { margin: 0; }
+.blindtest__numero {
+  font-family: var(--police-chiffres);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texte-2);
+  font-variant-numeric: tabular-nums;
+}
+.blindtest .chiffres { font-variant-numeric: tabular-nums; }
+
+/* Parties trouvées : un aplat de ticket, toujours avec son texte. */
+.blindtest__parties {
+  display: grid;
+  gap: var(--espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.blindtest__partie {
+  padding: var(--espace-3) var(--espace-4);
+  border-radius: var(--rayon);
+  background: var(--eau);
+  color: var(--encre);
+  font-weight: 700;
+}
+
+.blindtest__revelation { display: grid; gap: var(--espace-2); margin: 0; }
+.blindtest__revele-titre { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.blindtest__revele-artiste { color: var(--texte-2); font-size: 1.1875rem; }
+.blindtest__pochette { border-radius: var(--rayon); object-fit: cover; aspect-ratio: 1; }
+
+/* Manette : une colonne, l'action unique en bas, à portée du pouce. */
+.blindtest--manette { min-height: 100%; font-size: 1.125rem; }
+.blindtest--manette .blindtest__titre { font-size: 1.5rem; line-height: 1.35; }
+.blindtest--manette .blindtest__buzz { margin-top: auto; min-height: 96px; font-size: 2.25rem; }
+.blindtest__proposition { display: grid; gap: var(--espace-3); }
+.blindtest__proposition .champ { display: grid; gap: var(--espace-2); }
+.blindtest__proposition input {
+  width: 100%;
+  min-width: 0;
+  min-height: 56px;
+  padding: var(--espace-3) var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-1);
+  color: var(--texte);
+  font: inherit;
+  font-size: 1.25rem;
+  caret-color: var(--citron);
+}
+.blindtest__proposition input:focus { border-color: var(--citron); outline: none; }
+.blindtest__temps { font-family: var(--police-chiffres); font-weight: 800; font-size: 2.25rem; line-height: 1; }
+.blindtest__verdict, .blindtest__statut:not(:empty) {
+  padding: var(--espace-2) var(--espace-3);
+  border-radius: var(--rayon);
+  background: var(--fond-2);
+}
+.blindtest__verdict--accepte { background: var(--eau); color: var(--encre); }
+/* Brouillon non enregistré : dit près des champs, avec le geste qui le renvoie. */
+.blindtest__brouillon { display: grid; gap: var(--espace-2); padding: var(--espace-2) var(--espace-3);
+  border-radius: var(--rayon); background: var(--refus-fond); color: var(--refus); }
+.blindtest__verdict--refuse { background: var(--refus-fond); color: var(--refus); }
+
+/* Console : le pilotage de la Manche en tête, action citron en dernier, puis la réponse attendue pour l'arbitrage. */
+.blindtest__pilotage { display: flex; flex-wrap: wrap; gap: var(--espace-2); align-items: center; }
+.blindtest--console .dialogue { display: grid; gap: var(--espace-3); }
+.blindtest--console .dialogue:not([open]) { display: none; }
+.blindtest--console .blindtest__entete { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--espace-3); }
+.blindtest--console .blindtest__phase { font-size: 1.375rem; }
+.blindtest--console .panneau { display: grid; gap: var(--espace-2); }
+.blindtest--console .blindtest__bloques ul { margin: 0; padding-left: var(--espace-5); }
+
+/* Écran de salle : lu à cinq mètres, mesures en largeur d'écran. */
+.salle .blindtest--salle { gap: 1.2vw; font-size: 1.6vw; }
+.salle .blindtest--salle .blindtest__numero { font-size: 1.8vw; }
+.salle .blindtest--salle .blindtest__phase { font-size: 3.6vw; line-height: 1.15; }
+.salle .blindtest--salle .blindtest__main { font-size: 4.4vw; font-weight: 700; line-height: 1.15; color: var(--texte); }
+.salle .blindtest--salle .blindtest__temps { font-size: 5vw; color: var(--texte-2); }
+.salle .blindtest--salle .blindtest__revelation { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2vw; }
+.salle .blindtest--salle .blindtest__pochette { width: 16vw; }
+.salle .blindtest--salle .blindtest__revele-titre { font-size: 4.4vw; line-height: 1.1; }
+.salle .blindtest--salle .blindtest__revele-artiste { font-size: 2.6vw; }
+.salle .blindtest--salle h2 { font-size: 1.5vw; }
+.salle .blindtest--salle .blindtest__partie { padding: 0.8vw 1.2vw; font-size: 1.6vw; }
+/* Son de l'extrait : la raison du silence, et le geste qui le relance quand le navigateur bloque. */
+.blindtest__son { display: flex; flex-wrap: wrap; align-items: center; gap: 1vw; }
+.salle .blindtest--salle .blindtest__annonce { font-size: 2.6vw; font-weight: 700; color: var(--texte-2); }
+
+/* Arrivée d'un Buzz, d'une partie trouvée ou de la Révélation : seulement sur un événement, jamais sur une capture. */
+.blindtest--arrivee { animation: blindtest-arrivee 900ms var(--sortie); }
+@keyframes blindtest-arrivee {
+  from { opacity: 0; transform: translateY(0.6em) rotate(-1deg); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blindtest--arrivee { animation: none; }
+}

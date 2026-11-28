@@ -1,6 +1,8 @@
 package fr.croustyquizz.karaoke;
 
 import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.*;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.*;
@@ -83,7 +85,7 @@ class KaraokeTempsReelTest {
         KaraokeHttpTest.verifier("inscrirePassage", reponse, 201);
         UUID passage = UUID.fromString(json.readTree(reponse.getBody()).path("passageId").asString());
         for (var f : flux) {
-            JsonNode evenement = f.messages().poll(3, TimeUnit.SECONDS);
+            JsonNode evenement = f.messages().poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
             assertThat(evenement).isNotNull();
             assertThat(evenement.path("type").asString()).isEqualTo("file-attente-modifiee");
             assertThat(evenement.path("revision").asLong()).isEqualTo(revisionsInitiales.get(f) + 1);
@@ -108,7 +110,7 @@ class KaraokeTempsReelTest {
         KaraokeHttpTest.verifier("reglerLimitePassages", envoyer(HttpMethod.PUT, racine + "/file-attente/limite", animateur,
                 Map.of("limitePassagesEnAttente", 2), UUID.randomUUID()), 200);
         for (var f : flux) {
-            var evenement = f.messages().poll(3, TimeUnit.SECONDS);
+            var evenement = f.messages().poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
             assertThat(evenement).isNotNull(); assertThat(evenement.path("type").asString()).isEqualTo("limite-passages-modifiee");
             assertThat(evenement.path("revision").asLong()).isEqualTo(revisionsInitiales.get(f) + 2); assertThat(f.messages()).isEmpty();
             assertThat(capturer(f).path("vue").toString()).isEqualTo(evenement.path("donnees").toString());
@@ -363,7 +365,9 @@ class KaraokeTempsReelTest {
                 Map.of("envoiId", UUID.randomUUID(), "numeroModification", 3, "note", note), null), 200);
     }
 
-    @Test void laFinPrevueEnAutomatiquePublieUnSeulAppelAToutesLesDestinations() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+    void leMinuteurRestaureEnAutomatiquePublieUnSeulAppelAToutesLesDestinations(boolean presenceConfirmee) throws Exception {
         pilotage.choisir(soiree, true);
         UUID manche = service.creer(soiree, Map.of());
         service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
@@ -377,10 +381,12 @@ class KaraokeTempsReelTest {
         KaraokeHttpTest.verifier("inscrirePassage", seconde, 201);
         String premier = json.readTree(premiere.getBody()).path("passageId").asString();
         String suivant = json.readTree(seconde.getBody()).path("passageId").asString();
-        var instantane = (InstantaneKaraoke) service.instantane(soiree, manche);
-        KaraokeHttpTest.verifier("confirmerPresencePassage",
-                envoyer(HttpMethod.POST, racine + "/passages/" + premier + "/presence", joueur,
-                        Map.of("envoiId", UUID.randomUUID(), "etapeId", instantane.cycle().etapeId(), "numeroModification", 1), null), 200);
+        if (presenceConfirmee) {
+            var instantane = (InstantaneKaraoke) service.instantane(soiree, manche);
+            KaraokeHttpTest.verifier("confirmerPresencePassage",
+                    envoyer(HttpMethod.POST, racine + "/passages/" + premier + "/presence", joueur,
+                            Map.of("envoiId", UUID.randomUUID(), "etapeId", instantane.cycle().etapeId(), "numeroModification", 1), null), 200);
+        }
 
         var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
         var salle = abonner(ecran, Canaux.salle(soiree), "salle");
@@ -395,7 +401,7 @@ class KaraokeTempsReelTest {
         var avantEviction = service.instantane(soiree, manche);
         socle.registre().retirer(manche);
         assertThat(service.instantane(soiree, manche)).isEqualTo(avantEviction);
-        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(presenceConfirmee ? 180 : 30));
 
         for (int i = 0; i < flux.size(); i++) {
             var abonne = flux.get(i);
@@ -404,15 +410,21 @@ class KaraokeTempsReelTest {
             assertThat(vue.at("/karaoke/courant/etat").asString()).isEqualTo("APPELE");
             assertThat(capturer(abonne).path("revision").asLong()).isEqualTo(revisions.get(i) + 1);
             assertThat(abonne.messages()).isEmpty();
-            if (abonne == console) {
+            if (!presenceConfirmee) {
+                assertThat(vue.at("/karaoke/votes").isEmpty()).isTrue();
+            } else if (abonne == console) {
                 assertThat(vue.at("/karaoke/votes/0/passageId").asString()).isEqualTo(premier);
                 assertThat(vue.at("/karaoke/votes/0/etat").asString()).isEqualTo("OUVERT");
             }
         }
+        // Les essais partagent l’Horloge et les identifiants de Joueurs de démonstration.
+        var etape = ((InstantaneKaraoke) service.instantane(soiree, manche)).cycle().etapeId();
+        KaraokeHttpTest.verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
+                Map.of("action", "TERMINER", "etapeId", etape), UUID.randomUUID()), 200);
     }
 
     private JsonNode lireEvenement(Abonnement abonne, String cause) throws Exception {
-        var evenement = abonne.messages().poll(3, TimeUnit.SECONDS);
+        var evenement = abonne.messages().poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
         assertThat(evenement).isNotNull();
         assertThat(evenement.path("soireeId").asString()).isEqualTo(soiree.toString());
         assertThat(evenement.path("type").asString()).isEqualTo(cause);
@@ -429,7 +441,7 @@ class KaraokeTempsReelTest {
         client.setMessageConverter(new JacksonJsonMessageConverter());
         var connexion = new StompHeaders(); connexion.set("Authorization", jeton(acteur));
         var session = client.connectAsync("ws://localhost:" + port + "/ws",
-                new WebSocketHttpHeaders(), connexion, new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+                new WebSocketHttpHeaders(), connexion, new StompSessionHandlerAdapter() { }).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
         sessions.add(session);
         UUID id = UUID.randomUUID(); var entetes = new StompHeaders(); entetes.setId(id.toString()); entetes.setDestination(destination);
         BlockingQueue<JsonNode> messages = new ArrayBlockingQueue<>(32);
@@ -437,7 +449,7 @@ class KaraokeTempsReelTest {
             public Type getPayloadType(StompHeaders h) { return Map.class; }
             public void handleFrame(StompHeaders h, Object corps) { messages.add(json.valueToTree(corps)); }
         });
-        await().atMost(Duration.ofSeconds(3)).until(() -> abonnements.estInstalle(id, destination));
+        await().atMost(PLAFOND).until(() -> abonnements.estInstalle(id, destination));
         return new Abonnement(acteur, destination, ecran, id, session, messages);
     }
     JsonNode capturer(Abonnement f) throws Exception {

@@ -8,7 +8,9 @@ import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.PortsDePassageFactices;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -502,6 +504,28 @@ class KaraokeHttpTest {
                 envoyer(HttpMethod.POST, racine + "/passages/" + UUID.randomUUID() + "/appel", animateur, corps, UUID.randomUUID()),
                 404, "RESSOURCE_INTROUVABLE");
         assertThat(service.instantane(soiree, manche)).isEqualTo(avant);
+    }
+
+    @Test void leContratExposeLeRefusDeConfirmationALEcheanceEnAutomatique() throws Exception {
+        pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        var horloge = (HorlogeFactice) serviceSocle().horloge();
+        var reponse = new AtomicReference<ResponseEntity<String>>();
+        // À instant égal, l’Horloge factice joue d’abord le rappel programmé avant l’inscription.
+        horloge.programmer(Duration.ofSeconds(30), () -> {
+            var cycle = ((InstantaneKaraoke) service.instantane(soiree, manche)).cycle();
+            String route = racine(manche) + "/passages/" + cycle.passageId() + "/presence";
+            reponse.set(envoyer(HttpMethod.POST, route, joueur,
+                    Map.of("envoiId", UUID.randomUUID(), "etapeId", cycle.etapeId(), "numeroModification", 1), null));
+        });
+        inscrire(manche, joueur, 1);
+        horloge.avancer(Duration.ofSeconds(30));
+
+        var refus = reponse.get();
+        refuser("confirmerPresencePassage", refus, 409, "HORS_DELAI");
+        assertThat(json.readTree(refus.getBody()).path("detail").asString()).isEqualTo("Le temps pour confirmer est écoulé.");
+        var apres = (InstantaneKaraoke) service.instantane(soiree, manche);
+        assertThat(apres.file().passages().getFirst().etat().name()).isEqualTo("SAUTE");
     }
 
     private UUID inscrire(UUID manche, Acteur interprete, long chanson) throws Exception {

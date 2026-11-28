@@ -1,5 +1,7 @@
 package fr.croustyquizz.manche;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -176,6 +178,7 @@ class DeroulementSoireeTempsReelTest {
 
 		UUID cleFin = UUID.randomUUID();
 		var fin = commander(PILOTER_SOIREE, pilotageSoiree, animateur, "TERMINER", cleFin, 200);
+		var revisionsFinales = new ArrayList<Long>();
 		for (var ecran : fluxApresRechargement) {
 			lire(ecran, "manche-terminee");
 			var evenement = lire(ecran, "soiree-terminee");
@@ -183,11 +186,36 @@ class DeroulementSoireeTempsReelTest {
 			assertThat(evenement.at("/donnees/mancheActive").isNull()).isTrue();
 			assertThat(evenement.at("/donnees/modeEnCours").isNull()).isTrue();
 			assertThat(capturer(racine, ecran).path("vue")).isEqualTo(evenement.path("donnees"));
+			revisionsFinales.add(evenement.path("revision").asLong());
 		}
 		var refusee = commander(PILOTER_MANCHE, pilotageSeconde, animateur, "METTRE_EN_PAUSE", UUID.randomUUID(), 409);
 		assertThat(refusee.path("code").asString()).isEqualTo("ETAT_INCOMPATIBLE");
 		assertThat(commander(PILOTER_SOIREE, pilotageSoiree, animateur, "MANCHE_SUIVANTE", cleSuivante, 200)).isEqualTo(suivante);
 		assertThat(commander(PILOTER_SOIREE, pilotageSoiree, animateur, "TERMINER", cleFin, 200)).isEqualTo(fin);
+
+		horlogeFactice.avancer(Duration.ofHours(9));
+		var salleDansLaNuit = abonner(cleEcran, Canaux.salle(soiree), "salle", "retrouverEtatSalle");
+		var captureDeNuit = capturer(racine, salleDansLaNuit);
+		assertThat(captureDeNuit.at("/vue/soiree/etat").asString()).isEqualTo("TERMINEE");
+		assertThat(captureDeNuit.path("revision").asLong()).isEqualTo(revisionsFinales.get(1));
+
+		horlogeFactice.avancer(Duration.ofHours(15).minusMillis(1));
+		assertThat(capturer(racine, console).path("revision").asLong()).isEqualTo(revisionsFinales.getFirst());
+		assertThat(capturer(racine, manette).path("revision").asLong()).isEqualTo(revisionsFinales.getLast());
+		horlogeFactice.avancer(Duration.ofMillis(1));
+		for (var ecran : List.of(console, manette)) {
+			var repli = capturer(racine, ecran);
+			assertThat(repli.path("revision").asLong()).isZero();
+			assertThat(repli.at("/vue/soiree/etat").asString()).isEqualTo("TERMINEE");
+			assertThat(repli.at("/vue/classement")).isEqualTo(captureDeNuit.at("/vue/classement"));
+		}
+		// La clé d’Écran expire après 12 h. L’Animateur peut demander la capture de salle.
+		envoyer("reglerMusiqueDAttente", HttpMethod.PUT, racine + "/musique-attente", animateur,
+				Map.of("etat", "COUPEE"), null, 200);
+		var repliSalle = envoyer("retrouverEtatSalle", HttpMethod.GET, racine + "/etat/salle", animateur, null, null, 200);
+		assertThat(repliSalle.path("revision").asLong()).isZero();
+		assertThat(repliSalle.at("/vue/classement")).isEqualTo(captureDeNuit.at("/vue/classement"));
+		assertThat(repliSalle.at("/vue/musiqueAttente/etat").asString()).isEqualTo("COUPEE");
 	}
 
 	private void verifierDemarrage(List<Abonnement> flux, String manche, int ordre) throws InterruptedException {
@@ -238,7 +266,7 @@ class DeroulementSoireeTempsReelTest {
 		var connexion = new StompHeaders();
 		connexion.set("Authorization", "Bearer " + jeton);
 		var session = client.connectAsync("ws://localhost:" + port + "/ws",
-				new WebSocketHttpHeaders(), connexion, new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+				new WebSocketHttpHeaders(), connexion, new StompSessionHandlerAdapter() { }).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		sessions.add(session);
 		UUID id = UUID.randomUUID();
 		var entetes = new StompHeaders();
@@ -249,7 +277,7 @@ class DeroulementSoireeTempsReelTest {
 			@Override public Type getPayloadType(StompHeaders entetes) { return Map.class; }
 			@Override public void handleFrame(StompHeaders entetes, Object corps) { messages.add(json.valueToTree(corps)); }
 		});
-		await().atMost(Duration.ofSeconds(3)).until(() -> abonnements.estInstalle(id, canal));
+		await().atMost(PLAFOND).until(() -> abonnements.estInstalle(id, canal));
 		return new Abonnement(jeton, ecran, operation, id, session, messages);
 	}
 
@@ -259,7 +287,7 @@ class DeroulementSoireeTempsReelTest {
 	}
 
 	private static JsonNode lire(Abonnement abonne, String type) throws InterruptedException {
-		var evenement = abonne.messages().poll(3, TimeUnit.SECONDS);
+		var evenement = abonne.messages().poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		assertThat(evenement).as("%s sur %s", type, abonne.ecran()).isNotNull();
 		assertThat(evenement.path("type").asString()).isEqualTo(type);
 		return evenement;

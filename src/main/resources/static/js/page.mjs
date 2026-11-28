@@ -129,7 +129,8 @@ async function demarrer() {
 	const zoneTransition = element('zone-transition');
 	const transition = zoneTransition
 		? monterTransition(zoneTransition, { ecran, maintenantServeur: contexte.maintenantServeur }) : null;
-	boutonReprise?.addEventListener('click', contexte.resynchroniser);
+	let connexionRefusee = false;
+	boutonReprise?.addEventListener('click', () => suivi?.resynchroniser({ explicite: true }));
 	if (boutonReprise) boutonReprise.disabled = false;
 	suivi = suivreVue({ ...acces,
 		surVue(vue, origine) {
@@ -146,10 +147,18 @@ async function demarrer() {
 		},
 		surEtat(etat) {
 			changerEtat(etat);
+			if (etat === 'coupure' && connexionRefusee) return;
+			connexionRefusee = false;
 			etatConnexion.textContent = {
 				synchronisation: 'Synchronisation…', synchronisee: 'Vue synchronisée',
 				coupure: 'Connexion perdue. Reconnexion en cours… La vue affichée peut avoir changé.',
 			}[etat];
+		},
+		// Refus du serveur au CONNECT : pas de reconnexion automatique, le motif reste affiché.
+		surRefus(motif) {
+			connexionRefusee = true;
+			etatConnexion.textContent = 'Connexion refusée.';
+			afficherErreur(motif);
 		},
 	}, { transport });
 	addEventListener('pagehide', evenement => {
