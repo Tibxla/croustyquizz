@@ -1,3 +1,5 @@
+export { enumererInterpretes } from '../../vue-commune.mjs';
+
 export const teintePassage = numero => ['orange', 'eau', 'bleu', 'rose'][numero % 4];
 
 export function formaterDuree(dureeMs) {

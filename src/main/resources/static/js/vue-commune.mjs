@@ -14,10 +14,12 @@ export const formaterMoyenne = moyenneDixiemes => formaterNote(formaterValeurMoy
 export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
 
 const listeInterpretes = new Intl.ListFormat('fr', { type: 'conjunction' });
+// Énumère les pseudos des Interprètes à la française (« Alizé, Basile et Chloé ») ; à employer partout où ils sont listés (#237).
+export const enumererInterpretes = interpretes => listeInterpretes.format(interpretes.map(interprete => interprete.pseudo));
 
 function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes, moyenneDixiemes }) {
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
-	const pseudos = listeInterpretes.format(interpretes.map(interprete => interprete.pseudo));
+	const pseudos = enumererInterpretes(interpretes);
 	const votes = formaterNombreVotes(nombreVotes);
 	const moyenne = moyenneDixiemes === null ? null : formaterValeurMoyenne(moyenneDixiemes);
 	const resultat = moyenne === null ? votes : `${formaterNote(moyenne)} (${votes})`;

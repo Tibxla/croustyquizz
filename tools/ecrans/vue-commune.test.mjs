@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { decrireClassementDeSalle, decrirePalmaresDeSalle, decrireVue, enumererInterpretes } from '../../src/main/resources/static/js/vue-commune.mjs';
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
 	const description = decrireVue({ soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
@@ -85,6 +85,12 @@ test('le Palmarès affiche le rang éventuel, le numéro, les Interprètes et le
 		{ numero: 9, rang: null, titre: 'Le phare', interpretes: 'Joueur parti', moyenne: null, votes: 'Aucun vote',
 			texte: 'n° 9 · Le phare · Joueur parti · Aucun vote' },
 	]);
+});
+
+test('les Interprètes s’énumèrent à la française, à un, deux ou trois', () => {
+	assert.equal(enumererInterpretes([{ pseudo: 'Alizé' }]), 'Alizé');
+	assert.equal(enumererInterpretes([{ pseudo: 'Alizé' }, { pseudo: 'Basile' }]), 'Alizé et Basile');
+	assert.equal(enumererInterpretes([{ pseudo: 'Alizé' }, { pseudo: 'Basile' }, { pseudo: 'Chloé' }]), 'Alizé, Basile et Chloé');
 });
 
 test('le Palmarès énumère trois Interprètes ou plus à la française', () => {
