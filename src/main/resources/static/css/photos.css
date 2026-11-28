@@ -108,6 +108,7 @@
   object-fit: contain;
 }
 
-/* Pendant une photo, la scène lui revient : ni note d'attente ni classement de salle. */
+/* Pendant une photo, la scène lui revient : ni note d'attente, ni Palmarès, ni classement de salle. */
 .photos--affiche:not([hidden]) ~ [data-attente],
+.photos--affiche:not([hidden]) ~ [data-zone-palmares],
 .photos--affiche:not([hidden]) ~ [data-classement-salle] { display: none; }

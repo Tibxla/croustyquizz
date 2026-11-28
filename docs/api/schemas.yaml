@@ -1033,6 +1033,10 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/JoueurPublic'
+      palmaresKaraoke:
+        type: [array, 'null']
+        items:
+          $ref: '#/$defs/LignePalmaresKaraoke'
       classement:
         type: array
         description: Classement général complet par rang croissant.
@@ -1088,6 +1092,10 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/JoueurPublic'
+      palmaresKaraoke:
+        type: [array, 'null']
+        items:
+          $ref: '#/$defs/LignePalmaresKaraoke'
       classement:
         type: array
         description: Classement général complet par rang croissant, y compris après la Soirée.
@@ -1304,6 +1312,7 @@ $defs:
         - proposition-jugee
         - morceau-revele
         - morceau-saute
+        - verdict-renverse
         - file-attente-modifiee
         - limite-passages-modifiee
         - passage-appele
@@ -1360,6 +1369,7 @@ $defs:
         - proposition-jugee
         - morceau-revele
         - morceau-saute
+        - verdict-renverse
         - file-attente-modifiee
         - limite-passages-modifiee
         - passage-appele
@@ -1416,6 +1426,7 @@ $defs:
         - proposition-jugee
         - morceau-revele
         - morceau-saute
+        - verdict-renverse
         - brouillon-depose
         - reponse-enregistree
         - resultat-personnel
@@ -1500,6 +1511,7 @@ $defs:
         - CHANSON_INDISPONIBLE
         - SOURCE_PAROLES_INDISPONIBLE
         - SOURCE_MUSICALE_INDISPONIBLE
+        - SOURCE_MUSICALE_INVALIDE
         - LECTEUR_NON_DESIGNE
         - VOTE_INTERDIT
         - VOTE_DEJA_ENREGISTRE
@@ -1674,6 +1686,150 @@ $defs:
         properties:
           depuisLe:
             type: 'null'
+  ArbitrageSaisie:
+    type: object
+    additionalProperties: false
+    description: Verdict voulu par l’Animateur pour un champ d’une Proposition jugée (ADR 0009, point 15).
+    properties:
+      propositionId:
+        type: string
+        format: uuid
+      partie:
+        type: string
+        enum:
+        - TITRE
+        - ARTISTE
+      verdict:
+        type: string
+        enum:
+        - JUSTE
+        - FAUX
+    required:
+    - propositionId
+    - partie
+    - verdict
+  AccuseArbitrage:
+    type: object
+    additionalProperties: false
+    description: Reçu de l’arbitrage ; changement retenu ou geste déjà satisfait, la vue reste la référence.
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      etapeId:
+        type: string
+        format: uuid
+      recueLe:
+        type: string
+        format: date-time
+        pattern: Z$
+      propositionId:
+        type: string
+        format: uuid
+      partie:
+        type: string
+        enum:
+        - TITRE
+        - ARTISTE
+      verdict:
+        type: string
+        enum:
+        - JUSTE
+        - FAUX
+      modifie:
+        type: boolean
+        description: Faux si le champ avait déjà ce verdict ; rien n’est alors publié.
+    required:
+    - envoiId
+    - etapeId
+    - recueLe
+    - propositionId
+    - partie
+    - verdict
+    - modifie
+  ChampJuge:
+    type: object
+    additionalProperties: false
+    properties:
+      saisie:
+        type: string
+        maxLength: 200
+      verdict:
+        $ref: '#/$defs/VerdictChamp'
+      arbitre:
+        type: boolean
+        description: Vrai si l’Animateur a renversé le verdict de la correction.
+    required:
+    - saisie
+    - verdict
+    - arbitre
+    allOf:
+    - if:
+        properties:
+          verdict:
+            const: NON_DEMANDE
+      then:
+        properties:
+          arbitre:
+            const: false
+  PropositionJugee:
+    type: object
+    additionalProperties: false
+    description: Proposition de titre jugée, avec le texte saisi, réservée à la Console.
+    properties:
+      propositionId:
+        type: string
+        format: uuid
+      joueurId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+      titre:
+        $ref: '#/$defs/ChampJuge'
+      artiste:
+        $ref: '#/$defs/ChampJuge'
+      points:
+        type: integer
+        enum:
+        - 0
+        - 30
+        - 70
+        - 100
+    required:
+    - propositionId
+    - joueurId
+    - pseudo
+    - titre
+    - artiste
+    - points
+  ArbitrageMorceau:
+    type: object
+    additionalProperties: false
+    description: Verdict renversé par l’Animateur, annoncé brièvement à la salle.
+    properties:
+      partie:
+        type: string
+        enum:
+        - TITRE
+        - ARTISTE
+      joueurId:
+        type: string
+        format: uuid
+      pseudo:
+        type: string
+        minLength: 1
+      verdict:
+        type: string
+        enum:
+        - JUSTE
+        - FAUX
+    required:
+    - partie
+    - joueurId
+    - pseudo
+    - verdict
   MainBlindTest:
     type: object
     additionalProperties: false
@@ -1828,6 +1984,12 @@ $defs:
         oneOf:
         - $ref: '#/$defs/RevelationMorceau'
         - type: 'null'
+      arbitrage:
+        oneOf:
+        - $ref: '#/$defs/ArbitrageMorceau'
+        - type: 'null'
+        description: Dernier verdict renversé par l’Animateur sur ce Morceau, pour l’annonce de la salle ; null
+          tant qu’aucun ne l’a été, et à chaque nouveau Morceau.
     required:
     - mancheId
     - etat
@@ -1839,6 +2001,7 @@ $defs:
     - main
     - partiesTrouvees
     - revelation
+    - arbitrage
     allOf:
     - if:
         properties:
@@ -1853,6 +2016,8 @@ $defs:
           partiesTrouvees:
             maxItems: 0
           revelation:
+            type: 'null'
+          arbitrage:
             type: 'null'
     - if:
         properties:
@@ -1977,7 +2142,9 @@ $defs:
             enum:
             - TITRE
             - ARTISTE
-          description: Parties encore à trouver sur ce Morceau ; une partie trouvée n’est plus demandée.
+          description: Parties encore à trouver sur ce Morceau ; une partie trouvée n’est plus demandée. Pour le
+            Joueur qui a la main, parties de son formulaire, fixées au Buzz, qui restent à trouver ; une partie
+            rouverte par un arbitrage pendant sa saisie n’y entre pas et ne sera pas jugée.
         monBrouillon:
           oneOf:
           - $ref: '#/$defs/BrouillonProposition'
@@ -2032,16 +2199,24 @@ $defs:
       properties:
         reponse:
           $ref: '#/$defs/RevelationMorceau'
-          description: Réponse attendue, visible de l’Animateur seulement, pour l’arbitrage (#19).
+          description: Réponse attendue, visible de l’Animateur seulement, pour l’arbitrage (#294).
         joueursBloques:
           type: array
           uniqueItems: true
           items:
             type: string
             format: uuid
+        propositions:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/$defs/PropositionJugee'
+          description: Propositions de titre jugées sur ce Morceau, dans l’ordre, avec le texte saisi ; visibles de
+            l’Animateur seulement, pour l’arbitrage.
       required:
       - reponse
       - joueursBloques
+      - propositions
     unevaluatedProperties: false
   ReglagesKaraoke:
     type: object
@@ -2923,6 +3098,67 @@ $defs:
     - passageId
     - note
     - recueLe
+  LignePalmaresKaraoke:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      rang:
+        type: [integer, 'null']
+        minimum: 1
+      chanson:
+        allOf:
+        - $ref: '#/$defs/ResumeChanson'
+        - properties:
+            dureeMs:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            etatParoles:
+              const: SYNCHRONISEES
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 4
+      nombreVotes:
+        type: integer
+        minimum: 0
+      moyenneDixiemes:
+        type: [integer, 'null']
+        minimum: 10
+        maximum: 50
+    required:
+    - passageId
+    - numero
+    - rang
+    - chanson
+    - interpretes
+    - nombreVotes
+    - moyenneDixiemes
+    if:
+      properties:
+        nombreVotes:
+          const: 0
+    then:
+      properties:
+        rang:
+          type: 'null'
+        moyenneDixiemes:
+          type: 'null'
+    else:
+      properties:
+        rang:
+          type: integer
+        moyenneDixiemes:
+          type: integer
   VoteDuPassage:
     type: object
     additionalProperties: false

@@ -2,7 +2,8 @@ package fr.croustyquizz.karaoke;
 
 import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
-import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
+import static fr.croustyquizz.Attentes.attendre;
+import static fr.croustyquizz.Attentes.retenir;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.*;
@@ -612,6 +613,53 @@ class ServiceKaraokeTest {
         return passage;
     }
 
+    @Test void leMinuteurDuDernierVoteRestaurePersisteLaFinDeManche() {
+        banc.pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        UUID passage = inscrire(manche, 1).passageId();
+        var presence = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), etapeCourante(manche), 1L);
+        assertThat(banc.service.confirmerPresencePassage(manche, passage,
+                envoi(joueur, presence.envoiId(), "POST", "/presence", presence), presence)).isInstanceOf(Accepte.class);
+        banc.horloge.avancer(Duration.ofSeconds(180));
+        assertThat(banc.depot.charger(manche).getEtat()).isEqualTo(EtatManche.EN_COURS);
+        banc.registre.retirer(manche);
+        assertThat(banc.service.instantane(soiree, manche)).isInstanceOf(InstantaneKaraoke.class);
+
+        banc.horloge.avancer(Duration.ofSeconds(30));
+
+        assertThat(banc.depot.charger(manche).getEtat()).isEqualTo(EtatManche.TERMINEE);
+        assertThat(banc.etats.get(manche).voteDuPublic().votes()).singleElement()
+                .satisfies(vote -> assertThat(vote.ouvert()).isFalse());
+    }
+
+    @Test void passerLeDernierPassagePersisteLaFinDeMancheEtConserveSonRecu() {
+        banc.pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        inscrire(manche, 1);
+        var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, etapeCourante(manche));
+        var envoi = envoi(animateur, UUID.randomUUID(), "POST", "/commandes", passer);
+
+        var resultat = banc.service.piloter(manche, envoi, passer);
+
+        assertThat(resultat).isInstanceOfSatisfying(Accepte.class, accepte -> {
+            assertThat(accepte.typeEvenement()).isEqualTo("manche-terminee");
+            assertThat(accepte.statutHttp()).isEqualTo(200);
+        });
+        assertThat(banc.depot.charger(manche).getEtat()).isEqualTo(EtatManche.TERMINEE);
+        assertThat(banc.etats.get(manche).file().passages()).singleElement()
+                .satisfies(passage -> assertThat(passage.etat()).isEqualTo(EtatPassage.SAUTE));
+        int publications = banc.diffuseur.envois().size();
+        var rejeu = banc.service.piloter(manche, envoi, passer);
+        assertThat(ReponsesDeCommande.statut(rejeu)).isEqualTo(200);
+        assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(rejeu, envoi.route())))
+                .isEqualTo(banc.json.writeValueAsString(ReponsesDeCommande.corps(resultat, envoi.route())));
+        assertThat(banc.diffuseur.envois()).hasSize(publications);
+    }
+
+    private UUID etapeCourante(UUID manche) {
+        return ((InstantaneKaraoke) banc.service.instantane(soiree, manche)).cycle().etapeId();
+    }
+
     Acteur votant(int index) {
         return new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(index), soiree);
     }
@@ -660,15 +708,6 @@ class ServiceKaraokeTest {
         return banc.service.inscrirePassage(manche, envoi(joueur, id, "POST", "/passages", corps), corps);
     }
     AccusePassage inscrire(UUID manche, long chanson) { return (AccusePassage) ((Accepte) inscrireResultat(manche, chanson, UUID.randomUUID())).accuse(); }
-    /** L'observateur attend un signal qui doit venir. */
-    static void attendre(CountDownLatch signal) { attendre(signal, PLAFOND_SECONDES); }
-    /** Le fil reste retenu jusqu'au feu vert du test, que celui-ci donne toujours dans un {@code finally}. */
-    static void retenir(CountDownLatch signal) { attendre(signal, RETENUE_SECONDES); }
-    private static void attendre(CountDownLatch signal, long secondes) {
-        try { assertThat(signal.await(secondes, TimeUnit.SECONDS)).isTrue(); }
-        catch (InterruptedException erreur) { Thread.currentThread().interrupt(); throw new IllegalStateException(erreur); }
-    }
-
     UUID demarrer() {
         UUID manche = banc.service.creer(soiree, Map.of());
         assertThat(banc.service.demarrer(manche, envoi(animateur, UUID.randomUUID(), "POST", "/demarrer", Map.of()))).isInstanceOf(Accepte.class);
@@ -741,9 +780,9 @@ class ServiceKaraokeTest {
             var vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(), diffuseur, evenement -> { });
             socle = new SocleDeManche(verrous, this, depot, registre, new RegistreDesEnvois(depot, json), vues, horloge, json,
                     pilotage);
-            PersistanceDuMode<EtatKaraokePersiste> persistance = new PersistanceDuMode<>() {
-                public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
-                public void enregistrer(UUID id, Object valeur) {
+            var persistance = new PersistanceKaraokeJpa(null, json, passages) {
+                @Override public EtatKaraokePersiste charger(UUID id) { return etats.get(id); }
+                @Override public void enregistrer(UUID id, Object valeur) {
                     var etat = (InstantaneKaraoke) valeur;
                     passages.enregistrer(id, etat.file());
                     etats.put(id, new EtatKaraokePersiste(etat.file(), etat.contenus(), etat.cycle(), etat.lectures(), etat.lecteurDesigneId(), etat.voteDuPublic()));

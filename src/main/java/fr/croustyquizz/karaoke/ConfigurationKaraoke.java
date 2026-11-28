@@ -31,4 +31,7 @@ public class ConfigurationKaraoke {
             CatalogueDeBase catalogue) {
         return new FournisseurDeBlocKaraoke(depot, service, participants, proprietes, proprietesSource, catalogue);
     }
+    @Bean FournisseurPalmaresKaraoke fournisseurPalmaresKaraoke(DepotDeManches depot, ObjectProvider<ServiceKaraoke> service) {
+        return new FournisseurPalmaresKaraoke(depot, service);
+    }
 }

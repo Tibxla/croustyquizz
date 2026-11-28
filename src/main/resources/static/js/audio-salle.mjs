@@ -47,7 +47,9 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId, bibliot
 		morceauxDuLieu = morceaux.some(morceau => !morceau.url);
 		morceauxDisponibles = dossier !== null || bibliotheque.length > 0 ? morceaux.length > 0 : null;
 		// Après un échec, ne recharger la liste que si un homonyme de la bibliothèque y revient.
-		if (morceaux.length !== nombreRestants) musique.choisirFichiers(morceaux);
+		if (morceaux.length !== nombreRestants) {
+			musique.choisirFichiers(morceaux, { conserverErreurs: nombreRestants !== undefined });
+		}
 		if (morceauxDisponibles !== null) coordination.annoncerMorceaux(morceauxDisponibles);
 		actualiserCandidature();
 		notifier();

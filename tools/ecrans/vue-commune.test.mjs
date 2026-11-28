@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decrireClassementDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
+import { decrireClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from '../../src/main/resources/static/js/vue-commune.mjs';
 
 test('la partie commune restitue les données du serveur, y compris les personnes déconnectées et les points corrigés', () => {
 	const description = decrireVue({ soiree: { titre: 'Soirée de test', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
@@ -63,4 +63,62 @@ test('le résumé de la Console affiche le Pilotage de la Soirée', () => {
 	assert.equal(decrireVue(vue).resume, 'En cours · Solo · Pilotage automatique');
 	assert.equal(decrireVue({ ...vue, soiree: { ...vue.soiree, pilotage: 'MANUEL' } }).resume,
 		'En cours · Solo · Pilotage manuel');
+});
+
+test('le Palmarès distingue champ absent, champ nul et liste vide', () => {
+	const vue = { soiree: {}, joueurs: [], classement: [] };
+	assert.equal(decrireVue(vue).palmares, null);
+	assert.equal(decrireVue({ ...vue, palmaresKaraoke: null }).palmares, null);
+	assert.deepEqual(decrireVue({ ...vue, palmaresKaraoke: [] }).palmares, []);
+});
+
+test('le Palmarès affiche le rang éventuel, le numéro, les Interprètes et le résultat du vote', () => {
+	const vue = { soiree: {}, joueurs: [], classement: [], palmaresKaraoke: [
+		{ numero: 12, rang: 1, chanson: { titre: 'Les quais' }, interpretes: [{ pseudo: 'Alizé' }, { pseudo: 'Basile' }],
+			nombreVotes: 7, moyenneDixiemes: 43 },
+		{ numero: 9, rang: null, chanson: { titre: 'Le phare' }, interpretes: [{ pseudo: 'Joueur parti' }],
+			nombreVotes: 0, moyenneDixiemes: null },
+	] };
+	assert.deepEqual(decrireVue(vue).palmares, [
+		{ numero: 12, rang: 1, titre: 'Les quais', interpretes: 'Alizé et Basile', moyenne: '4,3', votes: '7 votes',
+			texte: '1. n° 12 · Les quais · Alizé et Basile · 4,3 sur 5 (7 votes)' },
+		{ numero: 9, rang: null, titre: 'Le phare', interpretes: 'Joueur parti', moyenne: null, votes: 'Aucun vote',
+			texte: 'n° 9 · Le phare · Joueur parti · Aucun vote' },
+	]);
+});
+
+test('le Palmarès énumère trois Interprètes ou plus à la française', () => {
+	const vue = { soiree: {}, joueurs: [], classement: [], palmaresKaraoke: [
+		{ numero: 4, rang: 1, chanson: { titre: 'Le trio' }, interpretes: [{ pseudo: 'Alizé' }, { pseudo: 'Basile' }, { pseudo: 'Chloé' }],
+			nombreVotes: 2, moyenneDixiemes: 50 },
+	] };
+	const [ligne] = decrireVue(vue).palmares;
+	assert.equal(ligne.interpretes, 'Alizé, Basile et Chloé');
+	assert.equal(ligne.texte, '1. n° 4 · Le trio · Alizé, Basile et Chloé · 5,0 sur 5 (2 votes)');
+});
+
+test('le Palmarès du Karaoké prend la place du Classement de salle et du texte d’attente', () => {
+	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
+	const vue = { soiree: { etat: 'EN_COURS' }, modeEnCours: null, mancheActive: null, joueurs: [], classement };
+	assert.equal(decrireVue(vue).attente, 'La prochaine Manche s’affichera ici.');
+	assert.equal(decrireVue({ ...vue, palmaresKaraoke: [] }).attente, '');
+	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: [] }), null);
+	assert.equal(decrireClassementDeSalle({ ...vue, palmaresKaraoke: null }).titre, 'Classement général · Top 10');
+	assert.deepEqual(decrirePalmaresDeSalle({ ...vue, palmaresKaraoke: [] }), []);
+	assert.equal(decrirePalmaresDeSalle({ ...vue, palmaresKaraoke: null }), null);
+});
+
+test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, et la Console garde le Palmarès', () => {
+	const classement = [{ rang: 1, nom: 'Lou', points: 10 }];
+	const palmaresKaraoke = [{ numero: 2, rang: 1, chanson: { titre: 'Les quais' }, interpretes: [{ pseudo: 'Lou' }],
+		nombreVotes: 1, moyenneDixiemes: 50 }];
+	const terminee = { soiree: { etat: 'TERMINEE' }, modeEnCours: null, mancheActive: null, joueurs: [], classement };
+	assert.equal(decrireVue(terminee).attente, '');
+	assert.equal(decrireClassementDeSalle(terminee).titre, 'Podium final');
+	const avecPalmares = { ...terminee, palmaresKaraoke };
+	assert.deepEqual(decrireClassementDeSalle(avecPalmares),
+		{ titre: 'Podium final', podium: true, lignes: ['1. Lou · 10 points'] });
+	assert.equal(decrirePalmaresDeSalle(avecPalmares), null);
+	assert.deepEqual(decrireVue(avecPalmares).palmares.map(ligne => ligne.texte),
+		['1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)']);
 });

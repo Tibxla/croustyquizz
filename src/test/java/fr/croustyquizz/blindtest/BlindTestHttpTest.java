@@ -220,14 +220,21 @@ class BlindTestHttpTest {
 		assertThat(second.path("partiesTrouvees")).isEmpty();
 
 		// Chaque vue de salle publiée respecte le contrat et ne dit rien du Morceau avant sa Révélation.
+		List<String> attendus = List.of("manche-demarree", "morceau-ouvert", "buzz-recu", "proposition-jugee",
+				"buzz-recu", "morceau-revele", "morceau-en-preparation", "morceau-ouvert");
 		List<String> types = new ArrayList<>();
-		// Le premier événement doit arriver ; les 200 ms suivantes guettent la fin de la série : une absence, gardée courte.
-		for (JsonNode evenement = salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS); evenement != null; evenement = salle.poll(200, TimeUnit.MILLISECONDS)) {
-			types.add(evenement.path("type").asString());
+		// La série est lue jusqu'à son dernier type attendu, sous le plafond : une diffusion en retard ne la tronque pas.
+		long limite = System.nanoTime() + PLAFOND.toNanos();
+		int trouves = 0;
+		while (trouves < attendus.size()) {
+			JsonNode evenement = salle.poll(limite - System.nanoTime(), TimeUnit.NANOSECONDS);
+			if (evenement == null) { break; }
+			String type = evenement.path("type").asString();
+			types.add(type);
+			if (type.equals(attendus.get(trouves))) { trouves++; }
 			verifierVueSalle(evenement.path("donnees"));
 		}
-		assertThat(types).containsSubsequence("manche-demarree", "morceau-ouvert", "buzz-recu", "proposition-jugee",
-				"buzz-recu", "morceau-revele", "morceau-en-preparation", "morceau-ouvert");
+		assertThat(types).containsSubsequence(attendus);
 		assertThat(types).doesNotContain("brouillon-depose");
 	}
 
@@ -267,6 +274,61 @@ class BlindTestHttpTest {
 		assertThat(capture(soiree, "console", soiree.animateur()).path("vue").path("programme")).isEmpty();
 	}
 
+	// --- Arbitrage (ADR 0009, point 15) ---
+
+	@Test
+	void lAnimateurAccordeUnChampJugeFauxEtLaSalleLAnnonceSansVoirLaSaisie() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+		Joueur lea = rejoindre(soiree, "Léa");
+		String mancheId = ajouterBlindTest(soiree);
+		lancer(soiree);
+		String etape = attendrePhase(soiree, "EXTRAIT", 1).path("etapeId").asString();
+		Morceau morceau = morceauRevele(soiree);
+		verifier("envoyerBuzz", buzzer(soiree, lea, mancheId, etape, UUID.randomUUID()), 200);
+		String route = soiree.route() + "/manches/" + mancheId + "/morceaux/" + etape;
+		verifier("validerProposition", envoyer(HttpMethod.POST, route + "/proposition", lea.jeton(),
+				Map.of("envoiId", UUID.randomUUID(), "titre", morceau.titre(), "artiste", "Arbitrage soufflé"), null), 200);
+
+		// La Console reçoit la saisie pour arbitrer ; la salle et la Manette jamais.
+		JsonNode proposition = capture(soiree, "console", soiree.animateur()).path("vue").path("blindtest")
+				.path("propositions").get(0);
+		assertThat(proposition.path("artiste").path("saisie").asString()).isEqualTo("Arbitrage soufflé");
+		assertThat(proposition.path("artiste").path("verdict").asString()).isEqualTo("FAUX");
+		assertThat(capture(soiree, "salle", soiree.cleEcran()).toString()).doesNotContain("Arbitrage soufflé");
+		assertThat(capture(soiree, "manette", lea.jeton()).toString()).doesNotContain("Arbitrage soufflé");
+
+		Map<String, Object> corps = Map.of("propositionId", proposition.path("propositionId").asString(),
+				"partie", "ARTISTE", "verdict", "JUSTE");
+		verifierRefus("arbitrerProposition", envoyer(HttpMethod.POST, route + "/arbitrage", lea.jeton(), corps,
+				UUID.randomUUID()), 403, "ACCES_REFUSE");
+		UUID cle = UUID.randomUUID();
+		JsonNode accuse = verifier("arbitrerProposition",
+				envoyer(HttpMethod.POST, route + "/arbitrage", soiree.animateur(), corps, cle), 200);
+		assertThat(accuse.path("modifie").asBoolean()).isTrue();
+		assertThat(verifier("arbitrerProposition",
+				envoyer(HttpMethod.POST, route + "/arbitrage", soiree.animateur(), corps, cle), 200)).isEqualTo(accuse);
+
+		JsonNode salle = capture(soiree, "salle", soiree.cleEcran()).path("vue");
+		assertThat(salle.path("blindtest").path("phase").asString()).isEqualTo("REVELATION");
+		assertThat(salle.path("blindtest").path("arbitrage").path("pseudo").asString()).isEqualTo("Léa");
+		assertThat(salle.path("blindtest").path("arbitrage").path("verdict").asString()).isEqualTo("JUSTE");
+		assertThat(points(salle, "Léa")).isEqualTo(100);
+	}
+
+	@Test
+	void uneSourceSansAssezDeMorceauxRendUn422QuiDitQuoiCorrigerSansAjouterDeManche() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+
+		JsonNode refus = verifier("ajouterManche", envoyer(HttpMethod.POST, soiree.route() + "/manches",
+				soiree.animateur(), Map.of("mode", "BLIND_TEST", "reglages", Map.of("source",
+						Map.of("type", "PLAYLIST", "idDeezer", 1_306_931_615L), "nombreMorceaux", 10)), null), 422);
+
+		assertThat(refus.path("code").asString()).isEqualTo("SOURCE_MUSICALE_INVALIDE");
+		assertThat(refus.path("detail").asString()).isEqualTo(
+				"Cette playlist n’a que 2 Morceaux jouables pour 10 demandés : demandes-en moins ou choisis une autre source.");
+		assertThat(capture(soiree, "console", soiree.animateur()).path("vue").path("programme")).isEmpty();
+	}
+
 	@Test
 	void unProgrammeFigeRefuseLAjoutAvantDeConsulterDeezer() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
@@ -292,12 +354,19 @@ class BlindTestHttpTest {
 
 		await().atMost(PLAFOND).until(() -> capture(soiree, "salle", soiree.cleEcran())
 				.path("vue").path("mancheActive").isNull());
+		List<String> attendus = List.of("manche-demarree", "morceau-saute", "manche-terminee");
 		List<String> types = new ArrayList<>();
-		// Le premier événement doit arriver ; les 200 ms suivantes guettent la fin de la série : une absence, gardée courte.
-		for (JsonNode evenement = salle.poll(PLAFOND_SECONDES, TimeUnit.SECONDS); evenement != null; evenement = salle.poll(200, TimeUnit.MILLISECONDS)) {
-			types.add(evenement.path("type").asString());
+		// La série est lue jusqu'à son dernier type attendu, sous le plafond : une diffusion en retard ne la tronque pas.
+		long limite = System.nanoTime() + PLAFOND.toNanos();
+		int trouves = 0;
+		while (trouves < attendus.size()) {
+			JsonNode evenement = salle.poll(limite - System.nanoTime(), TimeUnit.NANOSECONDS);
+			if (evenement == null) { break; }
+			String type = evenement.path("type").asString();
+			types.add(type);
+			if (type.equals(attendus.get(trouves))) { trouves++; }
 		}
-		assertThat(types).containsSubsequence("manche-demarree", "morceau-saute", "manche-terminee");
+		assertThat(types).containsSubsequence(attendus);
 	}
 
 	@Test

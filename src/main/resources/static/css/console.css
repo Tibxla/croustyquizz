@@ -13,6 +13,21 @@
   --fond-encoche: var(--fond-1);
 }
 
+.console .palmares ul {
+  display: grid;
+  gap: var(--espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.console .palmares li {
+  padding: var(--espace-2) var(--espace-3);
+  border-radius: var(--rayon);
+  background: var(--fond-2);
+  overflow-wrap: anywhere;
+}
+.console .palmares p { color: var(--texte-2); }
+
 .pilotage {
   position: sticky;
   top: 0;

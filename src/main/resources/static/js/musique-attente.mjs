@@ -2,6 +2,7 @@
 export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {}, surMorceauEcarte = () => {},
 	surMorceau = () => {} }) {
 	let fichiers = [], index = 0, position = 0, autorisee = false, lecture, annonce = null;
+	const erreursDeLecture = new Set();
 
 	function annoncer(morceau) {
 		if (annonce === morceau) return;
@@ -29,16 +30,19 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 			surSonBloque();
 			return;
 		}
-		if (!echecDeChargement) {
+		const fichier = fichiers[index];
+		// Écarter un fichier dès l’échec du chargement ou après deux erreurs de lecture sans fin de lecture entre les deux.
+		if (!echecDeChargement && !erreursDeLecture.has(fichier)) {
+			erreursDeLecture.add(fichier);
 			passerAuSuivant();
 			return;
 		}
 		liberer();
-		// Un fichier qui ne se charge pas est écarté jusqu'au prochain choix du dossier.
-		const [ecarte] = fichiers.splice(index, 1);
+		erreursDeLecture.delete(fichier);
+		fichiers.splice(index, 1);
 		if (index === fichiers.length) index = 0;
 		position = 0;
-		surMorceauEcarte(ecarte, fichiers.length);
+		surMorceauEcarte(fichier, fichiers.length);
 		void jouer();
 	}
 
@@ -58,12 +62,17 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 		}
 	}
 
-	const retirerFin = lecteur.surFin(passerAuSuivant);
+	const retirerFin = lecteur.surFin(() => {
+		if (!lecture) return;
+		erreursDeLecture.delete(fichiers[index]);
+		passerAuSuivant();
+	});
 	const retirerErreur = lecteur.surErreur(erreur => { if (lecture) traiterErreur(erreur); });
 
 	return {
-		choisirFichiers(nouveauxFichiers) {
+		choisirFichiers(nouveauxFichiers, { conserverErreurs = false } = {}) {
 			liberer();
+			if (!conserverErreurs) erreursDeLecture.clear();
 			fichiers = [...nouveauxFichiers];
 			for (let i = fichiers.length - 1; i > 0; i--) {
 				const j = Math.floor(hasard() * (i + 1));

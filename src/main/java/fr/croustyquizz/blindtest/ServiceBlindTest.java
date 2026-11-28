@@ -77,6 +77,8 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 		List<Morceau> selection;
 		try {
 			selection = tirage.tirer(valeurs);
+		} catch (SourceMusicaleInvalide erreur) {
+			throw new Refuse(422, "SOURCE_MUSICALE_INVALIDE", erreur.getMessage()).exception(erreur);
 		} catch (SourceMusicaleIndisponible erreur) {
 			throw new Refuse(503, "SOURCE_MUSICALE_INDISPONIBLE",
 					"Le catalogue musical ne répond pas. Réessaie dans un instant.").exception(erreur);
@@ -249,6 +251,14 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 		return executer(mancheId, envoi, () -> PreparationDeCommande.prete((deroulement, recueLe) ->
 				deroulement.recevoir(new ValiderProposition(acteur.identifiant(), recueLe, envoi.envoiId(), etapeId,
 						proposition))));
+	}
+
+	/** Arbitrage de l'Animateur, dédupliqué par l'{@code Idempotency-Key} comme le pilotage (ADR 0009, point 15). */
+	public ResultatDeCommande arbitrer(UUID mancheId, UUID etapeId, EnvoiDeCommande envoi, UUID propositionId,
+			PartieDuMorceau partie, VerdictChamp verdict) {
+		return executer(mancheId, envoi, () -> PreparationDeCommande.prete((deroulement, recueLe) ->
+				deroulement.commander(new ArbitrerProposition(envoi.acteur(), recueLe, envoi.envoiId(), etapeId,
+						propositionId, partie, verdict))));
 	}
 
 	private void verifierPresence(Acteur acteur) {

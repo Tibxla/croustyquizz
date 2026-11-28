@@ -52,7 +52,8 @@ paths:
         de casse (409 EMAIL_DEJA_UTILISE). Ce 409 révèle qu’un compte existe pour cet e-mail : sans confirmation
         par e-mail, l’inscription ne peut pas répondre de façon neutre. Le mot de passe est haché côté serveur et
         absent des réponses. L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une
-        extension de #5.
+        extension de #5. Au-delà de la limite d’inscription par adresse IP, 429 TROP_DE_REQUETES avec
+        Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Accès
       security: []
@@ -82,6 +83,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -104,8 +107,10 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe. Limite connue : le nombre d’essais n’est pas encore limité ; une
-        limite est à ajouter avant toute exposition publique.'
+        sans distinguer e-mail et mot de passe. Une adresse IP qui a épuisé ses tentatives, ou un couple
+        e-mail normalisé et adresse IP qui a épuisé ses essais d’identification, reçoit 429 TROP_DE_REQUETES
+        avec Retry-After. Seuls les échecs d’identification alimentent le compteur du couple
+        (README.md, « Limite de requêtes »).'
       tags:
       - Accès
       security: []
@@ -134,6 +139,8 @@ paths:
           $ref: '#/components/responses/Erreur403'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -567,8 +574,10 @@ paths:
         en fin de programme et publie programme-modifie sur la Console. KARAOKE résout la limite initiale
         configurée si elle est absente. BLIND_TEST tire les Morceaux dans la playlist ou le genre Deezer, hors
         du verrou de la Soirée, parmi ceux qui ont un extrait ; la sélection reste privée et n’apparaît jamais
-        dans les réglages, publiés à toutes les destinations. Deezer indisponible ou source sans assez de
-        Morceaux jouables : 503 SOURCE_MUSICALE_INDISPONIBLE, rien n’est ajouté. Un mode ou des réglages hors
+        dans les réglages, publiés à toutes les destinations. Une source que Deezer ne connaît pas, ou qui n’a
+        pas assez de Morceaux jouables, donne 422 SOURCE_MUSICALE_INVALIDE, avec un detail qui dit quoi
+        corriger ; Deezer injoignable, en panne ou trop lent donne 503 SOURCE_MUSICALE_INDISPONIBLE. Dans les
+        deux cas, rien n’est ajouté. Un mode ou des réglages hors
         schéma donnent 400 REQUETE_INVALIDE. Aucun Idempotency-Key ajouté à cette route.'
       tags:
       - Soirée
@@ -1280,6 +1289,94 @@ paths:
           application/json:
             schema:
               $ref: ./schemas.yaml#/$defs/PropositionSaisie
+  /api/soirees/{soireeId}/manches/{mancheId}/morceaux/{etapeId}/arbitrage:
+    post:
+      operationId: arbitrerProposition
+      summary: Renverser le verdict d’un champ d’une Proposition de titre
+      description: 'Animateur du Lieu, en Pilotage Manuel (ADR 0009, point 15). Fixe le verdict JUSTE ou FAUX
+        d’un champ (TITRE, ARTISTE) d’une Proposition jugée sur le Morceau affiché, Révélation comprise, jusqu’à
+        PASSER_ETAPE ; la pause ne l’empêche pas. Accorder un champ : le Joueur gagne les points de la partie avec
+        son temps de Buzz d’origine, la partie est trouvée par lui, et il n’est plus bloqué si aucun de ses champs
+        ne reste faux ; si toutes les parties sont trouvées, la Révélation part aussitôt. Refuser un champ : points
+        retirés et Joueur bloqué ; avant la Révélation, la partie redevient demandée et le Morceau continue ; après,
+        la Révélation est maintenue. Puis verdict-renverse vers la salle, la Console et les Manettes, avec
+        blindtest.arbitrage, ou morceau-revele quand l’arbitrage termine le Morceau. Un champ qui a déjà ce verdict
+        est accepté sans changement ni événement (modifie false). Ordre des refus : Pilotage Automatique, 409
+        ETAT_INCOMPATIBLE (le verdict de la correction est définitif) ; Morceau qui n’est plus le Morceau affiché,
+        409 COMMANDE_PERIMEE ; Proposition inconnue sur ce Morceau, 404 RESSOURCE_INTROUVABLE ; champ non demandé,
+        champ vide à accorder, ou partie trouvée depuis par un autre Joueur, 409 ETAT_INCOMPATIBLE. Manche
+        terminée : 409 ETAT_INCOMPATIBLE ; pas encore commencée : 409 ETAPE_INACTIVE. Reçu et rejeu comme
+        piloterManche : même Idempotency-Key et même contenu, reçu initial ; autre contenu, 409 ENVOI_REUTILISE.
+        Autres refus : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 403 CSRF_INVALIDE,
+        503 SERVICE_INDISPONIBLE.'
+      tags:
+      - Blind test
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: etapeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ArbitrageSaisie
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseArbitrage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/buzz:
     post:
       operationId: envoyerBuzz
@@ -1294,10 +1391,11 @@ paths:
         Une Manche active autre que le Blind test (y compris en pause) donne 409 BUZZ_NON_AUTORISE.
         Pendant une Manche de Blind test (ADR 0009), le corps nomme mancheId et l’etapeId du Morceau visé
         (absents : 400 REQUETE_INVALIDE) et la route transmet le Buzz au déroulement de la Manche. Le premier
-        Buzz accepté d’un Joueur non bloqué, en phase EXTRAIT, lui donne la main, met l’extrait en pause et
+        Buzz accepté d’un Joueur ni bloqué ni déjà jugé sur ce Morceau, en phase EXTRAIT, lui donne la main, met l’extrait en pause et
         ouvre 20 s de saisie, puis buzz-recu ; rang est son ordre parmi les Buzz acceptés du Morceau. Cible qui
         n’est plus la Manche ou le Morceau affiché : 409 COMMANDE_PERIMEE, distinct des refus de jeu ; un
-        Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise, Manche en
+        Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué ou déjà jugé (même débloqué par
+        un arbitrage), main déjà prise, Manche en
         pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le révèle :
         409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.
         Au-delà de la limite des Buzz par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
@@ -2353,7 +2451,8 @@ paths:
         EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
         numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
         recalculée sur la salle, la Console et toutes les Manettes. En Pilotage Automatique, le serveur
-        appelle le Passage suivant et cette commande est refusée. Le saut automatique relève du ticket #121.
+        appelle le Passage suivant et cette commande est refusée. À l’échéance de l’appel, le Passage
+        est sauté en Pilotage Automatique ; en Pilotage Manuel, l’échéance ne publie rien.
         Propres, dans l’ordre : 409 ETAT_INCOMPATIBLE (Manche en pause, puis Pilotage Automatique,
         puis courant actif) ; 409 COMMANDE_PERIMEE (compteur, Passage
         sorti de l’attente ou plus en position 1). Refus communs : 400 REQUETE_INVALIDE, 401
@@ -2438,10 +2537,13 @@ paths:
       description: 'Manche Karaoké active en Soirée EN_COURS. Joueur Interprète du Passage appelé, envoiId dans le
         corps. APPELE vers EN_COURS ; numeroModification augmente et la chronologie démarre aussitôt
         (demarreLe). Une lecture préparée pendant l’appel est figée ; sinon le Passage démarre en paroles
-        seules, motif ECRAN_NON_PRET, lecteurId nul. La confirmation reste acceptée après l’échéance, qui ne
-        publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
+        seules, motif ECRAN_NON_PRET, lecteurId nul. En Pilotage Manuel, la confirmation reste acceptée
+        après l’échéance, qui ne publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
         l’ordre : 404 RESSOURCE_INTROUVABLE (Joueur non Interprète, avant tout reçu) ; 409 ETAT_INCOMPATIBLE
-        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE). Refus communs :
+        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE) ;
+        409 HORS_DELAI en Pilotage Automatique (confirmation reçue à l’échéance de l’appel ou après,
+        tant que le Passage est encore APPELE), avec le détail « Le temps pour confirmer est écoulé. ».
+        Refus communs :
         400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE
         (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
         ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
@@ -3466,10 +3568,10 @@ components:
           schema:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur429:
-      description: 'TROP_DE_REQUETES : la limite de requêtes de la route est atteinte pour ce jeton, cette clé
-        d’Écran ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé : aucun
-        reçu, aucune mutation. Un nouvel essai, décidé par la personne et jamais automatique, passe après
-        Retry-After.'
+      description: 'TROP_DE_REQUETES : le seuil de requêtes est atteint pour ce jeton, cette clé d’Écran,
+        cette adresse IP ou ce couple e-mail et adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé :
+        aucun reçu, aucune mutation. Retry-After indique quand le seuil atteint permet un nouvel essai, décidé
+        par la personne et jamais automatique.'
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.
@@ -3477,7 +3579,7 @@ components:
             type: string
             const: no-store
         Retry-After:
-          description: Secondes à attendre avant qu’un nouvel essai puisse passer, arrondies à l’entier supérieur.
+          description: Secondes à attendre avant de réessayer selon le seuil atteint, arrondies à l’entier supérieur.
           required: true
           schema:
             type: integer
@@ -3489,7 +3591,7 @@ components:
     Erreur503:
       description: 'SERVICE_INDISPONIBLE : base ou transaction indisponible. SOURCE_PAROLES_INDISPONIBLE :
         consultation externe en échec sur les routes Karaoké prévues. SOURCE_MUSICALE_INDISPONIBLE : Deezer
-        indisponible à la création d’une Manche de Blind test. Aucun reçu. Pour réessayer une mutation
+        injoignable, en panne ou trop lent à la création d’une Manche de Blind test. Aucun reçu. Pour réessayer une mutation
         qui utilise une clé d’idempotence, conserver la clé et le contenu.'
       headers:
         Cache-Control:

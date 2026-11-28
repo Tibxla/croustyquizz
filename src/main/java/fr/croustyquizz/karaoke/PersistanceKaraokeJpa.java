@@ -46,6 +46,15 @@ public class PersistanceKaraokeJpa implements PersistanceDuMode<EtatKaraokePersi
         passages.enregistrerVotes(mancheId, etat.voteDuPublic());
     }
 
+    public Map<UUID, ContenuKaraoke> contenus(Collection<UUID> passageIds) {
+        if (passageIds.isEmpty()) { return Map.of(); }
+        Map<UUID, ContenuKaraoke> resultat = new HashMap<>();
+        entites.createQuery("select c from ContenuPassagePersistant c where c.passageId in :passages",
+                ContenuPassagePersistant.class).setParameter("passages", passageIds).getResultList()
+                .forEach(c -> resultat.put(c.getPassageId(), c.restaurer(json)));
+        return resultat;
+    }
+
     private List<LecturePassagePersistante> lectures(UUID mancheId) {
         return entites.createQuery("select l from LecturePassagePersistante l where l.passageId in "
                 + "(select p.id from PassagePersistant p where p.mancheId = :manche)", LecturePassagePersistante.class)

@@ -13,6 +13,7 @@ import fr.croustyquizz.manche.Minuteur;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.manche.ResultatDeCommande;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 	static final String MORCEAU_SAUTE = "morceau-saute";
 	static final String MANCHE_TERMINEE = "manche-terminee";
 	static final String BROUILLON_DEPOSE = "brouillon-depose";
+	static final String VERDICT_RENVERSE = "verdict-renverse";
 	private static final Set<Destination> ECRANS = Set.of(
 			Destination.SALLE, Destination.CONSOLE, Destination.TOUTES_LES_MANETTES);
 
@@ -49,7 +51,11 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 	private final Supplier<UUID> identifiants;
 	private final CorrecteurExact correcteur = new CorrecteurExact();
 	private final List<Morceau> morceaux;
-	private final List<AttributionDePoints> attributions = new ArrayList<>();
+	/**
+	 * Points des Morceaux déjà quittés. Ceux du Morceau courant se déduisent de ses Propositions, pour qu'un arbitrage
+	 * les recalcule (ADR 0009, point 15) ; un état enregistré avant #294 les porte ici, sans Propositions.
+	 */
+	private final List<AttributionDePoints> pointsFiges = new ArrayList<>();
 	private EtatManche etatManche;
 	private MorceauEnCours courant;
 	private AccuseBuzz dernierBuzz;
@@ -69,7 +75,7 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		this.identifiants = Objects.requireNonNull(identifiants, "identifiants");
 		this.morceaux = persiste.selection();
 		this.courant = persiste.courant();
-		this.attributions.addAll(persiste.points());
+		this.pointsFiges.addAll(persiste.points());
 		this.dernierBuzz = persiste.dernierBuzz();
 		this.etatManche = Objects.requireNonNull(etatManche, "etatManche");
 		if (etatManche != EtatManche.PRETE && courant == null) {
@@ -158,14 +164,14 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		Instant maintenant = maintenant();
 		// L'extrait arrivé à 30 s ferme le Buzz, même si le rappel de fin d'extrait attend encore le verrou.
 		if (courant.phase() != PhaseBlindTest.EXTRAIT || etatManche != EtatManche.EN_COURS
-				|| courant.bloques().contains(buzz.joueurId())
+				|| neBuzzePlus(buzz.joueurId())
 				|| courant.lecture().positionA(maintenant) >= LectureExtrait.DUREE_MS) {
 			return new Refuse(409, "BUZZ_NON_AUTORISE", "Le Buzz n'est pas ouvert pour ce Joueur.");
 		}
 		minuteur.annuler();
 		LectureExtrait enPause = courant.lecture().geleeA(maintenant);
 		MainBlindTest main = MainBlindTest.donnee(buzz.joueurId(), buzz.pseudo(),
-				Delai.depuis(maintenant, DUREE_SAISIE), enPause.positionMs());
+				Delai.depuis(maintenant, DUREE_SAISIE), enPause.positionMs(), courant.partiesDemandees());
 		courant = courant.mainDonnee(main, enPause);
 		dernierBuzz = new AccuseBuzz(buzz.envoiId(), buzz.joueurId(), buzz.pseudo(), buzz.recueLe(),
 				courant.buzzAcceptes());
@@ -228,25 +234,24 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 		minuteur.annuler();
 		MainBlindTest main = courant.main();
 		Morceau morceau = morceau();
-		Set<PartieDuMorceau> demandees = courant.partiesDemandees();
+		Set<PartieDuMorceau> demandees = main.demandeesParmi(courant.partiesDemandees());
 		List<PartieTrouvee> trouvees = new ArrayList<>();
-		boolean bloque = false;
+		ChampJuge[] champs = new ChampJuge[PartieDuMorceau.values().length];
 		for (PartieDuMorceau partie : PartieDuMorceau.values()) {
+			String saisie = proposition.champ(partie);
+			VerdictChamp verdict = VerdictChamp.NON_DEMANDE;
 			if (demandees.contains(partie)) {
-				if (correcteur.estJuste(proposition.champ(partie), partie.attendue(morceau))) {
-					trouvees.add(new PartieTrouvee(partie, partie.attendue(morceau), main.joueurId(), main.pseudo(),
-							partie.points()));
-				} else {
-					bloque = true;
+				verdict = correcteur.estJuste(saisie, partie.attendue(morceau)) ? VerdictChamp.JUSTE : VerdictChamp.FAUX;
+				if (verdict == VerdictChamp.JUSTE) {
+					trouvees.add(trouvee(partie, morceau, main.joueurId(), main.pseudo()));
 				}
 			}
+			champs[partie.ordinal()] = ChampJuge.juge(saisie == null ? "" : saisie, verdict);
 		}
-		int gagnes = trouvees.stream().mapToInt(PartieTrouvee::points).sum();
-		if (gagnes > 0) {
-			attributions.add(new AttributionDePoints(main.joueurId(), gagnes, motif(trouvees), true,
-					main.tempsBuzzMs()));
-		}
-		courant = courant.juge(main.joueurId(), trouvees, bloque);
+		PropositionJugee jugee = new PropositionJugee(propositionId(courant.etapeId(), main.joueurId()), main.joueurId(), main.pseudo(),
+				main.tempsBuzzMs(), champs[PartieDuMorceau.TITRE.ordinal()], champs[PartieDuMorceau.ARTISTE.ordinal()]);
+		int gagnes = jugee.points();
+		courant = courant.juge(jugee, trouvees);
 		if (courant.partiesDemandees().isEmpty() || tousBloques()) {
 			reveler();
 		} else {
@@ -265,16 +270,26 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 				: VerdictChamp.FAUX;
 	}
 
-	private static String motif(List<PartieTrouvee> trouvees) {
-		if (trouvees.size() == PartieDuMorceau.values().length) {
-			return "Titre et artiste trouvés";
-		}
-		return trouvees.getFirst().partie() == PartieDuMorceau.TITRE ? "Titre trouvé" : "Artiste trouvé";
+	/** Un Joueur n'est jugé qu'une fois par Morceau : le couple Morceau et Joueur identifie sa Proposition. */
+	static UUID propositionId(UUID etapeId, UUID joueurId) {
+		return UUID.nameUUIDFromBytes((etapeId + "/" + joueurId).getBytes(StandardCharsets.UTF_8));
+	}
+
+	private static PartieTrouvee trouvee(PartieDuMorceau partie, Morceau morceau, UUID joueurId, String pseudo) {
+		return new PartieTrouvee(partie, partie.attendue(morceau), joueurId, pseudo, partie.points());
 	}
 
 	/** Plus aucun Joueur présent ne peut buzzer : tous sont bloqués (ADR 0009, point 11). */
 	private boolean tousBloques() {
-		return courant.bloques().containsAll(joueursPresents.de(contexte.soireeId()));
+		return joueursPresents.de(contexte.soireeId()).stream().allMatch(this::neBuzzePlus);
+	}
+
+	/**
+	 * Un Joueur bloqué, ou déjà jugé sur ce Morceau, ne reprend plus la main : un arbitrage peut le débloquer sans lui
+	 * rendre une seconde Proposition (relecture de #297).
+	 */
+	private boolean neBuzzePlus(UUID joueurId) {
+		return courant.bloques().contains(joueurId) || courant.ontPropose().contains(joueurId);
 	}
 
 	private void reprendreExtrait() {
@@ -315,6 +330,10 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 	}
 
 	private void preparer(int numero) {
+		if (courant != null) {
+			// Le Morceau quitté ne s'arbitre plus : ses points sont figés.
+			pointsFiges.addAll(pointsDuMorceau(courant));
+		}
 		courant = MorceauEnCours.enPreparation(numero, identifiants.get());
 	}
 
@@ -353,7 +372,55 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 
 	@Override
 	public ResultatDeCommande commander(CommandeDeManche commande) {
-		return incompatible("Le Blind test n'a pas de commande propre.");
+		if (!(commande instanceof ArbitrerProposition arbitrage)) {
+			return incompatible("Cette commande n'existe pas au Blind test.");
+		}
+		Refuse refus = garde();
+		if (refus != null) {
+			return refus;
+		}
+		return arbitrer(arbitrage);
+	}
+
+	/** Renverse le verdict d'un champ en Pilotage Manuel, Révélation et pause comprises (ADR 0009, point 15). */
+	private ResultatDeCommande arbitrer(ArbitrerProposition arbitrage) {
+		if (contexte.pilotageAutomatique()) {
+			return incompatible("En Pilotage Automatique, le verdict de la correction est définitif.");
+		}
+		if (perime(arbitrage.etapeId())) {
+			return perimee();
+		}
+		Optional<PropositionJugee> visee = courant.proposition(arbitrage.propositionId());
+		if (visee.isEmpty()) {
+			return new Refuse(404, "RESSOURCE_INTROUVABLE", "Cette Proposition n'existe pas sur ce Morceau.");
+		}
+		PropositionJugee proposition = visee.get();
+		PartieDuMorceau partie = arbitrage.partie();
+		ChampJuge champ = proposition.champ(partie);
+		if (champ.verdict() == VerdictChamp.NON_DEMANDE) {
+			return incompatible("Ce champ n'était pas demandé : une autre Proposition avait déjà trouvé cette partie.");
+		}
+		if (champ.verdict() == arbitrage.verdict()) {
+			return new Accepte(arbitrage.accuse(false), Set.of(), VERDICT_RENVERSE);
+		}
+		PartieTrouvee trouvee = null;
+		if (arbitrage.verdict() == VerdictChamp.JUSTE) {
+			if (champ.estVide()) {
+				return incompatible("Un champ vide ne peut pas être accordé.");
+			}
+			if (!courant.partiesDemandees().contains(partie)) {
+				return incompatible("Un autre Joueur a trouvé cette partie depuis : ses points ne lui sont pas repris.");
+			}
+			trouvee = trouvee(partie, morceau(), proposition.joueurId(), proposition.pseudo());
+		}
+		courant = courant.arbitre(proposition.avec(partie, champ.renverse()), trouvee, partie);
+		boolean revele = courant.phase() != PhaseBlindTest.REVELATION
+				&& (courant.partiesDemandees().isEmpty()
+						|| courant.phase() == PhaseBlindTest.EXTRAIT && tousBloques());
+		if (revele) {
+			reveler();
+		}
+		return new Accepte(arbitrage.accuse(true), ECRANS, revele ? MORCEAU_REVELE : VERDICT_RENVERSE);
 	}
 
 	@Override
@@ -421,7 +488,7 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 
 	@Override
 	public InstantaneBlindTest instantane() {
-		return new InstantaneBlindTest(etatManche, new EtatBlindTestPersiste(morceaux, courant, attributions,
+		return new InstantaneBlindTest(etatManche, new EtatBlindTestPersiste(morceaux, courant, pointsFiges,
 				dernierBuzz));
 	}
 
@@ -432,7 +499,15 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 
 	@Override
 	public List<AttributionDePoints> points() {
-		return List.copyOf(attributions);
+		List<AttributionDePoints> points = new ArrayList<>(pointsFiges);
+		if (courant != null) {
+			points.addAll(pointsDuMorceau(courant));
+		}
+		return List.copyOf(points);
+	}
+
+	private static List<AttributionDePoints> pointsDuMorceau(MorceauEnCours morceau) {
+		return morceau.propositions().stream().flatMap(proposition -> proposition.attribution().stream()).toList();
 	}
 
 	/** Reprogramme le minuteur de la phase courante, à la reprise ou à la restauration d'une Manche en cours. */

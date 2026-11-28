@@ -2,6 +2,8 @@ package fr.croustyquizz.karaoke;
 
 import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
 import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.attendre;
+import static fr.croustyquizz.Attentes.retenir;
 import static org.assertj.core.api.Assertions.*;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.*;
@@ -31,6 +33,56 @@ class KaraokeJpaTest {
     @Autowired ServiceKaraoke service;
     @Autowired MemoireDeCalageJpa calages;
     @Autowired JdbcTemplate jdbc;
+
+    @Test void litLesVotesClosDesManchesDemandeesAvecLesInterpretesDansLeurOrdre() {
+        UUID soiree = UUID.randomUUID(), manche = UUID.randomUUID(), autreManche = UUID.randomUUID();
+        UUID premier = new UUID(0, 2), second = new UUID(0, 1);
+        var interpretes = List.of(premier, second);
+        var seul = List.of(premier);
+        var instant = Instant.parse("2026-11-18T21:00:00Z");
+        var notees = passagePourPalmares(soiree, manche, 1, interpretes, EtatPassage.TERMINE, instant);
+        var sansVote = passagePourPalmares(soiree, manche, 2, seul, EtatPassage.TERMINE, instant);
+        var voteOuvert = passagePourPalmares(soiree, manche, 3, seul, EtatPassage.TERMINE, instant);
+        var saute = passagePourPalmares(soiree, manche, 4, seul, EtatPassage.SAUTE, instant);
+        var ailleurs = passagePourPalmares(soiree, autreManche, 5, seul, EtatPassage.TERMINE, instant);
+        var notes = List.of(new VoteRecu(UUID.randomUUID(), 4, instant.plusSeconds(1)),
+                new VoteRecu(UUID.randomUUID(), 5, instant.plusSeconds(2)));
+        var transaction = new TransactionTemplate(socle.transactions());
+        transaction.executeWithoutResult(statut -> {
+            enregistrerPourPalmares(contenus, List.of(notees, sansVote, voteOuvert, saute), List.of(
+                    votePourPalmares(notees, instant.plusSeconds(10), notes),
+                    votePourPalmares(sansVote, instant.plusSeconds(10), List.of()),
+                    votePourPalmares(voteOuvert, null, notes)));
+            enregistrerPourPalmares(contenus, List.of(ailleurs),
+                    List.of(votePourPalmares(ailleurs, instant.plusSeconds(10), notes)));
+        });
+        var resultats = transaction.execute(statut -> passages.resultatsDeVote(List.of(manche, UUID.randomUUID())));
+        assertThat(resultats).containsExactlyInAnyOrder(
+                new ResultatVote(notees.id(), manche, 1, interpretes, 2, 9, 45),
+                new ResultatVote(sansVote.id(), manche, 2, seul, 0, 0, null));
+        assertThat(passages.resultatsDeVote(List.of())).isEmpty();
+    }
+
+    static Passage passagePourPalmares(UUID soiree, UUID manche, long numero, List<UUID> interpretes,
+            EtatPassage etat, Instant instant) {
+        return new Passage(UUID.randomUUID(), soiree, manche, interpretes.getFirst(), interpretes,
+                IdentifiantsChanson.encoder(numero), Duration.ofMinutes(3), numero, 3, etat,
+                instant.minusSeconds(180), numero, 1, numero, 1L, new TraceTerminale(etat.name(), null, instant));
+    }
+
+    static EtatVotePassage votePourPalmares(Passage passage, Instant cloture, List<VoteRecu> notes) {
+        Instant ouverture = passage.traceTerminale().instant();
+        return new EtatVotePassage(passage.id(), ouverture, ouverture.plusSeconds(30), null, cloture, notes);
+    }
+
+    static void enregistrerPourPalmares(PersistanceKaraokeJpa persistance, List<Passage> passages, List<EtatVotePassage> votes) {
+        var premier = passages.getFirst();
+        var file = new EtatFileAttente(premier.soireeId(), premier.mancheId(), 2, 1, 10, 10, null, passages, Map.of());
+        Map<UUID, ContenuKaraoke> chansons = new HashMap<>();
+        passages.forEach(passage -> chansons.put(passage.id(), ServiceKaraokeTest.contenu(passage.numero())));
+        persistance.enregistrer(premier.mancheId(), new InstantaneKaraoke(EtatManche.TERMINEE, file, chansons,
+                EtatCyclePassage.vide(), Map.of(), null, new EtatVoteDuPublic(votes)));
+    }
 
     @Test void conserveLesTracesParolesEtNumerosDansUneSeuleTransaction() {
         UUID soiree = UUID.randomUUID(), manche = UUID.randomUUID(), id = UUID.randomUUID(), joueur = UUID.randomUUID();
@@ -289,14 +341,14 @@ class KaraokeJpaTest {
                 var premier = fils.submit(() -> transaction.executeWithoutResult(s -> {
                     calages.memoriser(chansonId, 1, fichier, 100, maintenant);
                     ecrit.countDown();
-                    ServiceKaraokeTest.retenir(liberer);
+                    retenir(liberer);
                 }));
-                ServiceKaraokeTest.attendre(ecrit);
+                attendre(ecrit);
                 var second = fils.submit(() -> transaction.executeWithoutResult(s -> {
                     concurrent.countDown();
                     calages.memoriser(chansonId, 1, fichier, 200, maintenant.plusSeconds(1));
                 }));
-                ServiceKaraokeTest.attendre(concurrent);
+                attendre(concurrent);
                 liberer.countDown();
                 premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
                 second.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
