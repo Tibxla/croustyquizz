@@ -293,7 +293,8 @@ class FournisseurDeBlocKaraokeTest {
         var capture = new InstantaneKaraoke(EtatManche.EN_COURS, file.etat(), contenus, EtatCyclePassage.vide(),
                 Map.of(), null, new EtatVoteDuPublic(votes));
         var vue = (VuesKaraoke.BlocKaraokeConsole) VuesKaraoke.projeter(capture, Destination.CONSOLE, banc.ports.pseudos(parcours.soiree), maintenant,
-                ServiceKaraokeTest.PROPRIETES, ServiceKaraokeTest.SOURCE);
+                ServiceKaraokeTest.PROPRIETES, ServiceKaraokeTest.SOURCE,
+                () -> new VuesKaraoke.CataloguePourConsole(List.of(), List.of()));
         assertThat(vue.votes()).extracting(VuesKaraoke.VoteDuPassage::numero).containsExactly(4L, 3L, 2L);
         assertThat(vue.votes()).extracting(VuesKaraoke.VoteDuPassage::etat).containsExactly("OUVERT", "OUVERT", "CLOS");
         assertThat(vue.votes().getLast().nombreVotes()).isZero();

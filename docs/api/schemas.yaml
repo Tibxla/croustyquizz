@@ -1380,6 +1380,8 @@ $defs:
         - passage-saute
         - lecture-chanson-modifiee
         - calage-chanson-modifie
+        - suggestions-chansons-modifiees
+        - favoris-chansons-modifies
         - musique-attente-modifiee
       soireeId:
         type: string
@@ -2324,6 +2326,50 @@ $defs:
         maximum: 20
     required:
     - limitePassagesEnAttente
+  ChampSuggestionChanson:
+    type: string
+    minLength: 1
+    maxLength: 120
+    pattern: '[^\s]'
+  SuggestionChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      titre:
+        $ref: '#/$defs/ChampSuggestionChanson'
+      artiste:
+        $ref: '#/$defs/ChampSuggestionChanson'
+    required: [titre, artiste]
+  RetraitSuggestionChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      nombreJoueurs:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+    required: [nombreJoueurs]
+  SuggestionChansonConsole:
+    type: object
+    additionalProperties: false
+    properties:
+      suggestionId:
+        type: string
+        format: uuid
+      titre:
+        $ref: '#/$defs/ChampSuggestionChanson'
+      artiste:
+        $ref: '#/$defs/ChampSuggestionChanson'
+      nombreJoueurs:
+        $ref: '#/$defs/RetraitSuggestionChanson/properties/nombreJoueurs'
+    required: [suggestionId, titre, artiste, nombreJoueurs]
+  ChoixFavoriChanson:
+    type: object
+    additionalProperties: false
+    properties:
+      favorite:
+        type: boolean
+    required: [favorite]
   ResumeChanson:
     type: object
     additionalProperties: false
@@ -3325,6 +3371,22 @@ $defs:
     - $ref: '#/$defs/KaraokeCommun'
     - type: object
       properties:
+        suggestions:
+          description: >-
+            Groupes de suggestions de la Soirée, sans identité de Joueur. La Soirée compte au plus
+            50 groupes ouverts.
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/$defs/SuggestionChansonConsole'
+        chansonsFavorites:
+          description: Identifiants des Chansons favorites de la Soirée.
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
         votes:
           type: array
           items:
@@ -3381,6 +3443,8 @@ $defs:
       - peutReprendreEnParolesSeules
       - lecture
       - fichierLocal
+      - suggestions
+      - chansonsFavorites
     - if:
         required:
         - lecture

@@ -79,7 +79,10 @@ channels:
       à la clôture ; lecture-chanson-modifiee après
       désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
       geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
-      la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
+      la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret.
+      suggestions-chansons-modifiees après une demande distincte ou un retrait ; la vue indique le
+      titre, l’artiste et le nombre de Joueurs, sans leur identité. favoris-chansons-modifies après
+      ajout ou retrait effectif ; la vue porte les identifiants des Chansons favorites de la Soirée
       ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait.
       Photos : photos-modifiees à l’arrivée, à la modération, au changement de réglage et à l’oubli

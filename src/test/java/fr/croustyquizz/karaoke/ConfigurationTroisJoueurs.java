@@ -20,7 +20,12 @@ public class ConfigurationTroisJoueurs {
     @Bean @Primary Horloge horlogeKaraoke() { return new HorlogeFactice(); }
     @Bean @Primary SourceDeParoles sourceKaraoke() {
         return new SourceDeParoles() {
-            public List<Chanson> rechercher(String recherche) { return List.of(ServiceKaraokeTest.contenu(1).chanson()); }
+            public List<Chanson> rechercher(String recherche) {
+                if ("Chanson".equals(recherche)) {
+                    return List.of(ServiceKaraokeTest.contenu(1).chanson(), ServiceKaraokeTest.contenu(2).chanson());
+                }
+                return List.of(ServiceKaraokeTest.contenu(1).chanson());
+            }
             public Optional<ContenuKaraoke> charger(long id) {
                 if (id == 503) { throw new SourceParolesIndisponible("Panne factice"); }
                 if (id == 404) { return Optional.empty(); }

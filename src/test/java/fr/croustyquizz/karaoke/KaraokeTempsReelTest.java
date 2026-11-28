@@ -48,7 +48,9 @@ class KaraokeTempsReelTest {
     @Autowired SocleDeManche socle;
     @Autowired PilotageDeSoireeDemonstration pilotage;
     @Autowired MemoireDeCalageJpa calages;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @MockitoSpyBean PersistanceKaraokeJpa persistance;
+    @MockitoSpyBean RegistreDesEnvois recus;
     final WsWebSocketContainer conteneur = new WsWebSocketContainer();
     final SimpleAsyncTaskExecutor executeur = new SimpleAsyncTaskExecutor("karaoke-stomp-");
     final List<WebSocketStompClient> clients = new ArrayList<>();
@@ -421,6 +423,200 @@ class KaraokeTempsReelTest {
         var etape = ((InstantaneKaraoke) service.instantane(soiree, manche)).cycle().etapeId();
         KaraokeHttpTest.verifier("piloterManche", envoyer(HttpMethod.POST, racine + "/commandes", animateur,
                 Map.of("action", "TERMINER", "etapeId", etape), UUID.randomUUID()), 200);
+    }
+
+    @Test void lesSuggestionsRegroupeesRestentDansLaConsoleJusquAuRetrait() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String suggestions = "/api/soirees/" + soiree + "/manches/" + manche + "/suggestions";
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var salle = abonner(ecran, Canaux.salle(soiree), "salle");
+        var manette = abonner(joueur, Canaux.joueur(joueur.identifiant()), "manette");
+        long revisionSalle = capturer(salle).path("revision").asLong();
+        long revisionManette = capturer(manette).path("revision").asLong();
+
+        var corps = Map.of("titre", "  Éclat\u00a0   du soir ", "artiste", " Les Accords  ");
+        var invalide = Map.of("titre", "É".repeat(121), "artiste", "Les Accords");
+        KaraokeHttpTest.verifier("suggererChanson",
+                envoyer(HttpMethod.POST, suggestions, joueur, invalide, UUID.randomUUID()), 400);
+        KaraokeHttpTest.verifier("suggererChanson",
+                envoyer(HttpMethod.POST, suggestions, animateur, corps, UUID.randomUUID()), 403);
+
+        UUID envoi = UUID.randomUUID();
+        doThrow(new DataAccessResourceFailureException("Panne factice du reçu")).when(recus)
+                .enregistrer(argThat(commande -> envoi.equals(commande.envoiId())), any(), any());
+        try {
+            KaraokeHttpTest.verifier("suggererChanson",
+                    envoyer(HttpMethod.POST, suggestions, joueur, corps, envoi), 503);
+            assertThat(capturer(console).at("/vue/karaoke/suggestions").size()).isZero();
+        } finally {
+            doCallRealMethod().when(recus)
+                    .enregistrer(argThat(commande -> envoi.equals(commande.envoiId())), any(), any());
+        }
+
+        var recue = envoyer(HttpMethod.POST, suggestions, joueur, corps, envoi);
+        assertThat(recue.getStatusCode().value()).isEqualTo(200);
+        KaraokeHttpTest.verifier("suggererChanson", recue, 200);
+        JsonNode premiere = lireEvenement(console, "suggestions-chansons-modifiees").at("/karaoke/suggestions/0");
+        assertThat(premiere.path("titre").asString()).isEqualTo("Éclat du soir");
+        assertThat(premiere.path("artiste").asString()).isEqualTo("Les Accords");
+        assertThat(premiere.path("nombreJoueurs").asLong()).isEqualTo(1);
+        assertThat(premiere.propertyNames()).containsExactlyInAnyOrder("suggestionId", "titre", "artiste", "nombreJoueurs");
+        var rejeu = envoyer(HttpMethod.POST, suggestions, joueur, corps, envoi);
+        KaraokeHttpTest.verifier("suggererChanson", rejeu, 200);
+        assertThat(json.readTree(rejeu.getBody())).isEqualTo(json.readTree(recue.getBody()));
+
+        var doubleNormalise = Map.of("titre", "ECLAT du soir", "artiste", "les accords");
+        KaraokeHttpTest.verifier("suggererChanson",
+                envoyer(HttpMethod.POST, suggestions, joueur, doubleNormalise, UUID.randomUUID()), 200);
+        KaraokeHttpTest.verifier("suggererChanson",
+                envoyer(HttpMethod.POST, suggestions, autre, doubleNormalise, UUID.randomUUID()), 200);
+        JsonNode groupe = lireEvenement(console, "suggestions-chansons-modifiees").at("/karaoke/suggestions");
+        assertThat(groupe.size()).isEqualTo(1);
+        assertThat(groupe.get(0).path("suggestionId")).isEqualTo(premiere.path("suggestionId"));
+        assertThat(groupe.get(0).path("nombreJoueurs").asLong()).isEqualTo(2);
+        assertThat(groupe.get(0).path("titre").asString()).isEqualTo("Éclat du soir");
+
+        String retrait = suggestions + "/" + premiere.path("suggestionId").asString() + "/retrait";
+        KaraokeHttpTest.verifier("retirerSuggestionChanson",
+                envoyer(HttpMethod.POST, retrait, joueur, Map.of("nombreJoueurs", 2), UUID.randomUUID()), 403);
+        var perime = envoyer(HttpMethod.POST, retrait, animateur, Map.of("nombreJoueurs", 1), UUID.randomUUID());
+        KaraokeHttpTest.verifier("retirerSuggestionChanson", perime, 409);
+        assertThat(json.readTree(perime.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
+        KaraokeHttpTest.verifier("retirerSuggestionChanson",
+                envoyer(HttpMethod.POST, retrait, animateur, Map.of("nombreJoueurs", 2), UUID.randomUUID()), 200);
+        assertThat(lireEvenement(console, "suggestions-chansons-modifiees").at("/karaoke/suggestions").size()).isZero();
+
+        for (var abonne : List.of(salle, manette)) {
+            var capture = capturer(abonne);
+            assertThat(capture.at("/vue/karaoke/suggestions").isMissingNode()).isTrue();
+            assertThat(capture.path("revision").asLong()).isEqualTo(abonne == salle ? revisionSalle : revisionManette);
+            assertThat(abonne.messages()).isEmpty();
+        }
+    }
+
+    @Test void lesFavorisDeLaSoireeRemontentDansLesDeuxRecherches() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String programme = "/api/soirees/" + soiree + "/manches/";
+        String catalogue = programme + manche + "/chansons";
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        String premiere = IdentifiantsChanson.encoder(1);
+        String seconde = IdentifiantsChanson.encoder(2);
+        String favori = catalogue + "/" + seconde + "/favori";
+        var ajout = Map.of("favorite", true);
+
+        assertThat(rechercher(catalogue, joueur)).containsExactly(premiere, seconde);
+        KaraokeHttpTest.verifier("definirFavoriChanson",
+                envoyer(HttpMethod.PUT, favori, joueur, ajout, UUID.randomUUID()), 403);
+        KaraokeHttpTest.verifier("definirFavoriChanson",
+                envoyer(HttpMethod.PUT, catalogue + "/" + IdentifiantsChanson.encoder(404) + "/favori",
+                        animateur, ajout, UUID.randomUUID()), 404);
+        KaraokeHttpTest.verifier("definirFavoriChanson",
+                envoyer(HttpMethod.PUT, favori, animateur, ajout, UUID.randomUUID()), 200);
+        assertThat(lireEvenement(console, "favoris-chansons-modifies").at("/karaoke/chansonsFavorites/0").asString())
+                .isEqualTo(seconde);
+        assertThat(rechercher(catalogue, animateur)).containsExactly(seconde, premiere);
+        assertThat(rechercher(catalogue, joueur)).containsExactly(seconde, premiere);
+
+        UUID autreSoiree = UUID.randomUUID();
+        var autreAnimateur = new Acteur(Acteur.Type.ANIMATEUR, animateur.identifiant(), autreSoiree);
+        UUID autreManche = service.creer(autreSoiree, Map.of());
+        service.demarrer(autreManche, new EnvoiDeCommande(autreAnimateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        assertThat(rechercher("/api/soirees/" + autreSoiree + "/manches/" + autreManche + "/chansons", autreAnimateur))
+                .containsExactly(premiere, seconde);
+
+        KaraokeHttpTest.verifier("definirFavoriChanson",
+                envoyer(HttpMethod.PUT, favori, animateur, ajout, UUID.randomUUID()), 200);
+        KaraokeHttpTest.verifier("definirFavoriChanson",
+                envoyer(HttpMethod.PUT, favori, animateur, Map.of("favorite", false), UUID.randomUUID()), 200);
+        assertThat(lireEvenement(console, "favoris-chansons-modifies").at("/karaoke/chansonsFavorites").size()).isZero();
+        assertThat(rechercher(catalogue, joueur)).containsExactly(premiere, seconde);
+
+        KaraokeHttpTest.verifier("definirFavoriChanson",
+                envoyer(HttpMethod.PUT, favori, animateur, ajout, UUID.randomUUID()), 200);
+        lireEvenement(console, "favoris-chansons-modifies");
+        KaraokeHttpTest.verifier("piloterManche", envoyer(HttpMethod.POST, programme + manche + "/commandes",
+                animateur, Map.of("action", "TERMINER"), UUID.randomUUID()), 200);
+        UUID suivante = service.creer(soiree, Map.of());
+        service.demarrer(suivante, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        assertThat(rechercher(programme + suivante + "/chansons", joueur)).containsExactly(seconde, premiere);
+    }
+
+    @Test void unJoueurParticipeACinqGroupesOuvertsEtLaSoireeEnCompteCinquante() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String suggestions = "/api/soirees/" + soiree + "/manches/" + manche + "/suggestions";
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        for (int i = 1; i <= 5; i++) {
+            KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, joueur, "Envie " + i), 200);
+            lireEvenement(console, "suggestions-chansons-modifiees");
+        }
+        refuserLimite(console, suggerer(suggestions, joueur, "Envie 6"), 5, 5);
+
+        KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, autre, "Envie 6"), 200);
+        lireEvenement(console, "suggestions-chansons-modifiees");
+        refuserLimite(console, suggerer(suggestions, joueur, "ENVIE 6"), 6, 6);
+        KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, joueur, "envie 1"), 200);
+        assertThat(console.messages().poll(300, TimeUnit.MILLISECONDS)).isNull();
+
+        for (int i = 7; i <= 50; i++) {
+            UUID groupe = UUID.randomUUID();
+            jdbc.update("INSERT INTO karaoke_suggestion_chanson VALUES (?, ?, ?, 'Les Accords', ?, 'les accords')",
+                    groupe, soiree, "Semée " + i, "semee " + i);
+            jdbc.update("INSERT INTO karaoke_demande_chanson VALUES (?, ?)", groupe, UUID.randomUUID());
+        }
+        refuserLimite(console, suggerer(suggestions, autre, "Envie 51"), 50, 50);
+        KaraokeHttpTest.verifier("suggererChanson", suggerer(suggestions, autre, "Envie 1"), 200);
+        JsonNode groupes = lireEvenement(console, "suggestions-chansons-modifiees").at("/karaoke/suggestions");
+        assertThat(groupes.size()).isEqualTo(50);
+        assertThat(groupes.get(0).path("titre").asString()).isEqualTo("Envie 1");
+        assertThat(groupes.get(0).path("nombreJoueurs").asLong()).isEqualTo(2);
+        assertThat(console.messages().poll(300, TimeUnit.MILLISECONDS)).isNull();
+    }
+
+    @Test void lApostropheDroiteEtLApostropheCourbeFormentUnSeulGroupe() throws Exception {
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String suggestions = "/api/soirees/" + soiree + "/manches/" + manche + "/suggestions";
+        var autre = new Acteur(Acteur.Type.JOUEUR, joueursDe(soiree).get(1), soiree);
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        KaraokeHttpTest.verifier("suggererChanson", envoyer(HttpMethod.POST, suggestions, joueur,
+                Map.of("titre", "J'ai demandé à la lune", "artiste", "Indochine"), UUID.randomUUID()), 200);
+        lireEvenement(console, "suggestions-chansons-modifiees");
+        KaraokeHttpTest.verifier("suggererChanson", envoyer(HttpMethod.POST, suggestions, autre,
+                Map.of("titre", "J\u2019ai demandé à la lune", "artiste", "Indochine"), UUID.randomUUID()), 200);
+        JsonNode groupes = lireEvenement(console, "suggestions-chansons-modifiees").at("/karaoke/suggestions");
+        assertThat(groupes.size()).isEqualTo(1);
+        assertThat(groupes.get(0).path("titre").asString()).isEqualTo("J'ai demandé à la lune");
+        assertThat(groupes.get(0).path("nombreJoueurs").asLong()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM karaoke_suggestion_chanson WHERE soiree_id = ?",
+                Long.class, soiree)).isEqualTo(1);
+    }
+
+    private ResponseEntity<String> suggerer(String route, Acteur acteur, String titre) {
+        return envoyer(HttpMethod.POST, route, acteur, Map.of("titre", titre, "artiste", "Les Accords"), UUID.randomUUID());
+    }
+
+    private void refuserLimite(Abonnement console, ResponseEntity<String> reponse, long groupes, long demandes) throws Exception {
+        KaraokeHttpTest.verifier("suggererChanson", reponse, 409);
+        assertThat(json.readTree(reponse.getBody()).path("code").asString()).isEqualTo("LIMITE_ATTEINTE");
+        assertThat(console.messages().poll(300, TimeUnit.MILLISECONDS)).isNull();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM karaoke_suggestion_chanson WHERE soiree_id = ?",
+                Long.class, soiree)).isEqualTo(groupes);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM karaoke_demande_chanson d JOIN karaoke_suggestion_chanson s ON s.id = d.suggestion_id
+                WHERE s.soiree_id = ?""", Long.class, soiree)).isEqualTo(demandes);
+    }
+
+    private List<String> rechercher(String catalogue, Acteur acteur) throws Exception {
+        var reponse = envoyer(HttpMethod.GET, catalogue + "?recherche=Chanson&rechercheId=" + UUID.randomUUID(), acteur, null, null);
+        KaraokeHttpTest.verifier("rechercherChansons", reponse, 200);
+        return json.readTree(reponse.getBody()).path("chansons").valueStream()
+                .map(chanson -> chanson.path("chansonId").asString()).toList();
     }
 
     @Test void laClotureDuDernierVotePublieUneSeuleFinSurChaqueDestination() throws Exception {

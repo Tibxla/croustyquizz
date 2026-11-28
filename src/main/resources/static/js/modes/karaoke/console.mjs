@@ -1,3 +1,4 @@
+import { installerSuggestionsConsole } from './suggestions.mjs';
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi } from './commun.mjs';
 import { preparerPlacement } from './placement.mjs';
 import { formaterDecalage, formaterTempsRestant, passageActif } from './presentation.mjs';
@@ -178,8 +179,9 @@ function installerPassage(ui, commande) {
 	};
 }
 
-const estCommandePassage = envoi => Boolean(envoi.commande.type);
-const estCommandeFile = envoi => !estCommandePassage(envoi);
+const estCommandePassage = envoi => Boolean(envoi.commande.type)
+	&& !['RETIRER_SUGGESTION_CHANSON', 'DEFINIR_FAVORI_CHANSON'].includes(envoi.commande.type);
+const estCommandeFile = envoi => !envoi.commande.type;
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton, ecouter } = ui;
@@ -199,6 +201,7 @@ export function monter(zones, contexte) {
 	const commandes = e('div', 'karaoke__commandes'), message = e('p'); message.setAttribute('role', 'status');
 	ui.principale.append(titre, limite, file, vide, commandes, message);
 	const catalogue = creerCatalogue(ui, ui.laterale);
+	const suggestions = installerSuggestionsConsole(ui);
 	let selection = null;
 	ui.messageInvalidation = () => { message.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
 	const passages = () => ui.bloc.passagesEnAttente;
@@ -280,6 +283,7 @@ export function monter(zones, contexte) {
 			(equivalente ?? Array.from(file.querySelectorAll('button')).find(b => b.getAttribute('aria-pressed') === 'true') ?? titre).focus();
 		}
 		catalogue.rendre();
+		suggestions.rendre();
 	};
 	ui.surManche = () => { selection = null; catalogue.reinitialiser(); message.textContent = ''; };
 	ui.surDestruction = () => { passage.detruire(); catalogue.detruire(); };

@@ -46,7 +46,7 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			// Un ancien échec ne doit pas rendre disponible un réessai déjà en cours.
 			actualiserEnCours();
 			const { statut, corps } = reponse;
-			const succes = envoi.type === 'VOTER' ? statut === 200 : statut >= 200 && statut < 300;
+			const succes = ['VOTER', 'SUGGERER_CHANSON'].includes(envoi.type) ? statut === 200 : statut >= 200 && statut < 300;
 			if (succes) transition(envoi, { etat: 'accepte', statut, corps });
 			else {
 				// 503, ou erreur 5xx sans code du contrat (page d'erreur d'un relais) : panne passagère, réessayable.
@@ -88,8 +88,8 @@ export function creerMachineEnvoi({ envoyer, creerUuid, programmerDelai, annuler
 			}
 			const cle = creerUuid();
 			const e = { ...commande, cle, empreinte, corps: structuredClone(commande.corps), entetes: { ...commande.entetes }, tentatives: new Set() };
-			if (commande.acteurType === 'JOUEUR') e.corps.envoiId = cle;
-			if (commande.acteurType !== 'JOUEUR' || commande.type === 'VOTER') e.entetes['Idempotency-Key'] = cle;
+			if (commande.acteurType === 'JOUEUR' && commande.type !== 'SUGGERER_CHANSON') e.corps.envoiId = cle;
+			if (commande.acteurType !== 'JOUEUR' || ['VOTER', 'SUGGERER_CHANSON'].includes(commande.type)) e.entetes['Idempotency-Key'] = cle;
 			envois.set(cle, e); return partir(e);
 		},
 		reessayer(cle) {

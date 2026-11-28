@@ -1,3 +1,4 @@
+import { installerSuggestionManette } from './suggestions.mjs';
 import { creerInterface, creerTicket, creerCatalogue, texteEnvoi, texteAutresPassages } from './commun.mjs';
 import { peutReessayer } from './envois.mjs';
 import { formaterTempsRestant } from './presentation.mjs';
@@ -15,6 +16,7 @@ export function monter(zones, contexte) {
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
 	ui.principale.append(titre, personnels, invalidation);
 	const catalogue = creerCatalogue(ui, ui.principale, { inscrire: true });
+	const suggestion = installerSuggestionManette(ui);
 	const ensuite = e('h2', '', 'Ensuite'); ensuite.tabIndex = -1;
 	const file = e('ol', 'rouleau'), autres = e('p'); ui.principale.append(ensuite, file, autres);
 	ui.messageInvalidation = () => { invalidation.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
@@ -140,11 +142,12 @@ export function monter(zones, contexte) {
 		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);
 		autres.hidden = !ui.bloc.nombreAutresPassages;
 		catalogue.rendre();
+		suggestion.rendre();
 	};
 	ui.surManche = () => {
 		votes.reinitialiser();
 		dernierCourant = undefined; descriptionTicket = undefined;
-		catalogue.reinitialiser(); invalidation.textContent = '';
+		catalogue.reinitialiser(); suggestion.reinitialiser(); invalidation.textContent = '';
 	};
 	ui.surDestruction = () => { clearInterval(horloge); catalogue.detruire(); };
 	return {

@@ -172,6 +172,8 @@ http:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -1080,6 +1082,8 @@ http:
         - *a30
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -1281,6 +1285,8 @@ http:
             dureeMs: 0
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -1593,6 +1599,61 @@ http:
     passageId: 82000000-0000-4000-8000-000000000046
     numeroModification: 0
     etatApres: EN_ATTENTE
+- nom: Un Joueur suggère une Chanson
+  operationId: suggererChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000074
+  requete:
+    titre: Éclat du soir
+    artiste: Les Accords
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000074
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:05.000Z
+- nom: Un Joueur déjà présent dans cinq groupes ouverts ne peut pas en ouvrir un sixième
+  operationId: suggererChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000077
+  requete:
+    titre: Sixième envie
+    artiste: Les Accords
+  statut: 409
+  reponse:
+    type: about:blank
+    title: Commande refusée
+    status: 409
+    code: LIMITE_ATTEINTE
+    detail: Tu participes déjà à 5 suggestions en attente.
+    instance: /api/soirees/82000000-0000-4000-8000-000000000001/manches/82000000-0000-4000-8000-000000000002/suggestions
+- nom: L’Animateur retire la suggestion traitée
+  operationId: retirerSuggestionChanson
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000075
+    suggestionId: 82000000-0000-4000-8000-000000000073
+  requete:
+    nombreJoueurs: 2
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000075
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:06.000Z
+- nom: L’Animateur place une Chanson parmi les favoris
+  operationId: definirFavoriChanson
+  acteur: animateur:82000000-0000-4000-8000-000000000006
+  parametres:
+    Idempotency-Key: 82000000-0000-4000-8000-000000000076
+    chansonId: 63726f75-7374-7900-516b-24e8a9d3705e
+  requete:
+    favorite: true
+  statut: 200
+  reponse:
+    envoiId: 82000000-0000-4000-8000-000000000076
+    soireeId: 82000000-0000-4000-8000-000000000001
+    recueLe: 2026-11-17T20:00:07.000Z
 evenements:
 - nom: File vide au démarrage, ouverte — salle
   canal: salle
@@ -1709,6 +1770,8 @@ evenements:
         - *a48
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -1858,6 +1921,8 @@ evenements:
         - *a54
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -2021,6 +2086,8 @@ evenements:
         - *a60
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -2185,6 +2252,8 @@ evenements:
         - *a66
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -2362,6 +2431,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -2539,6 +2610,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -2660,6 +2733,8 @@ evenements:
           - *a87
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -2806,6 +2881,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -2983,6 +3060,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -3160,6 +3239,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -3337,6 +3418,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -3514,6 +3597,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -3678,6 +3763,8 @@ evenements:
         - *a127
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -3857,6 +3944,8 @@ evenements:
             dureeMs: 660000
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -4021,6 +4110,8 @@ evenements:
         - *a140
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -4209,6 +4300,8 @@ evenements:
         - *a149
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -4359,6 +4452,8 @@ evenements:
         - *a154
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -4529,6 +4624,8 @@ evenements:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -4669,6 +4766,8 @@ evenements:
         passagesEnAttente: []
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: false
@@ -4793,6 +4892,8 @@ evenements:
         passagesEnAttente: *passagesMancheSuivante
         peutGererFile: true
         peutReglerLimite: true
+        suggestions: []
+        chansonsFavorites: []
         peutRechercher: true
         lecteurDesigne: false
         peutAppeler: true
@@ -4837,6 +4938,182 @@ evenements:
         motifInscriptionRefusee: LIMITE_ATTEINTE
         peutConfirmerPresence: false
 cases:
+- nom: Une suggestion regroupée contient le nombre de Joueurs
+  schema: SuggestionChansonConsole
+  valide: true
+  valeur:
+    suggestionId: 82000000-0000-4000-8000-000000000073
+    titre: Éclat du soir
+    artiste: Les Accords
+    nombreJoueurs: 2
+- nom: Le pseudo d’un auteur ne peut pas figurer dans le groupe
+  schema: SuggestionChansonConsole
+  valide: false
+  valeur:
+    suggestionId: 82000000-0000-4000-8000-000000000073
+    titre: Éclat du soir
+    artiste: Les Accords
+    nombreJoueurs: 2
+    pseudo: Joueur de démonstration
+- nom: La Console reçoit au plus 50 groupes ouverts
+  schema: BlocKaraokeConsole
+  valide: true
+  valeur:
+    mancheId: 82000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 1
+    nombreEnAttente: 0
+    tourOuvert: 1
+    passagePrioritaireId: null
+    courant: null
+    lecture: null
+    fichierLocal: null
+    configurationInterface: *a6
+    votes: []
+    passagesEnAttente: []
+    peutGererFile: true
+    peutReglerLimite: true
+    suggestions:
+      - &a900
+        suggestionId: 82000000-0000-4000-8000-000000000073
+        titre: Éclat du soir
+        artiste: Les Accords
+        nombreJoueurs: 1
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+    chansonsFavorites: []
+    peutRechercher: true
+    lecteurDesigne: false
+    peutAppeler: false
+    peutPasser: false
+    peutReprendre: false
+    peutCaler: false
+    peutReprendreEnParolesSeules: false
+- nom: Un 51e groupe ouvert dépasse la borne de la Soirée
+  schema: BlocKaraokeConsole
+  valide: false
+  valeur:
+    mancheId: 82000000-0000-4000-8000-000000000002
+    etat: EN_COURS
+    limitePassagesEnAttente: 1
+    nombreEnAttente: 0
+    tourOuvert: 1
+    passagePrioritaireId: null
+    courant: null
+    lecture: null
+    fichierLocal: null
+    configurationInterface: *a6
+    votes: []
+    passagesEnAttente: []
+    peutGererFile: true
+    peutReglerLimite: true
+    suggestions:
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+      - *a900
+    chansonsFavorites: []
+    peutRechercher: true
+    lecteurDesigne: false
+    peutAppeler: false
+    peutPasser: false
+    peutReprendre: false
+    peutCaler: false
+    peutReprendreEnParolesSeules: false
 - nom: Création avec limite configurée
   schema: CreationManche
   valeur:
@@ -5132,6 +5409,8 @@ cases:
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
+      suggestions: []
+      chansonsFavorites: []
       peutRechercher: true
       lecteurDesigne: false
       peutAppeler: true
@@ -5167,6 +5446,8 @@ cases:
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
+      suggestions: []
+      chansonsFavorites: []
       peutRechercher: true
       lecteurDesigne: false
       peutAppeler: true
@@ -5202,6 +5483,8 @@ cases:
       passagesEnAttente: *a173
       peutGererFile: true
       peutReglerLimite: true
+      suggestions: []
+      chansonsFavorites: []
       peutRechercher: true
       lecteurDesigne: false
       peutAppeler: true

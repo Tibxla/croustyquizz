@@ -255,6 +255,17 @@ La Console coupe ou relance la Musique d’attente depuis la barre de pilotage, 
 
 L’échéance de l’appel sert de repère. Tant que le Passage est appelé, l’Écran prépare le fichier et déclare le résultat de la recherche et du chargement, même si les métadonnées arrivent après l’échéance.
 
+### Recette des suggestions et des favoris (#73)
+
+Sur une Soirée de démonstration avec une Manche de Karaoké démarrée (voir « Recette du Passage de Karaoké »), ouvrir la Console à 1440 px et deux Manettes à 390 × 844.
+
+1. Sur la Manette du Joueur 1, retarder de 2 s la réponse de `…/suggestions`, puis « Suggérer une Chanson » avec un titre et un artiste absents du catalogue. Pendant l'attente, le statut indique « Envoi en cours… ». « Suggestion envoyée. » n'apparaît qu'après le reçu.
+2. Sur la Manette du Joueur 2, suggérer le même titre avec une autre casse et des espaces en trop. La Console n'affiche qu'un groupe, avec « 2 Joueurs » et sans pseudo. Les Manettes n'affichent aucune liste de suggestions.
+3. « Retirer » vide la liste (« Aucune suggestion. »).
+4. Dans la Console, chercher un mot fréquent, ouvrir la fiche du quatrième résultat et « Ajouter aux favoris ». La Chanson passe en tête des résultats de la Console et de la Manette. « Retirer des favoris » rend l'ordre initial.
+
+Recette exécutée le 24/11/2026 sur l'application réelle (PostgreSQL), dans Chromium sans interface graphique : les quatre étapes sont conformes. Elle a révélé qu'un titre long élargissait la Manette à 499 px, parce que `.bouton` reste sur une ligne. Les titres des résultats passent maintenant à la ligne, et la page tient en 390 px.
+
 ## Blind test (#178)
 
 Les modules `modes/blindtest/` ne contiennent aucune règle de jeu : ils lisent le bloc `blindtest` (contrat de #174, ADR 0009). `logique.mjs` regroupe les calculs purs (position de l'extrait, comptes à rebours, verdict lu dans la vue, envoi espacé du brouillon) et `lecteur-extrait.mjs` le son de la salle. Le module charge `css/blindtest.css` par un unique `<link data-mode="blindtest">`. Les tests `node --test` sont dans `tools/ecrans/blindtest-*.test.mjs`.

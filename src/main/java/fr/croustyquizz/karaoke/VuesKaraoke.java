@@ -4,6 +4,7 @@ import fr.croustyquizz.manche.*;
 import fr.croustyquizz.passage.*;
 import java.time.*;
 import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * Projections par destination, sans identifiant de fournisseur. Les paroles ne vont qu’à la salle, le fichier
@@ -21,6 +22,8 @@ public final class VuesKaraoke {
         public ResultatsChansons { chansons = List.copyOf(chansons); }
     }
     public record FicheChanson(ResumeChanson chanson, boolean inscriptionPossible, MotifIndisponibilite motifIndisponibilite) { }
+    public record SuggestionChansonConsole(UUID suggestionId, String titre, String artiste, long nombreJoueurs) { }
+    record CataloguePourConsole(List<SuggestionChansonConsole> suggestions, List<String> chansonsFavorites) { }
     public record InterpretePublic(UUID joueurId, String pseudo) { }
     public record LignePalmaresKaraoke(UUID passageId, long numero, Long rang, ResumeChanson chanson,
             List<InterpretePublic> interpretes, long nombreVotes, Integer moyenneDixiemes) { }
@@ -47,7 +50,7 @@ public final class VuesKaraoke {
             List<PassageEnAttentePublic> passagesEnAttente, boolean peutGererFile, boolean peutReglerLimite, boolean peutRechercher,
             boolean lecteurDesigne, boolean peutAppeler, boolean peutPasser, boolean peutReprendre, boolean peutCaler,
             boolean peutReprendreEnParolesSeules, LectureDeChanson lecture, FichierAudioLocal fichierLocal,
-            List<VoteDuPassage> votes) { }
+            List<VoteDuPassage> votes, List<SuggestionChansonConsole> suggestions, List<String> chansonsFavorites) { }
     public record BlocKaraokeManette(UUID mancheId, EtatManche etat, long limitePassagesEnAttente, long nombreEnAttente, long tourOuvert,
             UUID passagePrioritaireId, CourantPourFile courant, ConfigurationInterfaceKaraoke configurationInterface,
             List<PassageEnAttentePublic> prochainsPassages, long nombreAutresPassages,
@@ -60,7 +63,8 @@ public final class VuesKaraoke {
             long numeroModificationCalage, DemandePositionLecture demandePosition) { }
 
     public static Object projeter(InstantaneKaraoke instantane, Destination destination, Map<UUID, String> pseudos,
-            Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source) {
+            Instant maintenant, ProprietesKaraoke proprietes, ProprietesSourceKaraoke source,
+            Supplier<CataloguePourConsole> lireCatalogue) {
         var etat = instantane.file();
         if (destination.type() == Destination.Type.JOUEUR && !pseudos.containsKey(destination.joueurId())) {
             throw new Refuse(404, "RESSOURCE_INTROUVABLE", "Joueur introuvable.").exception();
@@ -92,14 +96,18 @@ public final class VuesKaraoke {
                     instantane.lecteurDesigneId(), lecturePublique,
                     lecture != null && projection.courant().etat() == EtatPassage.EN_COURS ? lecture.paroles() : null,
                     projeterVotesPublics(instantane, file, pseudos, maintenant));
-            case CONSOLE -> new BlocKaraokeConsole(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
-                    etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, publics, true, true, true,
-                    instantane.lecteurDesigneId() != null,
-                    !instantane.pilotageAutomatique() && enCours && !projection.actif() && !publics.isEmpty(),
-                    projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
-                            && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
-                    lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier(),
-                    projeterVotesPublics(instantane, file, pseudos, maintenant));
+            case CONSOLE -> {
+                var catalogue = lireCatalogue.get();
+                yield new BlocKaraokeConsole(etat.mancheId(), instantane.etatManche(), etat.limitePassagesEnAttente(), publics.size(),
+                        etat.tourOuvert(), etat.passagePrioritaireId(), courant, configuration, publics, true, true, true,
+                        instantane.lecteurDesigneId() != null,
+                        !instantane.pilotageAutomatique() && enCours && !projection.actif() && !publics.isEmpty(),
+                        projection.actif(), enPause && !lectureEnErreur, enCours && lecture != null
+                                && projection.courant().etat() == EtatPassage.EN_COURS && lecture.etat() == EtatLecture.DEMARREE,
+                        lectureEnErreur, lecturePublique, lecture == null ? null : lecture.fichier(),
+                        projeterVotesPublics(instantane, file, pseudos, maintenant),
+                        catalogue.suggestions(), catalogue.chansonsFavorites());
+            }
             case JOUEUR -> {
                 UUID joueur = destination.joueurId();
                 var personnels = publics.stream().filter(p -> p.interpretes().stream().anyMatch(i -> i.joueurId().equals(joueur))).toList();

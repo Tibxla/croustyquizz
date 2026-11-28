@@ -93,6 +93,13 @@ class KaraokeHttpTest {
                 Map.of("envoiId", UUID.randomUUID(), "chansonId", "x".repeat(129)), null), 400);
         verifier("desinscrirePassage", envoyer(HttpMethod.POST, racine + "/passages/" + UUID.randomUUID() + "/desinscription", null,
                 Map.of("envoiId", UUID.randomUUID(), "numeroModification", "0"), null), 400);
+        // Une clé inconnue est refusée sur chacune des trois routes des suggestions et des favoris, avant l'identité.
+        refuser("suggererChanson", envoyer(HttpMethod.POST, racine + "/suggestions", null,
+                Map.of("titre", "Lune", "artiste", "Indochine", "pseudo", "Jo"), UUID.randomUUID()), 400, "REQUETE_INVALIDE");
+        refuser("retirerSuggestionChanson", envoyer(HttpMethod.POST, racine + "/suggestions/" + UUID.randomUUID() + "/retrait",
+                null, Map.of("nombreJoueurs", 1, "joueurId", UUID.randomUUID()), UUID.randomUUID()), 400, "REQUETE_INVALIDE");
+        refuser("definirFavoriChanson", envoyer(HttpMethod.PUT, racine + "/chansons/" + IdentifiantsChanson.encoder(1) + "/favori",
+                null, Map.of("favorite", true, "lieuId", UUID.randomUUID()), UUID.randomUUID()), 400, "REQUETE_INVALIDE");
     }
 
     @Test void lesBornesDeLaLimiteEtDeChansonIdSuiventLeContrat() throws Exception {
@@ -648,7 +655,17 @@ class KaraokeHttpTest {
                     new Cas(HttpMethod.POST, "/passages/" + UUID.randomUUID() + "/retrait", "retirerPassage", "{\"numeroModification\":\"0\"}"),
                     new Cas(HttpMethod.PUT, "/passages/" + UUID.randomUUID() + "/placement", "deplacerPassage", "{\"numeroModification\":0,\"tour\":1}"),
                     new Cas(HttpMethod.PUT, "/file-attente/priorite", "definirPrioritePassage", "{\"passage\":null,\"prioritaire\":false}"),
-                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}"));
+                    new Cas(HttpMethod.PUT, "/file-attente/limite", "reglerLimitePassages", "{\"limitePassagesEnAttente\":1.0}"),
+                    new Cas(HttpMethod.POST, "/suggestions", "suggererChanson",
+                            "{\"titre\":\"Lune\",\"artiste\":\"Indochine\",\"pseudo\":\"Jo\"}"),
+                    new Cas(HttpMethod.POST, "/suggestions", "suggererChanson",
+                            "{\"titre\":\"\\u200b\",\"artiste\":\"Indochine\"}"),
+                    new Cas(HttpMethod.POST, "/suggestions", "suggererChanson",
+                            "{\"titre\":\"" + "\\ufb2c".repeat(120) + "\",\"artiste\":\"Indochine\"}"),
+                    new Cas(HttpMethod.POST, "/suggestions/" + UUID.randomUUID() + "/retrait", "retirerSuggestionChanson",
+                            "{\"nombreJoueurs\":1,\"joueurId\":\"" + UUID.randomUUID() + "\"}"),
+                    new Cas(HttpMethod.PUT, "/chansons/" + IdentifiantsChanson.encoder(1) + "/favori", "definirFavoriChanson",
+                            "{\"favorite\":true,\"lieuId\":\"" + UUID.randomUUID() + "\"}"));
             for (var c : cas) {
                 var resultat = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request(c.methode(), racine + c.route())
                         .header("Idempotency-Key", UUID.randomUUID()).contentType(typeContenu).content(c.corps())).andReturn();
