@@ -51,25 +51,50 @@
         <ol class="commun__liste commun__programme" role="list" data-programme></ol>
         <p class="console__note" data-programme-vide hidden>Aucune Manche préparée.</p>
         <p class="console__note" data-programme-fige hidden>Le programme est figé.</p>
-        <form class="programme__ajout" data-ajout-manche hidden>
+        <form class="programme__ajout" data-ajout-manche novalidate hidden>
           <div class="champ">
             <label for="mode-manche">Mode de jeu</label>
-            <select id="mode-manche" name="mode" data-mode-manche>
+            <select id="mode-manche" name="mode" data-mode-manche aria-describedby="mode-manche-erreur">
               <option value="QUIZ">Quiz</option>
+              <option value="BLIND_TEST">Blind test</option>
               <option value="KARAOKE">Karaoké</option>
             </select>
+            <p id="mode-manche-erreur" class="champ--erreur" data-mode-manche-erreur hidden></p>
           </div>
           <fieldset class="programme__reglages" data-reglages-communs>
             <div class="champ">
               <label for="nombre-etapes">Nombre d’étapes</label>
-              <input id="nombre-etapes" type="number" min="1" max="100" value="3" required data-nombre-etapes>
+              <input id="nombre-etapes" type="number" min="1" max="100" value="3" required
+                data-nombre-etapes aria-describedby="nombre-etapes-erreur">
+              <p id="nombre-etapes-erreur" class="champ--erreur" data-nombre-etapes-erreur hidden></p>
             </div>
             <div class="champ">
               <label for="temps-par-etape">Temps par étape (s)</label>
-              <input id="temps-par-etape" type="number" min="1" max="3600" value="20" required data-temps-par-etape>
+              <input id="temps-par-etape" type="number" min="1" max="3600" value="20" required
+                data-temps-par-etape aria-describedby="temps-par-etape-erreur">
+              <p id="temps-par-etape-erreur" class="champ--erreur" data-temps-par-etape-erreur hidden></p>
             </div>
           </fieldset>
-          <button class="bouton bouton--action" type="submit" data-soumettre-manche aria-disabled="true">Ajouter une Manche</button>
+          <fieldset class="programme__reglages" data-reglages-blindtest hidden disabled>
+            <div class="champ">
+              <label for="source-blindtest">Source Deezer</label>
+              <select id="source-blindtest" data-source-blindtest>
+                <option value="PLAYLIST">Playlist</option>
+                <option value="GENRE">Genre</option>
+              </select>
+            </div>
+            <div class="champ">
+              <label for="id-deezer">Identifiant Deezer</label>
+              <input id="id-deezer" type="number" min="0" step="1" inputmode="numeric" required data-id-deezer>
+            </div>
+            <div class="champ">
+              <label for="nombre-morceaux">Nombre de Morceaux</label>
+              <input id="nombre-morceaux" type="number" min="1" max="50" value="10" required data-nombre-morceaux>
+            </div>
+          </fieldset>
+          <p id="ajout-manche-erreur" class="champ--erreur" role="alert" data-ajout-manche-erreur hidden></p>
+          <button class="bouton bouton--action" type="submit" data-soumettre-manche aria-disabled="true"
+            aria-describedby="ajout-manche-erreur">Ajouter une Manche</button>
         </form>
       </section>
       <section class="panneau photos--console" data-photos hidden></section>

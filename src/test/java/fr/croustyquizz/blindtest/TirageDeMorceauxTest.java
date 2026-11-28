@@ -47,15 +47,29 @@ class TirageDeMorceauxTest {
 
 		assertThat(tires).extracting(Morceau::titre).containsExactlyInAnyOrder("Halo", "Get Lucky");
 		assertThatThrownBy(() -> tirage.tirer(reglages(SourceDeMorceaux.Type.GENRE, 132, 3)))
-				.isInstanceOf(SourceMusicaleIndisponible.class);
+				.isInstanceOf(SourceMusicaleInvalide.class)
+				.hasMessage("Ce genre n’a que 2 Morceaux jouables pour 3 demandés : demandes-en moins ou choisis une autre source.");
 	}
 
 	@Test
 	void refuseUneSourceSansAssezDeMorceauxJouables() {
 		TirageDeMorceaux tirage = new TirageDeMorceaux(catalogue, new Random(4));
 
+		assertThatThrownBy(() -> tirage.tirer(reglages(SourceDeMorceaux.Type.PLAYLIST, 908_622_995L, 10)))
+				.isInstanceOf(SourceMusicaleInvalide.class)
+				.hasMessage("Cette playlist n’a que 4 Morceaux jouables pour 10 demandés : demandes-en moins ou choisis une autre source.");
+	}
+
+	@Test
+	void nommeLeCasDUnSeulOuDAucunMorceauJouable() {
+		FauxCatalogueMusical petit = new FauxCatalogueMusical().avecPlaylist(1, HALO);
+		TirageDeMorceaux tirage = new TirageDeMorceaux(petit, new Random(6));
+
+		assertThatThrownBy(() -> tirage.tirer(reglages(SourceDeMorceaux.Type.PLAYLIST, 1, 5)))
+				.hasMessage("Cette playlist n’a qu’un Morceau jouable pour 5 demandés : demandes-en moins ou choisis une autre source.");
 		assertThatThrownBy(() -> tirage.tirer(reglages(SourceDeMorceaux.Type.PLAYLIST, 404, 1)))
-				.isInstanceOf(SourceMusicaleIndisponible.class);
+				.isInstanceOf(SourceMusicaleInvalide.class)
+				.hasMessage("Cette playlist n’a aucun Morceau jouable : choisis une autre source.");
 	}
 
 	@Test
