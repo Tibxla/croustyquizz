@@ -11,6 +11,7 @@ import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
+import { creerLignePalmaresSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -42,10 +43,10 @@ function afficherPalmares(palmares) {
 	const liste = element('palmares');
 	const vide = element('palmares-vide');
 	vide.hidden = palmares?.length !== 0;
-	liste.replaceChildren(...(palmares ?? []).map(({ texte, numero }) => {
+	liste.replaceChildren(...(palmares ?? []).map(ligne => {
+		if (ecran === 'ecran') return creerLignePalmaresSalle(document, ligne);
 		const li = document.createElement('li');
-		li.textContent = texte;
-		if (ecran === 'ecran') li.dataset.teinte = numero % 4;
+		li.textContent = ligne.texte;
 		return li;
 	}));
 }

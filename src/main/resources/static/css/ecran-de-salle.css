@@ -298,22 +298,27 @@
   margin: 0 0 1vw;
   font: 800 3vw/1.1 var(--police-chiffres);
 }
+/* Les colonnes sont celles de la liste, partagées par chaque ligne (subgrid) : elles s'élargissent
+   pour « 100. », « n° 104 » ou la note sans rien couper, et restent alignées d'une ligne à l'autre. */
 .salle--coquille .palmares ul {
   display: grid;
-  gap: 0.6vw;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  gap: 0.6vw 1.2vw;
+  max-block-size: 36vh;
+  overflow: auto;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .salle--coquille .palmares li {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   position: relative;
   min-height: 3.2vw;
   padding: 0.7vw 1vw 0.7vw 2.5vw;
   border-radius: var(--rayon);
   background: var(--fond-1);
-  overflow-wrap: anywhere;
-  font-size: 1.8vw;
-  line-height: 1.2;
 }
 .salle--coquille .palmares li::before {
   position: absolute;
@@ -329,3 +334,59 @@
 .salle--coquille .palmares li[data-teinte="2"] { --teinte: var(--bleu); }
 .salle--coquille .palmares li[data-teinte="3"] { --teinte: var(--rose); }
 .salle--coquille .palmares p { font-size: 1.8vw; }
+
+.salle--coquille .palmares .palmares__ligne {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  grid-template-areas:
+    "rang interpretes note"
+    "numero chanson votes";
+  align-items: center;
+  row-gap: 0.2vw;
+  line-height: 1.2;
+}
+.salle--coquille .palmares .palmares__rang { grid-area: rang; }
+.salle--coquille .palmares .palmares__numero { grid-area: numero; }
+.salle--coquille .palmares .palmares__note { grid-area: note; }
+.salle--coquille .palmares .palmares__votes { grid-area: votes; }
+.salle--coquille .palmares .palmares__rang,
+.salle--coquille .palmares .palmares__moyenne {
+  font: 800 3vw/1 var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+.salle--coquille .palmares .palmares__note {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.4vw;
+}
+.salle--coquille .palmares .palmares__sur {
+  color: var(--texte-2);
+  font: 800 1.55vw/1 var(--police-chiffres);
+}
+.salle--coquille .palmares .palmares__votes { text-align: right; }
+.salle--coquille .palmares .palmares__interpretes {
+  grid-area: interpretes;
+  font-size: 2.15vw;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.salle--coquille .palmares .palmares__chanson {
+  grid-area: chanson;
+  overflow: hidden;
+  color: var(--texte-2);
+  font-size: 1.55vw;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.salle--coquille .palmares .palmares__rang,
+.salle--coquille .palmares .palmares__numero,
+.salle--coquille .palmares .palmares__note,
+.salle--coquille .palmares .palmares__votes { white-space: nowrap; }
+.salle--coquille .palmares .palmares__numero,
+.salle--coquille .palmares .palmares__votes {
+  color: var(--texte-2);
+  font-size: 1.35vw;
+  font-variant-numeric: tabular-nums;
+}

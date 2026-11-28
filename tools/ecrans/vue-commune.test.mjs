@@ -80,9 +80,21 @@ test('le Palmarès affiche le rang éventuel, le numéro, les Interprètes et le
 			nombreVotes: 0, moyenneDixiemes: null },
 	] };
 	assert.deepEqual(decrireVue(vue).palmares, [
-		{ texte: '1. n° 12 · Les quais · Alizé, Basile · 4,3 sur 5 (7 votes)', numero: 12 },
-		{ texte: 'n° 9 · Le phare · Joueur parti · Aucun vote', numero: 9 },
+		{ numero: 12, rang: 1, titre: 'Les quais', interpretes: 'Alizé et Basile', moyenne: '4,3', votes: '7 votes',
+			texte: '1. n° 12 · Les quais · Alizé et Basile · 4,3 sur 5 (7 votes)' },
+		{ numero: 9, rang: null, titre: 'Le phare', interpretes: 'Joueur parti', moyenne: null, votes: 'Aucun vote',
+			texte: 'n° 9 · Le phare · Joueur parti · Aucun vote' },
 	]);
+});
+
+test('le Palmarès énumère trois Interprètes ou plus à la française', () => {
+	const vue = { soiree: {}, joueurs: [], classement: [], palmaresKaraoke: [
+		{ numero: 4, rang: 1, chanson: { titre: 'Le trio' }, interpretes: [{ pseudo: 'Alizé' }, { pseudo: 'Basile' }, { pseudo: 'Chloé' }],
+			nombreVotes: 2, moyenneDixiemes: 50 },
+	] };
+	const [ligne] = decrireVue(vue).palmares;
+	assert.equal(ligne.interpretes, 'Alizé, Basile et Chloé');
+	assert.equal(ligne.texte, '1. n° 4 · Le trio · Alizé, Basile et Chloé · 5,0 sur 5 (2 votes)');
 });
 
 test('le Palmarès du Karaoké prend la place du Classement de salle et du texte d’attente', () => {
@@ -107,6 +119,6 @@ test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, 
 	assert.deepEqual(decrireClassementDeSalle(avecPalmares),
 		{ titre: 'Podium final', podium: true, lignes: ['1. Lou · 10 points'] });
 	assert.equal(decrirePalmaresDeSalle(avecPalmares), null);
-	assert.deepEqual(decrireVue(avecPalmares).palmares,
-		[{ texte: '1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)', numero: 2 }]);
+	assert.deepEqual(decrireVue(avecPalmares).palmares.map(ligne => ligne.texte),
+		['1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)']);
 });

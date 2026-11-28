@@ -9,15 +9,20 @@ export function decrireManche(manche) {
 }
 
 export const formaterNote = note => `${note} sur 5`;
-export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
+export const formaterValeurMoyenne = moyenneDixiemes => (moyenneDixiemes / 10).toFixed(1).replace('.', ',');
+export const formaterMoyenne = moyenneDixiemes => formaterNote(formaterValeurMoyenne(moyenneDixiemes));
 export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
+
+const listeInterpretes = new Intl.ListFormat('fr', { type: 'conjunction' });
 
 function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes, moyenneDixiemes }) {
 	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
-	const pseudos = interpretes.map(interprete => interprete.pseudo).join(', ');
+	const pseudos = listeInterpretes.format(interpretes.map(interprete => interprete.pseudo));
 	const votes = formaterNombreVotes(nombreVotes);
-	const resultat = moyenneDixiemes === null ? votes : `${formaterMoyenne(moyenneDixiemes)} (${votes})`;
-	return { texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}`, numero };
+	const moyenne = moyenneDixiemes === null ? null : formaterValeurMoyenne(moyenneDixiemes);
+	const resultat = moyenne === null ? votes : `${formaterNote(moyenne)} (${votes})`;
+	return { numero, rang, titre: chanson.titre, interpretes: pseudos, moyenne, votes,
+		texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}` };
 }
 
 const decrirePalmares = vue => vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null;
