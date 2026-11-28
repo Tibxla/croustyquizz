@@ -383,7 +383,8 @@ paths:
       operationId: previsualiserCampagneSms
       summary: Prévisualiser une Campagne SMS
       description: >-
-        Calcule l’estimation sans enregistrer de Campagne. Le lien d’exemple est fictif. Un texte vide ou dépassant six segments avec le lien STOP donne 422.
+        Calcule l’estimation et indique le mode d’envoi actif sans enregistrer de Campagne.
+        Le lien d’exemple est fictif. Un texte vide ou dépassant six segments avec le lien STOP donne 422.
       tags: [Campagne SMS]
       security:
       - sessionAnimateur: []
@@ -423,7 +424,7 @@ paths:
       operationId: listerCampagnesSms
       summary: Lister les Campagnes SMS de son Lieu
       description: >-
-        La liste est triée par date de demande décroissante.
+        La liste est triée par date de demande décroissante et indique le mode d’envoi actif.
       tags: [Campagne SMS]
       security:
       - sessionAnimateur: []

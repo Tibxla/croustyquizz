@@ -3923,7 +3923,7 @@ $defs:
   ApercuCampagneSms:
     type: object
     additionalProperties: false
-    required: [exemple, destinataires, segments, coutEstimeCentimes, envoiPrevuLe, immediat]
+    required: [exemple, destinataires, segments, coutEstimeCentimes, envoiPrevuLe, immediat, modeEnvoi]
     properties:
       exemple: { type: string }
       destinataires: { type: integer, minimum: 0 }
@@ -3931,6 +3931,14 @@ $defs:
       coutEstimeCentimes: { type: integer, minimum: 0 }
       envoiPrevuLe: { type: string, format: date-time }
       immediat: { type: boolean }
+      modeEnvoi:
+        $ref: '#/$defs/ModeEnvoiCampagneSms'
+  ModeEnvoiCampagneSms:
+    type: string
+    enum: [SIMULE, TWILIO, TWILIO_ESSAI]
+    description: >-
+      Mode d’envoi actif sur le serveur. TWILIO transmet le texte composé.
+      TWILIO_ESSAI transmet le nom d’un modèle prédéfini de Twilio.
   CampagneSms:
     type: object
     additionalProperties: false
@@ -3946,9 +3954,11 @@ $defs:
   ListeCampagnesSms:
     type: object
     additionalProperties: false
-    required: [campagnes, destinatairesEligibles]
+    required: [campagnes, destinatairesEligibles, modeEnvoi]
     properties:
       destinatairesEligibles: { type: integer, minimum: 0 }
+      modeEnvoi:
+        $ref: '#/$defs/ModeEnvoiCampagneSms'
       campagnes:
         type: array
         items:

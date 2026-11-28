@@ -18,21 +18,22 @@ import fr.croustyquizz.manche.Refuse;
 @Service
 class ServiceCampagnesSms {
 	record Apercu(String exemple, int destinataires, int segments, long coutEstimeCentimes, Instant envoiPrevuLe,
-			boolean immediat) { }
+			boolean immediat, EnvoiDeSms.Mode modeEnvoi) { }
 
 	record Creation(CampagneSms campagne, boolean nouvelle) { }
 
-	record Liste(List<CampagneSms> campagnes, int destinatairesEligibles) { }
+	record Liste(List<CampagneSms> campagnes, int destinatairesEligibles, EnvoiDeSms.Mode modeEnvoi) { }
 
 	private final DepotCampagnesSms depot;
 	private final ContactsDuLieu contacts;
 	private final PlanificationCampagnes planification;
+	private final EnvoiDeSms sms;
 	private final Horloge horloge;
 	private final TransactionTemplate transactions;
 	private final int tarifParSegment;
 
 	ServiceCampagnesSms(DepotCampagnesSms depot, ContactsDuLieu contacts, PlanificationCampagnes planification,
-			Horloge horloge, PlatformTransactionManager gestionnaire,
+			EnvoiDeSms sms, Horloge horloge, PlatformTransactionManager gestionnaire,
 			@Value("${croustyquizz.campagnes.tarif-par-segment:5}") int tarifParSegment) {
 		if (tarifParSegment < 0) {
 			throw new IllegalArgumentException("Le tarif par segment doit être positif ou nul.");
@@ -40,6 +41,7 @@ class ServiceCampagnesSms {
 		this.depot = depot;
 		this.contacts = contacts;
 		this.planification = planification;
+		this.sms = sms;
 		this.horloge = horloge;
 		this.transactions = new TransactionTemplate(gestionnaire);
 		this.tarifParSegment = tarifParSegment;
@@ -60,7 +62,7 @@ class ServiceCampagnesSms {
 	}
 
 	Liste lister(UUID lieuId) {
-		return new Liste(depot.lister(lieuId), contacts.eligibles(lieuId).size());
+		return new Liste(depot.lister(lieuId), contacts.eligibles(lieuId).size(), sms.mode());
 	}
 
 	@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -104,7 +106,7 @@ class ServiceCampagnesSms {
 			}
 			Instant envoiPrevu = CreneauxSms.prochain(demande);
 			return new Apercu(exemple, destinataires.size(), segments, (long) segments * destinataires.size() * tarifParSegment,
-					envoiPrevu, envoiPrevu.equals(demande));
+					envoiPrevu, envoiPrevu.equals(demande), sms.mode());
 		} catch (IllegalArgumentException invalide) {
 			throw texteInvalide(invalide);
 		}

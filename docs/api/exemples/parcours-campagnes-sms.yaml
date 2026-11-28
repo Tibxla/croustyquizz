@@ -6,7 +6,7 @@ http:
   operationId: previsualiserCampagneSms
   requete: &message { texte: 'Retrouve-nous jeudi pour le Quiz !' }
   statut: 200
-  reponse:
+  reponse: &apercu
     exemple: |-
       Retrouve-nous jeudi pour le Quiz !
       STOP : https://croustyquizz.invalid/stop/exemple
@@ -15,6 +15,21 @@ http:
     coutEstimeCentimes: 10
     envoiPrevuLe: &envoiPrevu '2026-11-30T07:00:00Z'
     immediat: false
+    modeEnvoi: SIMULE
+- nom: L’aperçu indique l’envoi du texte de la Campagne par Twilio
+  operationId: previsualiserCampagneSms
+  requete: *message
+  statut: 200
+  reponse:
+    <<: *apercu
+    modeEnvoi: TWILIO
+- nom: L’aperçu conserve le texte composé quand Twilio envoie un modèle d’essai
+  operationId: previsualiserCampagneSms
+  requete: *message
+  statut: 200
+  reponse:
+    <<: *apercu
+    modeEnvoi: TWILIO_ESSAI
 - nom: L’Animateur programme la Campagne
   operationId: creerCampagneSms
   parametres: { Idempotency-Key: 33000000-0000-4000-8000-000000000001 }
@@ -33,6 +48,7 @@ http:
   statut: 200
   reponse:
     destinatairesEligibles: 2
+    modeEnvoi: SIMULE
     campagnes:
     - &terminee
       <<: *programmee
@@ -76,6 +92,12 @@ http:
       identifiantPrestataire: null
 evenements: []
 cases:
+- nom: L’aperçu ne révèle pas un identifiant du compte Twilio
+  schema: ApercuCampagneSms
+  valide: false
+  valeur:
+    <<: *apercu
+    compteTwilio: compte-fictif
 - nom: Un envoi ne révèle pas le lien personnel de désinscription
   schema: EnvoiCampagneSms
   valide: false
