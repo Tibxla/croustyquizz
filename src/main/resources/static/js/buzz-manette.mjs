@@ -1,3 +1,5 @@
+import { creerUuid } from './uuid.mjs';
+
 export function monterBuzz(bouton, contexte) {
 	let disponible = false;
 	let synchronisee = false;
@@ -13,7 +15,8 @@ export function monterBuzz(bouton, contexte) {
 
 	async function buzzer() {
 		if (bouton.disabled) return;
-		envoiId ??= crypto.randomUUID();
+		// creerUuid fonctionne aussi sur un téléphone en http:// (réseau local).
+		envoiId ??= creerUuid();
 		requete = new AbortController();
 		actualiser();
 		try {

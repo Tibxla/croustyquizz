@@ -1,6 +1,7 @@
 // Frontières réseau injectables ; aucun accès au DOM ni stockage d'identité ici.
 
 export const reponseIllisible = 'Le serveur ne répond pas correctement.';
+const delaiConnexion = 10000;
 
 // Lit le corps sans jamais lever de SyntaxError : seul un JSON annoncé comme tel (application/json ou
 // application/problem+json) est analysé. Une page HTML de proxy (502…) rend { lisible: false }.
@@ -12,36 +13,67 @@ export async function lireCorps(reponse) {
 	try { return { lisible: true, corps: JSON.parse(texte) }; } catch { return { lisible: false }; }
 }
 
-export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
+// Retire l'échappement STOMP 1.2 d'une valeur d'en-tête : \r, \n, \c (deux-points) et \\.
+export function desechapper(valeur) {
+	return valeur.replace(/\\([rnc\\])/g, (_, code) => ({ r: '\r', n: '\n', c: ':', '\\': '\\' })[code]);
+}
+
+export function creerTransport({ jeton, sessionAnimateur = false } = {}, adaptations = {}) {
 	const adresse = adaptations.adresse ?? globalThis.location?.href;
 	const requete = adaptations.requete ?? ((...args) => fetch(...args));
-	const entetesIdentite = () => ({
-		...(jeton ? { Authorization: `Bearer ${jeton}` } : {}),
-		...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
-	});
-	function requerir(methode, chemin, corps, { entetes = {}, signal } = {}) {
+	const entetesIdentite = jeton ? { Authorization: `Bearer ${jeton}` } : {};
+	let csrf;
+	function preparerRequete(methode, chemin, corps, { entetes = {}, signal } = {}) {
 		const url = new URL(chemin, adresse);
 		if (url.origin !== new URL(adresse).origin) throw new Error('La requête doit rester sur CroustyQuizz.');
 		const binaire = corps instanceof Blob;
-		return requete(url, {
+		const options = {
 			method: methode, credentials: 'same-origin', cache: 'no-store', signal,
 			headers: { Accept: 'application/json', ...entetes,
-				...(corps === undefined ? {} : { 'Content-Type': binaire ? corps.type : 'application/json' }), ...entetesIdentite() },
+				...(corps === undefined ? {} : { 'Content-Type': binaire ? corps.type : 'application/json' }), ...entetesIdentite },
 			...(corps === undefined ? {} : { body: binaire ? corps : JSON.stringify(corps) }),
-		});
+		};
+		return jetonCsrf => {
+			if (!jetonCsrf) return requete(url, options);
+			return requete(url, { ...options, headers: { ...options.headers, 'X-CSRF-TOKEN': jetonCsrf } });
+		};
 	}
-	async function envoyer(methode, chemin, corps, options) {
-		const reponse = await requerir(methode, chemin, corps, options);
+	async function lireReponse(reponse) {
 		const { lisible, corps: lu } = await lireCorps(reponse);
 		if (lisible) return { statut: reponse.status, corps: lu };
 		// Un succès illisible n'est pas une confirmation : l'appelant le traite comme une panne réseau.
 		if (reponse.status >= 200 && reponse.status < 300) throw new Error(reponseIllisible);
 		return { statut: reponse.status, corps: { detail: reponseIllisible } };
 	}
+	async function actualiserCsrf(signal) {
+		const emettre = preparerRequete('GET', '/api/csrf', undefined, { signal });
+		const reponse = await lireReponse(await emettre());
+		const jetonCsrf = reponse.corps?.token;
+		if (reponse.statut !== 200 || typeof jetonCsrf !== 'string' || !jetonCsrf) {
+			throw new Error(reponse.corps?.detail ?? 'Impossible d’obtenir le jeton de session.');
+		}
+		csrf = jetonCsrf;
+		return jetonCsrf;
+	}
+	async function envoyer(methode, chemin, corps, options) {
+		const emettre = preparerRequete(methode, chemin, corps, options);
+		if (!sessionAnimateur || ['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(methode.toUpperCase())) {
+			return lireReponse(await emettre());
+		}
+		const signal = options?.signal;
+		const jetonInitial = csrf ?? await actualiserCsrf(signal);
+		const reponse = await lireReponse(await emettre(jetonInitial));
+		if (reponse.statut === 403 && reponse.corps?.code === 'CSRF_INVALIDE') {
+			const jetonRenouvele = await actualiserCsrf(signal);
+			return lireReponse(await emettre(jetonRenouvele));
+		}
+		return reponse;
+	}
 	return {
 		envoyer,
 		async chargerImage(chemin, { signal } = {}) {
-			const reponse = await requerir('GET', chemin, undefined, { entetes: { Accept: 'image/jpeg' }, signal });
+			const emettre = preparerRequete('GET', chemin, undefined, { entetes: { Accept: 'image/jpeg' }, signal });
+			const reponse = await emettre();
 			if (!reponse.ok || reponse.headers?.get('Content-Type') !== 'image/jpeg') {
 				throw new Error('Cette photo est indisponible.');
 			}
@@ -49,25 +81,47 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 		},
 		async chargerQrCode(soireeId, signal) {
 			if (!jeton || jeton.startsWith('demo:')) return null;
-			const reponse = await requerir('GET', `/api/soirees/${encodeURIComponent(soireeId)}/qrcode`, undefined, {
+			const emettre = preparerRequete('GET', `/api/soirees/${encodeURIComponent(soireeId)}/qrcode`, undefined, {
 				entetes: { Accept: 'image/svg+xml, application/problem+json' }, signal,
 			});
+			const reponse = await emettre();
 			const adresseManette = reponse.headers.get('Adresse-Manette');
 			if (!reponse.ok || !adresseManette || !/^image\/svg\+xml\s*(?:;|$)/i.test(reponse.headers.get('Content-Type') ?? '')) {
 				return null;
 			}
 			return { blob: await reponse.blob(), adresseManette };
 		},
-		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur }) {
+		// surTrameErreur reçoit le motif d'une trame ERROR du serveur ; surErreur, une panne sans motif.
+		ouvrir({ surConnexion, surMessage, surDeconnexion, surErreur, surTrameErreur }) {
 			const url = new URL('/ws', adresse);
 			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
 			const Client = adaptations.Client ?? globalThis.StompJs.Client;
+			const annulation = new AbortController();
+			// stompjs ne déséchappe les en-têtes qu'après CONNECTED : le motif d'un refus arrive avant.
+			let connecte = false;
 			const client = new Client({
-				brokerURL: url.href, connectHeaders: entetesIdentite(), reconnectDelay: 0,
-				connectionTimeout: 10000, heartbeatIncoming: 10000, heartbeatOutgoing: 10000,
-				onConnect: surConnexion, onWebSocketClose: surDeconnexion,
-				onStompError: surErreur, onWebSocketError: surErreur,
+				brokerURL: url.href, connectHeaders: { ...entetesIdentite }, reconnectDelay: 0,
+				connectionTimeout: delaiConnexion, heartbeatIncoming: 10000, heartbeatOutgoing: 10000,
+				onConnect: (...args) => { connecte = true; surConnexion(...args); },
+				onWebSocketClose: (...args) => { connecte = false; surDeconnexion(...args); },
+				onStompError: trame => {
+					const message = trame.headers?.message;
+					surTrameErreur(connecte || message === undefined ? message : desechapper(message));
+				},
+				onWebSocketError: () => surErreur(),
 			});
+			if (sessionAnimateur) {
+				client.beforeConnect = async () => {
+					const signal = AbortSignal.any([annulation.signal, AbortSignal.timeout(delaiConnexion)]);
+					try {
+						client.connectHeaders = { 'X-CSRF-TOKEN': await actualiserCsrf(signal) };
+					} catch {
+						if (annulation.signal.aborted) return;
+						void client.deactivate();
+						surErreur?.();
+					}
+				};
+			}
 			client.activate();
 			return {
 				abonner(destination, id) {
@@ -75,7 +129,10 @@ export function creerTransport({ jeton, csrf } = {}, adaptations = {}) {
 						try { surMessage(JSON.parse(trame.body)); } catch { surErreur(); }
 					}, { id });
 				},
-				fermer() { void client.deactivate(); },
+				fermer() {
+					annulation.abort();
+					void client.deactivate();
+				},
 			};
 		},
 		capturer(route, abonnementId, signal) {
