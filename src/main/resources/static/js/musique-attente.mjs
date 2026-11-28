@@ -1,5 +1,6 @@
-export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {} }) {
+export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {}, surMorceauxEpuises = () => {} }) {
 	let fichiers = [], index = 0, position = 0, autorisee = false, lecture;
+	const erreursDeLecture = new Set();
 
 	function liberer() {
 		if (!lecture) return;
@@ -7,17 +8,33 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 		lecture = undefined;
 		lecteur.detruire();
 	}
-	function traiterErreur(erreur) {
+	function passerAuSuivant() {
+		if (!lecture) return;
 		liberer();
+		index = (index + 1) % fichiers.length;
+		position = 0;
+		void jouer();
+	}
+	function traiterErreur(erreur, echecDeChargement = false) {
 		if (erreur?.name === 'NotAllowedError') {
+			liberer();
 			surSonBloque();
 			return;
 		}
-		// Un fichier illisible est écarté jusqu'au prochain choix du dossier.
+		const fichier = fichiers[index];
+		// Écarter un fichier dès l’échec du chargement ou après deux erreurs de lecture sans fin de lecture entre les deux.
+		if (!echecDeChargement && !erreursDeLecture.has(fichier)) {
+			erreursDeLecture.add(fichier);
+			passerAuSuivant();
+			return;
+		}
+		liberer();
+		erreursDeLecture.delete(fichier);
 		fichiers.splice(index, 1);
 		if (index === fichiers.length) index = 0;
 		position = 0;
-		void jouer();
+		if (fichiers.length) void jouer();
+		else surMorceauxEpuises();
 	}
 
 	async function jouer() {
@@ -31,22 +48,21 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 			await lecteur.lire();
 		} catch (erreur) {
 			if (tentative !== lecture) return;
-			traiterErreur(erreur);
+			traiterErreur(erreur, !tentative.chargee);
 		}
 	}
 
 	const retirerFin = lecteur.surFin(() => {
 		if (!lecture) return;
-		liberer();
-		index = (index + 1) % fichiers.length;
-		position = 0;
-		void jouer();
+		erreursDeLecture.delete(fichiers[index]);
+		passerAuSuivant();
 	});
 	const retirerErreur = lecteur.surErreur(erreur => { if (lecture) traiterErreur(erreur); });
 
 	return {
 		choisirFichiers(nouveauxFichiers) {
 			liberer();
+			erreursDeLecture.clear();
 			fichiers = [...nouveauxFichiers];
 			for (let i = fichiers.length - 1; i > 0; i--) {
 				const j = Math.floor(hasard() * (i + 1));

@@ -14,8 +14,10 @@ import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Reconnaît les Joueurs à leur jeton de reconnexion et les Écrans de salle à
- * leur clé, en HTTP comme au CONNECT STOMP. Tout autre en-tête est confié au
- * résolveur du profil : jetons de démonstration en dev et recette, refus en
+ * leur clé, en HTTP comme au CONNECT STOMP. Un secret opaque non reconnu au
+ * CONNECT reçoit des consignes de reprise. Un Joueur exclu reçoit un motif
+ * propre à son Exclusion. Le résolveur du profil traite les
+ * autres en-têtes : jetons de démonstration en dev et recette, refus en
  * production. L'Animateur sera reconnu avec la connexion du Lieu (#5).
  *
  * Un Joueur ou un Écran de démonstration ne vise qu'une Soirée fictive : sur une
@@ -45,20 +47,33 @@ class ResolveurDActeurSoiree implements ResolveurDActeur {
 
 	@Override
 	public Acteur resoudre(HttpServletRequest requete) {
-		return reconnaitre(requete.getHeader("Authorization")).orElseGet(() -> limiter(delegue().resoudre(requete)));
+		return reconnaitre(extraireSecret(requete.getHeader("Authorization")))
+				.orElseGet(() -> limiter(delegue().resoudre(requete)));
 	}
 
 	@Override
 	public Acteur resoudre(SimpMessageHeaderAccessor connexion) {
-		return reconnaitre(connexion.getFirstNativeHeader("Authorization"))
-				.orElseGet(() -> limiter(delegue().resoudre(connexion)));
+		String secret = extraireSecret(connexion.getFirstNativeHeader("Authorization"));
+		return reconnaitre(secret).orElseGet(() -> {
+			if (Secrets.aLaForme(secret)) {
+				if (joueurs.findByEmpreinteJeton(Secrets.empreinte(secret)).filter(Joueur::isExclu).isPresent()) {
+					throw new Refuse(401, "AUTHENTIFICATION_REQUISE", "Tu ne fais plus partie de cette Soirée.").exception();
+				}
+				// Une clé d'Écran purgée et un jeton Joueur inconnu ont la même forme.
+				throw new Refuse(401, "AUTHENTIFICATION_REQUISE", "Accès invalide ou expiré. "
+						+ "Rouvre l'Écran de salle depuis la préparation de la Soirée pour obtenir une nouvelle clé, "
+						+ "ou rejoins la Soirée avec son code si tu utilises la Manette.").exception();
+			}
+			return limiter(delegue().resoudre(connexion));
+		});
 	}
 
-	private Optional<Acteur> reconnaitre(String autorisation) {
-		if (autorisation == null || !autorisation.startsWith(PREFIXE)) {
-			return Optional.empty();
-		}
-		return acces.reconnaitre(autorisation.substring(PREFIXE.length()));
+	private static String extraireSecret(String autorisation) {
+		return autorisation != null && autorisation.startsWith(PREFIXE) ? autorisation.substring(PREFIXE.length()) : null;
+	}
+
+	private Optional<Acteur> reconnaitre(String secret) {
+		return secret == null ? Optional.empty() : acces.reconnaitre(secret);
 	}
 
 	/**

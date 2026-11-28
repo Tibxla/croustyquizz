@@ -1,10 +1,11 @@
 package fr.croustyquizz.tempsreel;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -37,15 +38,15 @@ class ConfigurationTempsReelTest {
 			UUID abonnement = UUID.randomUUID();
 			String destination = Canaux.salle(UUID.randomUUID());
 			entrant.send(trame(StompCommand.CONNECT, abonnement, destination));
-			assertThat(messages.poll(2, TimeUnit.SECONDS)).isNotNull();
+			assertThat(messages.poll(PLAFOND_SECONDES, TimeUnit.SECONDS)).isNotNull();
 			entrant.send(trame(StompCommand.SUBSCRIBE, abonnement, destination));
-			await().atMost(Duration.ofSeconds(2)).until(() -> registre.estInstalle(abonnement, destination));
+			await().atMost(PLAFOND).until(() -> registre.estInstalle(abonnement, destination));
 			publications.convertAndSend(destination, "Vue publiée après la barrière");
-			var message = messages.poll(2, TimeUnit.SECONDS);
+			var message = messages.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 			assertThat(message).isNotNull();
 			assertThat(new String((byte[]) message.getPayload(), StandardCharsets.UTF_8)).isEqualTo("Vue publiée après la barrière");
 			entrant.send(trame(StompCommand.UNSUBSCRIBE, abonnement, destination));
-			await().atMost(Duration.ofSeconds(2)).until(() -> !registre.estInstalle(abonnement, destination));
+			await().atMost(PLAFOND).until(() -> !registre.estInstalle(abonnement, destination));
 		}
 	}
 

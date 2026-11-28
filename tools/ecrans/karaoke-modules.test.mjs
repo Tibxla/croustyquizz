@@ -319,15 +319,15 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 	b.module.demonter(); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
 });
 
-test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async () => {
+test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async t => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue({ passagesEnAttente: [passage()] }), capture); b.connecter('synchronisee');
-	b.connecter('coupure'); assert.match(b.principale.textContent, /Connexion perdue, on réessaie/);
+	t.after(() => b.module.demonter());
+	b.connecter('coupure'); assert.equal(b.principale.querySelector('.coupure').textContent, 'Connexion perdue.');
 	assert.equal(bouton(b.principale, 'Appliquer').disabled, true); assert.equal(bouton(b.laterale, 'Chercher').disabled, false);
 	const champ = b.laterale.querySelector('input'); champ.value = 'titre'; b.laterale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.connecter('synchronisee'); b.appels[0].resolve({ statut: 503, corps: { code: 'SOURCE_PAROLES_INDISPONIBLE', detail: 'Source indisponible.' } }); await terminerMicrotaches();
 	assert.equal(b.captures(), 1); assert.match(b.laterale.textContent, /Source indisponible/);
 	assert.doesNotMatch(b.laterale.textContent, /Aucune Chanson trouvée/); assert.equal(bouton(b.principale, 'Appliquer').disabled, false);
-	b.module.demonter();
 });
 
 test('changer de Manche ou démonter annule les lectures et ignore toute réponse tardive', async () => {
@@ -406,7 +406,7 @@ test('Manette : l’appel personnel garde son ticket et permet la confirmation t
 	const b = creerBanc(manette);
 	t.after(() => b.module.demonter());
 	b.contexte.maintenantServeur = () => heureAppel + 31000;
-	const v = vue({ courant: courant(), peutConfirmerPresence: true });
+	const v = { ...vue({ courant: courant(), peutConfirmerPresence: true }), soiree: { pilotage: 'MANUEL' } };
 	b.connecter('synchronisee');
 	b.module.afficher(v, { source: 'evenement', type: 'passage-appele' });
 	const ticket = b.principale.querySelector('.mon-ticket--appele');
@@ -432,6 +432,78 @@ test('Manette : l’appel personnel garde son ticket et permet la confirmation t
 	b.module.afficher(vue({ courant: courant('SAUTE', { interpretes: [{ joueurId: 'autre', pseudo: 'Alizé' }] }) }), capture);
 	assert.ok(b.principale.querySelector('.ticket--bleu'));
 	assert.ok(bouton(b.principale, 'Je suis prêt') === undefined);
+});
+
+test('Manette : en Automatique, le décompte retire « Je suis prêt » à zéro puis la vue annonce le saut', t => {
+	t.mock.timers.enable({ apis: ['setInterval'] });
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	let maintenant = heureAppel + 29_000;
+	b.contexte.maintenantServeur = () => maintenant;
+	const soiree = { pilotage: 'AUTOMATIQUE' };
+	b.connecter('synchronisee');
+	b.module.afficher({ ...vue({ courant: courant(), peutConfirmerPresence: true }), soiree }, capture);
+	const confirmation = bouton(b.principale, 'Je suis prêt');
+	assert.equal(confirmation.hidden, false);
+	confirmation.focus();
+
+	maintenant += 1000;
+	t.mock.timers.tick(1000);
+	assert.equal(confirmation.hidden, true);
+	assert.equal(b.document.activeElement.textContent, 'En scène');
+	assert.equal(b.principale.querySelector('.mon-ticket__etiquette').textContent, 'Le temps est écoulé.');
+
+	b.module.afficher({ ...vue({ courant: courant('SAUTE') }), soiree }, { source: 'evenement', type: 'passage-saute' });
+	assert.equal(b.principale.querySelector('.mon-ticket__etiquette').textContent, 'Passage sauté');
+	assert.ok(bouton(b.principale, 'Je suis prêt') === undefined);
+});
+
+test('Manette : en Automatique, l’échéance retire aussi le réessai d’une confirmation perdue', async t => {
+	t.mock.timers.enable({ apis: ['setInterval'] });
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	let maintenant = heureAppel + 28_000;
+	b.contexte.maintenantServeur = () => maintenant;
+	const v = { ...vue({ courant: courant(), peutConfirmerPresence: true }), soiree: { pilotage: 'AUTOMATIQUE' } };
+	b.connecter('synchronisee');
+	b.module.afficher(v, capture);
+	bouton(b.principale, 'Je suis prêt').click();
+	b.appels[0].reject(new Error('coupure'));
+	await terminerMicrotaches();
+	b.module.afficher(v, capture);
+	maintenant += 1000;
+	t.mock.timers.tick(1000);
+	const reessai = bouton(b.principale, 'Réessayer le même envoi');
+	assert.equal(reessai.hidden, false);
+	reessai.focus();
+
+	maintenant += 1000;
+	t.mock.timers.tick(1000);
+	assert.equal(reessai.hidden, true);
+	assert.equal(b.document.activeElement.textContent, 'En scène');
+	b.module.afficher(v, capture);
+	assert.equal(bouton(b.principale, 'Réessayer le même envoi').hidden, true);
+});
+
+test('Manette : le refus HORS_DELAI affiche le détail et libère la clé de confirmation', async t => {
+	const b = creerBanc(manette);
+	t.after(() => b.module.demonter());
+	// Le serveur peut atteindre l’échéance avant l’horloge estimée par la Manette.
+	b.contexte.maintenantServeur = () => heureAppel + 29_999;
+	b.connecter('synchronisee');
+	b.module.afficher({ ...vue({ courant: courant(), peutConfirmerPresence: true }), soiree: { pilotage: 'AUTOMATIQUE' } }, capture);
+	const ticket = b.principale.querySelector('.mon-ticket--appele');
+	const confirmation = bouton(ticket, 'Je suis prêt');
+	confirmation.click();
+	const detail = 'Le temps pour confirmer est écoulé.';
+	b.appels[0].resolve({ statut: 409, corps: { code: 'HORS_DELAI', detail } });
+	await terminerMicrotaches();
+
+	assert.equal(ticket.querySelector('.envoi--refuse').textContent, detail);
+	assert.equal(bouton(ticket, 'Réessayer le même envoi').hidden, true);
+	confirmation.click();
+	assert.equal(b.appels.length, 2);
+	assert.notEqual(b.appels[1].args[2].envoiId, b.appels[0].args[2].envoiId);
 });
 
 test('Console : capacités et corps du Passage, calage affiché uniquement après la vue', async t => {
