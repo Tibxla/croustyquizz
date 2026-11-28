@@ -69,7 +69,7 @@ Classement du Freestyle d'une Soirée selon le Vote du public, séparé du Class
 _Éviter_ : classement freestyle, score de rap
 
 **Délégation** :
-Pouvoirs limités que l'Animateur confie, le temps d'une Soirée, à la Manette d'un Joueur présent, et qu'il modifie ou retire quand il veut. Les pouvoirs forment une liste fermée : gérer la File d'attente (placer, prioriser, appeler et passer un Passage), couper ou relancer la Musique d'attente, accepter ou refuser les photos. Au plus une Délégation par Joueur, plusieurs Joueurs pouvant en avoir une. Elle ne crée pas de compte, disparaît à la fin de la Soirée et ne permet jamais l'Exclusion, l'Avertissement, la fin d'une Manche ni le pilotage de la Soirée.
+Pouvoirs limités que l'Animateur confie, le temps d'une Soirée, à la Manette d'un Joueur présent, et qu'il modifie ou retire quand il veut. Les pouvoirs forment une liste fermée : gérer la File d'attente (placer, prioriser, appeler et passer un Passage), couper ou relancer la Musique d'attente, accepter ou refuser les photos. Au plus une Délégation par Joueur, plusieurs Joueurs pouvant en avoir une. Elle ne crée pas de compte et disparaît à la fin de la Soirée. L'Exclusion, l'Avertissement, la commande de fin de Manche et le pilotage de la Soirée restent réservés à l'Animateur.
 _Éviter_ : co-animateur, modérateur, admin
 
 ## Modes de jeu

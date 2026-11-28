@@ -51,7 +51,7 @@ class FournisseurPalmaresKaraokeTest {
         assertThat(palmares(Destination.SALLE).isArray()).isTrue();
     }
 
-    @Test void reunitLesPassagesDesDeuxManchesEtReserveLesTroisClassesALaSalle() {
+    @Test void reunitLesPassagesDesDeuxManchesEtEnvoieLaListeCompleteALaSalle() {
         var premiere = UUID.randomUUID();
         var seconde = UUID.randomUUID();
         manche(premiere, ModeDeJeu.KARAOKE, EtatManche.TERMINEE, FIN.minusSeconds(60));
@@ -71,11 +71,8 @@ class FournisseurPalmaresKaraokeTest {
         assertThat(console.get(1).at("/chanson/titre").asString()).isEqualTo("Chanson 1");
         assertThat(console.get(3).path("rang").isNull()).isTrue();
         assertThat(console.get(3).path("moyenneDixiemes").isNull()).isTrue();
-        var salle = palmares(Destination.SALLE);
-        assertThat(salle.size()).isEqualTo(3);
-        for (int i = 0; i < salle.size(); i++) {
-            assertThat(salle.get(i)).isEqualTo(console.get(i));
-        }
+        // La salle reçoit la liste complète : elle en affiche le haut et compte les autres Passages (#236).
+        assertThat(palmares(Destination.SALLE)).isEqualTo(console);
         assertThat(palmares(Destination.joueur(present)).isMissingNode()).isTrue();
     }
 

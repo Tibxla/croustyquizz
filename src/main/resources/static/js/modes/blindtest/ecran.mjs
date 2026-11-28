@@ -1,10 +1,11 @@
 import { creerSocle, ecrire, rendreParties, textePhase } from './commun.mjs';
 import { creerAudioExtrait, creerLecteurExtrait } from './lecteur-extrait.mjs';
-import { extraitJouable, extraitRestantMs, formaterSecondes, tempsRestantMs, texteNumero } from './logique.mjs';
+import { extraitJouable, extraitRestantMs, formaterSecondes, tempsRestantMs, texteArbitrage, texteNumero }
+	from './logique.mjs';
 
 /** Événements qui animent leur élément ; une capture restaure le même état sans rien rejouer. */
 const ANIMATIONS = { 'buzz-recu': 'main', 'proposition-jugee': 'parties', 'morceau-revele': 'revelation',
-	'morceau-saute': 'annonce' };
+	'morceau-saute': 'annonce', 'verdict-renverse': 'arbitrage' };
 
 export function monter(zones, contexte) {
 	const document = zones.principale.ownerDocument;
@@ -35,6 +36,10 @@ export function creerEcranBlindTest(zones, contexte, { audio, verrous, intervall
 	// ADR 0009, point 14 : un Morceau sans extrait est sauté, et la salle le dit brièvement.
 	const annonce = e('p', 'blindtest__annonce', 'Extrait indisponible : ce Morceau est sauté.');
 	annonce.hidden = true;
+	// ADR 0009, point 15 : le dernier verdict renversé par l'Animateur, jusqu'au Morceau suivant.
+	const arbitrage = e('p', 'blindtest__arbitrage');
+	arbitrage.setAttribute('role', 'status');
+	arbitrage.hidden = true;
 	// Pourquoi l'extrait est muet. « Lancer l'extrait » rejoue pendant le geste, quand le navigateur bloque le son.
 	const son = e('div', 'blindtest__son');
 	const sonTexte = e('p', 'coupure');
@@ -42,7 +47,7 @@ export function creerEcranBlindTest(zones, contexte, { audio, verrous, intervall
 	lancer.type = 'button';
 	son.append(sonTexte, lancer);
 	son.hidden = true;
-	socle.principale.append(numero, phase, annonce, main, temps, revelation, son);
+	socle.principale.append(numero, phase, annonce, arbitrage, main, temps, revelation, son);
 
 	const titreParties = e('h2', '', 'Trouvé');
 	const parties = e('ul', 'blindtest__parties');
@@ -94,6 +99,9 @@ export function creerEcranBlindTest(zones, contexte, { audio, verrous, intervall
 		if (origine?.source === 'evenement' && origine.type === 'morceau-saute') etapeSautee = bloc.etapeId;
 		annonce.hidden = etapeSautee !== bloc.etapeId || bloc.phase !== 'PREPARATION';
 		animer(annonce, 'annonce', origine);
+		ecrire(arbitrage, texteArbitrage(bloc.arbitrage));
+		arbitrage.hidden = !bloc.arbitrage;
+		animer(arbitrage, 'arbitrage', origine);
 		main.hidden = bloc.phase !== 'PROPOSITION';
 		ecrire(main, bloc.main ? `${bloc.main.pseudo} a la main` : '');
 		animer(main, 'main', origine);

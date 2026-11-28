@@ -2232,7 +2232,7 @@ evenements:
         peutInscrire: true
         motifInscriptionRefusee: null
         peutConfirmerPresence: false
-- nom: Palmarès à la fin de la Manche de Karaoké — salle
+- nom: Palmarès complet à la fin de la Manche de Karaoké — salle
   canal: salle
   message:
     type: manche-terminee
@@ -2279,6 +2279,14 @@ evenements:
         interpretes: *id011
         nombreVotes: 1
         moyenneDixiemes: 30
+      - &sansVotePalmares
+        passageId: 11700000-0000-4000-8000-000000000043
+        numero: 3
+        rang: null
+        chanson: *id010
+        interpretes: *id013
+        nombreVotes: 0
+        moyenneDixiemes: null
 - nom: Palmarès complet à la fin de la Manche de Karaoké — console
   canal: console
   message:
@@ -2311,14 +2319,7 @@ evenements:
       - *premierPalmares
       - *deuxiemePalmares
       - *troisiemePalmares
-      - &sansVotePalmares
-        passageId: 11700000-0000-4000-8000-000000000043
-        numero: 3
-        rang: null
-        chanson: *id010
-        interpretes: *id013
-        nombreVotes: 0
-        moyenneDixiemes: null
+      - *sansVotePalmares
 - nom: Palmarès masqué au démarrage de la Manche suivante — salle
   canal: salle
   message:
@@ -2654,7 +2655,7 @@ cases:
       suivantDemarre: false
       moyenneDixiemes: 40
   valide: true
-- nom: Quatre Passages classés refusés sur la salle
+- nom: Palmarès complet sur la salle, Passage sans vote compris
   schema: VueSalle
   valeur:
     soiree: *soireePalmares
@@ -2669,33 +2670,15 @@ cases:
     - *premierPalmares
     - *deuxiemePalmares
     - *troisiemePalmares
-    - passageId: 11700000-0000-4000-8000-000000000043
-      numero: 3
+    - passageId: 11700000-0000-4000-8000-000000000045
+      numero: 5
       chanson: *id010
       interpretes: *id013
       rang: 4
       nombreVotes: 1
       moyenneDixiemes: 20
-  valide: false
-  correction:
-    chemin: [palmaresKaraoke]
-    valeur: [*premierPalmares, *deuxiemePalmares, *troisiemePalmares]
-- nom: Passage sans rang refusé sur la salle
-  schema: VueSalle
-  valeur:
-    soiree: *soireePalmares
-    musiqueAttente: { etat: JOUE, morceauxDisponibles: null }
-    mancheActive: null
-    modeEnCours: null
-    joueurs: *id005
-    classement: []
-    dernierBuzz: null
-    karaoke: null
-    palmaresKaraoke: [*premierPalmares, *sansVotePalmares]
-  valide: false
-  correction:
-    chemin: [palmaresKaraoke]
-    valeur: [*premierPalmares]
+    - *sansVotePalmares
+  valide: true
 - nom: Rang refusé sans vote
   schema: LignePalmaresKaraoke
   valeur:

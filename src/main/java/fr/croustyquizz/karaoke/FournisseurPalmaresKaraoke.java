@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 
-/** Affiche le Palmarès entre la fin d'une Manche de Karaoké et le démarrage de la suivante. */
+/** Affiche le Palmarès entre la fin d'une Manche de Karaoké et le démarrage de la suivante, complet pour la salle et la Console. */
 public final class FournisseurPalmaresKaraoke implements FournisseurDeChampCommun {
     private static final Comparator<ManchePersistante> ORDRE_DES_FINS = Comparator
             .comparing(ManchePersistante::getModifieLe).thenComparing(ManchePersistante::getMancheId);
@@ -58,9 +58,8 @@ public final class FournisseurPalmaresKaraoke implements FournisseurDeChampCommu
                 });
                 fait = true;
             }
-            if (palmares == null) { return null; }
-            return Destination.CONSOLE.equals(destination) ? palmares
-                    : palmares.stream().filter(ligne -> ligne.rang() != null).limit(3).toList();
+            // La salle reçoit la même liste que la Console : elle en affiche le haut et compte le reste (#236).
+            return palmares;
         }
     }
 
