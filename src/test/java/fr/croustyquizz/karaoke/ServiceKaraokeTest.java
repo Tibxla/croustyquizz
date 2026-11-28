@@ -566,6 +566,53 @@ class ServiceKaraokeTest {
         return passage;
     }
 
+    @Test void leMinuteurDuDernierVoteRestaurePersisteLaFinDeManche() {
+        banc.pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        UUID passage = inscrire(manche, 1).passageId();
+        var presence = new CorpsKaraoke.ConfirmationPresencePassage(UUID.randomUUID(), etapeCourante(manche), 1L);
+        assertThat(banc.service.confirmerPresencePassage(manche, passage,
+                envoi(joueur, presence.envoiId(), "POST", "/presence", presence), presence)).isInstanceOf(Accepte.class);
+        banc.horloge.avancer(Duration.ofSeconds(180));
+        assertThat(banc.depot.charger(manche).getEtat()).isEqualTo(EtatManche.EN_COURS);
+        banc.registre.retirer(manche);
+        assertThat(banc.service.instantane(soiree, manche)).isInstanceOf(InstantaneKaraoke.class);
+
+        banc.horloge.avancer(Duration.ofSeconds(30));
+
+        assertThat(banc.depot.charger(manche).getEtat()).isEqualTo(EtatManche.TERMINEE);
+        assertThat(banc.etats.get(manche).voteDuPublic().votes()).singleElement()
+                .satisfies(vote -> assertThat(vote.ouvert()).isFalse());
+    }
+
+    @Test void passerLeDernierPassagePersisteLaFinDeMancheEtConserveSonRecu() {
+        banc.pilotage.choisir(soiree, true);
+        UUID manche = demarrer();
+        inscrire(manche, 1);
+        var passer = new InterventionDeManche(InterventionDeManche.Action.PASSER_ETAPE, etapeCourante(manche));
+        var envoi = envoi(animateur, UUID.randomUUID(), "POST", "/commandes", passer);
+
+        var resultat = banc.service.piloter(manche, envoi, passer);
+
+        assertThat(resultat).isInstanceOfSatisfying(Accepte.class, accepte -> {
+            assertThat(accepte.typeEvenement()).isEqualTo("manche-terminee");
+            assertThat(accepte.statutHttp()).isEqualTo(200);
+        });
+        assertThat(banc.depot.charger(manche).getEtat()).isEqualTo(EtatManche.TERMINEE);
+        assertThat(banc.etats.get(manche).file().passages()).singleElement()
+                .satisfies(passage -> assertThat(passage.etat()).isEqualTo(EtatPassage.SAUTE));
+        int publications = banc.diffuseur.envois().size();
+        var rejeu = banc.service.piloter(manche, envoi, passer);
+        assertThat(ReponsesDeCommande.statut(rejeu)).isEqualTo(200);
+        assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(rejeu, envoi.route())))
+                .isEqualTo(banc.json.writeValueAsString(ReponsesDeCommande.corps(resultat, envoi.route())));
+        assertThat(banc.diffuseur.envois()).hasSize(publications);
+    }
+
+    private UUID etapeCourante(UUID manche) {
+        return ((InstantaneKaraoke) banc.service.instantane(soiree, manche)).cycle().etapeId();
+    }
+
     Acteur votant(int index) {
         return new Acteur(Acteur.Type.JOUEUR, ConfigurationTroisJoueurs.joueursDe(soiree).get(index), soiree);
     }

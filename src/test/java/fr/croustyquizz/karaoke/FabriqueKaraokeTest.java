@@ -341,6 +341,25 @@ class FabriqueKaraokeTest {
         }
     }
 
+    @Test
+    void uneMancheAutomatiqueSauveeApresSonDernierPassageNeSeTerminePasALaRestauration() {
+        // État laissé par une version antérieure à #122 : dernier Passage clos, sans vote, File vide.
+        var persiste = etatAvecCourant(EtatPassage.TERMINE, EtatManche.EN_COURS, EtatLecture.DEMARREE);
+        var automatique = new ContexteDeManche(soiree, manche, contexte.reglages(), horloge, () -> fins++, true);
+        var restaure = fabrique.restaurer(automatique, reglages, persiste, EtatManche.EN_COURS);
+        assertThat(restaure.estTerminee()).isFalse();
+        assertThat(fins).isZero();
+        assertThat(horloge.minuteursEnAttente()).isZero();
+
+        var animateur = new Acteur(Acteur.Type.ANIMATEUR, joueur, soiree);
+        var resultat = restaure.commander(new ReglerLimitePassages(animateur, horloge.maintenant(), UUID.randomUUID(), 2));
+
+        assertThat(resultat).isInstanceOfSatisfying(Accepte.class,
+                accepte -> assertThat(accepte.typeEvenement()).isEqualTo("manche-terminee"));
+        assertThat(restaure.estTerminee()).isTrue();
+        assertThat(fins).isEqualTo(1);
+    }
+
     private EtatKaraokePersiste etatAvecCourant(EtatPassage etatPassage, EtatManche etatManche, EtatLecture etatLecture) {
         var debut = horloge.maintenant();
         var contenu = contenu();
