@@ -36,6 +36,12 @@ server:
         same-site: lax
 
 croustyquizz:
+  campagnes:
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      numero-expediteur: ${TWILIO_NUMERO_EXPEDITEUR:}
+      modele-essai: ${TWILIO_MODELE_ESSAI:sms_marketing_promotions}
   tempsreel:
     delai-eviction-vues: 24h
   # Limite de requêtes (#4) : une rafale, puis un jeton regagné à chaque intervalle, par route et par clé.
