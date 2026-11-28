@@ -118,6 +118,42 @@ class SocleHttpTest {
 	}
 
 	@Test
+	void passerEtapeAccepteLaPhaseCouranteOuLAbsenceDePhase() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		UUID manche = service.creer(soiree, new ModeFacticeDuSocle.Reglages(3, 20));
+		var demarrage = envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches/" + manche + "/demarrer",
+				soiree, Acteur.Type.ANIMATEUR, null, UUID.randomUUID());
+		ContratApi.verifier(PROTOTYPE, "demarrerMancheDeTest", demarrage);
+		assertThat(demarrage.getStatusCode().value()).isEqualTo(200);
+		String route = "/api/soirees/" + soiree + "/manches/" + manche + "/commandes";
+		var avant = captureConsole(soiree);
+
+		var refus = envoyer(HttpMethod.POST, route, soiree, Acteur.Type.ANIMATEUR,
+				Map.of("action", "PASSER_ETAPE", "phase", "CORRECTION"), UUID.randomUUID());
+		ContratApi.verifier(CONTRAT, "piloterManche", refus);
+		assertThat(refus.getStatusCode().value()).isEqualTo(409);
+		assertThat(json.readTree(refus.getBody()).path("code").asString()).isEqualTo("COMMANDE_PERIMEE");
+		var etapeInactive = envoyer(HttpMethod.POST, route, soiree, Acteur.Type.ANIMATEUR,
+				Map.of("action", "PASSER_ETAPE", "phase", "CORRECTION", "etapeId", UUID.randomUUID()), UUID.randomUUID());
+		ContratApi.verifier(CONTRAT, "piloterManche", etapeInactive);
+		assertThat(etapeInactive.getStatusCode().value()).isEqualTo(409);
+		assertThat(json.readTree(etapeInactive.getBody()).path("code").asString()).isEqualTo("ETAPE_INACTIVE");
+		assertThat(captureConsole(soiree)).isEqualTo(avant);
+
+		var sansPhase = envoyer(HttpMethod.POST, route, soiree, Acteur.Type.ANIMATEUR,
+				Map.of("action", "PASSER_ETAPE"), UUID.randomUUID());
+		ContratApi.verifier(CONTRAT, "piloterManche", sansPhase);
+		assertThat(sansPhase.getStatusCode().value()).isEqualTo(200);
+		assertThat(captureConsole(soiree).at("/vue/quiz/question/numero").asInt()).isEqualTo(2);
+
+		var phaseCourante = envoyer(HttpMethod.POST, route, soiree, Acteur.Type.ANIMATEUR,
+				Map.of("action", "PASSER_ETAPE", "phase", "QUESTION_OUVERTE"), UUID.randomUUID());
+		ContratApi.verifier(CONTRAT, "piloterManche", phaseCourante);
+		assertThat(phaseCourante.getStatusCode().value()).isEqualTo(200);
+		assertThat(captureConsole(soiree).at("/vue/quiz/question/numero").asInt()).isEqualTo(3);
+	}
+
+	@Test
 	void creationDemarragePilotageEtCapturesRespectentLesContrats() throws Exception {
 		UUID soiree = UUID.randomUUID();
 		var creation = envoyer(HttpMethod.POST, "/api/test/soirees/" + soiree + "/manches", soiree, Acteur.Type.ANIMATEUR,
@@ -153,7 +189,8 @@ class SocleHttpTest {
 		UUID soiree = UUID.randomUUID();
 		UUID manche = service.creer(soiree, new ModeFacticeDuSocle.Reglages(3, 20));
 		String route = "/api/soirees/" + soiree + "/manches/" + manche + "/commandes";
-		for (Object corps : List.of(Map.of(), Map.of("action", "INCONNUE"), Map.of("action", "TERMINER", "acteurId", UUID.randomUUID()))) {
+		for (Object corps : List.of(Map.of(), Map.of("action", "INCONNUE"), Map.of("action", "TERMINER", "acteurId", UUID.randomUUID()),
+				Map.of("action", "PASSER_ETAPE", "phase", 1), json.readTree("{\"action\":\"PASSER_ETAPE\",\"phase\":null}"))) {
 			var reponse = envoyer(HttpMethod.POST, route, soiree, Acteur.Type.ANIMATEUR, corps, UUID.randomUUID());
 			assertThat(reponse.getStatusCode().value()).isEqualTo(400);
 			ContratApi.verifier(CONTRAT, "piloterManche", reponse);

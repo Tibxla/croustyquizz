@@ -17,6 +17,8 @@ public interface DeroulementDeManche {
 	ResultatDeCommande terminer(CommandePilotage commande);
 	/** Vérifie la cible du pilotage avant toute mutation ; les modes à étapes la redéfinissent. */
 	default boolean viseEtape(java.util.UUID etapeId) { return etapeId == null; }
+	/** Phase courante telle qu’elle figure dans la Console, ou {@code null} si le mode ne la contrôle pas. */
+	default String phaseCourante() { return null; }
 	/** Capture immuable à égalité par valeur, utilisée pour les vues, la persistance et les rappels de minuteur. */
 	Object instantane();
 	boolean estTerminee();

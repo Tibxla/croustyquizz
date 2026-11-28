@@ -95,6 +95,9 @@ final class DeroulementFactice implements DeroulementDeManche {
 	@Override
 	public ResultatDeCommande commander(CommandeDeManche commande) { return refus(); }
 
+	@Override
+	public String phaseCourante() { return etapeRemportee ? "CORRECTION" : "QUESTION_OUVERTE"; }
+
 	record Etat(int etape, boolean remportee, boolean pause, boolean terminee, Instant fin,
 			Duration reste, List<AttributionDePoints> points) { }
 

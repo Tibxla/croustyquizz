@@ -109,6 +109,8 @@ Un retry après perte de confirmation réutilise donc l’UUID et le corps conse
 
 Une commande visant un objet porte sa cible et la version sur laquelle l’acteur a décidé : si la cible a changé et rend la commande sans objet, le serveur répond `409 COMMANDE_PERIMEE` sans mutation ([ADR 0006](../adr/0006-commandes-de-manche-et-vues-par-blocs.md)). La Révision d’un écran ne sert jamais de garde de commande. Le Quiz conserve sa garde `etapeId` : absent ou non courant, il entraîne `409 ETAPE_INACTIVE`. Ce champ est facultatif dans `CommandeManche`, mais seulement quand la Manche n’a pas d’étape courante : un Passage actif du Karaoké en a une, créée à l’appel, que le pilotage doit citer.
 
+Le champ facultatif `phase` de `CommandeManche` contient la valeur de la phase dans la Vue synchronisée affichée par la Console au clic pour l’étape visée. Après validation de `etapeId`, si le Mode de jeu déclare une phase courante différente de celle fournie, `piloterManche` répond `409 COMMANDE_PERIMEE` sans mutation de la Manche ni publication. Le contrôle de phase s’applique uniquement lorsque la Console fournit `phase` et que le Mode de jeu déclare une phase courante.
+
 Une base ou une transaction indisponible produit `503 SERVICE_INDISPONIBLE` au format `Probleme`, décrit par la réponse réutilisable `Erreur503`. L’envoi peut être réessayé avec le même `envoiId`, ou la même clé `Idempotency-Key` pour les commandes de pilotage et d’ouverture, et le même contenu.
 
 Un accusé HTTP retrouvé après répétition est un reçu de l’opération initiale : il ne doit pas remplacer une projection temps réel plus récente. Les écrans prennent leur état courant dans les captures cohérentes et événements révisés, même lorsqu’une ancienne réponse HTTP finit par arriver.
