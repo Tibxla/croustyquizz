@@ -1,3 +1,4 @@
+import { creerUuid } from '../uuid.mjs';
 import { element, routePhotos } from './commun.mjs';
 
 const COTE_MAX = 1600;
@@ -38,7 +39,7 @@ function memeFichier(a, b) {
 		&& a.lastModified === b?.lastModified && a.type === b?.type);
 }
 
-export function monter(zone, contexte, { cle = () => crypto.randomUUID(), preparer = preparerJpeg } = {}) {
+export function monter(zone, contexte, { cle = () => creerUuid(), preparer = preparerJpeg } = {}) {
 	const document = zone.ownerDocument;
 	// Sans capture : le téléphone propose l’appareil photo et la photothèque.
 	const champ = element(document, 'input', {

@@ -12,6 +12,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?Définir POSTGRES_DB dans .env}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?Définir POSTGRES_USER dans .env}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD dans .env}
+      # Limite de requêtes (#4), active par défaut ; false seulement si elle gênait une démo.
+      CROUSTYQUIZZ_LIMITES_ACTIF: ${CROUSTYQUIZZ_LIMITES_ACTIF:-true}
       # La JVM se cale sur la limite mémoire du conteneur.
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
     ports:

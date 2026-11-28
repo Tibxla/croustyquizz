@@ -26,7 +26,8 @@ paths:
       operationId: obtenirCsrf
       summary: Obtenir le jeton CSRF de la session navigateur
       description: Accessible avant connexion. Peut créer une session anonyme et son cookie JSESSIONID. Le jeton
-        reste dans le navigateur ; ne jamais le publier dans un événement.
+        reste dans le navigateur ; ne jamais le publier dans un événement. La Console en session appelle cette
+        opération avant chaque CONNECT STOMP et avant l’unique nouvelle tentative d’une mutation refusée avec 403 CSRF_INVALIDE.
       tags:
       - Accès
       security: []
@@ -557,6 +558,8 @@ paths:
         injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
         pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
         409 PSEUDO_DEJA_PRIS. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes.
+        Au-delà de la limite par adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »). Toutes les arrivées
+        comptent, et un code inconnu reçoit 429 au lieu de 404 une fois les essais de code de l’adresse épuisés ; un code valide n’est jamais refusé pour ces essais.
       tags:
       - Soirée
       security: []
@@ -586,6 +589,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
       requestBody:
         required: true
         content:
@@ -601,6 +606,7 @@ paths:
         déclaration, fin, erreur et relevé de position), sans aucune action de jeu ; elle ne donne accès ni à la
         Console ni aux vues privées. Préférer un transfert par fragment URL, retirer ce fragment après lecture et ne
         jamais inscrire la clé dans une chaîne de requête.
+        Au-delà de la limite par adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Soirée
       security:
@@ -630,6 +636,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
       parameters:
       - name: soireeId
         in: path
@@ -656,6 +664,7 @@ paths:
         SOIREE_NON_OUVERTE. Sans clé ni session, 401 AUTHENTIFICATION_REQUISE. Une clé hors de sa Soirée ou une session
         hors de son Lieu donne 404 RESSOURCE_INTROUVABLE ; un jeton de Joueur de la Soirée donne 403 ACCES_REFUSE.
         L’image se charge avec la clé dans Authorization, jamais dans l’URL.
+        Au-delà de la limite par clé d’Écran, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Soirée
       security:
@@ -690,6 +699,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
       parameters:
       - name: soireeId
         in: path
@@ -1221,7 +1232,8 @@ paths:
         contenu = 409 ENVOI_REUTILISE ; nouvel envoiId pour modifier la Réponse = 409 REPONSE_DEJA_ENREGISTREE.
         Déduplication conservée jusqu’à expiration de l’accès Joueur, au minimum jusqu’à la fin de la Soirée. L’accusé
         ne révèle pas la justesse. Une Question manquée ne peut être rejouée. Un Joueur arrivé pendant cette Manche
-        y répond aussitôt, Question en cours comprise s’il reste du temps (décision de #14).'
+        y répond aussitôt, Question en cours comprise s’il reste du temps (décision de #14).
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
       tags:
       - Quiz
       security:
@@ -1251,6 +1263,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1291,7 +1305,8 @@ paths:
         brouillon retenu est jugé comme une validation, puis proposition-jugee, ou morceau-revele quand ce
         jugement termine le Morceau. Ordre des refus : Morceau qui n’est plus le Morceau affiché, 409
         COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
-        HORS_DELAI ; Joueur sans la main, 409 ETAT_INCOMPATIBLE.'
+        HORS_DELAI ; Joueur sans la main, 409 ETAT_INCOMPATIBLE.
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
       tags:
       - Blind test
       security:
@@ -1315,6 +1330,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1354,7 +1371,8 @@ paths:
         accusé original, même après la fin du Morceau ; même envoiId avec autre contenu = 409 ENVOI_REUTILISE.
         Ordre des refus : Morceau qui n’est plus le Morceau affiché (un Morceau révélé l’est encore), 409
         COMMANDE_PERIMEE ; Joueur déjà jugé sur ce Morceau ou échéance atteinte, même avant le jugement, 409
-        HORS_DELAI ; Joueur sans la main, ou Manche en pause, 409 ETAT_INCOMPATIBLE.'
+        HORS_DELAI ; Joueur sans la main, ou Manche en pause, 409 ETAT_INCOMPATIBLE.
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).'
       tags:
       - Blind test
       security:
@@ -1382,6 +1400,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1429,6 +1449,7 @@ paths:
         Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise, Manche en
         pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le révèle :
         409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.
+        Au-delà de la limite des Buzz par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Socle
       security:
@@ -1458,6 +1479,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1597,7 +1620,8 @@ paths:
       summary: Couper ou relancer la Musique d’attente
       description: >
         Animateur de la Soirée uniquement. Le choix est conservé après redémarrage, même hors Manche.
-        Un changement publie musique-attente-modifiee sur la Console et l’Écran de salle.
+        Un changement publie musique-attente-modifiee sur la Console et l’Écran de salle tant que le délai
+        de conservation des vues après la fin de la Soirée n’est pas écoulé (24 h par défaut).
         Un choix déjà en vigueur réussit avec 200, sans publication.
         En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
@@ -1655,7 +1679,8 @@ paths:
         Écran de salle de cette Soirée uniquement, même hors Manche. Le dernier signal indique si le dossier
         choisi contient des morceaux dans Attente. Il ne contient ni fichiers ni noms de morceaux et ne
         change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur la Console
-        et l’Écran de salle. Un signal identique réussit sans publication.
+        et l’Écran de salle tant que le délai de conservation des vues après la fin de la Soirée n’est pas
+        écoulé (24 h par défaut). Un signal identique réussit sans publication.
         En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
       tags:
@@ -2090,6 +2115,7 @@ paths:
         409 ETAT_INCOMPATIBLE (pause), 409 VOTE_INTERDIT, 409 COMMANDE_PERIMEE,
         409 VOTE_CLOS, 409 VOTE_DEJA_ENREGISTRE. En cas de panne, 503 SERVICE_INDISPONIBLE
         sans reçu.
+        Au-delà de la limite des Réponses par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Karaoké
       security:
@@ -2142,6 +2168,8 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '409':
           $ref: '#/components/responses/Erreur409'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/manches/{mancheId}/passages/{passageId}/retrait:
@@ -3571,6 +3599,27 @@ components:
           schema:
             type: string
             const: no-store
+      content:
+        application/problem+json:
+          schema:
+            $ref: ./schemas.yaml#/$defs/Probleme
+    Erreur429:
+      description: 'TROP_DE_REQUETES : la limite de requêtes de la route est atteinte pour ce jeton, cette clé
+        d’Écran ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé : aucun
+        reçu, aucune mutation. Un nouvel essai, décidé par la personne et jamais automatique, passe après
+        Retry-After.'
+      headers:
+        Cache-Control:
+          description: Toujours no-store, notamment pour les secrets, vues et corrections.
+          schema:
+            type: string
+            const: no-store
+        Retry-After:
+          description: Secondes à attendre avant qu’un nouvel essai puisse passer, arrondies à l’entier supérieur.
+          required: true
+          schema:
+            type: integer
+            minimum: 1
       content:
         application/problem+json:
           schema:

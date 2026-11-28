@@ -23,6 +23,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import fr.croustyquizz.animateur.AnimateurConnecte;
 import fr.croustyquizz.animateur.SessionAnimateur;
+import fr.croustyquizz.manche.Refuse;
 
 @Component
 final class PoigneeDeMainAnimateur implements HandshakeInterceptor {
@@ -75,7 +76,8 @@ final class PoigneeDeMainAnimateur implements HandshakeInterceptor {
 			return null;
 		}
 		if (jeton == null || !csrfValide(jeton, masque)) {
-			throw new MessageDeliveryException("Le jeton CSRF est absent ou invalide.");
+			throw new Refuse(403, "CSRF_INVALIDE",
+					"Le jeton CSRF est absent ou invalide. Resynchronise la Console d’animation.").exception();
 		}
 		if (!(attributs.get(CONNEXION) instanceof WebSocketSession connexion) || !session.ajouter(connexion)) {
 			throw new MessageDeliveryException("La session Animateur n’est plus active ou est déjà utilisée sur cette connexion.");

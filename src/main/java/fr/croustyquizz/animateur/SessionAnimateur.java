@@ -1,6 +1,9 @@
 package fr.croustyquizz.animateur;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,15 +16,23 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
 /** Identité et connexions STOMP attachées à la durée de vie de la session HTTP. */
-public final class SessionAnimateur implements HttpSessionBindingListener {
+public final class SessionAnimateur implements HttpSessionBindingListener, Serializable {
+	@Serial
+	private static final long serialVersionUID = 1L;
 	private static final String ATTRIBUT = SessionAnimateur.class.getName();
 
 	private final AnimateurConnecte animateur;
-	private final Set<WebSocketSession> connexions = new HashSet<>();
+	private transient Set<WebSocketSession> connexions = new HashSet<>();
 	private boolean fermee;
 
 	SessionAnimateur(AnimateurConnecte identite) {
 		this.animateur = identite;
+	}
+
+	@Serial
+	private void readObject(ObjectInputStream entree) throws IOException, ClassNotFoundException {
+		entree.defaultReadObject();
+		connexions = new HashSet<>();
 	}
 
 	public static SessionAnimateur de(HttpSession session) {
@@ -63,7 +74,7 @@ public final class SessionAnimateur implements HttpSessionBindingListener {
 		for (WebSocketSession connexion : aFermer) {
 			try {
 				connexion.close(CloseStatus.POLICY_VIOLATION);
-			} catch (IOException erreur) {
+			} catch (IOException | RuntimeException erreur) {
 				LogFactory.getLog(SessionAnimateur.class).warn("Impossible de fermer une connexion de la Console.", erreur);
 			}
 		}
