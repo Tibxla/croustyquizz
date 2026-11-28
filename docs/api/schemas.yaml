@@ -977,7 +977,9 @@ $defs:
         $ref: '#/$defs/EtatMusiqueDAttente'
       morceauxDisponibles:
         type: [boolean, 'null']
-        description: Dernier signal du dossier de l’Écran de salle ; null avant le premier signal.
+        description: >
+          Dernier signal des dossiers de l’Écran de salle : false seulement quand aucune de ses fenêtres n’a de
+          morceaux dans Attente ; null avant le premier signal.
     required: [etat, morceauxDisponibles]
   VueSalle:
     allOf:
