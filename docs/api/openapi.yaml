@@ -409,7 +409,8 @@ paths:
         distinguer ces cas. Un pseudo vide ou trop long donne 422 DONNEES_INVALIDES ; un pseudo
         injurieux, même avec accents, majuscules ou chiffres à la place des lettres, donne 422 PSEUDO_REFUSE ; un
         pseudo déjà porté par un Joueur de la Soirée, sans tenir compte des accents, de la casse ni des espaces, donne
-        409 PSEUDO_DEJA_PRIS. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes.
+        409 PSEUDO_DEJA_PRIS. Une arrivée publie joueurs-modifies à la salle, à la Console et aux Manettes,
+        comme la fermeture de la dernière connexion STOMP de la Manette, puis son retour (README, « Vues par blocs »).
         Au-delà de la limite par adresse IP, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »). Toutes les arrivées
         comptent, et un code inconnu reçoit 429 au lieu de 404 une fois les essais de code de l’adresse épuisés ; un code valide n’est jamais refusé pour ces essais.
       tags:

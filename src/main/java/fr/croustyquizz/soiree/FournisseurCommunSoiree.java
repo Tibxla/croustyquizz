@@ -17,6 +17,7 @@ import fr.croustyquizz.manche.EtatManche;
 import fr.croustyquizz.manche.ManchePersistante;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.photos.PhotosEnMemoire;
+import fr.croustyquizz.tempsreel.ConnexionsDesManettes;
 import fr.croustyquizz.tempsreel.FournisseurPartieCommune;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -41,12 +42,14 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 	private final ClassementDeSoiree calculDuClassement;
 	private final ResultatsDeSoiree resultats;
 	private final PhotosEnMemoire photos;
+	private final ConnexionsDesManettes connexions;
 	private final ObjectProvider<FournisseurPartieCommune> fournisseurs;
 
 	FournisseurCommunSoiree(DepotDeSoirees depotDeSoirees, DepotDeJoueurs depotDeJoueurs,
 			DepotDeManches depotDeManches, JsonMapper json, ClassementDeSoiree calculDuClassement,
 			ResultatsDeSoiree resultats,
-			ObjectProvider<FournisseurPartieCommune> fournisseurs, PhotosEnMemoire photos) {
+			ObjectProvider<FournisseurPartieCommune> fournisseurs, PhotosEnMemoire photos,
+			ConnexionsDesManettes connexions) {
 		this.depotDeSoirees = depotDeSoirees;
 		this.depotDeJoueurs = depotDeJoueurs;
 		this.depotDeManches = depotDeManches;
@@ -54,6 +57,7 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 		this.calculDuClassement = calculDuClassement;
 		this.resultats = resultats;
 		this.photos = photos;
+		this.connexions = connexions;
 		this.fournisseurs = fournisseurs;
 	}
 
@@ -83,8 +87,9 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 		vue.put("mancheActive", active == null ? null : ProjectionManche.de(active, json));
 		vue.put("modeEnCours", active == null ? null : active.getMode());
 		vue.put("joueurs", joueurs.stream()
-				// Le suivi de présence arrive avec #7 et #47 : un Joueur présent est réputé connecté.
-				.map(joueur -> new ProjectionAccesJoueur.JoueurPublic(joueur.getId(), joueur.getPseudo(), true))
+				// Hors ligne une fois fermée la dernière connexion STOMP de sa Manette (#8).
+				.map(joueur -> new ProjectionAccesJoueur.JoueurPublic(joueur.getId(), joueur.getPseudo(),
+						connexions.estConnecte(joueur.getId())))
 				.toList());
 		vue.put("classement", classement(soiree, programme, joueurs));
 		vue.put("dernierBuzz", soiree.getDernierBuzz());
