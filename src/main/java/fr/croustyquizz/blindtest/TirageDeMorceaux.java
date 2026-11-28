@@ -59,8 +59,9 @@ public final class TirageDeMorceaux {
 		};
 	}
 
+	/** Deux Morceaux que la correction ne distinguerait pas sans faute de frappe sont un doublon. */
 	private static String cle(Morceau morceau) {
-		return CorrecteurExact.normaliser(morceau.titre()) + "\n" + CorrecteurExact.normaliser(morceau.artiste());
+		return CorrecteurTolerant.cle(morceau.titre()) + "\n" + CorrecteurTolerant.cle(morceau.artiste());
 	}
 
 }

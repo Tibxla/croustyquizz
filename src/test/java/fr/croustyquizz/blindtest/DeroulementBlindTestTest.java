@@ -150,6 +150,22 @@ class DeroulementBlindTestTest extends ContratDeroulementDeManche {
 	}
 
 	@Test
+	void uneFauteDeFrappeEtUnArticleNEmpechentPasDeTrouver() {
+		demarrer();
+		horloge.avancer(Duration.ofSeconds(4));
+		buzz(LEA);
+
+		ResultatDeCommande resultat = valider(LEA, "halo", "la Beyonse");
+
+		assertThat(resultat).isInstanceOfSatisfying(Accepte.class, accepte -> {
+			AccuseProposition accuse = (AccuseProposition) accepte.accuse();
+			assertThat(accuse.titre()).isEqualTo(VerdictChamp.JUSTE);
+			assertThat(accuse.artiste()).isEqualTo(VerdictChamp.JUSTE);
+			assertThat(accuse.pointsGagnes()).isEqualTo(100);
+		});
+	}
+
+	@Test
 	void unePartieTrouveeEstMontreeEtLeMorceauContinue() {
 		demarrer();
 		horloge.avancer(Duration.ofSeconds(4));

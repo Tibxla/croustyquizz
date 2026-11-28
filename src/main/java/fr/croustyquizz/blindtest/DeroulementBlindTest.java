@@ -49,7 +49,7 @@ public final class DeroulementBlindTest implements DeroulementDeManche {
 	private final ContexteDeManche contexte;
 	private final JoueursPresents joueursPresents;
 	private final Supplier<UUID> identifiants;
-	private final CorrecteurExact correcteur = new CorrecteurExact();
+	private final CorrecteurTolerant correcteur = new CorrecteurTolerant();
 	private final List<Morceau> morceaux;
 	/**
 	 * Points des Morceaux déjà quittés. Ceux du Morceau courant se déduisent de ses Propositions, pour qu'un arbitrage
