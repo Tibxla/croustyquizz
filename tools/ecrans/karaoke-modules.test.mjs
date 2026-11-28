@@ -319,15 +319,15 @@ test('salle : le premier Passage en grand, seulement les suivants dans « Ensuit
 	b.module.demonter(); assert.equal(b.principale.childElementCount, 0); assert.equal(b.document.head.childElementCount, 0);
 });
 
-test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async () => {
+test('la coupure bloque les mutations mais permet le catalogue ; une panne de lecture ne pose pas de verrou local', async t => {
 	const b = creerBanc(consoleKaraoke, 'ANIMATEUR'); b.module.afficher(vue({ passagesEnAttente: [passage()] }), capture); b.connecter('synchronisee');
-	b.connecter('coupure'); assert.match(b.principale.textContent, /Connexion perdue, on réessaie/);
+	t.after(() => b.module.demonter());
+	b.connecter('coupure'); assert.equal(b.principale.querySelector('.coupure').textContent, 'Connexion perdue.');
 	assert.equal(bouton(b.principale, 'Appliquer').disabled, true); assert.equal(bouton(b.laterale, 'Chercher').disabled, false);
 	const champ = b.laterale.querySelector('input'); champ.value = 'titre'; b.laterale.querySelector('form').dispatchEvent({ type: 'submit' });
 	b.connecter('synchronisee'); b.appels[0].resolve({ statut: 503, corps: { code: 'SOURCE_PAROLES_INDISPONIBLE', detail: 'Source indisponible.' } }); await terminerMicrotaches();
 	assert.equal(b.captures(), 1); assert.match(b.laterale.textContent, /Source indisponible/);
 	assert.doesNotMatch(b.laterale.textContent, /Aucune Chanson trouvée/); assert.equal(bouton(b.principale, 'Appliquer').disabled, false);
-	b.module.demonter();
 });
 
 test('changer de Manche ou démonter annule les lectures et ignore toute réponse tardive', async () => {

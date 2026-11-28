@@ -1,10 +1,11 @@
 package fr.croustyquizz.soiree;
 
+import static fr.croustyquizz.Attentes.PLAFOND;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import java.lang.reflect.Type;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -117,11 +118,11 @@ class ReconnexionManetteTest {
 		JsonNode capture = capturer(soireeId, abonnement, jeton);
 		long revision = capture.path("revision").asLong();
 		publier(soireeId, joueurId);
-		assertThat(revisionDe(recusAvant.poll(5, TimeUnit.SECONDS))).isEqualTo(revision + 1);
+		assertThat(revisionDe(recusAvant.poll(PLAFOND_SECONDES, TimeUnit.SECONDS))).isEqualTo(revision + 1);
 
 		// La Manette se met en veille : une vue part pendant qu'elle n'écoute plus.
 		premiere.disconnect();
-		await().atMost(Duration.ofSeconds(5)).until(() -> !abonnements.estInstalle(abonnement, Canaux.joueur(joueurId), lea));
+		await().atMost(PLAFOND).until(() -> !abonnements.estInstalle(abonnement, Canaux.joueur(joueurId), lea));
 		publier(soireeId, joueurId);
 
 		// Reconnexion avec le même jeton ; une vue part pendant la resynchronisation.
@@ -129,7 +130,7 @@ class ReconnexionManetteTest {
 		UUID reprise = UUID.randomUUID();
 		BlockingQueue<Map<String, Object>> recus = abonner(seconde, Canaux.joueur(joueurId), reprise, lea);
 		publier(soireeId, joueurId);
-		Map<String, Object> pendantLaReprise = recus.poll(5, TimeUnit.SECONDS);
+		Map<String, Object> pendantLaReprise = recus.poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
 		JsonNode recapture = capturer(soireeId, reprise, jeton);
 
 		long revisionReprise = recapture.path("revision").asLong();
@@ -141,7 +142,7 @@ class ReconnexionManetteTest {
 		assertThat(recus).isEmpty();
 
 		publier(soireeId, joueurId);
-		assertThat(revisionDe(recus.poll(5, TimeUnit.SECONDS))).isEqualTo(revisionReprise + 1);
+		assertThat(revisionDe(recus.poll(PLAFOND_SECONDES, TimeUnit.SECONDS))).isEqualTo(revisionReprise + 1);
 	}
 
 	@Test
@@ -194,7 +195,7 @@ class ReconnexionManetteTest {
 		entetes.set("Authorization", "Bearer " + jeton);
 		return client.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), entetes,
 				new StompSessionHandlerAdapter() {
-				}).get(5, TimeUnit.SECONDS);
+				}).get(PLAFOND_SECONDES, TimeUnit.SECONDS);
 	}
 
 	/** Attend que le broker ait installé l'abonnement, comme la barrière que vérifie la capture. */
@@ -216,7 +217,7 @@ class ReconnexionManetteTest {
 				recus.add((Map<String, Object>) contenu);
 			}
 		});
-		await().atMost(Duration.ofSeconds(5)).until(() -> abonnements.estInstalle(abonnement, destination, acteur));
+		await().atMost(PLAFOND).until(() -> abonnements.estInstalle(abonnement, destination, acteur));
 		return recus;
 	}
 

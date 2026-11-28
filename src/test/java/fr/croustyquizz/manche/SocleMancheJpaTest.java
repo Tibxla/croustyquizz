@@ -2,6 +2,7 @@ package fr.croustyquizz.manche;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -147,6 +148,10 @@ class SocleMancheJpaTest {
 		@Bean
 		@org.springframework.context.annotation.Primary
 		HorlogeFactice horlogeFacticeJpa() { return new HorlogeFactice(); }
+
+		@Bean
+		@org.springframework.context.annotation.Primary
+		Clock clock(HorlogeFactice horloge) { return horloge.commeClock(); }
 
 		@Bean
 		ServiceDeManche<?, ?> serviceFacticeJpa(SocleDeManche socle, EntityManager entites, JsonMapper json) {

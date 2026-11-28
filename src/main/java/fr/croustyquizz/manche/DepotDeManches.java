@@ -3,7 +3,10 @@ package fr.croustyquizz.manche;
 import java.util.List;
 import java.util.UUID;
 
-/** Stockage commun appelé exclusivement dans la transaction du service. */
+/**
+ * Stockage commun appelé exclusivement dans une transaction : celle du service, ou la lecture seule du registre qui
+ * route une Manche vers son service.
+ */
 public interface DepotDeManches {
 	ManchePersistante charger(UUID mancheId);
 	void enregistrer(ManchePersistante manche);
