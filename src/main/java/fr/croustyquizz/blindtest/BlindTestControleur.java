@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -50,6 +51,17 @@ public class BlindTestControleur {
 				new BrouillonProposition(corps.titre(), corps.artiste())), route);
 	}
 
+	@PostMapping("/arbitrage")
+	public ResponseEntity<?> arbitrerProposition(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+			@PathVariable UUID etapeId, @RequestHeader("Idempotency-Key") UUID envoiId,
+			@Valid @RequestBody Arbitrage corps, Acteur acteur) {
+		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+		String route = route(soireeId, mancheId, etapeId) + "/arbitrage";
+		var envoi = new EnvoiDeCommande(acteur, route, envoiId, corps);
+		return ReponsesDeCommande.http(service.arbitrer(mancheId, etapeId, envoi, corps.propositionId(),
+				corps.partie(), corps.verdict()), route);
+	}
+
 	private static String route(UUID soireeId, UUID mancheId, UUID etapeId) {
 		return "/api/soirees/" + soireeId + "/manches/" + mancheId + "/morceaux/" + etapeId;
 	}
@@ -60,6 +72,21 @@ public class BlindTestControleur {
 		@JsonAnySetter
 		public void refuserChampInconnu(String nom, Object valeur) {
 			throw new IllegalArgumentException("Champ non prévu dans un brouillon de Proposition de titre.");
+		}
+	}
+
+	/** Corps ArbitrageSaisie du contrat ; NON_DEMANDE n'est pas un verdict qu'on puisse fixer. */
+	public record Arbitrage(@NotNull UUID propositionId, @NotNull PartieDuMorceau partie,
+			@NotNull VerdictChamp verdict) {
+		public Arbitrage {
+			if (verdict == VerdictChamp.NON_DEMANDE) {
+				throw new IllegalArgumentException("Un arbitrage rend un champ juste ou faux.");
+			}
+		}
+
+		@JsonAnySetter
+		public void refuserChampInconnu(String nom, Object valeur) {
+			throw new IllegalArgumentException("Champ non prévu dans un arbitrage.");
 		}
 	}
 

@@ -46,7 +46,7 @@ class FournisseurPalmaresKaraokeCalculTest {
         Map<String, Object> partie = new java.util.HashMap<>();
         partie.put("mancheActive", null);
         assertThat(prepare.fournir(Destination.CONSOLE, partie)).isEqualTo(lignes);
-        assertThat(prepare.fournir(Destination.SALLE, partie)).isEqualTo(lignes.subList(0, 3));
+        assertThat(prepare.fournir(Destination.SALLE, partie)).isEqualTo(lignes);
 
         verify(depot, times(1)).deLaSoiree(soiree);
         verify(service, times(1)).composerPalmares(soiree, List.of(manche));

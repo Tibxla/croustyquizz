@@ -27,7 +27,8 @@ function bancLecteur() {
 	const audioSalle = creerAudioSalle({ lecteur, lecteurId: 'lecteur',
 		sonde: { charger: async () => ({ dureeMs: 2000 }), detruire() {} },
 		coordonner: () => ({ activer() {}, signalerSonDeManche: actif => sonsDeManche.push(actif),
-			attendreSonDeManche: async () => sonsDeManche.at(-1), detruire() {} }),
+			attendreSonDeManche: async () => sonsDeManche.at(-1), annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {},
+			detruire() {} }),
 	});
 	return { audioSalle, appels, sonsDeManche, trames,
 		dependances: { requestAnimationFrame(f) { trames.set(++numero, f); return numero; },
@@ -799,6 +800,40 @@ test('Manette : après un refus définitif le détail est visible et une nouvell
 	bouton(ticket, 'Envoyer ma note').click();
 	assert.equal(b.appels.length, 2);
 	assert.notEqual(b.appels[1].args[2].envoiId, b.appels[0].args[2].envoiId);
+});
+
+test('Console : la note de fin automatique suit la File, l’état du Passage et les votes ouverts', t => {
+	const b = creerBanc(consoleKaraoke, 'ANIMATEUR');
+	t.after(() => b.module.demonter());
+	const afficher = (pilotage, bloc) => b.module.afficher({ ...vue(bloc), soiree: { pilotage } }, capture);
+	const noteVisible = () => {
+		const note = b.principale.querySelector('.karaoke__passage-courant').querySelector('.console__note');
+		return note && !note.hidden ? note.textContent : '';
+	};
+	const texte = "File d'attente vide : la Manche se terminera après ce Passage et son vote.";
+	const vote = { ...voteDuPublic(), nombreVotes: 0 };
+
+	afficher('AUTOMATIQUE', {});
+	assert.equal(noteVisible(), '');
+	afficher('AUTOMATIQUE', { courant: courant('EN_COURS') });
+	assert.equal(noteVisible(), texte);
+	afficher('AUTOMATIQUE', { courant: courant('EN_COURS'), passagesEnAttente: [passage('suivant')] });
+	assert.equal(noteVisible(), '');
+	afficher('AUTOMATIQUE', { courant: courant('EN_PAUSE') });
+	assert.equal(noteVisible(), texte);
+	afficher('AUTOMATIQUE', { courant: courant('TERMINE'), votes: [vote] });
+	assert.equal(noteVisible(), "File d'attente vide : la Manche se terminera à la clôture du vote en cours.");
+	afficher('AUTOMATIQUE', { courant: courant('SAUTE'), votes: [vote] });
+	assert.equal(noteVisible(), "File d'attente vide : la Manche se terminera à la clôture du vote en cours.");
+	afficher('AUTOMATIQUE', { courant: courant('TERMINE'), votes: [voteClos(vote)] });
+	assert.equal(noteVisible(), '');
+	afficher('AUTOMATIQUE', { courant: courant('APPELE') });
+	assert.equal(noteVisible(), "File d'attente vide : la Manche se terminera après ce Passage, puis son vote s'il est chanté.");
+	afficher('AUTOMATIQUE', { courant: courant('APPELE'), votes: [vote] });
+	assert.equal(noteVisible(),
+		"File d'attente vide : la Manche se terminera après ce Passage et le vote en cours, puis son vote s'il est chanté.");
+	afficher('MANUEL', { courant: courant('EN_COURS'), votes: [vote] });
+	assert.equal(noteVisible(), '');
 });
 
 test('Console : les votes et le délai figurent sous le Passage courant, le délai est remplacé en pause', t => {

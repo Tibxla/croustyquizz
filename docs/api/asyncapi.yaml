@@ -35,17 +35,21 @@ channels:
       fin de lecture, une fin prévue, un saut à l’échéance de l’appel, PASSER_ETAPE, une clôture
       de vote ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la
       place du Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
-      ne déclenche ni un nouvel appel ni la fin de la Manche ;
-      une reprise après une pause posée à l’échéance ou après saute le Passage par manche-reprise, ou par passage-appele si un suivant est appelé ;
+      ne déclenche ni un nouvel appel ni la fin de la Manche.
+      Une reprise après une pause posée à l’échéance ou après saute le Passage dans sa propre vue :
+      manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
+      En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
+      la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
+      termine la Manche. La vue porte alors karaoke à null ;
       vote-enregistre actualise le nombre de votes de la salle, vote-clos apporte la moyenne à la clôture ;
       lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
       calage-chanson-modifie après geste, demande, relevé ou correction. Vue complète avec bloc karaoke
       (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
       et paroles du Passage démarré, votes), sans fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
-      Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele et morceau-saute ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon publié.
+      Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele, morceau-saute et verdict-renverse (arbitrage de l’Animateur, annoncé par blindtest.arbitrage) ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon ni texte de Proposition publié.
       Transition entre Manches (#123) : en Pilotage Automatique, manche-terminee porte transitionManche ;
-      manche-demarree et soiree-terminee le remettent à null ; aucun événement pendant le compte à rebours ;
+      manche-demarree et soiree-terminee le remettent à null ; le compte à rebours ne déclenche aucune publication ;
       après un enchaînement en échec, manche-terminee republie la vue avec transitionManche null.
       Photos : photos-modifiees au changement d’affiche ; le bloc photos est nul sans affiche,
       sinon limité à l’UUID de la photo et à son échéance."
@@ -68,8 +72,12 @@ channels:
       de lecture, une fin prévue, un saut à l’échéance de l’appel, PASSER_ETAPE, une clôture de vote
       ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE à la place du
       Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
-      ne déclenche ni un nouvel appel ni la fin de la Manche ;
-      une reprise après une pause posée à l’échéance ou après saute le Passage par manche-reprise, ou par passage-appele si un suivant est appelé ;
+      ne déclenche ni un nouvel appel ni la fin de la Manche.
+      Une reprise après une pause posée à l’échéance ou après saute le Passage dans sa propre vue :
+      manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
+      En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
+      la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
+      termine la Manche. La vue porte alors karaoke à null ;
       vote-enregistre actualise le nombre de votes sur la Console et la salle, vote-clos apporte la moyenne
       à la clôture ; lecture-chanson-modifiee après
       désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
@@ -78,7 +86,7 @@ channels:
       ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait.
       Transition entre Manches (#123) : en Pilotage Automatique, manche-terminee porte transitionManche ;
-      manche-demarree et soiree-terminee le remettent à null ; aucun événement pendant le compte à rebours ;
+      manche-demarree et soiree-terminee le remettent à null ; le compte à rebours ne déclenche aucune publication ;
       après un enchaînement en échec, manche-terminee republie la vue avec transitionManche null.
       Photos : photos-modifiees à l’arrivée, à la modération, au changement de réglage et à l’oubli
       des photos après douze heures d’inactivité. Le bloc photos indique le réglage et les photos en
@@ -100,7 +108,12 @@ channels:
       une inscription, une fin de lecture, une fin prévue, un saut à l’échéance de l’appel, PASSER_ETAPE,
       une clôture de vote ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE
       à la place du Passage précédent clos. À l’échéance, passage-saute est publié quand cette mutation
-      ne déclenche ni un nouvel appel ni la fin de la Manche ; une reprise après une pause posée à l’échéance ou après saute le Passage par manche-reprise, ou par passage-appele si un suivant est appelé.
+      ne déclenche ni un nouvel appel ni la fin de la Manche.
+      Une reprise après une pause posée à l’échéance ou après saute le Passage dans sa propre vue :
+      manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
+      En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
+      la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
+      termine la Manche. La vue porte alors karaoke à null.
       lecture-chanson-modifiee après erreur ou reprise en paroles seules,
       jamais après désignation ou déclaration ; aucun calage-chanson-modifie. Pour ces causes, chaque
       Joueur de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
@@ -111,7 +124,7 @@ channels:
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle, chaque Joueur recevant sa propre vue ; brouillon-depose uniquement à la Manette de l’auteur d’un brouillon retenu ; bloc blindtest (BlocBlindTestManette : main, blocage, champs encore demandés et brouillon de son seul auteur), sans lien d’extrait ni réponse avant la Révélation.
       Transition entre Manches (#123) : en Pilotage Automatique, manche-terminee porte transitionManche ;
-      manche-demarree et soiree-terminee le remettent à null ; aucun événement pendant le compte à rebours ;
+      manche-demarree et soiree-terminee le remettent à null ; le compte à rebours ne déclenche aucune publication ;
       après un enchaînement en échec, manche-terminee republie la vue avec transitionManche null.
       Photos : photos-modifiees au changement de réglage ; le bloc photos indique
       seulement si les envois sont ouverts."

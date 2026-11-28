@@ -58,8 +58,26 @@ export function extraitJouable(bloc) {
 	return Boolean(bloc?.lienExtrait) && (bloc.phase === 'EXTRAIT' || bloc.phase === 'PROPOSITION');
 }
 
+const ARTICLES = { TITRE: 'le titre', ARTISTE: 'l’artiste' };
+
+/** Annonce de la salle après un arbitrage : « L’Animateur accorde l’artiste à Léa. » ; vide sans arbitrage. */
+export function texteArbitrage(arbitrage) {
+	if (!arbitrage) return '';
+	const partie = ARTICLES[arbitrage.partie] ?? arbitrage.partie;
+	return arbitrage.verdict === 'JUSTE' ? `L’Animateur accorde ${partie} à ${arbitrage.pseudo}.`
+		: `L’Animateur refuse ${partie} de ${arbitrage.pseudo}.`;
+}
+
+/** Le même arbitrage, dit au Joueur concerné ; vide s'il ne le concerne pas. */
+function arbitragePersonnel(arbitrage, joueurId) {
+	if (!arbitrage || arbitrage.joueurId !== joueurId) return '';
+	return arbitrage.verdict === 'JUSTE' ? `L’Animateur t’accorde ${ARTICLES[arbitrage.partie]}.`
+		: `L’Animateur refuse ton ${arbitrage.partie === 'TITRE' ? 'titre' : 'artiste'}.`;
+}
+
 /**
  * Verdict du Joueur lu dans la vue, jamais dans l'accusé : null tant que la vue ne dit rien de lui sur ce Morceau.
+ * Un arbitrage qui le concerne est dit en premier.
  */
 export function verdictPersonnel(bloc, joueurId) {
 	const trouvees = bloc.partiesTrouvees.filter(partie => partie.joueurId === joueurId);
@@ -67,11 +85,32 @@ export function verdictPersonnel(bloc, joueurId) {
 	const gain = trouvees.length
 		? `${trouvees.map(p => libellePartie(p.partie)).join(' et ')} trouvé${trouvees.length > 1 ? 's' : ''}, +${points} points.`
 		: '';
+	const arbitre = arbitragePersonnel(bloc.arbitrage, joueurId);
+	const prefixe = arbitre ? `${arbitre} ` : '';
 	if (bloc.bloque) {
-		return { ton: 'refuse', texte: gain ? `${gain} Le reste est faux : tu es bloqué sur ce Morceau.`
-			: 'Proposition fausse : tu es bloqué sur ce Morceau.' };
+		return { ton: 'refuse', texte: prefixe + (gain ? `${gain} Le reste est faux : tu es bloqué sur ce Morceau.`
+			: 'Proposition fausse : tu es bloqué sur ce Morceau.') };
 	}
-	return gain ? { ton: 'accepte', texte: gain } : null;
+	if (gain) return { ton: 'accepte', texte: prefixe + gain };
+	return arbitre ? { ton: 'accepte', texte: arbitre } : null;
+}
+
+/**
+ * Geste d'arbitrage proposé à l'Animateur pour un champ jugé : refuser un champ juste, accorder un champ faux non
+ * vide. Un champ non demandé, ou vide, n'en a pas. Le serveur reste seul juge (partie trouvée depuis, par exemple).
+ */
+export function actionArbitrage(champ) {
+	if (champ.verdict === 'JUSTE') return { verdict: 'FAUX', libelle: 'Refuser' };
+	if (champ.verdict === 'FAUX' && champ.saisie.trim()) return { verdict: 'JUSTE', libelle: 'Accorder' };
+	return null;
+}
+
+/** « Artiste : « Beyonse », faux » ; « (arbitré) » quand l'Animateur a renversé le verdict. */
+export function texteChampJuge(partie, champ) {
+	const libelle = libellePartie(partie);
+	if (champ.verdict === 'NON_DEMANDE') return `${libelle} : déjà trouvé`;
+	const saisie = champ.saisie.trim() ? `« ${champ.saisie} »` : 'vide';
+	return `${libelle} : ${saisie}, ${champ.verdict === 'JUSTE' ? 'juste' : 'faux'}${champ.arbitre ? ' (arbitré)' : ''}`;
 }
 
 /**

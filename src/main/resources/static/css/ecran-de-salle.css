@@ -304,8 +304,6 @@
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   gap: 0.6vw 1.2vw;
-  max-block-size: 36vh;
-  overflow: auto;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -334,6 +332,16 @@
 .salle--coquille .palmares li[data-teinte="2"] { --teinte: var(--bleu); }
 .salle--coquille .palmares li[data-teinte="3"] { --teinte: var(--rose); }
 .salle--coquille .palmares p { font-size: 1.8vw; }
+.salle--coquille .palmares .palmares__suite {
+  /* Au-delà des trois premiers : une seule ligne courte, sans défilement sur la salle (#236). */
+  margin: 0.4vw 0 0;
+  color: var(--texte-2);
+  font-size: 1.55vw;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+/* Sous le Palmarès, la note d'attente est vide : elle ne prend pas d'écart en plus. */
+.salle--coquille .palmares:not([hidden]) ~ .coquille__note:empty { display: none; }
 
 .salle--coquille .palmares .palmares__ligne {
   display: grid;
@@ -407,4 +415,19 @@
   color: var(--orange);
   font: 800 7vw/0.9 var(--police-chiffres);
   font-variant-numeric: tabular-nums;
+}
+
+/* Avec des Passages classés, garder le Palmarès et le talon dans la hauteur de la salle. */
+.salle--coquille .salle__principal:has(> .salle__transition:not([hidden]) ~ .palmares:not([hidden]) li) {
+  gap: 0.8vw;
+  padding-block: 2.4vw 4.8vw;
+
+  .coquille__commun { gap: 0.55vw; line-height: 1.2; }
+  .salle__transition {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 1.2vw;
+  }
+  .salle__transition-annonce { font-size: 2.8vw; }
+  .salle__transition-delai { font-size: 5vw; white-space: nowrap; }
 }
