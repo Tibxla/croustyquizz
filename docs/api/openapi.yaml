@@ -1384,10 +1384,11 @@ paths:
         Une Manche active autre que le Blind test (y compris en pause) donne 409 BUZZ_NON_AUTORISE.
         Pendant une Manche de Blind test (ADR 0009), le corps nomme mancheId et l’etapeId du Morceau visé
         (absents : 400 REQUETE_INVALIDE) et la route transmet le Buzz au déroulement de la Manche. Le premier
-        Buzz accepté d’un Joueur non bloqué, en phase EXTRAIT, lui donne la main, met l’extrait en pause et
+        Buzz accepté d’un Joueur ni bloqué ni déjà jugé sur ce Morceau, en phase EXTRAIT, lui donne la main, met l’extrait en pause et
         ouvre 20 s de saisie, puis buzz-recu ; rang est son ordre parmi les Buzz acceptés du Morceau. Cible qui
         n’est plus la Manche ou le Morceau affiché : 409 COMMANDE_PERIMEE, distinct des refus de jeu ; un
-        Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué, main déjà prise, Manche en
+        Morceau révélé reste le Morceau affiché jusqu’au suivant. Joueur bloqué ou déjà jugé (même débloqué par
+        un arbitrage), main déjà prise, Manche en
         pause, phase autre que EXTRAIT ou extrait arrivé à 30 s, même avant que le serveur ne le révèle :
         409 BUZZ_NON_AUTORISE. Le même envoi rend son reçu initial, même après la fin du Morceau.
         Au-delà de la limite des Buzz par jeton, 429 TROP_DE_REQUETES avec Retry-After (README.md, « Limite de requêtes »).

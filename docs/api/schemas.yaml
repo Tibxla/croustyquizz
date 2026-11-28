@@ -2130,7 +2130,9 @@ $defs:
             enum:
             - TITRE
             - ARTISTE
-          description: Parties encore à trouver sur ce Morceau ; une partie trouvée n’est plus demandée.
+          description: Parties encore à trouver sur ce Morceau ; une partie trouvée n’est plus demandée. Pour le
+            Joueur qui a la main, parties de son formulaire, fixées au Buzz, qui restent à trouver ; une partie
+            rouverte par un arbitrage pendant sa saisie n’y entre pas et ne sera pas jugée.
         monBrouillon:
           oneOf:
           - $ref: '#/$defs/BrouillonProposition'
