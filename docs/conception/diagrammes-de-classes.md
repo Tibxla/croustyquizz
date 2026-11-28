@@ -411,6 +411,24 @@ classDiagram
             +int note
             +Instant recueLe
         }
+        class ResultatVote {
+            <<record>>
+            +UUID passageId
+            +UUID mancheId
+            +long numero
+            +List~UUID~ interpretes
+            +long nombreVotes
+            +long sommeNotes
+            +Integer moyenneDixiemes
+        }
+        class RangPassage {
+            <<record>>
+            +ResultatVote resultat
+            +Long rang
+        }
+        class ClassementParVote {
+            +classer(List~ResultatVote~) List~RangPassage~
+        }
     }
 
     Lieu "1" --> "1..*" Animateur : emploie
@@ -480,6 +498,9 @@ classDiagram
     EtatVotePassage "0..1" --> "1" Passage : Passage noté
     EtatVotePassage "1" *-- "*" VoteRecu
     VoteRecu "*" --> "1" Joueur : votant
+    ResultatVote ..> EtatVotePassage : résultat du vote clos
+    RangPassage --> ResultatVote
+    ClassementParVote ..> RangPassage : attribue
 ```
 
 ![Diagramme de classes du domaine](diagramme-classes-domaine.png)
@@ -589,7 +610,6 @@ classDiagram
     }
     class ServiceClassement {
         +List~LigneClassement~ classementGeneral(UUID soireeId)
-        +List~LigneClassement~ palmaresKaraoke(UUID soireeId)
     }
     class FiltreDePseudos {
         <<interface>>
@@ -660,12 +680,23 @@ classDiagram
     class KaraokeControleur
     class ConvertisseurCorpsKaraoke
     class FournisseurDeBlocKaraoke
+    class FournisseurDeChampCommun {
+        <<interface>>
+        +champ() String
+        +concerne(Destination) boolean
+        +fournir(UUID, Destination, Map) Object
+        +preparer(UUID) ChampPrepare
+    }
+    class AssembleurDeVues
+    class FournisseurPalmaresKaraoke
     class VuesKaraoke
     class VoteDuPassage
     class VoteDuPassageManette
+    class LignePalmaresKaraoke
     class PersistanceKaraokeJpa {
         +charger(UUID) EtatKaraokePersiste
         +enregistrer(UUID, Object)
+        +contenus(Collection~UUID~) Map
     }
     class ChoixDeVersionParoles {
         +choisir(ContenuKaraoke, long) ResultatChoix
@@ -685,6 +716,7 @@ classDiagram
         +enregistrerCycle(UUID mancheId, EtatCyclePassage)
         +chargerVotes(UUID mancheId) EtatVoteDuPublic
         +enregistrerVotes(UUID mancheId, EtatVoteDuPublic)
+        +resultatsDeVote(Collection~UUID~) List~ResultatVote~
         +numeroPropose(UUID soireeId) long
         +incrementerNumero(UUID soireeId, long numeroAccepte)
     }
@@ -702,7 +734,7 @@ classDiagram
     class ParticipantsDePassage {
         <<interface>>
         +estPresent(UUID soireeId, UUID joueurId) boolean
-        +pseudo(UUID soireeId, UUID joueurId) String
+        +pseudos(UUID soireeId) Map
     }
     class PorteeDePassageSoiree
     class ParticipantsDePassageSoiree
@@ -894,6 +926,7 @@ classDiagram
         }
         class ClotureVote
         class ProjectionVote
+        class ClassementParVote
         class VotePersistant
         class NotePersistante
         class FileAttente {
@@ -1042,6 +1075,11 @@ classDiagram
     PersistancePassageJpa --> NumeroSoireePersistant
     FournisseurDeBloc <|.. FournisseurDeBlocKaraoke
     FournisseurDeBlocKaraoke --> ServiceKaraoke : instantané
+    AssembleurDeVues o-- FournisseurDeChampCommun : champs de la vue
+    FournisseurDeChampCommun <|.. FournisseurPalmaresKaraoke
+    FournisseurPalmaresKaraoke --> ServiceKaraoke : Palmarès
+    ServiceKaraoke ..> ClassementParVote
+    ServiceKaraoke ..> LignePalmaresKaraoke
     FournisseurDeBlocKaraoke --> VuesKaraoke
     VuesKaraoke --> ParticipantsDePassage : pseudos publics
     PorteeDePassage <|.. PorteeDePassageSoiree : soiree, Soirée en base
@@ -1080,7 +1118,7 @@ for nom, bloc in zip(("domaine", "services"), blocs):
     Path(f"/tmp/croustyquizz-{nom}.mmd").write_text(bloc + "\n")
 PYTHON
 npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-domaine.mmd -o docs/conception/diagramme-classes-domaine.png
-npx --yes --package @mermaid-js/mermaid-cli mmdc -s 3 -i /tmp/croustyquizz-services.mmd -o docs/conception/diagramme-classes-services.png
+npx --yes --package @mermaid-js/mermaid-cli mmdc --size 3424 -s 3 -i /tmp/croustyquizz-services.mmd -o docs/conception/diagramme-classes-services.png
 ```
 
-Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.
+Le diagramme des services a besoin de `--size 3424` : sans lui, mermaid-cli 12 le réduit à une image d’environ 2 350 px, illisible. Si le bac à sable impose un Chrome sans sandbox, ajouter `-p /tmp/croustyquizz-puppeteer.json` aux deux commandes, avec `{"args":["--no-sandbox"]}` dans ce fichier temporaire. Vérifier visuellement les deux PNG après génération.

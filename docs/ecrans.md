@@ -163,6 +163,33 @@ en plus de celle de l’Interprète.
    que la Manette annonce aussi la moyenne à cette clôture et que la salle garde le bandeau
    jusqu’au démarrage du Passage ou à l’expiration de l’affichage, selon le dernier des deux.
 
+### Recette du Palmarès du Karaoké (#117)
+
+Vérification navigateur à réaliser en Pilotage Manuel avec la Console, l’Écran de salle et
+deux Manettes de la même Soirée de démonstration.
+
+1. Terminer trois Passages de Karaoké et les noter depuis la Manette du public, par exemple
+   3, 5 et 4 dans l’ordre des Passages. Choisir « Terminer la Manche » pendant le dernier vote,
+   après réception de sa note.
+2. Vérifier que « Palmarès du Karaoké » apparaît sur la salle et la Console, dans l’ordre des
+   notes 5, 4, 3, et que le Classement général conserve ses Points. Vérifier que la Manette
+   n’affiche pas de Palmarès. Recharger la salle et la Console et contrôler le même résultat.
+3. Refaire le parcours avec un quatrième Passage sans note. Vérifier qu’il figure à la fin de
+   la liste de la Console, sans rang et avec « Aucun vote ». Sur la salle, vérifier que les trois
+   souches prennent la teinte du numéro de leur Passage et que les lignes restent lisibles à
+   1920 × 1080 et à 1280 × 720.
+4. Démarrer la Manche suivante selon la recette #114. Vérifier que le Palmarès disparaît de
+   la salle et de la Console à la réception de la nouvelle vue.
+   Tant que le Palmarès est présent, il prend sur la salle la place du Classement général
+   et de la note d’attente (Q24, #123) ; une photo à l’affiche le masque comme eux.
+   Une fois la Soirée terminée, le Podium final passe avant lui sur la salle (#224) :
+   la salle masque le Palmarès, la Console le garde.
+5. Terminer une Manche de Karaoké sans Passage terminé dans une Soirée neuve. Vérifier
+   « Aucun Passage noté. » sur la salle et la Console.
+6. Terminer la Soirée juste après une Manche de Karaoké notée. Vérifier que la salle
+   affiche le « Podium final » sans le Palmarès, et que la Console affiche toujours
+   le Palmarès du Karaoké.
+
 ### Musique d'attente (#140)
 
 Sur `/ecran.html`, choisir le dossier de musique depuis la coquille. Les MP3, M4A, OGG et WAV du sous-dossier `Attente`, y compris dans ses sous-dossiers, alimentent la Musique d'attente. La casse et les accents du nom `Attente` sont ignorés. La recherche locale des Chansons écarte ces fichiers. Le navigateur garde le dossier en mémoire le temps de l'ouverture de la page.

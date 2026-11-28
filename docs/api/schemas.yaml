@@ -1029,6 +1029,15 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/JoueurPublic'
+      palmaresKaraoke:
+        type: [array, 'null']
+        items:
+          allOf:
+          - $ref: '#/$defs/LignePalmaresKaraoke'
+          - properties:
+              rang:
+                type: integer
+        maxItems: 3
       classement:
         type: array
         description: Classement général complet par rang croissant.
@@ -1084,6 +1093,10 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/JoueurPublic'
+      palmaresKaraoke:
+        type: [array, 'null']
+        items:
+          $ref: '#/$defs/LignePalmaresKaraoke'
       classement:
         type: array
         description: Classement général complet par rang croissant, y compris après la Soirée.
@@ -2866,6 +2879,67 @@ $defs:
     - passageId
     - note
     - recueLe
+  LignePalmaresKaraoke:
+    type: object
+    additionalProperties: false
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      rang:
+        type: [integer, 'null']
+        minimum: 1
+      chanson:
+        allOf:
+        - $ref: '#/$defs/ResumeChanson'
+        - properties:
+            dureeMs:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            etatParoles:
+              const: SYNCHRONISEES
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 4
+      nombreVotes:
+        type: integer
+        minimum: 0
+      moyenneDixiemes:
+        type: [integer, 'null']
+        minimum: 10
+        maximum: 50
+    required:
+    - passageId
+    - numero
+    - rang
+    - chanson
+    - interpretes
+    - nombreVotes
+    - moyenneDixiemes
+    if:
+      properties:
+        nombreVotes:
+          const: 0
+    then:
+      properties:
+        rang:
+          type: 'null'
+        moyenneDixiemes:
+          type: 'null'
+    else:
+      properties:
+        rang:
+          type: integer
+        moyenneDixiemes:
+          type: integer
   VoteDuPassage:
     type: object
     additionalProperties: false
