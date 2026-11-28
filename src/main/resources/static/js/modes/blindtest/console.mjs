@@ -1,11 +1,15 @@
 import { ouvrirDialogue } from '../../dialogue.mjs';
 import { creerUuid } from '../karaoke/commun.mjs';
 import { creerSocle, ecrire, rendreParties, textePhase } from './commun.mjs';
-import { extraitRestantMs, formaterSecondes, tempsRestantMs, texteNumero } from './logique.mjs';
+import { actionArbitrage, extraitRestantMs, formaterSecondes, tempsRestantMs, texteChampJuge, texteNumero }
+	from './logique.mjs';
+
+const PARTIES = ['TITRE', 'ARTISTE'];
 
 /**
- * Console du Blind test : le pilotage de la Manche, la réponse attendue pour l'arbitrage, l'état du Morceau, qui a la
- * main et les parties trouvées. La coquille ne porte que les commandes de Soirée : chaque module pilote sa Manche.
+ * Console du Blind test : le pilotage de la Manche, la réponse attendue, l'état du Morceau, qui a la main, les parties
+ * trouvées et, en Pilotage Manuel, l'arbitrage des Propositions jugées (ADR 0009, point 15). La coquille ne porte que
+ * les commandes de Soirée : chaque module pilote sa Manche.
  */
 export function monter(zones, contexte, dependances = {}) {
 	const socle = creerSocle(zones, contexte, { classe: 'blindtest--console', intervalle: dependances.intervalle });
@@ -47,7 +51,14 @@ export function monter(zones, contexte, dependances = {}) {
 	const temps = e('p', 'blindtest__temps chiffres');
 	const parties = e('ul', 'blindtest__parties');
 	morceau.append(titreEtat, lecture, main, temps, parties);
-	socle.principale.append(pilotage, entete, reponse, morceau, dialogue);
+
+	const propositions = e('section', 'panneau blindtest__propositions');
+	const titrePropositions = e('h3', '', 'Propositions');
+	const consigne = e('p', 'blindtest__consigne');
+	const listePropositions = e('ul', 'blindtest__liste-propositions');
+	const aucunePropositions = e('p', '', 'Aucune Proposition jugée sur ce Morceau.');
+	propositions.append(titrePropositions, consigne, listePropositions, aucunePropositions);
+	socle.principale.append(pilotage, entete, reponse, morceau, propositions, dialogue);
 
 	const bloques = e('section', 'panneau blindtest__bloques');
 	const titreBloques = e('h3', '', 'Joueurs bloqués');
@@ -56,7 +67,7 @@ export function monter(zones, contexte, dependances = {}) {
 	bloques.append(titreBloques, listeBloques, aucun);
 	(socle.laterale ?? socle.principale).append(bloques);
 
-	let vue, bloc, detruit = false, envoi, reessai;
+	let vue, bloc, detruit = false, envoi, reessai, signaturePropositions;
 
 	function bouton(texte, rappel, classe = 'bouton') {
 		const b = e('button', classe, texte);
@@ -69,30 +80,80 @@ export function monter(zones, contexte, dependances = {}) {
 	 * Une commande à la fois. Après une confirmation inconnue, le même geste sur le même Morceau reprend la même clé
 	 * d'idempotence ; rien n'est réessayé tout seul. La coquille affiche l'envoi et son reçu.
 	 */
-	async function piloter(action) {
+	async function commander(geste, chemin, corps) {
 		if (envoi || !socle.synchronisee || !bloc) return;
 		const etapeId = bloc.etapeId;
-		const cle = reessai?.action === action && reessai.etapeId === etapeId ? reessai.cle : creerCle();
+		const cle = reessai?.geste === geste && reessai.etapeId === etapeId ? reessai.cle : creerCle();
 		reessai = undefined;
 		envoi = new AbortController();
 		rendre();
 		try {
-			const { statut, corps } = await contexte.envoyer('POST',
-				`/api/soirees/${encodeURIComponent(contexte.soireeId)}/manches/${encodeURIComponent(bloc.mancheId)}/commandes`,
-				{ action, etapeId }, { entetes: { 'Idempotency-Key': cle }, signal: envoi.signal });
-			if (statut === 503 || (statut >= 500 && !corps?.code)) {
-				reessai = { action, etapeId, cle };
+			const { statut, corps: reponse } = await contexte.envoyer('POST',
+				`/api/soirees/${encodeURIComponent(contexte.soireeId)}/manches/${encodeURIComponent(bloc.mancheId)}/${chemin(etapeId)}`,
+				corps(etapeId), { entetes: { 'Idempotency-Key': cle }, signal: envoi.signal });
+			if (statut === 503 || (statut >= 500 && !reponse?.code)) {
+				reessai = { geste, etapeId, cle };
 				contexte.resynchroniser();
 			}
 		} catch (erreur) {
 			if (erreur.name !== 'AbortError') {
-				reessai = { action, etapeId, cle };
+				reessai = { geste, etapeId, cle };
 				contexte.resynchroniser();
 			}
 		} finally {
 			envoi = undefined;
 			if (!detruit) rendre();
 		}
+	}
+
+	function piloter(action) {
+		return commander(action, () => 'commandes', etapeId => ({ action, etapeId }));
+	}
+
+	/** Fixe le verdict d'un champ ; la vue publiée apporte les points et les parties à jour. */
+	function arbitrer(propositionId, partie, verdict) {
+		return commander(`arbitrage/${propositionId}/${partie}/${verdict}`,
+			etapeId => `morceaux/${encodeURIComponent(etapeId)}/arbitrage`,
+			() => ({ propositionId, partie, verdict }));
+	}
+
+	const manuel = () => vue?.soiree?.pilotage === 'MANUEL';
+
+	/** Reconstruit la liste seulement quand les Propositions, le pilotage ou la disponibilité changent. */
+	function rendrePropositions() {
+		const liste = bloc.propositions ?? [];
+		const actif = socle.synchronisee && !envoi;
+		const signature = JSON.stringify([liste, manuel(), actif]);
+		ecrire(consigne, manuel() ? 'Accorde ou refuse un champ mal jugé : les points suivent.'
+			: 'Pilotage Automatique : le verdict de la correction est définitif.');
+		aucunePropositions.hidden = liste.length > 0;
+		listePropositions.hidden = liste.length === 0;
+		if (signature === signaturePropositions) return;
+		const focus = socle.document.activeElement?.getAttribute?.('data-arbitrage');
+		signaturePropositions = signature;
+		listePropositions.replaceChildren(...liste.map(proposition => {
+			const ligne = e('li', 'blindtest__proposition');
+			ligne.append(e('p', 'blindtest__proposant', `${proposition.pseudo} · +${proposition.points} points`));
+			for (const partie of PARTIES) {
+				const champ = proposition[partie === 'TITRE' ? 'titre' : 'artiste'];
+				const rangee = e('div', 'blindtest__champ-juge');
+				rangee.append(e('span', `blindtest__verdict-champ blindtest__verdict-champ--${champ.verdict.toLowerCase()}`,
+					texteChampJuge(partie, champ)));
+				const action = manuel() ? actionArbitrage(champ) : null;
+				if (action) {
+					const geste = bouton(action.libelle,
+						() => arbitrer(proposition.propositionId, partie, action.verdict), 'bouton blindtest__arbitrer');
+					geste.setAttribute('data-arbitrage', `${proposition.propositionId}/${partie}`);
+					geste.setAttribute('aria-label', `${action.libelle} : ${texteChampJuge(partie, champ)}, ${proposition.pseudo}`);
+					geste.disabled = !actif;
+					rangee.append(geste);
+				}
+				ligne.append(rangee);
+			}
+			return ligne;
+		}));
+		// Le geste qui vient de partir garde le focus quand sa ligne est reconstruite.
+		if (focus) listePropositions.querySelector(`[data-arbitrage="${focus}"]`)?.focus();
 	}
 
 	function texteAvancer() {
@@ -143,6 +204,7 @@ export function monter(zones, contexte, dependances = {}) {
 		}
 		listeBloques.hidden = noms.length === 0;
 		aucun.hidden = noms.length > 0;
+		rendrePropositions();
 		const decompte = bloc.etat === 'EN_COURS' && (bloc.phase === 'PROPOSITION'
 			|| (bloc.phase === 'EXTRAIT' && bloc.lecture?.etat === 'EN_LECTURE'));
 		socle.animer(decompte, rafraichirTemps);

@@ -79,6 +79,14 @@
 .blindtest--console .blindtest__phase { font-size: 1.375rem; }
 .blindtest--console .panneau { display: grid; gap: var(--espace-2); }
 .blindtest--console .blindtest__bloques ul { margin: 0; padding-left: var(--espace-5); }
+/* Arbitrage : chaque champ jugé sur sa ligne, son geste au bout ; le verdict se lit sans la couleur. */
+.blindtest__liste-propositions { display: grid; gap: var(--espace-3); margin: 0; padding: 0; list-style: none; }
+.blindtest__proposition { display: grid; gap: var(--espace-1); }
+.blindtest__proposant { margin: 0; font-weight: 700; }
+.blindtest__champ-juge { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--espace-2); }
+.blindtest__verdict-champ--faux { color: var(--refus); }
+.blindtest__consigne { margin: 0; color: var(--texte-2); }
 
 /* Écran de salle : lu à cinq mètres, mesures en largeur d'écran. */
 .salle .blindtest--salle { gap: 1.2vw; font-size: 1.6vw; }
@@ -95,6 +103,7 @@
 /* Son de l'extrait : la raison du silence, et le geste qui le relance quand le navigateur bloque. */
 .blindtest__son { display: flex; flex-wrap: wrap; align-items: center; gap: 1vw; }
 .salle .blindtest--salle .blindtest__annonce { font-size: 2.6vw; font-weight: 700; color: var(--texte-2); }
+.salle .blindtest--salle .blindtest__arbitrage { font-size: 2.2vw; font-weight: 700; color: var(--texte); }
 
 /* Arrivée d'un Buzz, d'une partie trouvée ou de la Révélation : seulement sur un événement, jamais sur une capture. */
 .blindtest--arrivee { animation: blindtest-arrivee 900ms var(--sortie); }
