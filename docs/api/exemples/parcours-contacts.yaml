@@ -1,0 +1,66 @@
+parametresCommuns:
+  soireeId: 32000000-0000-4000-8000-000000000001
+http:
+- nom: Le Joueur lit la mention du Lieu
+  operationId: consulterInformationContact
+  statut: 200
+  reponse:
+    declaration: &declaration J’accepte de recevoir les offres de ce Lieu par SMS.
+    mention: &mention 'Le Bal fictif utilisera ton prénom, ton nom et ton numéro pour t’envoyer ses offres par SMS. Tes coordonnées sont conservées pendant trois ans après ton dernier Consentement. Tu peux te désinscrire à tout moment grâce à ton lien personnel.'
+- nom: Le Joueur refuse le Consentement
+  operationId: inscrireContact
+  requete:
+    <<: &coordonnees
+      prenom: Camille
+      nom: Exemple
+      numero: '06 39 98 00 32'
+      mention: *mention
+      declaration: *declaration
+    consentement: false
+  statut: 422
+  reponse:
+    type: about:blank
+    title: Traitement impossible
+    status: 422
+    instance: /api/soirees/32000000-0000-4000-8000-000000000001/contact
+    detail: Coche la case si tu souhaites recevoir les offres par SMS.
+    code: CONSENTEMENT_REQUIS
+- nom: Le Joueur devient Contact du Lieu
+  operationId: inscrireContact
+  requete:
+    <<: *coordonnees
+    consentement: true
+  statut: 200
+  reponse:
+    consentiLe: &instant '2026-11-28T18:00:00Z'
+    lienDeDesinscription: '/desinscription.html#cle=32000000-0000-4000-8000-000000000002.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+- nom: L’Animateur liste les Contacts actifs de son Lieu
+  operationId: listerContacts
+  statut: 200
+  reponse:
+    contacts:
+    - prenom: Camille
+      nom: Exemple
+      mention: |-
+        Le Bal fictif utilisera ton prénom, ton nom et ton numéro pour t’envoyer ses offres par SMS. Tes coordonnées sont conservées pendant trois ans après ton dernier Consentement. Tu peux te désinscrire à tout moment grâce à ton lien personnel.
+        J’accepte de recevoir les offres de ce Lieu par SMS.
+      numero: '+33639980032'
+      consentiLe: *instant
+- nom: L’Animateur exporte la liste de son Lieu
+  operationId: exporterContacts
+  statut: 200
+  reponse: |
+    "Prénom","Nom","Téléphone","Consentement donné le","Mention acceptée"
+    "Camille","Exemple","'+33639980032","2026-11-28T18:00:00Z","Le Bal fictif utilisera ton prénom, ton nom et ton numéro pour t’envoyer ses offres par SMS. Tes coordonnées sont conservées pendant trois ans après ton dernier Consentement. Tu peux te désinscrire à tout moment grâce à ton lien personnel.
+    J’accepte de recevoir les offres de ce Lieu par SMS."
+- nom: Le Contact retire son Consentement
+  operationId: desinscrireContact
+  requete:
+    cle: '32000000-0000-4000-8000-000000000002.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+  statut: 204
+- nom: Le Contact a disparu de la liste
+  operationId: listerContacts
+  statut: 200
+  reponse: { contacts: [] }
+evenements: []
+cases: []

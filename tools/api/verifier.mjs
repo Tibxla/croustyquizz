@@ -75,7 +75,8 @@ for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console
   ['EvenementSalle', 'salle'], ['EvenementConsole', 'console'], ['EvenementJoueur', 'joueur']]) {
   const utilisees = dependances(vue);
   for (const prive of ['QuestionPreparee', 'QuestionSaisie', 'Csrf', 'AccesJoueur', 'AccesEcran', 'ConnexionAnimateur',
-    'InscriptionAnimateur', ...interditsParVue[destination]]) {
+    'InscriptionAnimateur', 'ContactDuLieu', 'ListeContacts', 'ConsentementEnregistre', 'InscriptionContact',
+    'DesinscriptionContact', 'ExportContactsCsv', ...interditsParVue[destination]]) {
     assert.ok(!utilisees.has(prive), `${vue} contient un schéma interdit : ${prive}`);
   }
 }
@@ -124,7 +125,7 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'campagnes-sms'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'campagnes-sms', 'contacts'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();

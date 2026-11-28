@@ -21,6 +21,7 @@ tags:
 - name: Photos
 - name: Karaoké
 - name: Campagne SMS
+- name: Contact du Lieu
 paths:
   /api/csrf:
     get:
@@ -378,6 +379,135 @@ paths:
             application/json:
               schema:
                 $ref: ./schemas.yaml#/$defs/Heure
+  /api/soirees/{soireeId}/contact:
+    get:
+      operationId: consulterInformationContact
+      summary: Lire la mention d’information du Lieu de la Soirée
+      description: Accessible au Joueur de cette Soirée, y compris après sa fin.
+      tags: [Contact du Lieu]
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Texte à afficher avant la case de Consentement.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: './schemas.yaml#/$defs/InformationContact' }
+        '400': { $ref: '#/components/responses/Erreur400' }
+        '401': { $ref: '#/components/responses/Erreur401' }
+        '403': { $ref: '#/components/responses/Erreur403' }
+        '404': { $ref: '#/components/responses/Erreur404' }
+    post:
+      operationId: inscrireContact
+      summary: Devenir Contact du Lieu de la Soirée
+      description: >-
+        Le jeton de Manette identifie le Joueur. Le Lieu vient de la Soirée, même terminée.
+        422 CONSENTEMENT_REQUIS si la case est absente ou décochée, NUMERO_INVALIDE si le numéro mobile
+        métropolitain est invalide, DONNEES_INVALIDES si le nom ou le prénom est invalide.
+        Si la mention a changé depuis son affichage, 409 MENTION_MODIFIEE et aucun enregistrement.
+        Un nouveau Consentement met à jour le Contact du même Lieu. Le lien personnel est rendu à la
+        création. Une opposition pour ce Lieu empêche toute nouvelle inscription (409 CONTACT_DESINSCRIT).
+        429 TROP_DE_REQUETES après dépassement de la limite par adresse.
+      tags: [Contact du Lieu]
+      security:
+      - jetonJoueur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: './schemas.yaml#/$defs/InscriptionContact' }
+      responses:
+        '200':
+          description: Consentement enregistré.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: './schemas.yaml#/$defs/ConsentementEnregistre' }
+        '400': { $ref: '#/components/responses/Erreur400' }
+        '401': { $ref: '#/components/responses/Erreur401' }
+        '403': { $ref: '#/components/responses/Erreur403' }
+        '404': { $ref: '#/components/responses/Erreur404' }
+        '409': { $ref: '#/components/responses/Erreur409' }
+        '422': { $ref: '#/components/responses/Erreur422' }
+        '429': { $ref: '#/components/responses/Erreur429' }
+  /api/contacts/desinscription:
+    post:
+      operationId: desinscrireContact
+      summary: Retirer son Consentement avec sa clé personnelle
+      description: >-
+        La clé vient du fragment de la page publique et voyage seulement dans le JSON.
+        La désinscription efface les coordonnées. Un nouvel appel avec la même clé confirme la
+        désinscription. Une clé inconnue, invalide ou expirée répond 404 LIEN_INVALIDE.
+      tags: [Contact du Lieu]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: './schemas.yaml#/$defs/DesinscriptionContact' }
+      responses:
+        '204':
+          description: Désinscription confirmée.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+        '400': { $ref: '#/components/responses/Erreur400' }
+        '404': { $ref: '#/components/responses/Erreur404' }
+  /api/contacts:
+    get:
+      operationId: listerContacts
+      summary: Lister les Contacts consentants de son Lieu
+      description: La session de l’Animateur détermine le Lieu. Les liens personnels sont exclus.
+      tags: [Contact du Lieu]
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Coordonnées et preuve de Consentement des Contacts actifs.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: './schemas.yaml#/$defs/ListeContacts' }
+        '401': { $ref: '#/components/responses/Erreur401' }
+  /api/contacts/export:
+    get:
+      operationId: exporterContacts
+      summary: Exporter les Contacts consentants de son Lieu en CSV
+      description: >-
+        Même sélection que la liste. UTF-8, séparateur virgule, champs entre guillemets,
+        protection contre l’interprétation des cellules comme formules de tableur.
+      tags: [Contact du Lieu]
+      security:
+      - sessionAnimateur: []
+      responses:
+        '200':
+          description: Fichier CSV des Contacts actifs.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+            Content-Disposition:
+              schema: { type: string, const: 'attachment; filename="contacts.csv"' }
+          content:
+            text/csv:
+              schema: { $ref: './schemas.yaml#/$defs/ExportContactsCsv' }
+        '401': { $ref: '#/components/responses/Erreur401' }
   /api/campagnes-sms/apercu:
     post:
       operationId: previsualiserCampagneSms

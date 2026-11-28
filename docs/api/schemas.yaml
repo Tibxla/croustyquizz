@@ -1562,6 +1562,11 @@ $defs:
         - TEXTE_SMS_INVALIDE
         - AUCUN_CONTACT_ELIGIBLE
         - CLE_IDEMPOTENCE_REUTILISEE
+        - CONSENTEMENT_REQUIS
+        - MENTION_MODIFIEE
+        - NUMERO_INVALIDE
+        - CONTACT_DESINSCRIT
+        - LIEN_INVALIDE
       detail:
         type: string
         minLength: 1
@@ -3983,3 +3988,59 @@ $defs:
         statut: { const: ECHOUE }
         motif: { type: string, minLength: 1 }
         identifiantPrestataire: { type: 'null' }
+
+  InformationContact:
+    type: object
+    additionalProperties: false
+    required: [mention, declaration]
+    properties:
+      mention: { type: string, minLength: 1, maxLength: 600 }
+      declaration: { type: string, minLength: 1, maxLength: 120 }
+  InscriptionContact:
+    type: object
+    additionalProperties: false
+    required: [prenom, nom, numero, mention, declaration]
+    properties:
+      prenom: { type: string, maxLength: 120 }
+      nom: { type: string, maxLength: 120 }
+      numero: { type: string, maxLength: 40 }
+      mention: { type: string, maxLength: 600 }
+      declaration: { type: string, maxLength: 120 }
+      consentement: { type: boolean, default: false }
+  ConsentementEnregistre:
+    type: object
+    additionalProperties: false
+    required: [consentiLe]
+    properties:
+      consentiLe: { type: string, format: date-time }
+      lienDeDesinscription:
+        type: string
+        format: uri-reference
+        pattern: '/desinscription\.html#cle=[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$'
+  DesinscriptionContact:
+    type: object
+    additionalProperties: false
+    required: [cle]
+    properties:
+      cle: { type: string, maxLength: 80 }
+  ContactDuLieu:
+    type: object
+    additionalProperties: false
+    required: [prenom, nom, numero, consentiLe, mention]
+    properties:
+      prenom: { type: string, minLength: 1, maxLength: 120 }
+      nom: { type: string, minLength: 1, maxLength: 120 }
+      numero: { type: string, pattern: '^\+33[67][0-9]{8}$' }
+      consentiLe: { type: string, format: date-time }
+      mention: { type: string, minLength: 1, maxLength: 600 }
+  ListeContacts:
+    type: object
+    additionalProperties: false
+    required: [contacts]
+    properties:
+      contacts:
+        type: array
+        items: { $ref: '#/$defs/ContactDuLieu' }
+  ExportContactsCsv:
+    type: string
+    pattern: '^"Prénom","Nom","Téléphone","Consentement donné le","Mention acceptée"'
