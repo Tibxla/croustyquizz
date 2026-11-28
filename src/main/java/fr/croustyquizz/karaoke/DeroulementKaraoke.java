@@ -175,17 +175,33 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     }
 
     private ResultatDeCommande apres(ResultatDeCommande resultat, Instant maintenant) {
-        if (resultat instanceof Accepte accepte && enchainer(maintenant)) {
-            return new Accepte(accepte.accuse(), ECRANS, PASSAGE_APPELE, accepte.statutHttp());
+        if (!(resultat instanceof Accepte accepte)) { return resultat; }
+        // Seule la commande qui provoque la fin publie manche-terminee.
+        boolean dejaTerminee = estTerminee();
+        boolean aAppele = enchainer(maintenant);
+        if (!dejaTerminee && estTerminee()) {
+            return new Accepte(accepte.accuse(), ECRANS, "manche-terminee", accepte.statutHttp());
         }
-        return resultat;
+        if (aAppele) { return new Accepte(accepte.accuse(), ECRANS, PASSAGE_APPELE, accepte.statutHttp()); }
+        return accepte;
     }
 
     boolean enchainer(Instant maintenant) {
-        if (!contexte.pilotageAutomatique() || etat != EtatManche.EN_COURS
-                || !cycle.appelerSuivantSiLibre(identifiants, maintenant)) { return false; }
-        lectures.clear();
-        return true;
+        if (!contexte.pilotageAutomatique() || etat != EtatManche.EN_COURS) { return false; }
+        if (cycle.appelerSuivantSiLibre(identifiants, maintenant)) {
+            lectures.clear();
+            return true;
+        }
+        // Un courant clos exclut un Passage actif. Sans appel, la File est alors vide.
+        var chronologie = cycle.etat();
+        Passage dernier = file.trouver(chronologie.passageId());
+        if (chronologie.clotureLe() != null && dernier != null
+                && (dernier.etat() == EtatPassage.TERMINE || dernier.etat() == EtatPassage.SAUTE)
+                && !vote.aUnVoteOuvert()) {
+            etat = EtatManche.TERMINEE;
+            contexte.signalerFin().run();
+        }
+        return false;
     }
 
     private Horloge horlogeAvecEnchainement(Horloge horloge) {
