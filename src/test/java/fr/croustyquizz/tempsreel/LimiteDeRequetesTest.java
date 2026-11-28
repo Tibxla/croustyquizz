@@ -89,6 +89,19 @@ class LimiteDeRequetesTest {
 	}
 
 	@Test
+	void lesInscriptionsContactComptentParAdresseToutesSoireesConfondues() throws Exception {
+		var adresse = "203.0.113.1";
+		var autreSoiree = "/api/soirees/" + UUID.randomUUID() + "/contact";
+		envoyer("POST", SOIREE + "/contact", "jeton-lea", null, adresse);
+		envoyer("POST", autreSoiree, "jeton-sam", null, adresse);
+		var refus = envoyer("POST", autreSoiree, "jeton-ines", null, adresse);
+		assertThat(refus.getStatus()).isEqualTo(429);
+		assertThat(refus.getHeader("Retry-After")).isEqualTo("1");
+		assertThat(envoyer("POST", autreSoiree, "jeton-ines", null, "203.0.113.2").getStatus()).isEqualTo(200);
+		assertThat(envoyer("GET", autreSoiree, "jeton-ines", null, adresse).getStatus()).isEqualTo(200);
+	}
+
+	@Test
 	void chaqueRouteDeReponseASaPropreLimite() throws Exception {
 		String morceau = SOIREE + "/manches/" + UUID.randomUUID() + "/morceaux/" + UUID.randomUUID();
 		String vote = SOIREE + "/manches/" + UUID.randomUUID() + "/passages/" + UUID.randomUUID() + "/vote";
@@ -373,7 +386,7 @@ class LimiteDeRequetesTest {
 	private static ReglagesDesLimites reglages(boolean actif, int plafond, ReglagesDesLimites.Seuil arrivees) {
 		return new ReglagesDesLimites(actif, plafond, DEUX_PAR_SECONDE, DEUX_PAR_SECONDE,
 				new ReglagesDesLimites.Seuil(2, Duration.ofSeconds(3)), arrivees,
-				new ReglagesDesLimites.Seuil(2, Duration.ofSeconds(6)), DEUX_PAR_SECONDE);
+				new ReglagesDesLimites.Seuil(2, Duration.ofSeconds(6)), DEUX_PAR_SECONDE, DEUX_PAR_SECONDE);
 	}
 
 }

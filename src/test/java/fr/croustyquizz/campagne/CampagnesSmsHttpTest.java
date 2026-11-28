@@ -206,6 +206,7 @@ class CampagnesSmsHttpTest {
 		}
 
 		@Bean
+		@Primary
 		ContactsFactices contactsFactices() {
 			return new ContactsFactices();
 		}

@@ -26,11 +26,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *                       moyenne une dizaine d'années à tomber sur l'une de dix Soirées ouvertes. La rafale de 120
  *                       couvre l'arrivée d'une salle entière ; les retardataires passent ensuite à 20 par minute
  * @param accesEcran     par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle
+ * @param inscriptionContact par adresse IP, toutes Soirées confondues
  * @param qrCode         par clé d'Écran : l'Écran de salle ne le charge qu'au changement de code
  */
 @ConfigurationProperties("croustyquizz.limites")
 public record ReglagesDesLimites(boolean actif, int plafondCles, Seuil buzz, Seuil reponses, Seuil codesInconnus,
-		Seuil arrivees, Seuil accesEcran, Seuil qrCode) {
+		Seuil arrivees, Seuil accesEcran, Seuil qrCode, Seuil inscriptionContact) {
 
 	public ReglagesDesLimites {
 		if (plafondCles <= 0) {
@@ -42,6 +43,7 @@ public record ReglagesDesLimites(boolean actif, int plafondCles, Seuil buzz, Seu
 		Objects.requireNonNull(arrivees, "croustyquizz.limites.arrivees manquant");
 		Objects.requireNonNull(accesEcran, "croustyquizz.limites.acces-ecran manquant");
 		Objects.requireNonNull(qrCode, "croustyquizz.limites.qr-code manquant");
+		Objects.requireNonNull(inscriptionContact, "croustyquizz.limites.inscription-contact manquant");
 	}
 
 	/** Rafale acceptée d'un coup, puis un jeton regagné à chaque intervalle. */

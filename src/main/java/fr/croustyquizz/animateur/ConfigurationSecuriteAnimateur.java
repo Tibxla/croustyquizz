@@ -38,6 +38,7 @@ import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import fr.croustyquizz.campagne.CampagnesSmsControleur;
+import fr.croustyquizz.contact.ContactsControleur;
 import fr.croustyquizz.manche.Probleme;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.soiree.ServiceSoiree;
@@ -81,6 +82,7 @@ class ConfigurationSecuriteAnimateur {
 		filtre.setUrlPatterns(List.of(AnimateurControleur.CSRF, AnimateurControleur.INSCRIPTION, AnimateurControleur.SESSION,
 				AnimateurControleur.INVITATIONS, AnimateurControleur.INVITATIONS + "/*",
 				CampagnesSmsControleur.ROUTE, CampagnesSmsControleur.ROUTE + "/*",
+				ContactsControleur.ROUTE, ContactsControleur.EXPORT,
 				"/api/soirees", "/api/soirees/*", "/api/test/soirees/*"));
 		return filtre;
 	}
@@ -90,7 +92,8 @@ class ConfigurationSecuriteAnimateur {
 			CsrfTokenRepository jetons, HttpSessionSecurityContextRepository sessions, ServiceSoiree soirees)
 			throws Exception {
 		var campagnes = CHEMINS.matcher(CampagnesSmsControleur.ROUTE + "/**");
-		var compte = new OrRequestMatcher(campagnes, CHEMINS.matcher(AnimateurControleur.CSRF),
+		var contacts = new OrRequestMatcher(CHEMINS.matcher(ContactsControleur.ROUTE), CHEMINS.matcher(ContactsControleur.EXPORT));
+		var compte = new OrRequestMatcher(campagnes, contacts, CHEMINS.matcher(AnimateurControleur.CSRF),
 				CHEMINS.matcher(AnimateurControleur.INSCRIPTION), CHEMINS.matcher(AnimateurControleur.SESSION),
 				CHEMINS.matcher(AnimateurControleur.INVITATIONS), CHEMINS.matcher(AnimateurControleur.CONSULTATION_INVITATION),
 				CHEMINS.matcher(AnimateurControleur.ACCEPTATION_INVITATION));
@@ -104,7 +107,7 @@ class ConfigurationSecuriteAnimateur {
 				.authorizeHttpRequests(acces -> acces
 						.requestMatchers(AnimateurControleur.CSRF).permitAll()
 						.requestMatchers(new AndRequestMatcher(compte, AVEC_BEARER)).denyAll()
-						.requestMatchers(campagnes).authenticated()
+						.requestMatchers(campagnes, contacts).authenticated()
 						.requestMatchers(AnimateurControleur.INVITATIONS).authenticated()
 						.requestMatchers(HttpMethod.POST, AnimateurControleur.SESSION).permitAll()
 						.requestMatchers(AnimateurControleur.SESSION).authenticated()

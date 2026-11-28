@@ -78,7 +78,7 @@ Chaque package a un propriétaire, qui écrit et relit en premier ce qui s'y pas
 
 | Package | Propriétaire |
 |---|---|
-| `manche` (contrat commun), `tempsreel`, `photos`, `karaoke`, `freestyle`, `campagne`, pilotage automatique | Tibxla |
+| `manche` (contrat commun), `tempsreel`, `photos`, `karaoke`, `freestyle`, `contact`, `campagne`, pilotage automatique | Tibxla |
 | `quiz`, `animateur`, classement général | Piyakabib |
 | `soiree`, `blindtest`, déroulement manuel des Manches, format Équipe, `assistant` (serveur MCP) | nRayen |
 

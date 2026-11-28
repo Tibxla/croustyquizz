@@ -39,14 +39,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Limite de requêtes du Buzz, des Réponses et de l'accès à une Soirée (#4), avant toute exposition publique : un
+ * Limite de requêtes du Buzz, des Réponses, de l’inscription Contact et de l'accès à une Soirée (#4), avant toute exposition publique : un
  * seau à jetons par route et par clé, en mémoire, car l'application tourne sur une seule instance. Au-delà, la
  * requête n'atteint pas le contrôleur et reçoit {@code 429 TROP_DE_REQUETES} au format Probleme, avec
  * {@code Retry-After} (docs/api/README.md, « Limite de requêtes »).
  *
  * <p>Clés. Le Buzz, les Réponses et le QR code comptent par jeton : une empreinte de l'en-tête Authorization,
  * jamais le secret lui-même, et sans consulter la base avant la limite. Sans jeton, pour l'arrivée par code qui
- * n'a pas encore d'identité et pour l'accès de l'Écran, la clé est l'adresse IP de
+ * n'a pas encore d'identité, pour l'inscription Contact et pour l'accès de l'Écran, la clé est l'adresse IP de
  * {@link HttpServletRequest#getRemoteAddr()} : derrière
  * Render ou Tailscale Funnel, Tomcat y place déjà l'adresse du client tirée de X-Forwarded-For, mais seulement
  * quand la connexion vient d'un relais de confiance ({@code server.forward-headers-strategy: native}, relais
@@ -102,7 +102,8 @@ public final class LimiteDeRequetes extends OncePerRequestFilter {
 				new Regle("codes-inconnus", POST, "/api/soirees/rejoindre", Cle.ADRESSE, true, reglages.codesInconnus()),
 				new Regle("arrivees", POST, "/api/soirees/rejoindre", Cle.ADRESSE, false, reglages.arrivees()),
 				new Regle("acces-ecran", POST, soiree + "/acces-ecran", Cle.ADRESSE, false, reglages.accesEcran()),
-				new Regle("qr-code", "GET", soiree + "/qrcode", Cle.JETON, false, reglages.qrCode()));
+				new Regle("qr-code", "GET", soiree + "/qrcode", Cle.JETON, false, reglages.qrCode()),
+				new Regle("inscription-contact", POST, soiree + "/contact", Cle.ADRESSE, false, reglages.inscriptionContact()));
 	}
 
 	@Override
