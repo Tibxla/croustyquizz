@@ -46,19 +46,20 @@ paths:
   /api/animateurs:
     post:
       operationId: inscrireAnimateur
-      summary: Créer un Lieu et son premier Animateur
+      summary: Créer un Lieu et ouvrir la session de son premier Animateur
       description: >-
         Inscription initiale atomique d’un Lieu et de son premier Animateur. L’e-mail est unique sans distinction
         de casse (409 EMAIL_DEJA_UTILISE). Ce 409 révèle qu’un compte existe pour cet e-mail : sans confirmation
         par e-mail, l’inscription ne peut pas répondre de façon neutre. Le mot de passe est haché côté serveur et
-        absent des réponses. L’Animateur se connecte ensuite via connecterAnimateur. Les Animateurs suivants du Lieu
-        arrivent par invitation (creerInvitationAnimateur).
+        absent des réponses. Une fois le compte créé, le serveur ouvre la session Animateur et renouvelle
+        JSESSIONID. Récupérer ensuite un nouveau jeton CSRF. Les Animateurs suivants du Lieu arrivent par
+        invitation (creerInvitationAnimateur).
       tags:
       - Accès
       security: []
       responses:
         '201':
-          description: Opération réussie.
+          description: Lieu et compte créés, session ouverte.
           headers:
             Cache-Control:
               description: Toujours no-store, notamment pour les secrets, vues et corrections.
@@ -66,10 +67,14 @@ paths:
                 type: string
                 const: no-store
             Location:
-              description: URI de la ressource créée, sans secret.
+              description: URI de la session, sans secret.
               schema:
                 type: string
-                format: uri-reference
+                const: /api/animateurs/session
+            Set-Cookie:
+              description: JSESSIONID renouvelé, HttpOnly, SameSite=Lax, Secure en HTTPS.
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -88,7 +93,7 @@ paths:
       - name: X-CSRF-TOKEN
         in: header
         required: true
-        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        description: Jeton obtenu par GET /api/csrf dans cette session. Le renouveler après l’inscription.
         schema:
           type: string
           minLength: 16

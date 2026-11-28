@@ -13,7 +13,6 @@ import tools.jackson.databind.json.JsonMapper;
 /** Ouvre une vraie session de test avec son cookie et le CSRF renouvelé. */
 public record SessionAnimateurHttp(String cookie, String csrf) {
 	private static final String CONTRAT = "docs/api/openapi.yaml";
-	private static final String SESSION = "/api/animateurs/session";
 	private static final String CSRF = "X-CSRF-TOKEN";
 
 	public static SessionAnimateurHttp ouvrir(int port, JsonMapper json) throws Exception {
@@ -34,10 +33,7 @@ public record SessionAnimateurHttp(String cookie, String csrf) {
 						"lieu", Map.of("nom", "Le Balcon", "ville", "Nanterre")))
 				.retrieve().toEntity(String.class);
 		ContratApi.verifier(CONTRAT, "inscrireAnimateur", inscription);
-		var connexion = client.post().uri(SESSION).headers(entetes -> entetes.addAll(anonyme.entetes()))
-				.body(Map.of("email", email, "motDePasse", motDePasse)).retrieve().toEntity(String.class);
-		ContratApi.verifier(CONTRAT, "connecterAnimateur", connexion);
-		String cookie = cookie(connexion);
+		String cookie = cookie(inscription);
 		var renouvellement = client.get().uri("/api/csrf").header(HttpHeaders.COOKIE, cookie)
 				.retrieve().toEntity(String.class);
 		ContratApi.verifier(CONTRAT, "obtenirCsrf", renouvellement);

@@ -19,7 +19,7 @@ Les opérations HTTP sont identifiées par leur `operationId` : les exemples uti
 
 ## Périmètre
 
-Le premier parcours est : inscription du premier Animateur d’un Lieu, connexion, création d’une Soirée **Solo / Manuel**, préparation d’une Manche de **Quiz**, ouverture aux Joueurs, lancement, trois Questions et Classement général final. Les Questions de ce parcours sont rédigées par l’Animateur ; la banque française et l’import relèvent des extensions du Quiz.
+Le premier parcours commence par l’inscription du premier Animateur d’un Lieu, qui ouvre sa session. Il se poursuit par la création d’une Soirée **Solo / Manuel**, la préparation d’une Manche de **Quiz**, l’ouverture aux Joueurs, le lancement, trois Questions et le Classement général final. Les Questions de ce parcours sont rédigées par l’Animateur. La banque française et l’import relèvent des extensions du Quiz.
 
 Le code d’accès est créé à l’ouverture, reste utilisable pour les arrivées tardives et n’est pas une preuve d’identité. La préparation et le programme restent modifiables en `PREPARATION` et `OUVERTE`, conformément à #9. Le lancement vérifie que le programme est non vide et que chaque Manche de Quiz dispose du nombre de Questions prévu, sinon `409 PROGRAMME_INCOMPLET`. Les Manches de Karaoké et de Freestyle n’ont pas de Questions : `preparerQuestions` sur une telle Manche répond `409 ETAT_INCOMPATIBLE`, sans modification. Chaque Question a quatre propositions distinctes et une seule solution.
 
@@ -41,7 +41,7 @@ Le jeton Joueur doit rester utilisable pour la reconnexion pendant la Soirée. L
 
 Les opérations sans Soirée, comme la création, reçoivent l’identité de session `AnimateurConnecte` (`animateurId`, `lieuId`) côté serveur. La création enregistre ce Lieu, et `listerSoirees` ne rend que les Soirées de ce Lieu, de la plus récemment créée à la plus ancienne. Pour une opération sur une Soirée, le serveur résout un Acteur Animateur pour cette Soirée après avoir vérifié son Lieu. Les anciennes Soirées sans Lieu donnent aussi `404 RESSOURCE_INTROUVABLE` aux Animateurs connectés.
 
-Pour la session Animateur, obtenir un jeton par `GET /api/csrf`, puis envoyer `X-CSRF-TOKEN` avec les opérations mutantes. L’inscription et la connexion sont également protégées contre les requêtes intersites. Après connexion/déconnexion, récupérer un nouveau jeton. Le cookie de session est `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS.
+Pour la session Animateur, obtenir un jeton par `GET /api/csrf`, puis envoyer `X-CSRF-TOKEN` avec les opérations mutantes. L’inscription et la connexion sont également protégées contre les requêtes intersites. Après inscription, connexion ou déconnexion, récupérer un nouveau jeton. Le cookie de session est `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS.
 
 Sur les routes de compte, un en-tête `Authorization: Bearer …` entraîne un refus sans contrôle CSRF : `403 ACCES_REFUSE` pour l’inscription et la connexion, `401 AUTHENTIFICATION_REQUISE` pour la consultation et la déconnexion. Pour les requêtes de la session navigateur, un jeton CSRF absent ou invalide entraîne `403 CSRF_INVALIDE`. La déconnexion invalide la session et ferme les connexions STOMP de la Console qui en dépendent (voir plus bas) ; une connexion ouverte avec un Bearer n’en dépend pas.
 

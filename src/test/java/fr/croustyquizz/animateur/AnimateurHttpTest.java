@@ -54,6 +54,38 @@ class AnimateurHttpTest {
 	}
 
 	@Test
+	void ouvreLaSessionALInscriptionEtDonneAccesAuxSoireesDuLieu() throws Exception {
+		try (var client = HttpClient.newHttpClient()) {
+			var csrf = obtenirCsrf(client);
+			String anonyme = cookie(csrf);
+			var creation = envoyer(client, "POST", INSCRIPTION,
+					Map.of("Cookie", anonyme, CSRF, jeton(csrf), "X-Forwarded-Proto", "https"),
+					inscription("lou@exemple.test", "un mot de passe de test", "La Lanterne"));
+			JsonNode compte = verifier("inscrireAnimateur", 201, creation);
+			assertThat(creation.headers().firstValue("Set-Cookie"))
+					.hasValueSatisfying(entete -> assertThat(entete).startsWith("JSESSIONID=")
+							.contains("HttpOnly", "SameSite=Lax", "Secure"));
+			String session = cookie(creation);
+			assertThat(session).isNotEqualTo(anonyme);
+			var entetes = Map.of("Cookie", session);
+			assertThat(verifier("consulterAnimateur", 200, envoyer(client, "GET", SESSION, entetes, null)))
+					.isEqualTo(compte.path("animateur"));
+			assertThat(verifier("listerSoirees", 200, envoyer(client, "GET", "/api/soirees", entetes, null))
+					.path("soirees").isEmpty()).isTrue();
+			verifierRefus("listerSoirees", 401, "AUTHENTIFICATION_REQUISE",
+					envoyer(client, "GET", "/api/soirees", Map.of("Cookie", anonyme), null));
+
+			var soiree = Map.of("titre", "Première Soirée", "format", "SOLO", "pilotage", "MANUEL");
+			verifierRefus("creerSoiree", 403, "CSRF_INVALIDE", envoyer(client, "POST", "/api/soirees",
+					Map.of("Cookie", session, CSRF, jeton(csrf)), soiree));
+			var renouvele = envoyer(client, "GET", "/api/csrf", entetes, null);
+			verifier("obtenirCsrf", 200, renouvele);
+			verifier("creerSoiree", 201, envoyer(client, "POST", "/api/soirees",
+					Map.of("Cookie", session, CSRF, jeton(renouvele)), soiree));
+		}
+	}
+
+	@Test
 	void inscritLePremierAnimateurEtRefuseUnDoublonSansCreerDeLieu(CapturedOutput journal) throws Exception {
 		String motDePasse = "bistrot-des-étoiles";
 		try (var client = HttpClient.newHttpClient()) {
@@ -70,10 +102,13 @@ class AnimateurHttpTest {
 			assertThat(creation.headers().firstValue("Location")).contains(SESSION);
 			assertThat(creation.body()).doesNotContain(motDePasse, "Camille@exemple.test");
 
-			var doublon = envoyer(client, "POST", INSCRIPTION, entetes,
+			var autreCsrf = obtenirCsrf(client);
+			var doublon = envoyer(client, "POST", INSCRIPTION, Map.of("Cookie", cookie(autreCsrf), CSRF, jeton(autreCsrf)),
 					inscription("camille@EXEMPLE.test", motDePasse, "Lieu en doublon"));
 			assertThat(verifier("inscrireAnimateur", 409, doublon).path("code").asString())
 					.isEqualTo("EMAIL_DEJA_UTILISE");
+			verifierRefus("consulterAnimateur", 401, "AUTHENTIFICATION_REQUISE",
+					envoyer(client, "GET", SESSION, Map.of("Cookie", cookie(autreCsrf)), null));
 			assertThat(jdbc.sql("select count(*) from lieu where nom = 'Lieu en doublon'")
 					.query(Integer.class).single()).isZero();
 			String empreinte = jdbc.sql("select mot_de_passe_hache from animateur where id = cast(:id as uuid)")
@@ -89,11 +124,12 @@ class AnimateurHttpTest {
 		String motDePasse = prefixe + "a";
 		String email = "daniele@exemple.test";
 		try (var client = HttpClient.newHttpClient()) {
+			var inscription = obtenirCsrf(client);
+			JsonNode compte = verifier("inscrireAnimateur", 201, envoyer(client, "POST", INSCRIPTION,
+					Map.of("Cookie", cookie(inscription), CSRF, jeton(inscription)), inscription(email, motDePasse, "Le Balcon")));
 			var csrf = obtenirCsrf(client);
 			String cookieAnonyme = cookie(csrf);
 			var entetes = Map.of("Cookie", cookieAnonyme, CSRF, jeton(csrf), "X-Forwarded-Proto", "https");
-			JsonNode compte = verifier("inscrireAnimateur", 201,
-					envoyer(client, "POST", INSCRIPTION, entetes, inscription(email, motDePasse, "Le Balcon")));
 
 			verifierRefus("consulterAnimateur", 401, "AUTHENTIFICATION_REQUISE",
 					envoyer(client, "GET", SESSION, Map.of("Cookie", cookieAnonyme), null));
@@ -128,10 +164,8 @@ class AnimateurHttpTest {
 		try (var client = HttpClient.newHttpClient()) {
 			var initial = obtenirCsrf(client);
 			var entetes = Map.of("Cookie", cookie(initial), CSRF, jeton(initial));
-			verifier("inscrireAnimateur", 201,
-					envoyer(client, "POST", INSCRIPTION, entetes, inscription(email, motDePasse, "Le Signal")));
-			var authentifie = envoyer(client, "POST", SESSION, entetes, connexion(email, motDePasse));
-			verifier("connecterAnimateur", 200, authentifie);
+			var authentifie = envoyer(client, "POST", INSCRIPTION, entetes, inscription(email, motDePasse, "Le Signal"));
+			verifier("inscrireAnimateur", 201, authentifie);
 			String session = cookie(authentifie);
 
 			verifierRefus("deconnecterAnimateur", 403, "CSRF_INVALIDE",
@@ -169,9 +203,11 @@ class AnimateurHttpTest {
 			assertThat(jdbc.sql("select email from animateur where id = cast(:id as uuid)")
 					.param("id", compte.at("/animateur/id").asString()).query(String.class).single())
 					.isEqualTo("élise.ñúñez@exemple.test");
+			var autreCsrf = obtenirCsrf(client);
+			var autresEntetes = Map.of("Cookie", cookie(autreCsrf), CSRF, jeton(autreCsrf));
 			verifierRefus("inscrireAnimateur", 409, "EMAIL_DEJA_UTILISE", envoyer(client, "POST", INSCRIPTION,
-					entetes, inscription("élise.ñúñez@exemple.test", motDePasse, "L’Écluse bis")));
-			assertThat(verifier("connecterAnimateur", 200, envoyer(client, "POST", SESSION, entetes,
+					autresEntetes, inscription("élise.ñúñez@exemple.test", motDePasse, "L’Écluse bis")));
+			assertThat(verifier("connecterAnimateur", 200, envoyer(client, "POST", SESSION, autresEntetes,
 					connexion("ÉLISE.ÑÚÑEZ@EXEMPLE.TEST", motDePasse)))).isEqualTo(compte.path("animateur"));
 		}
 	}
