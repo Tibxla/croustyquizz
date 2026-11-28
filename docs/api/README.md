@@ -490,3 +490,29 @@ Un Écran de salle ne peut télécharger que le JPEG à l'affiche. Aucun Joueur
 n'a accès au téléchargement. Les octets ne figurent dans aucune vue.
 
 Voir [le parcours complet](exemples/parcours-photos.yaml).
+
+## Campagnes SMS (#33)
+
+Les opérations `previsualiserCampagneSms`, `creerCampagneSms`, `listerCampagnesSms` et
+`consulterCampagneSms` utilisent la session de l’Animateur. Les deux POST exigent le jeton CSRF.
+Chaque réponse est propre au Lieu de la session. Le détail d’une Campagne inconnue ou d’un autre Lieu donne 404.
+Les réponses ne contiennent ni numéros de téléphone ni liens personnels de désinscription.
+
+L’aperçu calcule le prochain créneau en heure de Paris, le nombre de Contacts éligibles et un coût
+en centimes. L’estimation multiplie le nombre de destinataires par le tarif par segment et par le plus
+grand nombre de segments calculé pour le lien d’exemple et les liens des destinataires.
+Le tarif de simulation est de 5 centimes par segment par défaut, configurable avec
+`croustyquizz.campagnes.tarif-par-segment`. Le texte nettoyé doit tenir, mention STOP comprise,
+dans six segments au plus. Le texte vide ou trop long donne 422 `TEXTE_SMS_INVALIDE`.
+
+La création renvoie 201 et la localisation de la Campagne. Une répétition de la même
+`Idempotency-Key` pour le même texte nettoyé dans le même Lieu rend 200 avec l’état courant.
+La réutilisation de la clé avec un autre texte donne 409 `CLE_IDEMPOTENCE_REUTILISEE`.
+Sans destinataire éligible, une nouvelle création donne 409 `AUCUN_CONTACT_ELIGIBLE`.
+La création retient les identifiants des Contacts éligibles à cet instant. Le serveur relit le Consentement
+au moment de l’envoi. Un Contact devenu inéligible n’a pas de résultat d’envoi et ne figure dans aucun compteur.
+L’aperçu reste une estimation, le nombre de destinataires étant susceptible d’évoluer.
+
+Les envois de cette tranche sont simulés. La liste affiche les Campagnes programmées, en cours et terminées,
+avec les compteurs d’envois simulés réussis et échoués. Elle fournit aussi le nombre courant de
+Contacts éligibles du Lieu. Les erreurs d’envoi ont un motif sans donnée de Contact.

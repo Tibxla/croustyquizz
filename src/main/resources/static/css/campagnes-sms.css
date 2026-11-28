@@ -1,0 +1,114 @@
+.entete--campagnes {
+  --largeur: 65rem;
+}
+
+.campagnes {
+  --largeur: 65rem;
+  width: min(100% - 2 * var(--espace-4), var(--largeur));
+}
+
+.campagnes__entete {
+  display: grid;
+  gap: var(--espace-2);
+}
+
+.campagnes__entete h1 {
+  font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem);
+}
+
+.campagnes__contenu,
+.campagnes__redaction,
+#apercu-campagne {
+  display: grid;
+  gap: var(--espace-4);
+}
+
+.campagnes__redaction {
+  align-items: start;
+}
+
+.campagnes__redaction > *,
+.campagnes__contenu > * {
+  min-width: 0;
+}
+
+@media (min-width: 54rem) {
+  .campagnes__redaction {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+}
+
+.campagnes textarea {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+  padding: var(--espace-3) var(--espace-4);
+  border: 2px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-0);
+  color: var(--texte);
+  font: inherit;
+  caret-color: var(--citron);
+}
+
+.campagnes textarea:focus-visible {
+  border-color: var(--citron);
+  outline-offset: 2px;
+}
+
+.campagnes__compteur {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.campagnes__compteur[data-hors-limite] {
+  color: var(--refus);
+}
+
+.campagnes__info {
+  border-top: 1px dashed var(--fond-4);
+  padding-top: var(--espace-3);
+  color: var(--texte-2);
+}
+
+.campagnes__sms {
+  padding: var(--espace-3) var(--espace-4);
+  border-radius: var(--rayon);
+  background: var(--fond-0);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.campagnes__estimations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+  gap: var(--espace-3);
+  margin: 0;
+}
+
+.campagnes__estimations > div {
+  border-top: 1px solid var(--fond-3);
+  padding-block-start: var(--espace-2);
+}
+
+.campagnes__estimations dt {
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+
+.campagnes__estimations dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.campagnes__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espace-2);
+}
+
+.campagnes__liste-texte {
+  white-space: pre-wrap;
+}

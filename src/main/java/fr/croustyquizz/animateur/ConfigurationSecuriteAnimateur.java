@@ -37,6 +37,7 @@ import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
+import fr.croustyquizz.campagne.CampagnesSmsControleur;
 import fr.croustyquizz.manche.Probleme;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.soiree.ServiceSoiree;
@@ -79,6 +80,7 @@ class ConfigurationSecuriteAnimateur {
 		// Dans ces préfixes, securityMatcher écarte les routes publiques et les accès Bearer de Soirée.
 		filtre.setUrlPatterns(List.of(AnimateurControleur.CSRF, AnimateurControleur.INSCRIPTION, AnimateurControleur.SESSION,
 				AnimateurControleur.INVITATIONS, AnimateurControleur.INVITATIONS + "/*",
+				CampagnesSmsControleur.ROUTE, CampagnesSmsControleur.ROUTE + "/*",
 				"/api/soirees", "/api/soirees/*", "/api/test/soirees/*"));
 		return filtre;
 	}
@@ -87,7 +89,8 @@ class ConfigurationSecuriteAnimateur {
 	SecurityFilterChain securiteAnimateur(HttpSecurity http, JsonMapper json,
 			CsrfTokenRepository jetons, HttpSessionSecurityContextRepository sessions, ServiceSoiree soirees)
 			throws Exception {
-		var compte = new OrRequestMatcher(CHEMINS.matcher(AnimateurControleur.CSRF),
+		var campagnes = CHEMINS.matcher(CampagnesSmsControleur.ROUTE + "/**");
+		var compte = new OrRequestMatcher(campagnes, CHEMINS.matcher(AnimateurControleur.CSRF),
 				CHEMINS.matcher(AnimateurControleur.INSCRIPTION), CHEMINS.matcher(AnimateurControleur.SESSION),
 				CHEMINS.matcher(AnimateurControleur.INVITATIONS), CHEMINS.matcher(AnimateurControleur.CONSULTATION_INVITATION),
 				CHEMINS.matcher(AnimateurControleur.ACCEPTATION_INVITATION));
@@ -101,6 +104,7 @@ class ConfigurationSecuriteAnimateur {
 				.authorizeHttpRequests(acces -> acces
 						.requestMatchers(AnimateurControleur.CSRF).permitAll()
 						.requestMatchers(new AndRequestMatcher(compte, AVEC_BEARER)).denyAll()
+						.requestMatchers(campagnes).authenticated()
 						.requestMatchers(AnimateurControleur.INVITATIONS).authenticated()
 						.requestMatchers(HttpMethod.POST, AnimateurControleur.SESSION).permitAll()
 						.requestMatchers(AnimateurControleur.SESSION).authenticated()
