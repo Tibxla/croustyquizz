@@ -73,6 +73,16 @@ Les réglages propres à chaque Mode de jeu ont leur emplacement : côté serveu
 
 Le test `SoireesDuLieuHttpTest` vérifie la route sur PostgreSQL contre le contrat : ordre, états, Lieu B invisible pour le Lieu A, Soirées sans Lieu écartées, 401 sans session ou avec un Bearer.
 
+## Recette des pages de l’Animateur hors Console (#282)
+
+L’accueil (`/`), l’inscription, la connexion, les Soirées du Lieu et la préparation partagent `css/compte.css` : une colonne centrée, le mot-symbole en tête qui ramène à l’accueil et, une fois connecté, le menu du compte (`js/menu-compte.mjs`). Ce menu est un bouton qui déplie un panneau (motif « disclosure », sans `role="menu"`) : Soirées du Lieu, Préparer une Soirée (la page en cours porte `aria-current` et une coche), Se déconnecter. Il reprend le nom de la session déjà consultée par la page, sans nouvel appel. La préparation (`js/preparation-soiree.mjs`) n’emploie plus la barre de la Console : après la création, trois étapes (code d’accès, Écran de salle, Console d’animation) et une seule action citron selon l’état (`decrirePreparation`). `tools/ecrans/pages-animateur.test.mjs` couvre les libellés, la structure des pages, les choix et le menu au clavier.
+
+1. Déconnecté, ouvrir `/` : la page suit la charte (brun tabac, tutoiement) et propose deux tickets, « J’anime une Soirée » (vers `/soirees.html`, donc la connexion) et « Je rejoins une Soirée » (vers `/rejoindre.html`), plus « Crée-le » pour un Lieu sans compte.
+2. Sur la connexion et l’inscription, le mot-symbole ramène à l’accueil et « Rejoindre une Soirée » oriente un Joueur égaré. Après l’inscription, la connexion confirme « Ton compte est créé. » en vert d’eau.
+3. Connecté, sur `/soirees.html` : au clavier, Entrée ou Espace sur le bouton du compte ouvre le menu, Tab y entre, Échap le ferme et rend le focus au bouton ; un clic ou un focus hors du menu le referme. « Se déconnecter » ramène à la connexion ; un échec s’explique dans le menu.
+4. Préparer une Soirée : Format et Pilotage se choisissent sur des cartes de 44 px au moins, chacune expliquée en une ligne ; la carte entière est cliquable et le focus se voit sur la carte. Après « Créer la Soirée », le focus va au titre ; seule « Ouvrir aux Joueurs » est citron. Après l’ouverture, le code s’affiche en grand, le focus va à sa consigne et seule « Ouvrir la Console d’animation » est citron. Une Soirée terminée n’a plus ni code, ni Écran de salle, ni action citron, et propose « Revoir dans la Console ».
+5. À 360 × 740, 390 × 844, 1024 × 768, 1280 × 720, 1440 × 900 et 1920 × 1080, avec un nom d’Animateur et un titre de Soirée longs : aucune page ne défile en largeur ; le nom se tronque dans le bouton du compte et s’affiche en entier dans le menu.
+
 ## Recette du déroulement manuel d’une Soirée (#12)
 
 1. En profil `dev`, créer une Soirée en Pilotage Manuel dans `/preparer-soiree.html`. Ouvrir sa Console via `/test/identite.html?soiree=<UUID>`, rôle Animateur, Pilotage actuel et module factice décoché. Ajouter deux Manches de Karaoké, puis déplacer la seconde en tête. Ouvrir la Soirée aux Joueurs depuis la préparation.

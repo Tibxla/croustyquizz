@@ -488,7 +488,10 @@ class SoireeHttpTest {
 	@Test
 	void lEcranDeSalleDuParcoursEstLaCoquilleCommune() {
 		// La préparation ouvre ecran.html avec la clé d'Écran ; l'ancienne page dédiée n'est plus servie (#106).
-		assertThat(envoyer(HttpMethod.GET, "/preparer-soiree.html", null).getBody()).contains("/ecran.html?");
+		// Son script est dans un module depuis #282.
+		assertThat(envoyer(HttpMethod.GET, "/preparer-soiree.html", null).getBody())
+				.contains("src=\"/js/preparation-soiree.mjs\"");
+		assertThat(envoyer(HttpMethod.GET, "/js/preparation-soiree.mjs", null).getBody()).contains("/ecran.html?");
 		assertThat(envoyer(HttpMethod.GET, "/ecran-de-salle.html", null).getStatusCode().value()).isEqualTo(404);
 	}
 

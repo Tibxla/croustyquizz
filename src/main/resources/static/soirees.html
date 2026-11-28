@@ -9,12 +9,16 @@
 	<script type="module" src="/js/soirees-du-lieu.mjs"></script>
 </head>
 <body>
+	<header class="entete">
+		<a class="marque" href="/" aria-label="CroustyQuizz, accueil">Crousty<span class="marque__accent">Quizz</span></a>
+		<div data-menu-compte></div>
+	</header>
+
 	<main class="compte compte--large">
-		<header><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
 		<section class="panneau" aria-labelledby="titre">
 			<div class="soirees__entete">
 				<h1 id="titre">Soirées du Lieu</h1>
-				<a class="bouton bouton--action" href="/preparer-soiree.html">Préparer une Soirée</a>
+				<a class="bouton bouton--action" href="/preparer-soiree.html"><span class="icone icone--ajouter" aria-hidden="true"></span>Préparer une Soirée</a>
 			</div>
 			<p class="envoi" role="status" data-statut-soirees>Chargement des Soirées…</p>
 			<div class="soirees" data-soirees aria-busy="true"></div>

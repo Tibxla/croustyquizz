@@ -4,46 +4,43 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>CroustyQuizz</title>
-	<style>
-		:root {
-			--fond: #14111f;
-			--carte: #1f1a30;
-			--texte: #f4f1fa;
-			--doux: #a9a2bd;
-			--accent: #ffb547;
-		}
-		* { box-sizing: border-box; }
-		body {
-			margin: 0;
-			min-height: 100vh;
-			display: grid;
-			place-items: center;
-			padding: 24px 16px;
-			background: var(--fond);
-			color: var(--texte);
-			font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-		}
-		main { width: min(720px, 100%); }
-		h1 { font-size: clamp(2.2rem, 8vw, 3.5rem); margin: 0 0 8px; letter-spacing: -0.02em; }
-		h1 span { color: var(--accent); }
-		p { color: var(--doux); line-height: 1.5; margin: 0 0 32px; }
-		ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-		li { background: var(--carte); border-radius: 12px; padding: 20px; }
-		li strong { display: block; margin-bottom: 6px; }
-		li small { color: var(--doux); }
-		.console-lien { display: inline-block; margin-top: 24px; color: var(--accent); }
-	</style>
+	<meta name="description" content="Quiz, Blind test, Karaoké et Freestyle : la salle joue depuis son téléphone.">
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/compte.css">
 </head>
 <body>
-	<main>
-		<h1>Crousty<span>Quizz</span></h1>
-		<p>Les soirées de votre bar, jouées depuis le téléphone de chaque client.</p>
-		<ul>
-			<li><strong>Quiz</strong><small>Répondez plus vite que la salle.</small></li>
-			<li><strong>Blind test</strong><small>Buzzez dès les premières notes.</small></li>
-			<li><strong>Karaoké</strong><small>Chantez, la salle vote.</small></li>
+	<header class="entete">
+		<a class="marque" href="/" aria-current="page" aria-label="CroustyQuizz, accueil">Crousty<span class="marque__accent">Quizz</span></a>
+	</header>
+
+	<main class="accueil">
+		<div class="accueil__texte">
+			<h1>La Soirée se joue depuis le téléphone.</h1>
+			<p>Quiz, Blind test, Karaoké et Freestyle : chaque Joueur répond, buzze, chante ou rappe depuis son téléphone, et la salle suit tout sur l’Écran de salle.</p>
+		</div>
+
+		<ul class="accueil__entrees" role="list">
+			<li>
+				<a class="entree ticket ticket--orange" href="/soirees.html">
+					<span class="ticket__numero"><span class="icone icone--micro" aria-hidden="true"></span></span>
+					<span class="ticket__corps">
+						<span class="entree__titre">J’anime une Soirée</span>
+						<span class="entree__aide">Prépare-la, puis pilote-la depuis la Console d’animation.</span>
+					</span>
+				</a>
+			</li>
+			<li>
+				<a class="entree ticket ticket--eau" href="/rejoindre.html">
+					<span class="ticket__numero"><span class="icone icone--telephone" aria-hidden="true"></span></span>
+					<span class="ticket__corps">
+						<span class="entree__titre">Je rejoins une Soirée</span>
+						<span class="entree__aide">Avec le code affiché sur l’Écran de salle. Pas de compte.</span>
+					</span>
+				</a>
+			</li>
 		</ul>
-		<a class="console-lien" href="/preparer-soiree.html">Préparer une Soirée</a>
+
+		<p class="accueil__inscription">Ton Lieu n’a pas encore de compte ? <a href="/inscription.html">Crée-le</a></p>
 	</main>
 </body>
 </html>
