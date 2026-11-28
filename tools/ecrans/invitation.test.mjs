@@ -139,7 +139,7 @@ test('l’invité voit le Lieu puis crée son compte avec la clé dans les corps
 	assert.deepEqual(appels.map(appel => appel.route), [SESSION, `${ROUTE}/consultation`, '/api/csrf', `${ROUTE}/acceptation`]);
 	assert.deepEqual(JSON.parse(appels[1].options.body), { cle: CLE });
 	assert.deepEqual(JSON.parse(appels[3].options.body), { cle: CLE, nom: 'Émilie', motDePasse: 'Un mot de passe de test' });
-	assert.deepEqual(destinations, ['/preparer-soiree.html']);
+	assert.deepEqual(destinations, ['/soirees.html']);
 	assert.equal(onglet.getItem(CLE_ONGLET), null);
 });
 

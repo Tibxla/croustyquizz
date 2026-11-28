@@ -48,15 +48,30 @@ La Console connectée consulte sa session toutes les cinq minutes (`maintenirSes
 2. Suis « Créer un compte ». Envoie le formulaire vide, puis une inscription valide. Vérifie au clavier le focus sur le premier champ en erreur et l’association du message au champ. L’inscription réussie ramène à la connexion.
 3. Saisis un mauvais mot de passe. Vérifie le message en français et le retour du focus au mot de passe. Connecte-toi avec le bon mot de passe : la préparation doit s’ouvrir.
 4. Crée et ouvre une Soirée, ouvre l’Écran de salle, puis ouvre la Console depuis la préparation. Vérifie le passage à « Vue synchronisée ». Depuis un autre profil de navigateur connecté à un second Lieu, essaie d’ouvrir les mêmes liens de préparation et de Console : la Soirée doit être signalée introuvable.
-5. Dans la Console, clique « Se déconnecter ». La page de connexion doit s’ouvrir et une nouvelle connexion doit ramener à la même Console. Avec un paramètre `retour` qui contient une URL absolue, la connexion doit ouvrir la préparation.
+5. Dans la Console, clique « Se déconnecter ». La page de connexion doit s’ouvrir et une nouvelle connexion doit ramener à la même Console. Avec un paramètre `retour` qui contient une URL absolue, ou sans `retour`, la connexion doit ouvrir les Soirées du Lieu (`/soirees.html`).
 6. En `dev` ou `recette`, reprends le parcours de démonstration avec un UUID absent de la base.
 
 ## Recette du programme de la Soirée (#9)
+
+Les réglages propres à chaque Mode de jeu ont leur emplacement : côté serveur, l’objet `reglages` de `CreationManche`, typé par mode et validé par la fabrique du mode ; côté Console, la table `REGLAGES_DES_MODES` de `js/programme-console.mjs`, où chaque mode proposé déclare ses champs (`zone`), leur lecture et leur résumé. Le Quiz y remplit ses réglages communs et le Karaoké n’a aucun champ. Le Blind test a ses réglages au contrat, mais pas encore ses champs dans la Console.
 
 1. Connecté comme Animateur, créer une Soirée dans `/preparer-soiree.html`, puis ouvrir sa Console depuis la préparation.
 2. Dans « Programme », ajouter un Quiz avec 3 étapes de 20 secondes puis un Karaoké. Déplacer le Karaoké en tête au clavier et vérifier le retour du focus à une commande de la même Manche.
 3. Ouvrir la Soirée depuis la page de préparation. Dans la Console, vérifier le passage à « Ouverte », retirer le Quiz et recharger pour vérifier l’ordre enregistré.
 4. Couper la connexion, vérifier que la Console suspend les commandes puis que la reconnexion restaure le programme. Démarrer ensuite le Karaoké par la route de test de la recette #114, avec l’identifiant de la Manche ajoutée, et vérifier que le programme reste visible avec la mention « Le programme est figé. ».
+
+## Recette des Soirées du Lieu (#9)
+
+`/soirees.html` liste les Soirées du Lieu de l’Animateur connecté (`listerSoirees`) en trois rubriques : En cours, À venir (en préparation ou ouvertes), Passées. Chaque rubrique va de la plus récemment créée à la plus ancienne. Avant le lancement, le lien mène à la préparation ; ensuite, à la Console. La connexion sans `retour`, l’acceptation d’une invitation et une Console ouverte sans `?soiree=` y mènent ; la préparation y revient par « Soirées du Lieu ».
+
+1. Connecté comme Animateur d’un Lieu neuf, ouvrir `/soirees.html` : la page annonce « Aucune Soirée pour ce Lieu. » et propose « Préparer une Soirée ».
+2. Créer deux Soirées, ouvrir la seconde, puis revenir par « Soirées du Lieu ». Les deux sont sous « À venir », la plus récente en tête, avec leur état en toutes lettres, et le code d’accès pour l’ouverte. Leur lien « Préparer » rouvre la bonne préparation.
+3. Lancer une Soirée depuis sa Console (recette #12), puis la terminer : elle passe sous « En cours » avec « Ouvrir la Console », puis sous « Passées » avec « Revoir dans la Console ».
+4. Donner à une Soirée un titre comme `<b>Quiz</b>` : il s’affiche tel quel, sans mise en forme.
+5. Depuis un autre profil de navigateur connecté à un second Lieu, ouvrir `/soirees.html` : aucune Soirée du premier Lieu n’y figure. Déconnecté, la page renvoie à la connexion avec `retour=/soirees.html`.
+6. Au clavier, à 390 × 844 puis à 1440 × 900 : chaque lien a un nom qui reprend le titre de sa Soirée, le focus reste visible et les lignes passent à la ligne sans débordement.
+
+Le test `SoireesDuLieuHttpTest` vérifie la route sur PostgreSQL contre le contrat : ordre, états, Lieu B invisible pour le Lieu A, Soirées sans Lieu écartées, 401 sans session ou avec un Bearer.
 
 ## Recette du déroulement manuel d’une Soirée (#12)
 

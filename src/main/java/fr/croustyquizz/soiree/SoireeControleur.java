@@ -2,6 +2,7 @@ package fr.croustyquizz.soiree;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.CacheControl;
@@ -20,7 +21,7 @@ import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.tempsreel.AccesAuxVues;
 
 /**
- * Routes de Soirée du contrat docs/api/openapi.yaml : creerSoiree,
+ * Routes de Soirée du contrat docs/api/openapi.yaml : listerSoirees, creerSoiree,
  * consulterSoiree, ouvrirSoiree, creerAccesEcran, consulterQrCodeSoiree et
  * rejoindreSoiree. Toutes passent par
  * {@link ServiceSoiree} et répondent en {@code Cache-Control: no-store}.
@@ -37,6 +38,12 @@ class SoireeControleur {
 	SoireeControleur(ServiceSoiree service, ServiceDesAcces acces) {
 		this.service = service;
 		this.acces = acces;
+	}
+
+	/** Le Lieu vient de la session : une Soirée d'un autre Lieu ou sans Lieu n'y figure jamais. */
+	@GetMapping("/api/soirees")
+	ResponseEntity<ListeSoirees> lister(AnimateurConnecte animateur) {
+		return ok(new ListeSoirees(service.duLieu(animateur.lieuId()).stream().map(ProjectionSoiree::de).toList()));
 	}
 
 	@PostMapping("/api/soirees")
@@ -107,6 +114,10 @@ class SoireeControleur {
 
 	private static <T> ResponseEntity<T> ok(T corps) {
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(corps);
+	}
+
+	/** Réponse de listerSoirees ({@code ListeSoirees} dans schemas.yaml). */
+	record ListeSoirees(List<ProjectionSoiree> soirees) {
 	}
 
 	/** Corps de creerSoiree ({@code CreationSoiree} dans schemas.yaml). */

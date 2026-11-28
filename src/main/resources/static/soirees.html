@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Soirées du Lieu · CroustyQuizz</title>
+	<link rel="stylesheet" href="/css/croustyquizz.css">
+	<link rel="stylesheet" href="/css/compte.css">
+	<script type="module" src="/js/soirees-du-lieu.mjs"></script>
+</head>
+<body>
+	<main class="compte compte--large">
+		<header><span class="marque">Crousty<span class="marque__accent">Quizz</span></span></header>
+		<section class="panneau" aria-labelledby="titre">
+			<div class="soirees__entete">
+				<h1 id="titre">Soirées du Lieu</h1>
+				<a class="bouton bouton--action" href="/preparer-soiree.html">Préparer une Soirée</a>
+			</div>
+			<p class="envoi" role="status" data-statut-soirees>Chargement des Soirées…</p>
+			<div class="soirees" data-soirees aria-busy="true"></div>
+			<noscript>Active JavaScript pour voir les Soirées du Lieu.</noscript>
+		</section>
+	</main>
+</body>
+</html>

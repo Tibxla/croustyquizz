@@ -1,6 +1,6 @@
 import { appeler, appelerAvecCsrf, memoire } from './api.js';
 import { ouvrirDialogue } from './dialogue.mjs';
-import { ROUTE_SESSION } from './compte.mjs';
+import { ROUTE_SESSION, SOIREES_DU_LIEU } from './compte.mjs';
 import { afficherErreurChamp, erreurDeCompte, validerChamps } from './formulaire-compte.mjs';
 
 const INVITATIONS = '/api/animateurs/invitations';
@@ -177,7 +177,7 @@ async function ouvrirInvitation(racine, navigation, onglet, cle) {
 			motDePasse.value = '';
 			oublierCleInvitation(onglet);
 			if (memoire.lire('croustyquizz.jeton')?.startsWith('demo:ANIMATEUR:')) memoire.oublier('croustyquizz.jeton');
-			navigation.replace('/preparer-soiree.html');
+			navigation.replace(SOIREES_DU_LIEU);
 			return;
 		}
 		bouton.textContent = 'Rejoindre le Lieu';

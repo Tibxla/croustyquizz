@@ -11,7 +11,7 @@ import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { appeler, memoire } from './api.js';
-import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION } from './compte.mjs';
+import { consulterSession, maintenirSession, renvoyerVersConnexion, ROUTE_SESSION, SOIREES_DU_LIEU } from './compte.mjs';
 import { monterInvitationConsole } from './invitation.mjs';
 
 const ecran = document.body.dataset.ecran;
@@ -90,7 +90,7 @@ async function demarrer() {
 		if (!session.ok || !session.corps?.id) throw new Error(session.detail ?? 'Impossible de vérifier ta session. Recharge la Console.');
 		identite = session.corps;
 		if (soireeId === null) {
-			location.replace('/preparer-soiree.html');
+			location.replace(SOIREES_DU_LIEU);
 			return;
 		}
 	}

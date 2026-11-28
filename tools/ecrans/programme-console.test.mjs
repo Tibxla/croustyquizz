@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { creerContexte } from '../../src/main/resources/static/js/contexte.mjs';
-import { monterProgramme } from '../../src/main/resources/static/js/programme-console.mjs';
+import { monterProgramme, REGLAGES_DES_MODES } from '../../src/main/resources/static/js/programme-console.mjs';
 import { creerTransport } from '../../src/main/resources/static/js/transport.mjs';
 import { creerDocument, terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
@@ -244,6 +245,24 @@ test('le Karaoké envoie un objet de réglages vide et le démontage annule l’
 	assert.equal(b.captures(), 0);
 });
 
+test('un mode proposé sans réglages dans la Console se signale au lieu d’un bouton inerte', () => {
+	const b = banc();
+	b.afficher([]);
+	b.connecter('synchronisee');
+	b.mode.value = 'FREESTYLE';
+	b.mode.dispatchEvent({ type: 'change' });
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 0);
+	assert.equal(b.erreurAjout.hidden, false);
+	assert.match(b.erreurAjout.textContent, /pas encore ses réglages dans la Console/);
+
+	b.mode.value = 'KARAOKE';
+	b.mode.dispatchEvent({ type: 'change' });
+	assert.equal(b.erreurAjout.hidden, true);
+	b.formulaire.dispatchEvent({ type: 'submit' });
+	assert.equal(b.appels.length, 1);
+});
+
 test('déplace avec une permutation complète, retire avec DELETE et affiche le programme figé', async () => {
 	const b = banc();
 	b.connecter('synchronisee');
@@ -323,4 +342,18 @@ test('les trois mutations de la Console passent par le transport de la session e
 	}
 	assert.deepEqual(etats, ['en-cours', 'accepte', 'en-cours', 'accepte', 'en-cours', 'accepte']);
 	assert.equal(b.captures(), 3);
+});
+
+test('chaque Mode de jeu proposé par la Console remplit son emplacement de réglages', () => {
+	const page = readFileSync(new URL('../../src/main/resources/static/console.html', import.meta.url), 'utf8');
+	const selecteur = page.match(/<select id="mode-manche"[\s\S]*?<\/select>/)[0];
+	const modes = [...selecteur.matchAll(/<option value="([A-Z_]+)"/g)].map(([, mode]) => mode);
+	assert.deepEqual(modes, ['QUIZ', 'BLIND_TEST', 'KARAOKE']);
+	assert.deepEqual(Object.keys(REGLAGES_DES_MODES).sort(), [...modes].sort());
+	for (const { zone } of Object.values(REGLAGES_DES_MODES)) {
+		if (zone) assert.match(page, new RegExp(`<fieldset[^>]* data-${zone}[ >]`));
+	}
+	assert.equal(REGLAGES_DES_MODES.QUIZ.decrire({ nombreEtapes: 1, tempsParEtapeSecondes: 20 }), '1 étape · 20 s par étape');
+	assert.equal(REGLAGES_DES_MODES.KARAOKE.decrire({ limitePassagesEnAttente: 2 }), 'Jusqu’à 2 Passages en attente');
+	assert.equal(REGLAGES_DES_MODES.QUIZ.decrire({}), '');
 });

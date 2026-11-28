@@ -1,6 +1,7 @@
 package fr.croustyquizz.soiree;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,6 +14,9 @@ import jakarta.persistence.LockModeType;
 interface DepotDeSoirees extends JpaRepository<Soiree, UUID> {
 
 	boolean existsByIdAndLieuId(UUID id, UUID lieuId);
+
+	/** Soirées du Lieu, de la plus récemment créée à la plus ancienne ; l'identifiant départage. */
+	List<Soiree> findByLieuIdOrderByCreeeLeDescIdDesc(UUID lieuId);
 
 	Optional<Soiree> findByCodeAccesAndEtatIn(String codeAcces, Collection<EtatSoiree> etats);
 

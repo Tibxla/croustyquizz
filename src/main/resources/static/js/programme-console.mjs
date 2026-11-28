@@ -1,19 +1,50 @@
 import { decrireManche } from './vue-commune.mjs';
 
-function decrireReglages({ reglages }) {
-	if (reglages.nombreEtapes !== undefined) {
-		const nombre = reglages.nombreEtapes;
-		return `${nombre} étape${nombre === 1 ? '' : 's'} · ${reglages.tempsParEtapeSecondes} s par étape`;
-	}
-	if (reglages.limitePassagesEnAttente !== undefined) {
-		const limite = reglages.limitePassagesEnAttente;
-		return `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`;
-	}
-	if (reglages.nombreMorceaux !== undefined) {
-		const nombre = reglages.nombreMorceaux, { type, idDeezer } = reglages.source;
-		return `${nombre} Morceau${nombre === 1 ? '' : 'x'} · ${type === 'GENRE' ? 'genre' : 'playlist'} Deezer ${idDeezer}`;
-	}
-	return '';
+/**
+ * Emplacement des réglages propres à chaque Mode de jeu (#9). Pour proposer un mode dans la Console, lui
+ * ajouter une entrée ici, puis son option dans « Mode de jeu » de console.html et, s'il a des champs, un
+ * fieldset `data-<zone>` dans le formulaire d'ajout. `lire` rend l'objet `reglages` de CreationManche
+ * (docs/api/schemas.yaml) ou `undefined` si la saisie est invalide. `decrire` résume les réglages
+ * d'une Manche du programme.
+ */
+export const REGLAGES_DES_MODES = {
+	QUIZ: {
+		zone: 'reglages-communs',
+		lire: reglagesQuiz,
+		decrire: ({ nombreEtapes, tempsParEtapeSecondes }) => nombreEtapes === undefined ? ''
+			: `${nombreEtapes} étape${nombreEtapes === 1 ? '' : 's'} · ${tempsParEtapeSecondes} s par étape`,
+	},
+	BLIND_TEST: {
+		zone: 'reglages-blindtest',
+		lire: reglagesBlindTest,
+		decrire: ({ nombreMorceaux, source }) => nombreMorceaux === undefined ? ''
+			: `${nombreMorceaux} Morceau${nombreMorceaux === 1 ? '' : 'x'} · ${source.type === 'GENRE' ? 'genre' : 'playlist'} Deezer ${source.idDeezer}`,
+	},
+	KARAOKE: {
+		// Sans champ : le serveur applique sa limite de Passages en attente.
+		lire: () => ({}),
+		decrire: ({ limitePassagesEnAttente: limite }) => limite === undefined ? ''
+			: `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`,
+	},
+};
+
+function decrireReglages({ mode, reglages }) {
+	return REGLAGES_DES_MODES[mode]?.decrire(reglages) ?? '';
+}
+
+function reglagesQuiz({ lireEntier }) {
+	const nombreEtapes = lireEntier('nombre-etapes', (min, max) => `Indique un nombre entier d’étapes entre ${min} et ${max}.`);
+	if (nombreEtapes === undefined) return;
+	const tempsParEtapeSecondes = lireEntier('temps-par-etape', (min, max) => `Indique une durée entière entre ${min} et ${max} secondes.`);
+	if (tempsParEtapeSecondes === undefined) return;
+	return { nombreEtapes, tempsParEtapeSecondes };
+}
+
+function reglagesBlindTest({ element }) {
+	return {
+		source: { type: element('source-blindtest').value, idDeezer: Number(element('id-deezer').value) },
+		nombreMorceaux: Number(element('nombre-morceaux').value),
+	};
 }
 
 /** Les mutations passent par HTTP et le programme affiché vient de la vue synchronisée. */
@@ -21,14 +52,12 @@ export function monterProgramme(panneau, contexte) {
 	const document = panneau.ownerDocument;
 	const element = nom => panneau.querySelector(`[data-${nom}]`);
 	const formulaire = element('ajout-manche');
-	const communs = element('reglages-communs');
+	const mode = element('mode-manche');
+	const zonesDeReglages = Object.entries(REGLAGES_DES_MODES).filter(([, { zone }]) => zone)
+		.map(([modeDeJeu, { zone }]) => [modeDeJeu, element(zone)]);
 	const champAvecErreur = nom => ({ champ: element(nom), erreur: element(`${nom}-erreur`) });
-	const choixMode = champAvecErreur('mode-manche');
-	const mode = choixMode.champ;
-	const nombre = champAvecErreur('nombre-etapes');
-	const temps = champAvecErreur('temps-par-etape');
+	const champsAvecErreur = ['mode-manche', 'nombre-etapes', 'temps-par-etape'].map(champAvecErreur);
 	const erreurAjout = element('ajout-manche-erreur');
-	const blindTest = element('reglages-blindtest');
 	const ajout = element('soumettre-manche');
 	const liste = element('programme');
 	const route = `/api/soirees/${contexte.soireeId}`;
@@ -72,24 +101,14 @@ export function monterProgramme(panneau, contexte) {
 
 	function actualiserReglages() {
 		effacerErreurs();
-		communs.hidden = mode.value !== 'QUIZ';
-		communs.disabled = communs.hidden;
-		if (blindTest) {
-			blindTest.hidden = mode.value !== 'BLIND_TEST';
-			blindTest.disabled = blindTest.hidden;
+		for (const [modeDeJeu, zone] of zonesDeReglages) {
+			zone.hidden = mode.value !== modeDeJeu;
+			zone.disabled = zone.hidden;
 		}
 	}
 
-	/** Réglages du Blind test ; le Quiz est validé champ par champ, le Karaoké utilise la limite du serveur. */
-	function reglagesBlindTest() {
-		return {
-			source: { type: element('source-blindtest').value, idDeezer: Number(element('id-deezer').value) },
-			nombreMorceaux: Number(element('nombre-morceaux').value),
-		};
-	}
-
 	function effacerErreurs() {
-		for (const { champ, erreur } of [choixMode, nombre, temps]) {
+		for (const { champ, erreur } of champsAvecErreur) {
 			erreur.hidden = true;
 			erreur.textContent = '';
 			champ.removeAttribute('aria-invalid');
@@ -105,7 +124,8 @@ export function monterProgramme(panneau, contexte) {
 		champ.focus();
 	}
 
-	function lireEntier(saisie, consigne) {
+	function lireEntier(nom, consigne) {
+		const saisie = champAvecErreur(nom);
 		const { champ } = saisie;
 		const valeur = Number(champ.value);
 		const min = Number(champ.getAttribute('min'));
@@ -121,16 +141,14 @@ export function monterProgramme(panneau, contexte) {
 		if (!peutEnvoyer()) return;
 		effacerErreurs();
 		const modeDemande = mode.value;
-		let reglages = {};
-		if (modeDemande === 'QUIZ') {
-			const nombreEtapes = lireEntier(nombre, (min, max) => `Indique un nombre entier d’étapes entre ${min} et ${max}.`);
-			if (nombreEtapes === undefined) return;
-			const tempsParEtapeSecondes = lireEntier(temps, (min, max) => `Indique une durée entière entre ${min} et ${max} secondes.`);
-			if (tempsParEtapeSecondes === undefined) return;
-			reglages = { nombreEtapes, tempsParEtapeSecondes };
-		} else if (modeDemande === 'BLIND_TEST') {
-			reglages = reglagesBlindTest();
+		const reglagesDuMode = REGLAGES_DES_MODES[modeDemande];
+		if (!reglagesDuMode) {
+			erreurAjout.textContent = 'Ce Mode de jeu n’a pas encore ses réglages dans la Console : il ne peut pas être ajouté.';
+			erreurAjout.hidden = false;
+			return;
 		}
+		const reglages = reglagesDuMode.lire({ element, lireEntier });
+		if (reglages === undefined) return;
 		void modifier('POST', '/manches', { mode: modeDemande, reglages }, reponse => {
 			// Le Probleme ne désigne aucun champ : le refus s'affiche sous le formulaire, sans en marquer un,
 			// et s'annonce par son rôle alert. Le focus reste où l'Animateur l'a laissé.

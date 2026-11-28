@@ -1,8 +1,8 @@
 import { appeler } from './api.js';
 
 export const ROUTE_SESSION = '/api/animateurs/session';
-const PREPARATION = '/preparer-soiree.html';
-const PAGES_PROTEGEES = new Set([PREPARATION, '/console.html']);
+export const SOIREES_DU_LIEU = '/soirees.html';
+const PAGES_PROTEGEES = new Set([SOIREES_DU_LIEU, '/preparer-soiree.html', '/console.html']);
 
 export function adresseConnexion(retour, { compteCree = false } = {}) {
 	const parametres = new URLSearchParams({ retour });
@@ -12,9 +12,9 @@ export function adresseConnexion(retour, { compteCree = false } = {}) {
 
 export function retourApresConnexion(recherche) {
 	const retour = new URLSearchParams(recherche).get('retour');
-	if (!retour?.startsWith('/') || retour.startsWith('//') || retour.includes('\\')) return PREPARATION;
+	if (!retour?.startsWith('/') || retour.startsWith('//') || retour.includes('\\')) return SOIREES_DU_LIEU;
 	const adresse = new URL(retour, 'https://croustyquizz.invalid');
-	if (!PAGES_PROTEGEES.has(adresse.pathname) || adresse.origin !== 'https://croustyquizz.invalid') return PREPARATION;
+	if (!PAGES_PROTEGEES.has(adresse.pathname) || adresse.origin !== 'https://croustyquizz.invalid') return SOIREES_DU_LIEU;
 	return adresse.pathname + adresse.search + adresse.hash;
 }
 

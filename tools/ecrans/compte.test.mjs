@@ -7,12 +7,17 @@ test('la connexion revient à la page protégée demandée', () => {
 	const destination = '/console.html?soiree=00000001-0000-4000-8000-000000000000';
 	assert.equal(retourApresConnexion(adresseConnexion(destination).split('?')[1]), destination);
 	assert.equal(retourApresConnexion('?retour=%2Fpreparer-soiree.html'), '/preparer-soiree.html');
+	assert.equal(retourApresConnexion('?retour=%2Fsoirees.html'), '/soirees.html');
+});
+
+test('sans retour, la connexion ouvre les Soirées du Lieu', () => {
+	assert.equal(retourApresConnexion(''), '/soirees.html');
 });
 
 test('la connexion écarte les URL absolues et les chemins hors du parcours', () => {
 	for (const retour of ['https://tiers.test', 'https://croustyquizz.invalid/console.html', '//tiers.test',
 		'/\\tiers.test', '/api/animateurs/session', '/connexion.html']) {
-		assert.equal(retourApresConnexion(new URLSearchParams({ retour })), '/preparer-soiree.html');
+		assert.equal(retourApresConnexion(new URLSearchParams({ retour })), '/soirees.html');
 	}
 });
 
