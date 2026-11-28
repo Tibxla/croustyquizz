@@ -52,7 +52,8 @@ paths:
         de casse (409 EMAIL_DEJA_UTILISE). Ce 409 révèle qu’un compte existe pour cet e-mail : sans confirmation
         par e-mail, l’inscription ne peut pas répondre de façon neutre. Le mot de passe est haché côté serveur et
         absent des réponses. L’Animateur se connecte ensuite via connecterAnimateur. L’invitation relève d’une
-        extension de #5.
+        extension de #5. Au-delà de la limite d’inscription par adresse IP, 429 TROP_DE_REQUETES avec
+        Retry-After (README.md, « Limite de requêtes »).
       tags:
       - Accès
       security: []
@@ -82,6 +83,8 @@ paths:
           $ref: '#/components/responses/Erreur409'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -104,8 +107,10 @@ paths:
       summary: Connecter un Animateur
       description: 'Crée ou renouvelle la session JSESSIONID ; le navigateur conserve le cookie HttpOnly, SameSite=Lax,
         Secure en HTTPS. Récupérer un nouveau CSRF après connexion. Identifiants refusés : 401 IDENTIFIANTS_INVALIDES,
-        sans distinguer e-mail et mot de passe. Limite connue : le nombre d’essais n’est pas encore limité ; une
-        limite est à ajouter avant toute exposition publique.'
+        sans distinguer e-mail et mot de passe. Une adresse IP qui a épuisé ses tentatives, ou un couple
+        e-mail normalisé et adresse IP qui a épuisé ses essais d’identification, reçoit 429 TROP_DE_REQUETES
+        avec Retry-After. Seuls les échecs d’identification alimentent le compteur du couple
+        (README.md, « Limite de requêtes »).'
       tags:
       - Accès
       security: []
@@ -134,6 +139,8 @@ paths:
           $ref: '#/components/responses/Erreur403'
         '422':
           $ref: '#/components/responses/Erreur422'
+        '429':
+          $ref: '#/components/responses/Erreur429'
         '503':
           $ref: '#/components/responses/Erreur503'
       parameters:
@@ -1530,10 +1537,11 @@ paths:
       summary: Signaler la présence de morceaux dans Attente
       description: >
         Écran de salle de cette Soirée uniquement, même hors Manche. Le dernier signal indique si le dossier
-        choisi contient des morceaux dans Attente. Il ne contient ni fichiers ni noms de morceaux et ne
-        change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur la Console
-        et l’Écran de salle tant que le délai de conservation des vues après la fin de la Soirée n’est pas
-        écoulé (24 h par défaut). Un signal identique réussit sans publication.
+        choisi contient des morceaux dans Attente. L’Écran de salle signale false sans nouveau choix de dossier
+        quand il a écarté comme illisibles tous ces morceaux. Le signal ne contient ni fichiers ni noms de
+        morceaux et ne change pas le choix de l’Animateur. Un changement publie musique-attente-modifiee sur
+        la Console et l’Écran de salle tant que le délai de conservation des vues après la fin de la Soirée
+        n’est pas écoulé (24 h par défaut). Un signal identique réussit sans publication.
         En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
         Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
       tags:
@@ -2345,7 +2353,8 @@ paths:
         EN_ATTENTE vers APPELE, étape créée par le serveur, échéance à delaiAppelMs (trente secondes) ;
         numeroModification augmente. Un seul événement passage-appele publie l’appel et la File d’attente
         recalculée sur la salle, la Console et toutes les Manettes. En Pilotage Automatique, le serveur
-        appelle le Passage suivant et cette commande est refusée. Le saut automatique relève du ticket #121.
+        appelle le Passage suivant et cette commande est refusée. À l’échéance de l’appel, le Passage
+        est sauté en Pilotage Automatique ; en Pilotage Manuel, l’échéance ne publie rien.
         Propres, dans l’ordre : 409 ETAT_INCOMPATIBLE (Manche en pause, puis Pilotage Automatique,
         puis courant actif) ; 409 COMMANDE_PERIMEE (compteur, Passage
         sorti de l’attente ou plus en position 1). Refus communs : 400 REQUETE_INVALIDE, 401
@@ -2430,10 +2439,13 @@ paths:
       description: 'Manche Karaoké active en Soirée EN_COURS. Joueur Interprète du Passage appelé, envoiId dans le
         corps. APPELE vers EN_COURS ; numeroModification augmente et la chronologie démarre aussitôt
         (demarreLe). Une lecture préparée pendant l’appel est figée ; sinon le Passage démarre en paroles
-        seules, motif ECRAN_NON_PRET, lecteurId nul. La confirmation reste acceptée après l’échéance, qui ne
-        publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
+        seules, motif ECRAN_NON_PRET, lecteurId nul. En Pilotage Manuel, la confirmation reste acceptée
+        après l’échéance, qui ne publie rien. Publie passage-demarre sur la salle, la Console et toutes les Manettes. Propres, dans
         l’ordre : 404 RESSOURCE_INTROUVABLE (Joueur non Interprète, avant tout reçu) ; 409 ETAT_INCOMPATIBLE
-        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE). Refus communs :
+        (Manche en pause) ; 409 COMMANDE_PERIMEE (compteur, étape ou état autre que APPELE) ;
+        409 HORS_DELAI en Pilotage Automatique (confirmation reçue à l’échéance de l’appel ou après,
+        tant que le Passage est encore APPELE), avec le détail « Le temps pour confirmer est écoulé. ».
+        Refus communs :
         400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE
         (Manche ou Passage inconnus, hors portée), 409 ENVOI_REUTILISE, 409 ETAPE_INACTIVE (sans reçu), 409
         ETAT_INCOMPATIBLE (Manche terminée), 503 SERVICE_INDISPONIBLE (sans reçu). Ordre : accès, état de la
@@ -3455,10 +3467,10 @@ components:
           schema:
             $ref: ./schemas.yaml#/$defs/Probleme
     Erreur429:
-      description: 'TROP_DE_REQUETES : la limite de requêtes de la route est atteinte pour ce jeton, cette clé
-        d’Écran ou cette adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé : aucun
-        reçu, aucune mutation. Un nouvel essai, décidé par la personne et jamais automatique, passe après
-        Retry-After.'
+      description: 'TROP_DE_REQUETES : le seuil de requêtes est atteint pour ce jeton, cette clé d’Écran,
+        cette adresse IP ou ce couple e-mail et adresse IP (README.md, « Limite de requêtes »). La requête n’a rien changé :
+        aucun reçu, aucune mutation. Retry-After indique quand le seuil atteint permet un nouvel essai, décidé
+        par la personne et jamais automatique.'
       headers:
         Cache-Control:
           description: Toujours no-store, notamment pour les secrets, vues et corrections.
@@ -3466,7 +3478,7 @@ components:
             type: string
             const: no-store
         Retry-After:
-          description: Secondes à attendre avant qu’un nouvel essai puisse passer, arrondies à l’entier supérieur.
+          description: Secondes à attendre avant de réessayer selon le seuil atteint, arrondies à l’entier supérieur.
           required: true
           schema:
             type: integer

@@ -3,7 +3,7 @@ import { creerGestionnaireDeMode } from './modules-de-mode.mjs';
 import { creerContexte } from './contexte.mjs';
 import { lireAcces } from './identite.mjs';
 import { adresseRetourArrivee, controlerJeton, creerAccesManette } from './acces-manette.mjs';
-import { afficherClassementDeSalle, decrireVue } from './vue-commune.mjs';
+import { afficherClassementDeSalle, decrirePalmaresDeSalle, decrireVue } from './vue-commune.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
@@ -11,6 +11,7 @@ import { monterBuzz } from './buzz-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
+import { creerLignePalmaresSalle } from './palmares.mjs';
 
 const ecran = document.body.dataset.ecran;
 const element = nom => document.querySelector(`[data-${nom}]`);
@@ -35,11 +36,26 @@ function lister(nom, valeurs, vide, maximum = Infinity) {
 		return li;
 	}));
 }
+function afficherPalmares(palmares) {
+	const zone = element('zone-palmares');
+	if (!zone) return;
+	zone.hidden = palmares === null;
+	const liste = element('palmares');
+	const vide = element('palmares-vide');
+	vide.hidden = palmares?.length !== 0;
+	liste.replaceChildren(...(palmares ?? []).map(ligne => {
+		if (ecran === 'ecran') return creerLignePalmaresSalle(document, ligne);
+		const li = document.createElement('li');
+		li.textContent = ligne.texte;
+		return li;
+	}));
+}
 function afficherCommun(vue, origine) {
 	const description = decrireVue(vue);
 	for (const nom of ['titre', 'resume', 'manche', 'buzz', 'personnel']) texte(nom, description[nom]);
 	lister('joueurs', description.joueurs, 'Aucun Joueur pour le moment.', ecran === 'ecran' ? 4 : Infinity);
 	lister('classement', description.classement, 'Aucun point attribué.');
+	afficherPalmares(ecran === 'ecran' ? decrirePalmaresDeSalle(vue) : description.palmares);
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue, origine);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
 	texte('attente', classementVisible ? '' : description.attente);

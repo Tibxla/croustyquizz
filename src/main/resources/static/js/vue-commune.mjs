@@ -13,6 +13,25 @@ export function decrireManche(manche) {
 	return `${manche.ordre + 1}. ${modes[manche.mode] ?? manche.mode} · ${etats[manche.etat] ?? manche.etat}`;
 }
 
+export const formaterNote = note => `${note} sur 5`;
+export const formaterValeurMoyenne = moyenneDixiemes => (moyenneDixiemes / 10).toFixed(1).replace('.', ',');
+export const formaterMoyenne = moyenneDixiemes => formaterNote(formaterValeurMoyenne(moyenneDixiemes));
+export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
+
+const listeInterpretes = new Intl.ListFormat('fr', { type: 'conjunction' });
+
+function decrireLignePalmares({ numero, rang, chanson, interpretes, nombreVotes, moyenneDixiemes }) {
+	const position = rang === null ? `n° ${numero}` : `${rang}. n° ${numero}`;
+	const pseudos = listeInterpretes.format(interpretes.map(interprete => interprete.pseudo));
+	const votes = formaterNombreVotes(nombreVotes);
+	const moyenne = moyenneDixiemes === null ? null : formaterValeurMoyenne(moyenneDixiemes);
+	const resultat = moyenne === null ? votes : `${formaterNote(moyenne)} (${votes})`;
+	return { numero, rang, titre: chanson.titre, interpretes: pseudos, moyenne, votes,
+		texte: `${position} · ${chanson.titre} · ${pseudos} · ${resultat}` };
+}
+
+const decrirePalmares = vue => vue.palmaresKaraoke?.map(decrireLignePalmares) ?? null;
+
 function decrireRangPersonnel(vue) {
 	if (vue.soiree.format !== 'SOLO') return '';
 	const ligne = vue.classement.find(ligne => ligne.concurrentId === vue.joueurId);
@@ -23,15 +42,17 @@ function decrireRangPersonnel(vue) {
 export function decrireVue(vue) {
 	const joueur = vue.joueurs.find(j => j.id === vue.joueurId);
 	const terminee = vue.soiree.etat === 'TERMINEE';
+	const palmares = decrirePalmares(vue);
 	return {
 		titre: vue.soiree.titre,
 		resume: [etats[vue.soiree.etat] ?? vue.soiree.etat, vue.soiree.format === 'EQUIPE' ? 'Équipe' : 'Solo',
 			vue.soiree.pilotage === 'AUTOMATIQUE' ? 'Pilotage automatique' : 'Pilotage manuel'].join(' · '),
 		manche: terminee ? 'Soirée terminée' :
 			vue.mancheActive ? `${modes[vue.modeEnCours] ?? vue.modeEnCours} · Manche ${vue.mancheActive.ordre + 1} · ${etats[vue.mancheActive.etat] ?? vue.mancheActive.etat}` : 'En attente de la prochaine Manche',
-		attente: !terminee && vue.modeEnCours === null ? 'La prochaine Manche s’affichera ici.' : '',
+		attente: !terminee && vue.modeEnCours === null && palmares === null ? 'La prochaine Manche s’affichera ici.' : '',
 		joueurs: vue.joueurs.map(j => `${j.pseudo} · ${j.connecte ? 'connecté' : 'déconnecté'}`),
 		classement: vue.classement.map(decrireLigne),
+		palmares,
 		buzz: vue.dernierBuzz ? `Dernier Buzz : ${vue.dernierBuzz.pseudo}` : 'Aucun Buzz reçu',
 		programme: (vue.programme ?? []).map(decrireManche),
 		personnel: joueur ? [joueur.pseudo, decrireRangPersonnel(vue), vue.mancheActive && !vue.eligiblePourMancheActive ?
@@ -41,13 +62,19 @@ export function decrireVue(vue) {
 	};
 }
 
+// Sur la salle, le Podium final de la Soirée terminée passe avant le Palmarès (#224) ; la Console garde le Palmarès.
+const podiumFinal = vue => vue.soiree.etat === 'TERMINEE';
+export const decrirePalmaresDeSalle = vue => podiumFinal(vue) ? null : decrirePalmares(vue);
+
+// Le Palmarès du Karaoké, quand il est présent, prend la place du Classement de salle (Q24, #123), sauf devant le Podium final.
 export function decrireClassementDeSalle(vue) {
-	if (vue.soiree.etat === 'TERMINEE') {
+	if (podiumFinal(vue)) {
 		const marches = [1, 2, 3]
 			.map(rang => ({ rang, concurrents: vue.classement.filter(ligne => ligne.rang === rang) }))
 			.filter(marche => marche.concurrents.length > 0);
 		return { titre: 'Podium final', podium: true, marches };
 	}
+	if (vue.palmaresKaraoke != null) return null;
 	if (vue.mancheActive || (vue.soiree.etat !== 'EN_COURS' && vue.classement.length === 0)) return null;
 	return { titre: 'Classement général · Top 10', podium: false, lignes: vue.classement.slice(0, 10).map(decrireLigne) };
 }

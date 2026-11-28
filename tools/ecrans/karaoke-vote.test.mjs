@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { corpsVote, etatVoteManette, formaterNote, formaterMoyenne, formaterNombreVotes, delaiVoteRestant, votesVisiblesSalle }
 	from '../../src/main/resources/static/js/modes/karaoke/vote.mjs';
+import { formaterMoyenne as moyenneCommune, formaterNombreVotes as nombreVotesCommun }
+	from '../../src/main/resources/static/js/vue-commune.mjs';
 
 const vote = { etat: 'OUVERT', interpretes: [{ joueurId: 'interprete' }], maNote: null };
 
@@ -25,6 +27,11 @@ test('les écrans formatent la note, la moyenne et le nombre de votes', () => {
 	assert.equal(formaterNombreVotes(1), '1 vote');
 	assert.equal(formaterNombreVotes(7), '7 votes');
 	assert.deepEqual([43, 40, 50, 10].map(formaterMoyenne), ['4,3 sur 5', '4,0 sur 5', '5,0 sur 5', '1,0 sur 5']);
+});
+
+test('le module du vote réexporte les deux formateurs communs', () => {
+	assert.ok(formaterMoyenne === moyenneCommune);
+	assert.ok(formaterNombreVotes === nombreVotesCommun);
 });
 
 const clotureLe = '2026-11-18T21:00:30Z';

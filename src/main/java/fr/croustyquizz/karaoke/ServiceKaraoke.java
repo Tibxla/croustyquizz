@@ -14,6 +14,7 @@ import tools.jackson.databind.JsonNode;
 public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraokePersiste> {
     private static final String CLE_LIMITE = "limitePassagesEnAttente";
     private final SocleDeManche socle;
+    private final PersistanceKaraokeJpa persistance;
     private final PorteeDePassage portee;
     private final ParticipantsDePassage participants;
     private final PersistancePassageJpa passages;
@@ -23,11 +24,12 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private final ChoixDeVersionParoles choixParoles;
     private final MemoireDeCalageJpa calages;
 
-    public ServiceKaraoke(FabriqueKaraoke fabrique, PersistanceDuMode<EtatKaraokePersiste> persistance,
+    public ServiceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance,
             SocleDeManche socle, PorteeDePassage portee, ParticipantsDePassage participants,
             PersistancePassageJpa passages, SourceDeParoles source, ProprietesKaraoke proprietes,
             ProprietesSourceKaraoke proprietesSource, ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
         super(fabrique, persistance, socle);
+        this.persistance = persistance;
         this.socle = socle; this.portee = portee; this.participants = participants; this.passages = passages;
         this.source = source; this.proprietes = proprietes; this.proprietesSource = proprietesSource;
         this.choixParoles = choixParoles; this.calages = calages;
@@ -345,7 +347,21 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private void verifierActivite(UUID soireeId, UUID mancheId) {
         if (!portee.estActive(soireeId, mancheId)) { throw inactive().exception(); }
     }
-    private <T> T lecture(UUID soireeId, Supplier<T> lire) {
+    List<VuesKaraoke.LignePalmaresKaraoke> composerPalmares(UUID soireeId, List<ManchePersistante> manches) {
+        var manchesKaraoke = manches.stream().filter(manche -> manche.getMode() == mode())
+                .map(ManchePersistante::getMancheId).toList();
+        var resultats = passages.resultatsDeVote(manchesKaraoke);
+        if (resultats.isEmpty()) { return List.of(); }
+        var contenus = persistance.contenus(resultats.stream().map(ResultatVote::passageId).toList());
+        // Un Passage sans contenu figé n'a pas de Chanson à montrer : l'écarter avant de classer garde des rangs contigus.
+        var classables = resultats.stream().filter(resultat -> contenus.containsKey(resultat.passageId())).toList();
+        var pseudos = participants.pseudos(soireeId);
+        return ClassementParVote.classer(classables).stream()
+                .map(ligne -> VuesKaraoke.lignePalmares(ligne, contenus.get(ligne.resultat().passageId()), pseudos))
+                .toList();
+    }
+
+    <T> T lecture(UUID soireeId, Supplier<T> lire) {
         return socle.verrous().executer(soireeId, () -> new TransactionTemplate(socle.transactions()).execute(s -> lire.get()));
     }
     private Optional<ContenuKaraoke> chargerContenu(String chansonId) {

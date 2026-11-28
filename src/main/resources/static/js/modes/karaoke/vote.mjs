@@ -1,4 +1,5 @@
 import { delaiAppelRestant } from './paroles.mjs';
+export { formaterNote, formaterMoyenne, formaterNombreVotes } from '../../vue-commune.mjs';
 
 export function etatVoteManette(vote, { joueurId, enPause }) {
 	if (vote.etat === 'CLOS') return 'clos';
@@ -10,10 +11,6 @@ export function etatVoteManette(vote, { joueurId, enPause }) {
 export function corpsVote({ envoiId, vote, note }) {
 	return { envoiId, numeroModification: vote.numeroModification, note };
 }
-
-export const formaterNote = note => `${note} sur 5`;
-export const formaterMoyenne = moyenneDixiemes => formaterNote((moyenneDixiemes / 10).toFixed(1).replace('.', ','));
-export const formaterNombreVotes = nombre => nombre === 0 ? 'Aucun vote' : `${nombre} vote${nombre > 1 ? 's' : ''}`;
 
 export function votesVisiblesSalle(bloc, maintenant) {
 	const duree = bloc.configurationInterface.dureeAffichageMoyenneMs;

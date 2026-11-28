@@ -1,7 +1,10 @@
 package fr.croustyquizz.tempsreel;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +13,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import fr.croustyquizz.manche.Destination;
@@ -24,24 +28,39 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 	private final FournisseurPartieCommune commun;
 	private final VerrousSoiree verrous;
 	private final JsonMapper json;
+	private final List<FournisseurDeChampCommun> champsCommuns;
 	private final Function<UUID, MusiqueDAttente> lireMusiqueDAttente;
 	private final Map<ModeDeJeu, FournisseurDeBloc> blocs = new EnumMap<>(ModeDeJeu.class);
 
 	@Autowired
 	AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
-			VerrousSoiree verrous, JsonMapper json, DepotMusiqueDAttente musique) {
-		this(commun, fournisseurs, verrous, json, musique::lire);
+			ObjectProvider<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json,
+			DepotMusiqueDAttente musique) {
+		this(commun, fournisseurs, champs.orderedStream().toList(), verrous, json, musique::lire);
 	}
 
 	public AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
 			VerrousSoiree verrous, JsonMapper json) {
-		this(commun, fournisseurs, verrous, json, soireeId -> MusiqueDAttente.PAR_DEFAUT);
+		this(commun, fournisseurs, List.of(), verrous, json, soireeId -> MusiqueDAttente.PAR_DEFAUT);
+	}
+
+	public AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
+			ObjectProvider<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json) {
+		this(commun, fournisseurs, champs.orderedStream().toList(), verrous, json, soireeId -> MusiqueDAttente.PAR_DEFAUT);
 	}
 
 	private AssembleurDeVues(FournisseurPartieCommune commun, List<FournisseurDeBloc> fournisseurs,
-			VerrousSoiree verrous, JsonMapper json, Function<UUID, MusiqueDAttente> lireMusiqueDAttente) {
+			List<FournisseurDeChampCommun> champs, VerrousSoiree verrous, JsonMapper json,
+			Function<UUID, MusiqueDAttente> lireMusiqueDAttente) {
 		this.commun = commun; this.verrous = verrous; this.json = json;
 		this.lireMusiqueDAttente = lireMusiqueDAttente;
+		champsCommuns = champs;
+		Set<String> noms = new HashSet<>();
+		for (var fournisseur : champsCommuns) {
+			if (!noms.add(fournisseur.champ())) {
+				throw new IllegalArgumentException("Deux fournisseurs pour le champ " + fournisseur.champ() + ".");
+			}
+		}
 		for (var fournisseur : fournisseurs) {
 			if (blocs.put(fournisseur.mode(), fournisseur) != null) {
 				throw new IllegalArgumentException("Deux fournisseurs pour le même mode.");
@@ -56,20 +75,34 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 			MusiqueDAttente musique = destinations.contains(Destination.SALLE) || destinations.contains(Destination.CONSOLE)
 					? lireMusiqueDAttente.apply(soireeId) : null;
 			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
+			Map<FournisseurDeChampCommun, FournisseurDeChampCommun.ChampPrepare> champs = new IdentityHashMap<>();
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
 			var communes = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
 				vues.put(destination, composer(soireeId, destination, type, communes.parties().get(destination),
-						projections, musique, communes.soireeTermineeLe()));
+						projections, champs, musique, communes.soireeTermineeLe()));
 			}
 			return vues;
 		});
 	}
-	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partieCommune,
-			Map<ModeDeJeu, Function<Destination, Object>> projections, MusiqueDAttente musique, Instant soireeTermineeLe) {
+	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partie,
+			Map<ModeDeJeu, Function<Destination, Object>> projections,
+			Map<FournisseurDeChampCommun, FournisseurDeChampCommun.ChampPrepare> champs, MusiqueDAttente musique,
+			Instant soireeTermineeLe) {
+		var partieCommune = Collections.unmodifiableMap(partie);
 		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
 		if (destination.equals(Destination.SALLE) || destination.equals(Destination.CONSOLE)) {
 			vue.put("musiqueAttente", musique);
+		}
+		for (var fournisseur : champsCommuns) {
+			if (!fournisseur.concerne(destination)) { continue; }
+			var nom = fournisseur.champ();
+			if (vue.containsKey(nom)) {
+				throw new IllegalStateException("Champ déjà présent dans la partie commune : " + nom);
+			}
+			// Préparé une fois par assemblage, comme les projections des modes.
+			var champ = champs.computeIfAbsent(fournisseur, f -> f.preparer(soireeId));
+			vue.put(nom, champ.fournir(destination, partieCommune));
 		}
 		Object mode = vue.get("modeEnCours");
 		ModeDeJeu actif = mode == null ? null : ModeDeJeu.valueOf(mode.toString());

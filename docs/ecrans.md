@@ -18,7 +18,7 @@ Ce parcours se joue sur `develop` déployée (recette Render) après chaque vagu
 4. **La Musique d'attente.** Sur l'Écran de salle, « Activer le son » : un morceau de la Bibliothèque de base joue, avec son crédit en bas de l'écran. Couper puis relancer la musique depuis la Console. Ouvrir un second Écran de salle : la musique ne se dédouble pas.
 5. **Le Karaoké.** Ajouter une Manche de Karaoké au programme et la lancer. Sur un téléphone, chercher et inscrire une Chanson de la Bibliothèque de base, en duo avec l'autre Joueur. L'appeler depuis la Console, confirmer « Je suis prêt » : la musique joue, les paroles défilent en mesure, le crédit reste affiché. Noter le Passage depuis le second téléphone, puis terminer la Manche : le Palmarès s'affiche.
 6. **Le Freestyle.** Lancer une Manche de Freestyle à plusieurs, sur une Instrumentale, puis le vote du meilleur Interprète.
-7. **La fin.** Terminer la Soirée : le Podium final s'affiche sur l'Écran de salle, puis le Palmarès.
+7. **La fin.** Terminer la Soirée : le Podium final s'affiche sur l'Écran de salle. Si le Palmarès du Karaoké était affiché, il reste visible sur la Console.
 8. **Les coupures.** À n'importe quel moment, fermer puis rouvrir un téléphone : le Joueur passe hors ligne puis revient. Recharger l'Écran de salle : il retrouve son état.
 
 ### À vérifier à chaque étape
@@ -163,15 +163,44 @@ en plus de celle de l’Interprète.
    que la Manette annonce aussi la moyenne à cette clôture et que la salle garde le bandeau
    jusqu’au démarrage du Passage ou à l’expiration de l’affichage, selon le dernier des deux.
 
+### Recette du Palmarès du Karaoké (#117)
+
+Vérification navigateur à réaliser en Pilotage Manuel avec la Console, l’Écran de salle et
+deux Manettes de la même Soirée de démonstration.
+
+1. Terminer trois Passages de Karaoké et les noter depuis la Manette du public, par exemple
+   3, 5 et 4 dans l’ordre des Passages. Choisir « Terminer la Manche » pendant le dernier vote,
+   après réception de sa note.
+2. Vérifier que « Palmarès du Karaoké » apparaît sur la salle et la Console, dans l’ordre des
+   notes 5, 4, 3, et que le Classement général conserve ses Points. Vérifier que la Manette
+   n’affiche pas de Palmarès. Recharger la salle et la Console et contrôler le même résultat.
+3. Refaire le parcours avec un quatrième Passage sans note. Vérifier qu’il figure à la fin de
+   la liste de la Console, sans rang et avec « Aucun vote ». Sur la salle, vérifier que les trois
+   souches prennent la teinte du numéro de leur Passage et que les lignes restent lisibles à
+   1920 × 1080 et à 1280 × 720.
+4. Démarrer la Manche suivante selon la recette #114. Vérifier que le Palmarès disparaît de
+   la salle et de la Console à la réception de la nouvelle vue.
+   Tant que le Palmarès est présent, il prend sur la salle la place du Classement général
+   et de la note d’attente (Q24, #123) ; une photo à l’affiche le masque comme eux.
+   Une fois la Soirée terminée, le Podium final passe avant lui sur la salle (#224) :
+   la salle masque le Palmarès, la Console le garde.
+5. Terminer une Manche de Karaoké sans Passage terminé dans une Soirée neuve. Vérifier
+   « Aucun Passage noté. » sur la salle et la Console.
+6. Terminer la Soirée juste après une Manche de Karaoké notée. Vérifier que la salle
+   affiche le « Podium final » sans le Palmarès, et que la Console affiche toujours
+   le Palmarès du Karaoké.
+
 ### Musique d'attente (#140)
 
 Sur `/ecran.html`, choisir le dossier de musique depuis la coquille. Les MP3, M4A, OGG et WAV du sous-dossier `Attente`, y compris dans ses sous-dossiers, alimentent la Musique d'attente. La casse et les accents du nom `Attente` sont ignorés. La recherche locale des Chansons écarte ces fichiers. Le navigateur garde le dossier en mémoire le temps de l'ouverture de la page.
 
+Un morceau est écarté jusqu'au prochain choix de dossier si ses métadonnées ne se chargent pas ou si sa lecture échoue deux fois de suite. Une lecture menée à son terme efface l'erreur précédente du morceau. Si le navigateur exige un geste pour activer le son, ce refus ne compte pas comme une erreur de lecture.
+
 Sur l'Écran de salle, les modules appellent `contexte.signalerSonDeManche(true)` au départ du son de Manche et attendent que la promesse rende `true` avant de démarrer le son. Le signal vaut aussi lors d'une capture en cours de Passage pour faire taire la Musique d'attente. Le module appelle `contexte.signalerSonDeManche(false)` après avoir arrêté son lecteur, à la clôture et au démontage. Le Karaoké garde la Musique d'attente pendant l'appel et la suspend dès le départ du Passage, jusqu'à sa clôture, y compris pendant une pause du Passage.
 
-La coordination locale utilise `BroadcastChannel` et les Web Locks. Sans eux (page en `http://` hors `localhost`), chaque fenêtre se croit seule et joue dès qu'elle a des morceaux dans `Attente`. La fenêtre ouverte le plus récemment parmi celles dont le son est activé et dont le dossier contient des morceaux dans `Attente` prend la main. Une fenêtre sans dossier, ou dont le dossier n'a rien dans `Attente`, peut activer le son sans faire taire celle qui joue ; son propre son de Manche la fait taire comme ailleurs (#226). Un Passage déjà démarré garde son lecteur désigné jusqu'à sa clôture.
+La coordination locale utilise `BroadcastChannel` et les Web Locks. Sans eux (page en `http://` hors `localhost`), chaque fenêtre se croit seule et joue dès qu'elle a des morceaux dans `Attente`. La fenêtre ouverte le plus récemment parmi celles dont le son est activé et dont le dossier contient des morceaux dans `Attente` prend la main. Une fenêtre sans dossier, ou dont le dossier n'a rien dans `Attente`, peut activer le son sans faire taire celle qui joue ; son propre son de Manche la fait taire comme ailleurs (#226). Une fenêtre qui a écarté comme illisibles tous les morceaux de son `Attente` fait de même : elle rend la main et signale à la Console qu'elle n'a plus de morceaux, jusqu'au prochain choix de dossier (#250). Un Passage déjà démarré garde son lecteur désigné jusqu'à sa clôture.
 
-Pour la recette, ouvrir deux fenêtres du même profil de navigateur en HTTPS ou sur `localhost`. Choisir dans la première un dossier avec plusieurs morceaux dans `Attente`. Vérifier l'enchaînement puis l'appel d'un Passage de Karaoké. Confirmer le départ, vérifier le silence de la Musique d'attente puis sa reprise à la clôture. Choisir le dossier dans la deuxième fenêtre et vérifier qu'elle prend la main. Fermer la deuxième, puis rouvrir ou recharger l'Écran de salle et choisir à nouveau le dossier. À chaque relais, écouter la fin de la première lecture avant la suivante. Ouvrir ensuite une troisième fenêtre, cliquer sur « Choisir le dossier de musique » puis annuler le sélecteur : le son est activé, mais la fenêtre qui joue continue. Choisir dans cette troisième fenêtre un dossier sans `Attente` : la musique continue toujours dans l'autre. Refaire l'essai avec une Chanson présente uniquement dans `Attente`.
+Pour la recette, ouvrir deux fenêtres du même profil de navigateur en HTTPS ou sur `localhost`. Choisir dans la première un dossier avec plusieurs morceaux dans `Attente`. Vérifier l'enchaînement puis l'appel d'un Passage de Karaoké. Confirmer le départ, vérifier le silence de la Musique d'attente puis sa reprise à la clôture. Choisir le dossier dans la deuxième fenêtre et vérifier qu'elle prend la main. Fermer la deuxième, puis rouvrir ou recharger l'Écran de salle et choisir à nouveau le dossier. À chaque relais, écouter la fin de la première lecture avant la suivante. Ouvrir ensuite une troisième fenêtre, cliquer sur « Choisir le dossier de musique » puis annuler le sélecteur : le son est activé, mais la fenêtre qui joue continue. Choisir dans cette troisième fenêtre un dossier sans `Attente` : la musique continue toujours dans l'autre. Choisir ensuite un dossier dont `Attente` ne contient que des fichiers illisibles (un texte renommé en `.mp3`, par exemple) : la fenêtre qui jouait se tait un instant puis reprend, et la Console affiche « Aucun morceau dans Attente », car elle montre le dernier signal reçu, quelle que soit la fenêtre. Refaire l'essai avec une Chanson présente uniquement dans `Attente`.
 
 ### Pilotage de la Musique d’attente (#141)
 
@@ -232,6 +261,16 @@ Vérification de #119 dans Chrome, branche lancée en local avec PostgreSQL : le
 4. Confirmer le premier Passage après la préparation de son fichier. À la fin de lecture, vérifier que le Joueur 2 est appelé, que l’Écran de salle prépare son fichier et que le Vote du public du premier Passage s’ouvre sur sa Manette. Confirmer le deuxième Passage une fois préparé et vérifier que le fichier local démarre.
 5. Rejouer avec une pause pendant un Passage alors que le Joueur 2 attend. Cliquer sur « Passer » et vérifier que le Joueur 2 reste en attente jusqu’à « Reprendre ».
 6. Rejouer dans une Soirée neuve en Manuel. Vérifier que « Appeler le suivant » est disponible quand la File d’attente est libre et que l’Animateur doit l’utiliser après la première inscription et après la fin du Passage.
+
+## Recette navigateur du saut à l’échéance de l’appel (#121)
+
+1. Reprendre les étapes 1 à 3 de la recette #120 avec deux Manettes, sans préparer de fichier audio.
+2. Laisser le Joueur 1 attendre sans cliquer sur « Je suis prêt ». À zéro, vérifier que sa Manette retire le bouton et affiche « Le temps est écoulé. » si la vue d’appel est encore affichée. Si un envoi en cours reçoit `HORS_DELAI`, vérifier le détail « Le temps pour confirmer est écoulé. ». Rejouer en coupant le réseau du Joueur 1 juste après « Je suis prêt » vers vingt-huit secondes, puis en le rétablissant : « Réessayer le même envoi » apparaît, puis disparaît à zéro.
+3. Vérifier que le Joueur 2 est appelé, que son décompte démarre à trente secondes et qu’aucun Vote du public ne s’ouvre. Laisser ensuite son appel expirer, File d’attente vide. Vérifier « Passage sauté » sur sa Manette et « Sauté » sur la Console et l’Écran de salle.
+4. Rejouer en mettant la Manche en pause lorsqu’il reste dix secondes à l’appel. Attendre plus de trente secondes. Vérifier que le Passage reste appelé et que « Je suis prêt » est indisponible pendant la pause. À la reprise, vérifier que le saut arrive après les dix secondes restantes.
+5. Rejouer en Pilotage Manuel. À zéro, vérifier « Le temps est écoulé, tu peux encore confirmer. », puis confirmer et vérifier que le Passage démarre.
+
+Vérification dans un navigateur à effectuer.
 
 ## Photos de la salle (#72)
 
