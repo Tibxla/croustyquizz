@@ -82,6 +82,36 @@ class FournisseurDeBlocKaraokeTest {
         assertThat(banc.bloc.fournir(parcours.soiree, Destination.CONSOLE)).isEqualTo(pause);
     }
 
+    @Test void leDepartDeLInviteLaisseSonInvitationExpireeSurLaManetteDeLInscripteur() {
+        UUID manche = parcours.demarrer();
+        UUID invite = joueursDe(parcours.soiree).get(1);
+        UUID tiers = joueursDe(parcours.soiree).get(2);
+        var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1), List.of(invite));
+        var envoi = parcours.envoi(parcours.joueur, corps.envoiId(), "POST", "/passages", corps);
+        var resultat = (Accepte) banc.service.inscrirePassage(manche, envoi, corps);
+        UUID passage = ((AccusePassage) resultat.accuse()).passageId();
+        var instantane = (InstantaneKaraoke) banc.service.instantane(parcours.soiree, manche);
+        var file = FileAttente.depuis(instantane.file());
+        var maintenant = banc.horloge.maintenant();
+        file.retirerJoueurParti(invite, maintenant);
+        banc.ports.absents.add(invite);
+        var apresDepart = new InstantaneKaraoke(instantane.etatManche(), file.etat(), instantane.contenus());
+        var pseudos = banc.ports.pseudos(parcours.soiree);
+
+        var manette = (VuesKaraoke.BlocKaraokeManette) VuesKaraoke.projeter(apresDepart,
+                Destination.joueur(parcours.joueur.identifiant()), pseudos, maintenant,
+                ServiceKaraokeTest.PROPRIETES, ServiceKaraokeTest.SOURCE);
+        assertThat(manette.mesPassagesEnAttente()).extracting(VuesKaraoke.PassageEnAttentePublic::passageId).containsExactly(passage);
+        assertThat(manette.invitationsEmises()).singleElement().satisfies(invitation -> {
+            assertThat(invitation.passageId()).isEqualTo(passage);
+            assertThat(invitation.etat()).isEqualTo(InvitationPassage.Etat.EXPIREE);
+            assertThat(invitation.invite()).isEqualTo(new VuesKaraoke.InterpretePublic(invite, "Joueur parti"));
+        });
+        var autreManette = (VuesKaraoke.BlocKaraokeManette) VuesKaraoke.projeter(apresDepart,
+                Destination.joueur(tiers), pseudos, maintenant, ServiceKaraokeTest.PROPRIETES, ServiceKaraokeTest.SOURCE);
+        assertThat(autreManette.invitationsEmises()).isEmpty();
+    }
+
     @Test void retardataireAutoriseEtJoueurAbsentSousQuotaRefuse() {
         UUID manche = parcours.demarrer();
         UUID joueur = joueursDe(parcours.soiree).get(2);

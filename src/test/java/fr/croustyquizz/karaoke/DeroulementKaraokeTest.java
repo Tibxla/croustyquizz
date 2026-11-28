@@ -823,6 +823,64 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
         assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.TERMINE);
     }
 
+    @Test
+    void unPassageAPlusieursSeConfirmeParNimporteQuelInterpreteEtRefuseLeVoteATous() {
+        deroulement.demarrer();
+        UUID invite = new UUID(0, 50);
+        UUID silencieux = new UUID(0, 51);
+        Acteur public_ = new Acteur(Acteur.Type.JOUEUR, new UUID(0, 52), SOIREE);
+        refuserSansMutation(() -> deroulement.recevoir(inscriptionAvecInvites("moi", List.of(invite, JOUEUR), true)),
+                422, "DONNEES_INVALIDES", null);
+        refuserSansMutation(() -> deroulement.recevoir(inscriptionAvecInvites("absent", List.of(invite), false)),
+                404, "RESSOURCE_INTROUVABLE", null);
+        accepter201(deroulement.recevoir(inscriptionAvecInvites(PASSAGE.toString(), List.of(invite, silencieux), true)));
+        assertThat(passage(PASSAGE).interpretes()).containsExactly(JOUEUR);
+
+        // La pause ne suspend pas les gestes de la File d’attente, réponses aux Invitations comprises.
+        accepter(deroulement.mettreEnPause(pilotage()), "manche-en-pause", true);
+        Accepte acceptation = accepter(repondre(invite, true), "file-attente-modifiee", true);
+        assertThat(acceptation.accuse()).isEqualTo(new AccusePassage(ENVOI, SOIREE, MANCHE, PASSAGE, 1, "ACCEPTER",
+                horloge.maintenant(), EtatPassage.EN_ATTENTE));
+        accepter(deroulement.reprendre(pilotage()), "manche-reprise", true);
+        refuserSansMutation(() -> repondre(new UUID(0, 53), true), 404, "RESSOURCE_INTROUVABLE", null);
+        refuserSansMutation(() -> repondre(invite, false), 409, "COMMANDE_PERIMEE", null);
+
+        accepter(appeler(cible(PASSAGE)), "passage-appele", true);
+        assertThat(karaoke().instantane().file().invitations()).extracting(InvitationPassage::etat)
+                .containsExactly(InvitationPassage.Etat.ACCEPTEE, InvitationPassage.Etat.EXPIREE);
+        UUID etape = karaoke().instantane().cycle().etapeId();
+        var cibleAppel = cible(PASSAGE);
+        accepter(confirmer(new Acteur(Acteur.Type.JOUEUR, invite, SOIREE), cibleAppel, etape), "passage-demarre", true);
+        refuserSansMutation(() -> confirmer(INTERPRETE, cibleAppel, etape), 409, "COMMANDE_PERIMEE", null);
+        refuserSansMutation(() -> confirmer(new Acteur(Acteur.Type.JOUEUR, silencieux, SOIREE), cible(PASSAGE), etape),
+                404, "RESSOURCE_INTROUVABLE", null);
+        horloge.avancer(Duration.ofMinutes(3));
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.TERMINE);
+        for (UUID interprete : List.of(JOUEUR, invite)) {
+            refuserSansMutation(() -> deroulement.recevoir(new VoterPassage(new Acteur(Acteur.Type.JOUEUR, interprete, SOIREE),
+                    horloge.maintenant(), ENVOI, cible(PASSAGE), 5)), 409, "VOTE_INTERDIT", null);
+        }
+        assertThat(deroulement.recevoir(new VoterPassage(public_, horloge.maintenant(), ENVOI, cible(PASSAGE), 5)))
+                .isInstanceOf(Accepte.class);
+    }
+
+    private InscrirePassage inscriptionAvecInvites(String chansonId, List<UUID> invites, boolean presents) {
+        UUID id = chansonId.equals(PASSAGE.toString()) ? PASSAGE : UUID.randomUUID();
+        var contenu = new ContenuKaraoke(new Chanson(chansonId, 42, "Titre", "Artiste", null, 180_000L,
+                EtatParoles.SYNCHRONISEES), List.of(new LigneParoles(12_000, "Des paroles")));
+        return new InscrirePassage(INTERPRETE, horloge.maintenant(), ENVOI, new FaitsInscription(id, 1), chansonId,
+                contenu, invites, presents);
+    }
+
+    private ResultatDeCommande repondre(UUID joueur, boolean accepte) {
+        return deroulement.recevoir(new RepondreInvitation(new Acteur(Acteur.Type.JOUEUR, joueur, SOIREE),
+                horloge.maintenant(), ENVOI, cible(PASSAGE), accepte));
+    }
+
+    private void accepter201(ResultatDeCommande resultat) {
+        assertThat(resultat).isInstanceOfSatisfying(Accepte.class, a -> assertThat(a.statutHttp()).isEqualTo(201));
+    }
+
     private void ouvrirPassage() {
         deroulement.demarrer();
         inscrire(PASSAGE);

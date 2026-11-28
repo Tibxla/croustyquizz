@@ -2256,9 +2256,37 @@ $defs:
         type: string
         minLength: 1
         maxLength: 128
+      invitesIds:
+        type: array
+        maxItems: 3
+        uniqueItems: true
+        items:
+          type: string
+          format: uuid
     required:
     - envoiId
     - chansonId
+  ReponseInvitation:
+    type: object
+    additionalProperties: false
+    description: Réponse du Joueur authentifié à son Invitation en suspens (#138).
+    properties:
+      envoiId:
+        type: string
+        format: uuid
+      numeroModification:
+        type: integer
+        minimum: 0
+        maximum: 9007199254740991
+      reponse:
+        type: string
+        enum:
+        - ACCEPTER
+        - REFUSER
+    required:
+    - envoiId
+    - numeroModification
+    - reponse
   DesinscriptionPassage:
     type: object
     additionalProperties: false
@@ -2452,6 +2480,8 @@ $defs:
         - DESINSCRIRE
         - RETIRER
         - DEPLACER
+        - ACCEPTER
+        - REFUSER
       recueLe:
         type: string
         format: date-time
@@ -3320,6 +3350,76 @@ $defs:
             const: OUVERT
           maNote:
             type: "null"
+  InvitationEnAttente:
+    type: object
+    additionalProperties: false
+    description: Invitation en suspens d’un Passage en attente, vue par la seule Console.
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      invite:
+        $ref: '#/$defs/InterpretePublic'
+    required:
+    - passageId
+    - invite
+  InvitationEmise:
+    type: object
+    additionalProperties: false
+    description: Dernier état d’une Invitation suivie par l’inscripteur. REFUSEE couvre aussi l’invité qui a quitté
+      le Passage après avoir accepté. EXPIREE reste visible si le Passage sort de la File ou si l’invité part.
+      Le pseudo d’un invité absent de la Soirée est remplacé par « Joueur parti ».
+    properties:
+      passageId:
+        type: string
+        format: uuid
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+        description: Numéro du Passage, y compris après sa sortie de la File.
+      invite:
+        $ref: '#/$defs/InterpretePublic'
+      etat:
+        type: string
+        enum:
+        - EN_ATTENTE
+        - ACCEPTEE
+        - REFUSEE
+        - EXPIREE
+    required:
+    - passageId
+    - numero
+    - invite
+    - etat
+  InvitationRecue:
+    type: object
+    additionalProperties: false
+    description: Invitation en suspens adressée au seul Joueur de la Manette, avec la Chanson et le Joueur qui
+      l’invite. passage porte le compteur à renvoyer avec ACCEPTER ou REFUSER.
+    properties:
+      passage:
+        $ref: '#/$defs/CiblePassage'
+      numero:
+        type: integer
+        minimum: 1
+        maximum: 9007199254740991
+      chanson:
+        $ref: '#/$defs/ResumeChanson'
+      inscrivant:
+        $ref: '#/$defs/InterpretePublic'
+      interpretes:
+        type: array
+        items:
+          $ref: '#/$defs/InterpretePublic'
+        minItems: 1
+        maxItems: 3
+    required:
+    - passage
+    - numero
+    - chanson
+    - inscrivant
+    - interpretes
   BlocKaraokeConsole:
     allOf:
     - $ref: '#/$defs/KaraokeCommun'
@@ -3333,6 +3433,11 @@ $defs:
           type: array
           items:
             $ref: '#/$defs/PassageEnAttentePublic'
+        invitationsEnAttente:
+          type: array
+          description: Invitations en suspens des Passages en attente, dans l’ordre de la File puis des invitations.
+          items:
+            $ref: '#/$defs/InvitationEnAttente'
         peutGererFile:
           type: boolean
         peutReglerLimite:
@@ -3369,6 +3474,7 @@ $defs:
             vaut FICHIER_LOCAL.
       required:
       - passagesEnAttente
+      - invitationsEnAttente
       - votes
       - peutGererFile
       - peutReglerLimite
@@ -3423,6 +3529,18 @@ $defs:
           type: array
           items:
             $ref: '#/$defs/PassageEnAttentePublic'
+        invitationsEmises:
+          type: array
+          description: Invitations des Passages en attente dont ce Joueur est l’inscripteur, dans l’ordre de la File,
+            puis ses Invitations expirées pour des Passages sortis de la File, par numéro de Passage.
+            Pour un même Passage, les Invitations sont dans l’ordre d’émission.
+          items:
+            $ref: '#/$defs/InvitationEmise'
+        invitationsRecues:
+          type: array
+          description: Invitations en suspens adressées à ce seul Joueur, dans l’ordre de la File.
+          items:
+            $ref: '#/$defs/InvitationRecue'
         nombrePersonnelEnAttente:
           type: integer
           minimum: 0
@@ -3442,6 +3560,8 @@ $defs:
       - prochainsPassages
       - nombreAutresPassages
       - mesPassagesEnAttente
+      - invitationsEmises
+      - invitationsRecues
       - votes
       - nombrePersonnelEnAttente
       - peutRechercher

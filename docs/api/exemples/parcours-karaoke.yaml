@@ -171,6 +171,7 @@ http:
         votes: []
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -213,6 +214,8 @@ http:
         votes: []
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -645,6 +648,8 @@ http:
               etat: ESTIMEE
               dureeMs: 660000
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -1079,6 +1084,7 @@ http:
         - *a29
         - *a30
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1123,6 +1129,8 @@ http:
         - *a28
         - *a30
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -1280,6 +1288,7 @@ http:
             etat: ESTIMEE
             dureeMs: 0
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1708,6 +1717,7 @@ evenements:
         passagesEnAttente:
         - *a48
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1749,6 +1759,8 @@ evenements:
         mesPassagesEnAttente:
         - *a48
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -1857,6 +1869,7 @@ evenements:
         - *a53
         - *a54
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -1898,6 +1911,8 @@ evenements:
         mesPassagesEnAttente:
         - *a53
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -2020,6 +2035,7 @@ evenements:
         - *a59
         - *a60
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -2062,6 +2078,8 @@ evenements:
         - *a58
         - *a60
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -2184,6 +2202,7 @@ evenements:
         - *a65
         - *a66
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -2226,6 +2245,8 @@ evenements:
         - *a64
         - *a66
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -2361,6 +2382,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -2403,6 +2425,8 @@ evenements:
         - *a70
         - *a74
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -2538,6 +2562,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -2580,6 +2605,8 @@ evenements:
         - *a77
         - *a81
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -2659,6 +2686,7 @@ evenements:
           - *a86
           - *a87
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -2805,6 +2833,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -2847,6 +2876,8 @@ evenements:
         - *a91
         - *a92
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -2982,6 +3013,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -3024,6 +3056,8 @@ evenements:
         - *a98
         - *a101
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -3159,6 +3193,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -3201,6 +3236,8 @@ evenements:
         - *a104
         - *a108
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -3336,6 +3373,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -3378,6 +3416,8 @@ evenements:
         - *a112
         - *a115
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -3513,6 +3553,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -3555,6 +3596,8 @@ evenements:
         - *a118
         - *a122
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -3677,6 +3720,7 @@ evenements:
         - *a126
         - *a127
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -3719,6 +3763,8 @@ evenements:
         - *a125
         - *a127
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -3856,6 +3902,7 @@ evenements:
             etat: ESTIMEE
             dureeMs: 660000
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -3898,6 +3945,8 @@ evenements:
         - *a131
         - *a135
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -4020,6 +4069,7 @@ evenements:
         - *a139
         - *a140
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -4062,6 +4112,8 @@ evenements:
         - *a138
         - *a140
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -4208,6 +4260,7 @@ evenements:
         - *a148
         - *a149
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -4250,6 +4303,8 @@ evenements:
         - *a147
         - *a149
         nombrePersonnelEnAttente: 2
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -4358,6 +4413,7 @@ evenements:
         - *a153
         - *a154
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -4399,6 +4455,8 @@ evenements:
         mesPassagesEnAttente:
         - *a154
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -4475,6 +4533,8 @@ evenements:
         mesPassagesEnAttente:
         - *a158
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -4528,6 +4588,7 @@ evenements:
         votes: []
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -4568,6 +4629,8 @@ evenements:
         votes: []
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -4668,6 +4731,7 @@ evenements:
         votes: []
         passagesEnAttente: []
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -4708,6 +4772,8 @@ evenements:
         votes: []
         mesPassagesEnAttente: []
         nombrePersonnelEnAttente: 0
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: true
         motifInscriptionRefusee: null
@@ -4792,6 +4858,7 @@ evenements:
         votes: []
         passagesEnAttente: *passagesMancheSuivante
         peutGererFile: true
+        invitationsEnAttente: []
         peutReglerLimite: true
         peutRechercher: true
         lecteurDesigne: false
@@ -4832,6 +4899,8 @@ evenements:
         votes: []
         mesPassagesEnAttente: *passagesMancheSuivante
         nombrePersonnelEnAttente: 1
+        invitationsEmises: []
+        invitationsRecues: []
         peutRechercher: true
         peutInscrire: false
         motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -5131,6 +5200,7 @@ cases:
       votes: []
       passagesEnAttente: *a173
       peutGererFile: true
+      invitationsEnAttente: []
       peutReglerLimite: true
       peutRechercher: true
       lecteurDesigne: false
@@ -5166,6 +5236,7 @@ cases:
       votes: []
       passagesEnAttente: *a173
       peutGererFile: true
+      invitationsEnAttente: []
       peutReglerLimite: true
       peutRechercher: true
       lecteurDesigne: false
@@ -5201,6 +5272,7 @@ cases:
       votes: []
       passagesEnAttente: *a173
       peutGererFile: true
+      invitationsEnAttente: []
       peutReglerLimite: true
       peutRechercher: true
       lecteurDesigne: false
@@ -5328,6 +5400,8 @@ cases:
       nombreAutresPassages: 1
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
+      invitationsEmises: []
+      invitationsRecues: []
       peutRechercher: true
       peutInscrire: false
       motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -5361,6 +5435,8 @@ cases:
       votes: []
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
+      invitationsEmises: []
+      invitationsRecues: []
       peutRechercher: true
       peutInscrire: false
       motifInscriptionRefusee: LIMITE_ATTEINTE
@@ -5394,6 +5470,8 @@ cases:
       votes: []
       mesPassagesEnAttente: *a175
       nombrePersonnelEnAttente: 2
+      invitationsEmises: []
+      invitationsRecues: []
       peutRechercher: true
       peutInscrire: false
       motifInscriptionRefusee: LIMITE_ATTEINTE

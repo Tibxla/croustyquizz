@@ -27,8 +27,9 @@ public record Passage(UUID id, UUID soireeId, UUID mancheId,
                 || new HashSet<>(interpretes).size() != interpretes.size()) {
             throw new IllegalArgumentException("Un Passage exige un à quatre Interprètes distincts.");
         }
-        if (!interpretes.contains(inscripteurId)) {
-            throw new IllegalArgumentException("L’inscripteur doit être Interprète du Passage.");
+        // Le premier Interprète est l’inscrivant : les vues le désignent ainsi (#66).
+        if (!interpretes.getFirst().equals(inscripteurId)) {
+            throw new IllegalArgumentException("L’inscripteur doit être le premier Interprète du Passage.");
         }
     }
 }

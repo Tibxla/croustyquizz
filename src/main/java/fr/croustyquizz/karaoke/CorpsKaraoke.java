@@ -3,8 +3,12 @@ package fr.croustyquizz.karaoke;
 import fr.croustyquizz.manche.Refuse;
 import fr.croustyquizz.passage.CiblePassage;
 import fr.croustyquizz.passage.VoteRecu;
+import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 /** Corps fermés, validés avant la résolution de l'identité HTTP. */
 public final class CorpsKaraoke {
@@ -33,8 +37,25 @@ public final class CorpsKaraoke {
         public CiblePassage cible() { return new CiblePassage(passageId, numeroModification); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
-    public record InscriptionPassage(UUID envoiId, String chansonId) {
-        public InscriptionPassage { obligatoire(envoiId); identifiantChanson(chansonId); }
+    /** Trois invités au plus, distincts (#66). Sans invité, l’empreinte reste celle d’avant #66. */
+    static final int NOMBRE_INVITES_MAX = 3;
+    public record InscriptionPassage(UUID envoiId, String chansonId,
+            @JsonInclude(JsonInclude.Include.NON_NULL) List<UUID> invitesIds) {
+        @JsonCreator public InscriptionPassage {
+            obligatoire(envoiId); identifiantChanson(chansonId);
+            if (invitesIds != null && (invitesIds.size() > NOMBRE_INVITES_MAX || invitesIds.stream().anyMatch(java.util.Objects::isNull)
+                    || new HashSet<>(invitesIds).size() != invitesIds.size())) { invalide(); }
+        }
+        public InscriptionPassage(UUID envoiId, String chansonId) { this(envoiId, chansonId, null); }
+        public List<UUID> invites() { return invitesIds == null ? List.of() : List.copyOf(invitesIds); }
+        @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
+    }
+    public record ReponseInvitation(UUID envoiId, Long numeroModification, String reponse) {
+        public ReponseInvitation {
+            obligatoire(envoiId); entier(numeroModification, true);
+            if (!"ACCEPTER".equals(reponse) && !"REFUSER".equals(reponse)) { invalide(); }
+        }
+        public boolean accepte() { return "ACCEPTER".equals(reponse); }
         @JsonAnySetter public void refuserChampInconnu(String nom, Object valeur) { invalide(); }
     }
     public record DesinscriptionPassage(UUID envoiId, Long numeroModification) {

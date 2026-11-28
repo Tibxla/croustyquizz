@@ -45,6 +45,15 @@ public class KaraokeControleur {
                 new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
         return ReponsesDeCommande.http(service.desinscrirePassage(mancheId, passageId, envoi, corps), route);
     }
+    @PostMapping("/passages/{passageId}/invitation")
+    public ResponseEntity<?> repondreInvitation(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
+            @PathVariable UUID passageId, @Valid @RequestBody CorpsKaraoke.ReponseInvitation corps, Acteur acteur) {
+        AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.JOUEUR);
+        String route = passage(soireeId, mancheId, passageId) + "/invitation";
+        var envoi = new EnvoiDeCommande(acteur, route, corps.envoiId(),
+                new CorpsKaraoke.EmpreinteHttp(HttpMethod.POST.name(), corps));
+        return ReponsesDeCommande.http(service.repondreInvitation(mancheId, passageId, envoi, corps), route);
+    }
     @PostMapping("/passages/{passageId}/vote")
     public ResponseEntity<?> voterPassage(@PathVariable UUID soireeId, @PathVariable UUID mancheId,
             @PathVariable UUID passageId, @Valid @RequestBody CorpsKaraoke.VotePassage corps, Acteur acteur) {

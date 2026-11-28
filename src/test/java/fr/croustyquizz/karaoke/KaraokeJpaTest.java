@@ -137,6 +137,63 @@ class KaraokeJpaTest {
                 .containsExactlyInAnyOrderEntriesOf(Map.of(celia, 1L, boris, 1L));
     }
 
+    @Test void restaureLePassageAccepteDerriereLesAttentesDeLInviteSansLesDeplacerALAppelSuivant() {
+        UUID soiree = UUID.randomUUID();
+        List<UUID> joueurs = joueursDe(soiree);
+        Acteur ana = new Acteur(Acteur.Type.JOUEUR, joueurs.getFirst(), soiree);
+        Acteur boris = new Acteur(Acteur.Type.JOUEUR, joueurs.get(1), soiree);
+        Acteur celia = new Acteur(Acteur.Type.JOUEUR, joueurs.get(2), soiree);
+        var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
+        var limite = new CorpsKaraoke.LimitePassages(2L);
+        assertThat(service.reglerLimitePassages(manche, envoi(animateur, "/file-attente/limite", limite), limite)).isInstanceOf(Accepte.class);
+        UUID passageCelia = inscrire(manche, celia, 1);
+        var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(2), List.of(boris.identifiant()));
+        UUID groupe = ((AccusePassage) ((Accepte) service.inscrirePassage(manche, envoi(ana, "/passages", corps), corps)).accuse()).passageId();
+        UUID passageBoris = inscrire(manche, boris, 3);
+        var reponse = new CorpsKaraoke.ReponseInvitation(UUID.randomUUID(), 0L, "ACCEPTER");
+        assertThat(service.repondreInvitation(manche, groupe, envoi(boris, "/invitation", reponse), reponse)).isInstanceOf(Accepte.class);
+
+        var restauree = verifierRestauration(soiree, manche).file();
+        assertThat(FileAttente.depuis(restauree).ordreEffectif()).extracting(Passage::id).containsExactly(passageCelia, passageBoris, groupe);
+        var appel = new CorpsKaraoke.AppelPassage(0L);
+        assertThat(service.appelerPassage(manche, passageCelia, envoi(animateur, "/appel", appel), appel)).isInstanceOf(Accepte.class);
+
+        var apresAppel = FileAttente.depuis(verifierRestauration(soiree, manche).file());
+        assertThat(apresAppel.ordreEffectif()).extracting(Passage::id, Passage::tourNormal, Passage::numeroModification)
+                .containsExactly(tuple(passageBoris, 1L, 0L), tuple(groupe, 2L, 1L));
+    }
+
+    @Test void restaureLesInvitationsDansLeurOrdreEtLeurEtatJusquALeurExpiration() {
+        UUID soiree = UUID.randomUUID();
+        List<UUID> joueurs = joueursDe(soiree);
+        UUID ana = joueurs.getFirst();
+        UUID boris = joueurs.get(1);
+        UUID celia = joueurs.get(2);
+        var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, envoi(animateur, "/demarrer", Map.of()));
+        var corps = new CorpsKaraoke.InscriptionPassage(UUID.randomUUID(), IdentifiantsChanson.encoder(1), List.of(celia, boris));
+        var inscription = service.inscrirePassage(manche, envoi(new Acteur(Acteur.Type.JOUEUR, ana, soiree), "/passages", corps), corps);
+        UUID passage = ((AccusePassage) ((Accepte) inscription).accuse()).passageId();
+        socle.registre().retirer(manche);
+        assertThat(verifierRestauration(soiree, manche).file().invitations()).containsExactly(
+                new InvitationPassage(passage, celia, InvitationPassage.Etat.EN_ATTENTE),
+                new InvitationPassage(passage, boris, InvitationPassage.Etat.EN_ATTENTE));
+
+        var file = FileAttente.depuis(((InstantaneKaraoke) service.instantane(soiree, manche)).file());
+        file.repondreInvitation(celia, new CiblePassage(passage, 0), true);
+        file.repondreInvitation(boris, new CiblePassage(passage, 1), false);
+        assertThat(enregistrerFilePuisRestaurer(file.etat()).invitations()).containsExactly(
+                new InvitationPassage(passage, celia, InvitationPassage.Etat.ACCEPTEE),
+                new InvitationPassage(passage, boris, InvitationPassage.Etat.REFUSEE));
+
+        var appel = new CorpsKaraoke.AppelPassage(1L);
+        assertThat(service.appelerPassage(manche, passage, envoi(animateur, "/appel", appel), appel)).isInstanceOf(Accepte.class);
+        assertThat(verifierRestauration(soiree, manche).file().passages().getFirst().interpretes()).containsExactly(ana, celia);
+    }
+
     private EtatFileAttente enregistrerFilePuisRestaurer(EtatFileAttente file) {
         UUID manche = file.mancheId();
         new TransactionTemplate(socle.transactions()).executeWithoutResult(s -> passages.enregistrer(manche, file));

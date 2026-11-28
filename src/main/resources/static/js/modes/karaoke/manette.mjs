@@ -3,6 +3,7 @@ import { peutReessayer } from './envois.mjs';
 import { formaterTempsRestant } from './presentation.mjs';
 import { delaiAppelRestant } from './paroles.mjs';
 import { corpsVote, delaiVoteRestant, etatVoteManette, formaterMoyenne, formaterNombreVotes, formaterNote } from './vote.mjs';
+import { estInscripteur, lignesInvitations, texteDesinscription, texteEtatInvitation, texteInvitation } from './invitations.mjs';
 
 export function monter(zones, contexte) {
 	const ui = creerInterface(zones, contexte), { e, bouton } = ui;
@@ -10,26 +11,35 @@ export function monter(zones, contexte) {
 	const titreScene = e('h2', '', 'En scène'); titreScene.tabIndex = -1;
 	const scene = e('div', 'karaoke__scene-manette'); scene.hidden = true;
 	ui.principale.append(scene);
+	const titreInvitations = e('h2', '', 'Invitations'); titreInvitations.tabIndex = -1;
+	const invitations = e('div', 'karaoke__invitations');
+	titreInvitations.hidden = invitations.hidden = true;
+	ui.principale.append(titreInvitations, invitations);
 	const titre = e('h2', '', 'Tes Passages'); titre.tabIndex = -1;
 	const personnels = e('div', 'karaoke__personnels');
+	const expirees = e('ul');
+	expirees.setAttribute('aria-label', 'Invitations expirées des Passages sortis de la File');
+	expirees.hidden = true;
 	const invalidation = e('p'); invalidation.setAttribute('role', 'status');
-	ui.principale.append(titre, personnels, invalidation);
+	ui.principale.append(titre, personnels, expirees, invalidation);
 	const catalogue = creerCatalogue(ui, ui.principale, { inscrire: true });
 	const ensuite = e('h2', '', 'Ensuite'); ensuite.tabIndex = -1;
 	const file = e('ol', 'rouleau'), autres = e('p'); ui.principale.append(ensuite, file, autres);
 	ui.messageInvalidation = () => { invalidation.textContent = 'Le Passage a changé, vérifie avant de recommencer.'; };
+	const moi = contexte.acteur.identifiant;
 	function desinscrire(passage, declencheur) {
 		const mancheId = ui.bloc.mancheId, cible = structuredClone(passage);
+		const inscripteur = estInscripteur(cible, moi);
 		const valide = () => ui.bloc.mancheId === mancheId && ui.bloc.mesPassagesEnAttente.some(p =>
 			p.passageId === cible.passageId && p.numeroModification === cible.numeroModification && p.tour === cible.tour);
-		const dialogue = ui.dialogue({ titre: 'Me désinscrire', declencheur, valide, confirmation: {
-			libelle: 'Confirmer la désinscription',
+		const dialogue = ui.dialogue({ titre: inscripteur ? 'Me désinscrire' : 'Quitter ce Passage', declencheur, valide, confirmation: {
+			libelle: inscripteur ? 'Confirmer la désinscription' : 'Confirmer le départ',
 			permise: () => ui.mutationsPermises,
 			executer: () => ui.commande({ methode: 'POST', chemin: `${ui.racine()}/passages/${encodeURIComponent(cible.passageId)}/desinscription`,
 				corps: { numeroModification: cible.numeroModification }, mancheId, acteurType: 'JOUEUR', passageId: cible.passageId }),
 		} });
 		dialogue.annuler.textContent = 'Annuler';
-		dialogue.contenu.append(e('p', '', `Retirer ton Passage ${cible.numero} · ${cible.chanson.titre} ?`), dialogue.confirmer);
+		dialogue.contenu.append(e('p', '', texteDesinscription(cible, moi)), dialogue.confirmer);
 	}
 	let dernierCourant, descriptionTicket, ticketCourant, etiquette, minuterie, confirmerPresence, statutPresence, reessai;
 	let automatique = false;
@@ -109,6 +119,42 @@ export function monter(zones, contexte) {
 			(actif !== titreScene && cible && !cible.hidden && !cible.disabled ? cible : p ? titreScene : titre).focus();
 		}
 	}
+	// Invitations reçues : la Chanson, qui invite, et deux gestes, Accepter ou Refuser (#138).
+	function rendreInvitations() {
+		const recues = ui.bloc.invitationsRecues ?? [];
+		const titreAvaitFocus = ui.document.activeElement === titreInvitations;
+		const fiches = recues.map((invitation, rang) => {
+			const cible = invitation.passage;
+			const ticket = creerTicket(ui, { ...invitation, passageId: cible.passageId }, { personnel: true, courant: true });
+			ticket.querySelector('.mon-ticket__etiquette').textContent = 'Invitation';
+			const bas = ticket.querySelector('.mon-ticket__bas');
+			const envoi = ui.dernierEnvoi(e => e.commande.type === 'REPONDRE_INVITATION' && e.commande.passageId === cible.passageId);
+			const repondre = reponse => ui.commande({ type: 'REPONDRE_INVITATION', methode: 'POST',
+				chemin: `${ui.racine()}/passages/${encodeURIComponent(cible.passageId)}/invitation`,
+				corps: { numeroModification: cible.numeroModification, reponse }, mancheId: ui.bloc.mancheId,
+				acteurType: 'JOUEUR', passageId: cible.passageId });
+			// Une seule action citron : « Je suis prêt » et la note à donner passent avant la première Invitation.
+			const autreAction = rang > 0 || ui.bloc.peutConfirmerPresence || (ui.bloc.votes ?? []).some(vote => vote.peutVoter);
+			const accepter = bouton('Accepter', () => repondre('ACCEPTER'), autreAction ? 'bouton' : 'bouton bouton--action');
+			const refuser = bouton('Refuser', () => repondre('REFUSER'));
+			// Une clé par geste : une vue reçue rend le focus au même bouton (#138).
+			for (const [action, geste, libelle] of [[accepter, 'accepter', 'Accepter'], [refuser, 'refuser', 'Refuser']]) {
+				action.setAttribute('data-passage-id', cible.passageId);
+				action.setAttribute('data-action', geste);
+				action.setAttribute('aria-label', `${libelle} l'Invitation de ${invitation.inscrivant.pseudo} pour ${invitation.chanson.titre}`);
+				action.disabled = !ui.mutationsPermises || envoi?.etat === 'en-cours' || Boolean(peutReessayer(envoi));
+			}
+			const actions = e('div', 'karaoke__commandes'); actions.append(accepter, refuser);
+			const etat = e('p', '', texteEnvoi(envoi)); etat.setAttribute('role', 'status');
+			bas.append(e('p', 'karaoke__texte-invitation', texteInvitation(invitation)), actions, etat);
+			if (ui.reessaiPossible(envoi)) bas.append(bouton('Réessayer le même envoi', () => ui.reessayer(envoi.cle)));
+			return ticket;
+		});
+		const enReste = recues.length > 0;
+		ui.remplacerListe(invitations, fiches, enReste ? titreInvitations : titre);
+		titreInvitations.hidden = invitations.hidden = !enReste;
+		if (!enReste && titreAvaitFocus) titre.focus();
+	}
 	function envoiPresence() {
 		return ui.dernierEnvoi(e => e.commande.type === 'CONFIRMER_PRESENCE' && e.commande.passageId === ui.bloc.courant?.passageId);
 	}
@@ -122,9 +168,20 @@ export function monter(zones, contexte) {
 		if (!ui.bloc) return;
 		votes.rendre(titre, origine);
 		rendreScene(origine);
+		rendreInvitations();
 		const tickets = ui.bloc.mesPassagesEnAttente.map(p => {
 			const ticket = creerTicket(ui, p, { personnel: true, estimation: true });
-			const retirer = bouton('Me désinscrire', () => desinscrire(p, retirer), 'bouton bouton--lien');
+			const inscripteur = estInscripteur(p, moi);
+			if (inscripteur) {
+				const lignes = lignesInvitations(ui.bloc.invitationsEmises, p.passageId);
+				if (lignes.length) {
+					const liste = e('ul', 'karaoke__etat-invitations');
+					liste.setAttribute('aria-label', 'Invitations');
+					for (const ligne of lignes) liste.append(e('li', '', ligne));
+					ticket.querySelector('.mon-ticket__bas').append(liste);
+				}
+			}
+			const retirer = bouton(inscripteur ? 'Me désinscrire' : 'Quitter ce Passage', () => desinscrire(p, retirer), 'bouton bouton--lien');
 			retirer.setAttribute('data-passage-id', p.passageId); retirer.disabled = !ui.mutationsPermises;
 			const envoi = [...ui.envois.values()].filter(e => e.commande.passageId === p.passageId).at(-1);
 			if (envoi?.etat === 'en-cours') retirer.disabled = true;
@@ -135,6 +192,12 @@ export function monter(zones, contexte) {
 			ticket.querySelector('.mon-ticket__bas').append(commandes); return ticket;
 		});
 		ui.remplacerListe(personnels, tickets.length ? tickets : [e('p', '', "Tu n'attends aucun Passage.")], titre);
+		const idsEnAttente = new Set(ui.bloc.mesPassagesEnAttente.map(p => p.passageId));
+		const lignesExpirees = (ui.bloc.invitationsEmises ?? [])
+			.filter(i => i.etat === 'EXPIREE' && !idsEnAttente.has(i.passageId))
+			.map(i => e('li', '', `Passage ${i.numero} · ${texteEtatInvitation(i)}`));
+		expirees.replaceChildren(...lignesExpirees);
+		expirees.hidden = !lignesExpirees.length;
 		ui.remplacerListe(file, ui.bloc.prochainsPassages.map(p => { const li = e('li'); li.append(creerTicket(ui, p)); return li; }), ensuite);
 		file.hidden = !ui.bloc.prochainsPassages.length;
 		autres.textContent = texteAutresPassages(ui.bloc.nombreAutresPassages);

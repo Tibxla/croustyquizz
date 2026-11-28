@@ -28,8 +28,9 @@ channels:
       Messages serveur → écran exclusivement ; aucun SEND de commande métier, les commandes du lecteur
       de l’Écran de salle passant par HTTP. Une révision est propre à cette destination et à cette
       Soirée. musique-attente-modifiee après changement du réglage de l’Animateur ou de la disponibilité
-      signalée par l’Écran de salle, y compris hors Manche. Karaoké : file-attente-modifiee après inscription, désinscription, retrait, placement ou
-      priorité ; limite-passages-modifiee après changement utile de limite ; passage-appele,
+      signalée par l’Écran de salle, y compris hors Manche. Karaoké : file-attente-modifiee après
+      inscription, désinscription, réponse à une Invitation, retrait, placement ou priorité ;
+      limite-passages-modifiee après changement utile de limite ; passage-appele,
       passage-demarre, passage-termine et passage-saute pour le cycle du Passage.
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une
       fin de lecture, une fin prévue, un saut à l’échéance de l’appel, PASSER_ETAPE, une clôture
@@ -40,12 +41,13 @@ channels:
       manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
       En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
       la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
-      termine la Manche. La vue porte alors karaoke à null ;
-      vote-enregistre actualise le nombre de votes de la salle, vote-clos apporte la moyenne à la clôture ;
+      termine la Manche. La vue porte alors karaoke à null.
+      vote-enregistre actualise le nombre de votes de la salle ; vote-clos apporte la moyenne
+      quand la clôture du vote ne déclenche ni appel ni fin de Manche ;
       lecture-chanson-modifiee après désignation, déclaration, erreur ou reprise en paroles seules ;
       calage-chanson-modifie après geste, demande, relevé ou correction. Vue complète avec bloc karaoke
       (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
-      et paroles du Passage démarré, votes), sans fichier local ni secret ; pause, reprise et fin de Manche par
+      et paroles du Passage démarré, votes), sans invitation, fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
       Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele, morceau-saute et verdict-renverse (arbitrage de l’Animateur, annoncé par blindtest.arbitrage) ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon ni texte de Proposition publié.
       Photos : photos-modifiees au changement d’affiche ; le bloc photos est nul sans affiche,
@@ -62,7 +64,8 @@ channels:
       de commande métier. Une révision est propre à cette destination et à cette Soirée.
       musique-attente-modifiee transporte la vue complète après changement du réglage de l’Animateur
       ou de la disponibilité signalée par l’Écran de salle, y compris hors Manche. Karaoké :
-      file-attente-modifiee après inscription, désinscription, retrait, placement ou priorité ;
+      file-attente-modifiee après inscription, désinscription, réponse à une Invitation, retrait,
+      placement ou priorité ;
       limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre,
       passage-termine et passage-saute pour le cycle du Passage.
       En Pilotage Automatique, passage-appele est aussi l’unique cause si une inscription, une fin
@@ -74,12 +77,12 @@ channels:
       manche-reprise, sauf si elle appelle le suivant ou termine la Manche.
       En Pilotage Automatique, manche-terminee est l’unique cause quand la fin de lecture,
       la fin prévue, l’échéance de l’appel, PASSER_ETAPE, la clôture du dernier vote ou la reprise
-      termine la Manche. La vue porte alors karaoke à null ;
-      vote-enregistre actualise le nombre de votes sur la Console et la salle, vote-clos apporte la moyenne
-      à la clôture ; lecture-chanson-modifiee après
+      termine la Manche. La vue porte alors karaoke à null.
+      vote-enregistre actualise le nombre de votes sur la Console et la salle ; vote-clos apporte la moyenne
+      quand la clôture du vote ne déclenche ni appel ni fin de Manche ; lecture-chanson-modifiee après
       désignation, déclaration, erreur ou reprise en paroles seules ; calage-chanson-modifie après
       geste, demande, relevé ou correction. Vue complète avec bloc karaoke (BlocKaraokeConsole : toute
-      la File d’attente, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
+      la File d’attente, invitations en suspens, courant, lecture, fichier local, votes et droits de pilotage), sans paroles ni secret
       ; pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle ; bloc blindtest (BlocBlindTestConsole : réponse attendue et Joueurs bloqués), sans lien d’extrait.
       Photos : photos-modifiees à l’arrivée, à la modération, au changement de réglage et à l’oubli
@@ -96,8 +99,8 @@ channels:
     description: "Joueur correspondant au jeton uniquement ; connaître un UUID ne donne aucun droit.
       Messages serveur → écran exclusivement ; aucun SEND de commande métier. Une révision est
       propre à cette destination et à cette Soirée. Karaoké : file-attente-modifiee après
-      inscription, désinscription, retrait, placement ou priorité ; limite-passages-modifiee après
-      changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
+      inscription, désinscription, réponse à une Invitation, retrait, placement ou priorité ;
+      limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre, passage-termine et passage-saute
       pour le cycle du Passage. En Pilotage Automatique, passage-appele est aussi l’unique cause si
       une inscription, une fin de lecture, une fin prévue, un saut à l’échéance de l’appel, PASSER_ETAPE,
       une clôture de vote ou une reprise appelle le suivant ; la vue montre le nouveau courant APPELE
@@ -111,10 +114,12 @@ channels:
       lecture-chanson-modifiee après erreur ou reprise en paroles seules,
       jamais après désignation ou déclaration ; aucun calage-chanson-modifie. Pour ces causes, chaque
       Joueur de la Soirée reçoit sa propre vue sur ce canal, même si le changement ne concerne pas ses
-      Passages. vote-clos apporte la moyenne à la salle, à la Console et à toutes les Manettes ;
+      Passages. vote-clos apporte la moyenne à la salle, à la Console et à toutes les Manettes
+      quand la clôture du vote ne déclenche ni appel ni fin de Manche ;
       vote-enregistre atteint la salle, la Console et la Manette du votant. Vue complète avec bloc karaoke
-      (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »
-      et ses votes), sans lecture, paroles, fichier local ni secret ;
+      (BlocKaraokeManette : courant, trois prochains Passages, ses Passages en attente, « Je suis prêt »,
+      ses votes, ses invitations reçues en suspens et l’état de ses invitations émises), sans lecture,
+      paroles, fichier local, invitation d’autrui ni secret ;
       pause, reprise et fin de Manche par les causes existantes. Recherche, refus, rejeu, geste sans
       effet et rollback sans publication. Aucun événement par seconde. Blind test : mêmes causes que la salle, chaque Joueur recevant sa propre vue ; brouillon-depose uniquement à la Manette de l’auteur d’un brouillon retenu ; bloc blindtest (BlocBlindTestManette : main, blocage, champs encore demandés et brouillon de son seul auteur), sans lien d’extrait ni réponse avant la Révélation.
       Photos : photos-modifiees au changement de réglage ; le bloc photos indique

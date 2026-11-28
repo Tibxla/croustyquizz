@@ -68,10 +68,11 @@ function dependances(nom, vues = new Set()) {
 // légèreté de sa vue, pas pour le secret : la vue salle est lisible par un Joueur.
 // Le texte des Propositions de titre ne sort que vers la Console, pour l'arbitrage du Blind test.
 const interditsParVue = {
-  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg', 'PropositionJugee'],
-  console: ['ParolesDuPassage'],
+  salle: ['FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg', 'InvitationEnAttente', 'InvitationEmise',
+    'InvitationRecue', 'PropositionJugee'],
+  console: ['ParolesDuPassage', 'InvitationEmise', 'InvitationRecue'],
   joueur: ['LectureDeChanson', 'ParolesDuPassage', 'FichierAudioLocal', 'PhotoEnAttente', 'ImageJpeg',
-    'PropositionJugee'],
+    'InvitationEnAttente', 'PropositionJugee'],
 };
 for (const [vue, destination] of [['VueSalle', 'salle'], ['VueConsole', 'console'], ['VueManette', 'joueur'],
   ['EvenementSalle', 'salle'], ['EvenementConsole', 'console'], ['EvenementJoueur', 'joueur']]) {
@@ -126,7 +127,7 @@ assert.equal(ouvert.components.securitySchemes.cleEcran.scheme, 'bearer');
 assert.ok(Object.values(asynchrone.operations).every((operation) => operation.action === 'send'),
   'Le serveur ne reçoit aucune commande métier par STOMP.');
 
-const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos'].map(async nom => ({
+const parcours = await Promise.all(['quiz', 'karaoke', 'passage-karaoke', 'pilotage-automatique', 'vote-karaoke', 'musique-attente', 'blindtest', 'pilotage-manuel', 'photos', 'invitations-karaoke'].map(async nom => ({
   nom, exemples: await lire(`exemples/parcours-${nom}.yaml`),
 })));
 const couvertes = new Set();
@@ -140,6 +141,28 @@ for (const { nom, exemples } of parcours) {
       ? `/topic/joueurs/${vue.joueurId}`
       : `/topic/soirees/${vue.soiree.id}/${canal}`;
     projections.push({ destination, vue, revision, instant: Date.parse(instant), contexte });
+    // Les Invitations d’un Passage sorti de la File restent visibles seulement quand elles ont expiré.
+    if (canal === 'joueur' && vue.karaoke) {
+      const siens = new Map(vue.karaoke.mesPassagesEnAttente.map(p => [p.passageId, p]));
+      for (const invitation of vue.karaoke.invitationsEmises) {
+        const attente = siens.get(invitation.passageId) ?? vue.karaoke.prochainsPassages.find(p => p.passageId === invitation.passageId);
+        const courant = vue.karaoke.courant;
+        const passage = attente ?? (courant?.passageId === invitation.passageId ? courant : null);
+        if (!attente) {
+          assert.equal(invitation.etat, 'EXPIREE', `${contexte} : invitation encore visible hors de la File`);
+        }
+        if (passage) {
+          assert.equal(passage.interpretes[0].joueurId, vue.joueurId, `${contexte} : invitation émise pour le Passage d’autrui`);
+          assert.equal(passage.numero, invitation.numero, `${contexte} : numéro du Passage incohérent`);
+        }
+        assert.notEqual(invitation.invite.joueurId, vue.joueurId, `${contexte} : invitation émise vers soi`);
+      }
+      for (const invitation of vue.karaoke.invitationsRecues) {
+        assert.ok(!siens.has(invitation.passage.passageId), `${contexte} : invitation reçue pour un Passage personnel`);
+        assert.equal(invitation.inscrivant.joueurId, invitation.interpretes[0].joueurId,
+          `${contexte} : l’inscrivant n’est pas le premier Interprète`);
+      }
+    }
     // Le courant du Passage suit l'état de la Manche porté par le bloc : échéance d'appel nulle exactement
     // en pause, état EN_PAUSE seulement dans une Manche en pause.
     const courant = vue.karaoke?.courant;

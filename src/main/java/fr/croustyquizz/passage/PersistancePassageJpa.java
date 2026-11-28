@@ -21,7 +21,12 @@ public class PersistancePassageJpa {
         Map<UUID, Long> consommations = new HashMap<>();
         entites.createQuery("select t from TourConsommePersistant t where t.mancheId = :manche", TourConsommePersistant.class)
                 .setParameter(PARAMETRE_MANCHE, mancheId).getResultList().forEach(t -> consommations.put(t.getInterpreteId(), t.getDernierTourConsomme()));
-        return file.restaurer(passages, consommations);
+        return file.restaurer(passages, consommations, invitations(mancheId).stream().map(InvitationPersistante::restaurer).toList());
+    }
+
+    private List<InvitationPersistante> invitations(UUID mancheId) {
+        return entites.createQuery("select i from InvitationPersistante i where i.mancheId = :manche order by i.ordre",
+                InvitationPersistante.class).setParameter(PARAMETRE_MANCHE, mancheId).getResultList();
     }
     public void enregistrer(UUID mancheId, EtatFileAttente etat) {
         if (!mancheId.equals(etat.mancheId())) { throw new IllegalArgumentException("File d'une autre Manche."); }
@@ -52,6 +57,18 @@ public class PersistancePassageJpa {
         }
         aInscrire.forEach(entites::persist);
         etat.derniersToursConsommes().forEach((id, tour) -> entites.merge(new TourConsommePersistant(mancheId, id, tour)));
+        enregistrerInvitations(mancheId, etat.invitations());
+    }
+
+    /** Remplace les invitations de la Manche par celles de la capture, dans son ordre. */
+    private void enregistrerInvitations(UUID mancheId, List<InvitationPassage> invitations) {
+        Set<InvitationPersistante.Cle> actuelles = new HashSet<>();
+        for (int ordre = 0; ordre < invitations.size(); ordre++) {
+            var invitation = new InvitationPersistante(mancheId, invitations.get(ordre), ordre);
+            actuelles.add(invitation.cle());
+            entites.merge(invitation);
+        }
+        invitations(mancheId).stream().filter(i -> !actuelles.contains(i.cle())).forEach(entites::remove);
     }
 
     private Map<UUID, List<InterpretePersistant>> interpretesParPassage(UUID mancheId) {
