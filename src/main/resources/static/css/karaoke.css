@@ -32,6 +32,19 @@
 .karaoke__resultats > li { padding-block: var(--espace-3); border-bottom: 1px solid var(--fond-3); }
 .karaoke__resultats .titre { text-align: left; }
 .karaoke__resultats td:last-child { width: auto; }
+/* Chanson de la Bibliothèque de base (ADR 0011) : étiquette imprimée en vert d'eau, sous de l'encre brune ; le texte dit le sens. */
+.karaoke__musique {
+  justify-self: start;
+  width: fit-content;
+  margin-block: var(--espace-1);
+  padding: var(--espace-1) var(--espace-2);
+  border-radius: var(--rayon);
+  background: var(--eau);
+  color: var(--encre);
+  font: 800 0.8125rem/1 var(--police-chiffres);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 .karaoke__commandes {
   display: flex;
   flex-wrap: wrap;
@@ -171,3 +184,4 @@
   .karaoke .ticket--detache .ticket__corps,
   .karaoke .mon-ticket--detachement .mon-ticket__bas { animation: none; }
 }
+/* Crédit d'une Chanson de la Bibliothèque de base, sous les paroles, en texte secondaire. */

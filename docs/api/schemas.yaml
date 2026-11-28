@@ -2356,6 +2356,50 @@ $defs:
         - ABSENTES
         - SANS_VOIX
         - INCONNU
+      origine:
+        description: Origine de la Chanson et de ses paroles. BIBLIOTHEQUE pour une Chanson de la
+          Bibliothèque de base (ADR 0011), dont les paroles viennent du catalogue livré avec
+          l'application ; LRCLIB sinon.
+        type: string
+        enum:
+        - LRCLIB
+        - BIBLIOTHEQUE
+      bibliotheque:
+        description: Fichier et crédit d'une Chanson de la Bibliothèque de base, null pour LRCLIB. Peut
+          valoir null pour une Chanson de la bibliothèque inscrite avant la disparition de son entrée
+          du catalogue. L'Écran de salle lit le fichier par son URL quand le dossier du Lieu n'en a pas,
+          et affiche le crédit (titre, artiste, licence) pendant le Passage.
+        oneOf:
+        - type: object
+          additionalProperties: false
+          properties:
+            fichier:
+              description: URL relative du fichier audio, servi en statique avec un cache long. Le
+                dernier segment est le nom déclaré dans FichierAudioLocal.
+              type: string
+              pattern: ^/bibliotheque/chansons/[A-Za-z0-9][A-Za-z0-9._-]*\.(mp3|m4a|ogg|wav)$
+              maxLength: 255
+            tailleOctets:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            licence:
+              description: Nom court de la licence, affiché dans le crédit, par exemple « CC BY 4.0 ».
+              type: string
+              minLength: 1
+            urlLicence:
+              type: string
+              format: uri
+            urlSource:
+              type: string
+              format: uri
+          required:
+          - fichier
+          - tailleOctets
+          - licence
+          - urlLicence
+          - urlSource
+        - type: 'null'
     required:
     - chansonId
     - titre
@@ -2363,6 +2407,16 @@ $defs:
     - album
     - dureeMs
     - etatParoles
+    - origine
+    - bibliotheque
+    if:
+      properties:
+        origine:
+          const: LRCLIB
+    then:
+      properties:
+        bibliotheque:
+          type: 'null'
   ResultatsChansons:
     type: object
     additionalProperties: false

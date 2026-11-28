@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { terminerMicrotaches } from './karaoke-dom-factice.mjs';
 import { creerMusiqueDAttente } from '../../src/main/resources/static/js/musique-attente.mjs';
 
-function banc({ illisibles = [], refusDeLecture = [], surSonBloque, surMorceauxEpuises } = {}) {
+function banc({ illisibles = [], refusDeLecture = [], surSonBloque, surMorceauEcarte, surMorceau } = {}) {
 	let fichier, position, fin, erreur;
 	const lectures = [];
-	const musique = creerMusiqueDAttente({ hasard: () => 0, surSonBloque, surMorceauxEpuises, lecteur: {
+	const musique = creerMusiqueDAttente({ hasard: () => 0, surSonBloque, surMorceauEcarte, surMorceau, lecteur: {
 		async charger(candidat) {
 			if (illisibles.includes(candidat)) throw new Error('Fichier audio illisible.');
 			fichier = candidat;
@@ -57,7 +57,7 @@ test('la liste mélange une fois les morceaux et revient au premier après le de
 
 test('la Musique d’attente prévient une seule fois quand elle a écarté tous ses morceaux illisibles', async () => {
 	let epuisements = 0;
-	const b = banc({ illisibles: ['A', 'B'], surMorceauxEpuises: () => { epuisements++; } });
+	const b = banc({ illisibles: ['A', 'B'], surMorceauEcarte: (_, restants) => { if (restants === 0) epuisements++; } });
 	b.musique.autoriserLecture(true);
 	b.musique.choisirFichiers(['A', 'B']);
 	await terminerMicrotaches();
@@ -71,7 +71,7 @@ test('la Musique d’attente prévient une seule fois quand elle a écarté tous
 
 test('un morceau seul qui échoue deux fois après le chargement épuise la Musique d’attente', async () => {
 	let epuisements = 0;
-	const b = banc({ surMorceauxEpuises: () => { epuisements++; } });
+	const b = banc({ surMorceauEcarte: (_, restants) => { if (restants === 0) epuisements++; } });
 	b.musique.choisirFichiers(['A']);
 	b.musique.autoriserLecture(true);
 	await terminerMicrotaches();
@@ -91,7 +91,7 @@ test('un morceau seul qui échoue deux fois après le chargement épuise la Musi
 
 test('plusieurs morceaux dont la lecture échoue sont écartés à leur deuxième passage', async () => {
 	let epuisements = 0;
-	const b = banc({ surMorceauxEpuises: () => { epuisements++; } });
+	const b = banc({ surMorceauEcarte: (_, restants) => { if (restants === 0) epuisements++; } });
 	b.musique.choisirFichiers(['A', 'B']);
 	b.musique.autoriserLecture(true);
 	await terminerMicrotaches();
@@ -111,7 +111,7 @@ test('plusieurs morceaux dont la lecture échoue sont écartés à leur deuxièm
 
 test('un morceau lu jusqu’au bout est de nouveau essayé après une erreur de lecture', async () => {
 	let epuisements = 0;
-	const b = banc({ surMorceauxEpuises: () => { epuisements++; } });
+	const b = banc({ surMorceauEcarte: (_, restants) => { if (restants === 0) epuisements++; } });
 	b.musique.choisirFichiers(['A']);
 	b.musique.autoriserLecture(true);
 	await terminerMicrotaches();
@@ -125,10 +125,27 @@ test('un morceau lu jusqu’au bout est de nouveau essayé après une erreur de 
 	assert.equal(epuisements, 0);
 });
 
+test('le retour d’un morceau de la Bibliothèque de base conserve les erreurs des morceaux restants', async () => {
+	const ecartes = [];
+	const b = banc({ surMorceauEcarte: morceau => ecartes.push(morceau) });
+	b.musique.choisirFichiers(['A']);
+	b.musique.autoriserLecture(true);
+	await terminerMicrotaches();
+	b.echouer();
+	await terminerMicrotaches();
+	b.musique.choisirFichiers(['A', 'B'], { conserverErreurs: true });
+	await terminerMicrotaches();
+	b.finir();
+	await terminerMicrotaches();
+	b.echouer();
+	await terminerMicrotaches();
+	assert.deepEqual(ecartes, ['A']);
+});
+
 test('NotSupportedError compte comme une erreur de lecture et NotAllowedError signale le son bloqué', async () => {
 	let epuisements = 0, blocages = 0;
 	const b = banc({ refusDeLecture: ['NotSupportedError', 'NotAllowedError', 'NotSupportedError'],
-		surSonBloque: () => { blocages++; }, surMorceauxEpuises: () => { epuisements++; } });
+		surSonBloque: () => { blocages++; }, surMorceauEcarte: (_, restants) => { if (restants === 0) epuisements++; } });
 	b.musique.choisirFichiers(['A']);
 	b.musique.autoriserLecture(true);
 	await terminerMicrotaches();
@@ -142,8 +159,8 @@ test('NotSupportedError compte comme une erreur de lecture et NotAllowedError si
 });
 
 test('un morceau illisible parmi des lisibles est écarté sans tarir la Musique d’attente', async () => {
-	let epuisements = 0;
-	const b = banc({ illisibles: ['A'], surMorceauxEpuises: () => { epuisements++; } });
+	const ecartes = [];
+	const b = banc({ illisibles: ['A'], surMorceauEcarte: morceau => ecartes.push(morceau) });
 	b.musique.autoriserLecture(true);
 	b.musique.choisirFichiers(['A', 'B']);
 	await terminerMicrotaches();
@@ -151,12 +168,12 @@ test('un morceau illisible parmi des lisibles est écarté sans tarir la Musique
 	b.finir();
 	await terminerMicrotaches();
 	assert.deepEqual(b.lectures, [['B', 0], ['B', 0]]);
-	assert.equal(epuisements, 0);
+	assert.deepEqual(ecartes, ['A']);
 });
 
 test('une erreur en cours de lecture passe au morceau suivant et conserve le morceau interrompu', async () => {
-	let epuisements = 0;
-	const b = banc({ illisibles: ['A'], surMorceauxEpuises: () => { epuisements++; } });
+	const ecartes = [];
+	const b = banc({ illisibles: ['A'], surMorceauEcarte: morceau => ecartes.push(morceau) });
 	b.musique.autoriserLecture(true);
 	b.musique.choisirFichiers(['A', 'B', 'C']);
 	await terminerMicrotaches();
@@ -168,5 +185,21 @@ test('une erreur en cours de lecture passe au morceau suivant et conserve le mor
 	b.finir();
 	await terminerMicrotaches();
 	assert.deepEqual(b.lectures, [['B', 0], ['C', 0], ['B', 0]]);
-	assert.equal(epuisements, 0);
+	assert.deepEqual(ecartes, ['A']);
+});
+
+test('la Musique d’attente annonce le morceau qui joue, puis son silence, pour en afficher le crédit', async () => {
+	const annonces = [];
+	const b = banc({ surMorceau: morceau => annonces.push(morceau) });
+	b.musique.choisirFichiers(['A', 'B']);
+	b.musique.autoriserLecture(true);
+	await terminerMicrotaches();
+	assert.deepEqual(annonces, ['B']);
+	b.finir();
+	await terminerMicrotaches();
+	assert.deepEqual(annonces, ['B', null, 'A']);
+	b.musique.autoriserLecture(false);
+	assert.deepEqual(annonces, ['B', null, 'A', null]);
+	b.musique.detruire();
+	assert.deepEqual(annonces, ['B', null, 'A', null]);
 });

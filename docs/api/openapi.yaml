@@ -1785,7 +1785,11 @@ paths:
         chiffre Unicode ou trop longue : REQUETE_INVALIDE. rechercheId client renvoyé tel quel, sans
         reçu, pour ignorer les réponses tardives. Classement et déduplication déterministes selon le
         README ; interprétations distinctes et Chansons non inscriptibles conservées, seul le malformé
-        est exclu. Aucun résultat : 200 chansons:[]. Aucune publication. Animateur du Lieu ou Joueur
+        est exclu. Le catalogue de la Bibliothèque de base est consulté avant LRCLIB ; ses Chansons
+        portent origine BIBLIOTHEQUE et passent en tête des résultats (ADR 0011). LRCLIB
+        indisponible : 200 avec les seules Chansons du catalogue qui correspondent,
+        SOURCE_PAROLES_INDISPONIBLE s’il n’y en a aucune. Aucun résultat : 200 chansons:[]. Aucune
+        publication. Animateur du Lieu ou Joueur
         présent, retardataire compris. Refus (groupes N, V, T, S) : 400 REQUETE_INVALIDE, 401
         AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 404 RESSOURCE_INTROUVABLE, 409 ETAPE_INACTIVE, 503
         SERVICE_INDISPONIBLE, 503 SOURCE_PAROLES_INDISPONIBLE ; aucun 422. Conditions de chaque code :
@@ -1854,7 +1858,8 @@ paths:
       summary: Consulter une Chanson
       description: 'chansonId opaque et stable attribué par le serveur, sans identifiant ni préfixe de
         fournisseur public, de 1 à 128 caractères ; au-delà : REQUETE_INVALIDE. Inconnu, disparu ou 404
-        externe : RESSOURCE_INTROUVABLE. Fiche indicative, revalidée à l’inscription ; motifs dans
+        externe : RESSOURCE_INTROUVABLE. Une Chanson de la Bibliothèque de base se lit dans le catalogue,
+        sans LRCLIB ni SOURCE_PAROLES_INDISPONIBLE. Fiche indicative, revalidée à l’inscription ; motifs dans
         l’ordre : sans voix, paroles non synchronisées (absentes et inconnues incluses), durée inconnue,
         doublon personnel en attente, quota EN_ATTENTE. Premier motif ou null ; Animateur :
         false/ANIMATEUR. Aucune publication. Animateur du Lieu ou Joueur présent, retardataire compris.
@@ -1922,7 +1927,9 @@ paths:
         garde. chansonId de 1 à 128 caractères, sinon REQUETE_INVALIDE. Reçu consulté avant le métier,
         source consultée hors verrou, revalidation sous verrou. Gardes dans l’ordre : sans voix, paroles
         non synchronisées (absentes et inconnues incluses), durée inconnue, doublon personnel en
-        attente, quota EN_ATTENTE. Détail de la Chanson figé à l’inscription ; la même Chanson reste
+        attente, quota EN_ATTENTE. Une Chanson de la Bibliothèque de base prend ses paroles du catalogue,
+        sans consulter LRCLIB : elle reste inscriptible quand LRCLIB est indisponible (ADR 0011). Détail
+        de la Chanson figé à l’inscription ; la même Chanson reste
         permise à deux Joueurs ; source audio et fichier local sans incidence. En Pilotage Automatique,
         si la Manche est EN_COURS et sans courant actif, le Passage en position 1 est appelé dans la
         même mutation. Le reçu 201 décrit toujours l’inscription (EN_ATTENTE) ; la vue publiée par
@@ -2602,8 +2609,11 @@ paths:
       operationId: designerLecteurChanson
       summary: Désigner le lecteur de l’Écran de salle
       description: 'Manche Karaoké active en Soirée EN_COURS. Écran de salle. La fenêtre qui vient de choisir son
-        dossier se désigne par un lecteurId qu’elle a engendré ; la dernière désignation l’emporte, un seul
-        lecteur par Manche. La fenêtre garde son dossier et se redésigne à la Manche Karaoké suivante.
+        dossier se désigne par un lecteurId qu’elle a engendré. Une fenêtre qui active le son avec la seule
+        Bibliothèque de base peut aussi se désigner entre deux Passages ou lorsque son navigateur constate
+        la disparition du lecteur désigné.
+        La dernière désignation l’emporte, un seul lecteur par Manche. La fenêtre garde son dossier et peut
+        se redésigner à la Manche Karaoké suivante.
         Pendant l’appel, la désignation efface la lecture préparée par un autre lecteur ; jamais celle d’un
         Passage démarré, dont les signaux restent réservés à son lecteur. Publie lecture-chanson-modifiee
         sur la salle et la Console. Aucun code propre : le lecteur déjà désigné réussit sans effet ni

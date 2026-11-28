@@ -5,11 +5,12 @@ import { monter as manette } from '../../src/main/resources/static/js/modes/kara
 import { monter as consoleKaraoke } from '../../src/main/resources/static/js/modes/karaoke/console.mjs';
 import { creerEcranKaraoke } from '../../src/main/resources/static/js/modes/karaoke/ecran.mjs';
 import { creerAudioSalle } from '../../src/main/resources/static/js/audio-salle.mjs';
+import { creerCoordinationSon } from '../../src/main/resources/static/js/coordination-son.mjs';
 import { readFile } from 'node:fs/promises';
 const capture = { source: 'capture', type: 'capture' }, evenement = { source: 'evenement', type: 'karaoke-file-modifiee' };
 const bouton = (zone, texte) => zone.querySelectorAll('button').find(b => b.textContent === texte);
 
-function bancLecteur() {
+function bancLecteur({ bibliotheque, lecteurId = 'lecteur', soireeId, memoireLecteur } = {}) {
 	const appels = [], sonsDeManche = [], trames = new Map();
 	let numero = 0;
 	let sonDebloque = false;
@@ -24,9 +25,11 @@ function bancLecteur() {
 		surErreur: () => () => {},
 		detruire: () => appels.push('libérer'),
 	};
-	const audioSalle = creerAudioSalle({ lecteur, lecteurId: 'lecteur',
+	const audioSalle = creerAudioSalle({ lecteur, lecteurId, bibliotheque,
 		sonde: { charger: async () => ({ dureeMs: 2000 }), detruire() {} },
-		coordonner: () => ({ activer() {}, signalerSonDeManche: actif => sonsDeManche.push(actif),
+		coordonner: surAttente => soireeId ? creerCoordinationSon({ verrous: navigator.locks,
+			canal: new BroadcastChannel(soireeId), ouverteA: performance.timeOrigin, id: lecteurId, soireeId, surAttente, memoireLecteur }) :
+			({ activer() {}, signalerSonDeManche: actif => sonsDeManche.push(actif),
 			attendreSonDeManche: async () => sonsDeManche.at(-1), annoncerMorceaux() {}, attendreAucunMorceauAilleurs: async () => {},
 			detruire() {} }),
 	});
@@ -35,7 +38,8 @@ function bancLecteur() {
 			cancelAnimationFrame: id => trames.delete(id), performance } };
 }
 function ecran(zones, contexte, { audioSalle, dependances } = bancLecteur()) {
-	Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche });
+	Object.assign(contexte, { audioSalle, signalerSonDeManche: audioSalle.signalerSonDeManche,
+		crediterSonDeManche: audioSalle.crediterSonDeManche });
 	return creerEcranKaraoke(zones, contexte, { ...dependances, document: zones.principale.ownerDocument });
 }
 
@@ -248,6 +252,28 @@ test('Manette : recherche par composition, validation accessible, vidage silenci
 	assert.match(b.principale.querySelector('dialog').textContent, /Cette Chanson n'est plus disponible/);
 	assert.match(b.principale.querySelector('dialog').textContent, /Source disparue/); assert.ok(bouton(b.principale, "M'inscrire") === undefined);
 	b.module.demonter();
+});
+
+test('Manette : les Chansons de la Bibliothèque de base portent « Musique incluse » dans les résultats et sur la fiche', async t => {
+	const b = creerBanc(manette); t.after(() => b.module.demonter());
+	b.module.afficher(vue(), capture); b.connecter('synchronisee');
+	const libre = { ...chanson, chansonId: 'libre', titre: 'Crazy Glue', artiste: 'Josh Woodward', origine: 'BIBLIOTHEQUE', bibliotheque: {
+		fichier: '/bibliotheque/chansons/josh-woodward-crazy-glue.mp3', tailleOctets: 2400, licence: 'CC BY 4.0',
+		urlLicence: 'https://creativecommons.org/licenses/by/4.0/deed.fr', urlSource: 'https://example.org/crazy-glue' } };
+	const homonyme = { ...libre, chansonId: 'homonyme', album: 'The Wake', origine: 'LRCLIB', bibliotheque: null };
+	const instrumentale = { ...chanson, chansonId: 'instrumentale', titre: 'Crazy Glue (Instrumental)', etatParoles: 'SANS_VOIX',
+		origine: 'LRCLIB', bibliotheque: null };
+	const champ = b.principale.querySelector('input'); champ.value = 'crazy glue'; b.principale.querySelector('form').dispatchEvent({ type: 'submit' });
+	b.appels[0].resolve({ statut: 200, corps: { chansons: [libre, homonyme, instrumentale] } }); await terminerMicrotaches();
+	const lignes = b.principale.querySelector('.karaoke__resultats').children;
+	assert.deepEqual(lignes.map(li => li.querySelector('[data-chanson-id]').getAttribute('data-chanson-id')), ['libre', 'homonyme', 'instrumentale'],
+		'l’ordre du serveur, Bibliothèque de base en tête, est gardé');
+	assert.deepEqual(lignes.map(li => li.querySelector('.karaoke__musique')?.textContent ?? null), ['Musique incluse', null, null]);
+	assert.match(lignes[2].textContent, /Version instrumentale/);
+	assert.doesNotMatch(b.principale.textContent, /Sans voix/);
+	bouton(b.principale, 'Crazy Glue').click();
+	b.appels[1].resolve({ statut: 200, corps: { chanson: libre, inscriptionPossible: true, motifIndisponibilite: null } }); await terminerMicrotaches();
+	assert.equal(b.principale.querySelector('dialog').querySelector('.karaoke__musique')?.textContent, 'Musique incluse');
 });
 
 test('Manette : l’inscription inconnue se réessaie après capture, puis un ticket confirme le 503', async () => {
@@ -955,4 +981,109 @@ test('Salle : « Aucun vote » seul à la clôture, en Atkinson et sans aplat ci
 	const css = await readFile(new URL('../../src/main/resources/static/css/karaoke.css', import.meta.url), 'utf8');
 	assert.match(css, /\.bandeau-vote\s*\{[^}]*var\(--police-texte\)/s);
 	assert.doesNotMatch(css.match(/[^{}]*\.bandeau-vote[^{}]*\{[^}]*\}/g).join(''), /var\(--citron/);
+});
+
+const AVEC_CHANSON = { version: 1, licences: { 'CC-BY-SA-4.0': { nom: 'CC BY-SA 4.0',
+	url: 'https://creativecommons.org/licenses/by-sa/4.0/deed.fr' } }, entrees: [{ type: 'chanson', numero: 1, titre: 'La lanterne',
+	artiste: 'Les Lucioles', dureeMs: 4000, licence: 'CC-BY-SA-4.0', source: 'https://example.org/la-lanterne',
+	fichier: 'chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, lrc: 'chansons/les-lucioles-la-lanterne.lrc' }] };
+
+test('salle : « Activer le son » sans dossier choisit un lecteur libre, ou reprend la désignation au prochain intervalle', async t => {
+	const audio = bancLecteur({ bibliotheque: AVEC_CHANSON });
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
+	t.after(() => b.module.demonter());
+	b.connecter('synchronisee');
+	b.contexte.maintenantServeur = () => heureAppel;
+	b.module.afficher(vue({ lecteurDesigneId: 'ailleurs', courant: courant('EN_COURS') }), capture);
+	await audio.audioSalle.activerSon();
+	await terminerMicrotaches();
+	assert.deepEqual(b.appels.map(appel => appel.args[1]), [], 'un autre Écran lit déjà : il le reste');
+	b.module.afficher(vue({ lecteurDesigneId: 'ailleurs' }), evenement);
+	assert.deepEqual(b.appels.map(appel => [appel.args[0], appel.args[1].split('/').at(-1)]), [['PUT', 'lecteur']]);
+
+	const seule = bancLecteur({ bibliotheque: AVEC_CHANSON });
+	const c = creerBanc((z, contexte) => ecran(z, contexte, seule), 'ECRAN');
+	t.after(() => c.module.demonter());
+	c.connecter('synchronisee');
+	c.contexte.maintenantServeur = () => heureAppel;
+	c.module.afficher(vue({ lecteurDesigneId: null }), capture);
+	assert.deepEqual(c.appels, [], 'le son n’est pas activé : aucune désignation');
+	await seule.audioSalle.activerSon();
+	await terminerMicrotaches();
+	assert.deepEqual(c.appels.map(appel => [appel.args[0], appel.args[1].split('/').at(-1)]), [['PUT', 'lecteur']]);
+});
+
+test('salle : après rechargement sans dossier, le nouveau lecteur reprend l’appel et joue au départ', { timeout: 3000 }, async t => {
+	const soireeId = 'rechargement-karaoke';
+	let identifiantRetenu;
+	const memoireLecteur = { lire: () => identifiantRetenu, retenir: id => { identifiantRetenu = id; } };
+	const premiere = bancLecteur({ bibliotheque: AVEC_CHANSON, lecteurId: 'disparu', soireeId, memoireLecteur });
+	const ancien = creerBanc((z, c) => ecran(z, c, premiere), 'ECRAN');
+	ancien.connecter('synchronisee');
+	ancien.contexte.maintenantServeur = () => heureAppel;
+	ancien.module.afficher(vue({ lecteurDesigneId: null }), capture);
+	await premiere.audioSalle.activerSon();
+	assert.deepEqual(ancien.appels.map(a => a.args[2]), [{ lecteurId: 'disparu' }]);
+	ancien.module.demonter();
+	await premiere.audioSalle.detruire();
+	const audio = bancLecteur({ bibliotheque: AVEC_CHANSON, lecteurId: 'nouveau', soireeId, memoireLecteur });
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
+	t.after(() => { b.module.demonter(); return audio.audioSalle.detruire(); });
+	b.connecter('synchronisee');
+	b.contexte.maintenantServeur = () => heureAppel;
+	const chanson = { titre: 'La lanterne', artiste: 'Les Lucioles', origine: 'BIBLIOTHEQUE',
+		bibliotheque: { fichier: '/bibliotheque/chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400 } };
+	const appele = courant('APPELE', { chanson });
+	b.module.afficher(vue({ lecteurDesigneId: 'disparu', courant: appele }), capture);
+	assert.deepEqual(b.appels, []);
+	await audio.audioSalle.activerSon();
+	await terminerMicrotaches();
+	assert.deepEqual(b.appels.map(a => a.args[2]), [{ lecteurId: 'nouveau' }]);
+	b.module.afficher(vue({ lecteurDesigneId: 'nouveau', courant: appele }), evenement);
+	await terminerMicrotaches();
+	assert.equal(b.appels[1].args[2].fichier.nom, 'les-lucioles-la-lanterne.mp3');
+	b.appels[1].resolve({ statut: 200 });
+	await terminerMicrotaches();
+	b.module.afficher(vue({ lecteurDesigneId: 'nouveau', courant: { ...appele, etat: 'EN_COURS' },
+		lecture: { lecteurId: 'nouveau', lectureId: 'l', source: 'FICHIER_LOCAL', etat: 'DEMARREE' } }),
+	{ source: 'evenement', type: 'passage-demarre' });
+	await terminerMicrotaches();
+	assert.ok(audio.appels.includes('lire'));
+});
+
+test('salle : un lecteur d’un autre navigateur garde la désignation pendant son appel', async t => {
+	const audio = bancLecteur({ bibliotheque: AVEC_CHANSON, soireeId: 'lecteur-exterieur' });
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
+	t.after(() => { b.module.demonter(); return audio.audioSalle.detruire(); });
+	b.connecter('synchronisee');
+	b.contexte.maintenantServeur = () => heureAppel;
+	b.module.afficher(vue({ lecteurDesigneId: 'autre-navigateur', courant: courant('APPELE') }), capture);
+	await audio.audioSalle.activerSon();
+	await terminerMicrotaches();
+	assert.deepEqual(b.appels, []);
+});
+
+test('salle : le crédit d’une Chanson de la Bibliothèque de base passe au pied pendant tout son Passage, jamais sous les paroles', t => {
+	const audio = bancLecteur();
+	const b = creerBanc((z, c) => ecran(z, c, audio), 'ECRAN');
+	t.after(() => audio.audioSalle.detruire());
+	b.contexte.maintenantServeur = () => heureAppel;
+	const libre = { ...chanson, titre: 'La lanterne', artiste: 'Les Lucioles', origine: 'BIBLIOTHEQUE', bibliotheque: {
+		fichier: '/bibliotheque/chansons/les-lucioles-la-lanterne.mp3', tailleOctets: 2400, licence: 'CC BY-SA 4.0',
+		urlLicence: 'https://creativecommons.org/licenses/by-sa/4.0/deed.fr', urlSource: 'https://example.org/la-lanterne' } };
+	const credit = () => audio.audioSalle.etat().creditDeManche;
+	const paroles = { parolesId: 'v1', dureeMs: 4000, lignes: [{ positionMs: 0, texte: 'Une lanterne' }] };
+	const lecture = { lectureId: 'l', source: 'PAROLES_SEULES', decalageMs: 0 };
+	b.module.afficher(vue({ courant: courant('APPELE', { chanson: libre }) }), capture);
+	assert.equal(credit(), null, 'pas encore pendant l’appel');
+	b.module.afficher(vue({ courant: courant('EN_COURS', { chanson: libre }), paroles, lecture }), capture);
+	assert.deepEqual(credit(), { nature: 'Chanson', titre: 'La lanterne', artiste: 'Les Lucioles', licence: 'CC BY-SA 4.0' });
+	assert.equal(b.principale.querySelector('.karaoke__credit'), null, 'le crédit ne s’ajoute plus sous les paroles');
+	assert.ok(!b.principale.textContent.includes('CC BY-SA 4.0'));
+	b.module.afficher(vue({ courant: courant('EN_COURS', { chanson: { ...chanson, origine: 'LRCLIB', bibliotheque: null } }), paroles, lecture }),
+		capture);
+	assert.equal(credit(), null);
+	b.module.afficher(vue({ courant: courant('EN_COURS', { chanson: libre }), paroles, lecture }), capture);
+	b.module.demonter();
+	assert.equal(credit(), null, 'le démontage rend le pied à la Musique d’attente');
 });

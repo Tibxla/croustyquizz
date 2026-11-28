@@ -290,6 +290,8 @@ evenements:
             album: null
             dureeMs: 205000
             etatParoles: SYNCHRONISEES
+            origine: LRCLIB
+            bibliotheque: null
           interpretes: &id011
           - joueurId: 98000000-0000-4000-8000-000000000003
             pseudo: Alizé
@@ -336,6 +338,8 @@ evenements:
             album: Album fictif
             dureeMs: 8000
             etatParoles: SYNCHRONISEES
+            origine: LRCLIB
+            bibliotheque: null
           interpretes: &id013
           - joueurId: 98000000-0000-4000-8000-000000000004
             pseudo: Basile

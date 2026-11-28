@@ -33,4 +33,19 @@ class IdentifiantsChansonTest {
     void ignoreLesIdentifiantsEtrangersOuNonCanoniques(String id) {
         assertThat(IdentifiantsChanson.decoder(id)).isEmpty();
     }
+
+    @Test
+    void uneChansonDeLaBibliothequeGardeLaFormeDUnUuidAvecSonPropreEspace() {
+        String id = IdentifiantsChanson.encoderBibliotheque(1);
+        assertThat(id).isEqualTo("63726f75-7374-7962-516b-24e8a9d3705e");
+        assertThat(IdentifiantsChanson.decoderBibliotheque(id)).hasValue(1);
+        assertThat(IdentifiantsChanson.estDeLaBibliotheque(id)).isTrue();
+        // Les deux espaces ne se confondent jamais, même à numéro égal.
+        assertThat(IdentifiantsChanson.decoder(id)).isEmpty();
+        assertThat(IdentifiantsChanson.decoderBibliotheque(IdentifiantsChanson.encoder(1))).isEmpty();
+        assertThat(IdentifiantsChanson.estDeLaBibliotheque(IdentifiantsChanson.encoder(1))).isFalse();
+        assertThat(IdentifiantsChanson.estDeLaBibliotheque("indécodable")).isFalse();
+        assertThat(IdentifiantsChanson.estDeLaBibliotheque(null)).isFalse();
+        assertThatIllegalArgumentException().isThrownBy(() -> IdentifiantsChanson.encoderBibliotheque(0));
+    }
 }

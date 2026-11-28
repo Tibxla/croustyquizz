@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "licences": {
+    "CC-BY-4.0": {
+      "nom": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/deed.fr"
+    },
+    "CC-BY-SA-3.0": {
+      "nom": "CC BY-SA 3.0",
+      "url": "https://creativecommons.org/licenses/by-sa/3.0/deed.fr"
+    },
+    "CC-BY-SA-4.0": {
+      "nom": "CC BY-SA 4.0",
+      "url": "https://creativecommons.org/licenses/by-sa/4.0/deed.fr"
+    }
+  },
+  "entrees": [
+    {
+      "type": "attente",
+      "titre": "Digital Lemonade",
+      "artiste": "Kevin MacLeod",
+      "dureeMs": 180062,
+      "licence": "CC-BY-4.0",
+      "source": "https://incompetech.com",
+      "fichier": "attente/kevin-macleod-digital-lemonade.mp3",
+      "tailleOctets": 2161722
+    },
+    {
+      "type": "attente",
+      "titre": "Local Forecast - Elevator",
+      "artiste": "Kevin MacLeod",
+      "dureeMs": 189205,
+      "licence": "CC-BY-4.0",
+      "source": "https://incompetech.com",
+      "fichier": "attente/kevin-macleod-local-forecast-elevator.mp3",
+      "tailleOctets": 2271445
+    },
+    {
+      "type": "attente",
+      "titre": "Funky Chunk",
+      "artiste": "Kevin MacLeod",
+      "dureeMs": 239020,
+      "licence": "CC-BY-4.0",
+      "source": "https://incompetech.com",
+      "fichier": "attente/kevin-macleod-funky-chunk.mp3",
+      "tailleOctets": 2869217
+    },
+    {
+      "type": "chanson",
+      "numero": 1,
+      "titre": "Crazy Glue",
+      "artiste": "Josh Woodward",
+      "dureeMs": 164482,
+      "licence": "CC-BY-4.0",
+      "source": "https://joshwoodward.com/song/CrazyGlue",
+      "fichier": "chansons/josh-woodward-crazy-glue.mp3",
+      "tailleOctets": 2304040,
+      "lrc": "chansons/josh-woodward-crazy-glue.lrc"
+    },
+    {
+      "type": "chanson",
+      "numero": 2,
+      "titre": "Les files d'attente",
+      "artiste": "Law'",
+      "dureeMs": 195595,
+      "licence": "CC-BY-SA-3.0",
+      "source": "https://www.jamendo.com/track/964535/les-files-d-attente",
+      "fichier": "chansons/law-les-files-d-attente.mp3",
+      "tailleOctets": 2739586,
+      "lrc": "chansons/law-les-files-d-attente.lrc"
+    },
+    {
+      "type": "chanson",
+      "numero": 3,
+      "titre": "Talons aiguilles",
+      "artiste": "Law'",
+      "dureeMs": 179531,
+      "licence": "CC-BY-SA-3.0",
+      "source": "https://www.jamendo.com/track/964538/talons-aiguilles",
+      "fichier": "chansons/law-talons-aiguilles.mp3",
+      "tailleOctets": 2514666,
+      "lrc": "chansons/law-talons-aiguilles.lrc"
+    },
+    {
+      "type": "chanson",
+      "numero": 4,
+      "titre": "Afterglow",
+      "artiste": "Josh Woodward",
+      "dureeMs": 207787,
+      "licence": "CC-BY-4.0",
+      "source": "https://joshwoodward.com/song/Afterglow",
+      "fichier": "chansons/josh-woodward-afterglow.mp3",
+      "tailleOctets": 2910394,
+      "lrc": "chansons/josh-woodward-afterglow.lrc"
+    },
+    {
+      "type": "chanson",
+      "numero": 5,
+      "titre": "Mon mâle original",
+      "artiste": "Law'",
+      "dureeMs": 172250,
+      "licence": "CC-BY-SA-3.0",
+      "source": "https://www.jamendo.com/track/964537/mon-male-original",
+      "fichier": "chansons/law-mon-male-original.mp3",
+      "tailleOctets": 2412634,
+      "lrc": "chansons/law-mon-male-original.lrc"
+    },
+    {
+      "type": "chanson",
+      "numero": 6,
+      "titre": "Grève angélique",
+      "artiste": "KPTN",
+      "dureeMs": 235990,
+      "licence": "CC-BY-SA-4.0",
+      "source": "https://kptn.org/album-flammes-05-greveangelique.html",
+      "fichier": "chansons/kptn-greve-angelique.mp3",
+      "tailleOctets": 3304975,
+      "lrc": "chansons/kptn-greve-angelique.lrc"
+    },
+    {
+      "type": "chanson",
+      "numero": 7,
+      "titre": "Already There",
+      "artiste": "Josh Woodward",
+      "dureeMs": 221146,
+      "licence": "CC-BY-4.0",
+      "source": "https://joshwoodward.com/song/AlreadyThere",
+      "fichier": "chansons/josh-woodward-already-there.mp3",
+      "tailleOctets": 3097281,
+      "lrc": "chansons/josh-woodward-already-there.lrc"
+    }
+  ]
+}

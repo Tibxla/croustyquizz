@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "licences": {
+    "CC-BY-4.0": {
+      "nom": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/deed.fr"
+    },
+    "CC-BY-SA-4.0": {
+      "nom": "CC BY-SA 4.0",
+      "url": "https://creativecommons.org/licenses/by-sa/4.0/deed.fr"
+    }
+  },
+  "entrees": [
+    {
+      "type": "attente",
+      "titre": "Attente d’essai",
+      "artiste": "Essai",
+      "dureeMs": 3000,
+      "licence": "CC-BY-4.0",
+      "source": "https://example.org/attente",
+      "fichier": "attente/essai-attente.wav",
+      "tailleOctets": 24044
+    },
+    {
+      "type": "chanson",
+      "numero": 1,
+      "titre": "La lanterne",
+      "artiste": "Les Lucioles",
+      "dureeMs": 4000,
+      "licence": "CC-BY-SA-4.0",
+      "source": "https://example.org/la-lanterne",
+      "fichier": "chansons/les-lucioles-la-lanterne.wav",
+      "tailleOctets": 32044,
+      "lrc": "chansons/les-lucioles-la-lanterne.lrc"
+    }
+  ]
+}

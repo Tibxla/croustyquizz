@@ -235,6 +235,8 @@ http:
       album: null
       dureeMs: 180000
       etatParoles: SYNCHRONISEES
+      origine: LRCLIB
+      bibliotheque: null
     - &a177
       chansonId: ch_brume_4
       titre: Sous les étoiles
@@ -242,6 +244,8 @@ http:
       album: null
       dureeMs: null
       etatParoles: INCONNU
+      origine: LRCLIB
+      bibliotheque: null
     - &a9
       chansonId: ch_sable_2
       titre: Sous les étoiles
@@ -249,6 +253,8 @@ http:
       album: null
       dureeMs: null
       etatParoles: SYNCHRONISEES
+      origine: LRCLIB
+      bibliotheque: null
     - &a14
       chansonId: ch_ambre_9
       titre: La traversée
@@ -256,6 +262,8 @@ http:
       album: null
       dureeMs: 210000
       etatParoles: SYNCHRONISEES
+      origine: LRCLIB
+      bibliotheque: null
 - nom: Recherche vide sans panne
   operationId: rechercherChansons
   acteur: animateur:82000000-0000-4000-8000-000000000006
@@ -267,6 +275,41 @@ http:
     rechercheId: 82000000-0000-4000-8000-000000000031
     recherche: Introuvable
     chansons: []
+- nom: Recherche servie par la Bibliothèque de base pendant une panne de LRCLIB
+  operationId: rechercherChansons
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    recherche: Lanterne
+    rechercheId: 82000000-0000-4000-8000-000000000032
+  statut: 200
+  reponse:
+    rechercheId: 82000000-0000-4000-8000-000000000032
+    recherche: Lanterne
+    chansons:
+    - &chansonBibliotheque
+      chansonId: 63726f75-7374-7962-516b-24e8a9d3705e
+      titre: La lanterne
+      artiste: Les Lucioles
+      album: null
+      dureeMs: 150000
+      etatParoles: SYNCHRONISEES
+      origine: BIBLIOTHEQUE
+      bibliotheque:
+        fichier: /bibliotheque/chansons/les-lucioles-la-lanterne.mp3
+        tailleOctets: 2400000
+        licence: CC BY-SA 4.0
+        urlLicence: https://creativecommons.org/licenses/by-sa/4.0/deed.fr
+        urlSource: https://example.org/les-lucioles/la-lanterne
+- nom: Fiche d’une Chanson de la Bibliothèque de base, sans LRCLIB
+  operationId: consulterChanson
+  acteur: joueur:82000000-0000-4000-8000-000000000003
+  parametres:
+    chansonId: 63726f75-7374-7962-516b-24e8a9d3705e
+  statut: 200
+  reponse:
+    chanson: *chansonBibliotheque
+    inscriptionPossible: true
+    motifIndisponibilite: null
 - nom: Fiche inscriptible sans condition sur la source audio
   operationId: consulterChanson
   acteur: joueur:82000000-0000-4000-8000-000000000003
@@ -5561,6 +5604,58 @@ cases:
     inscriptionPossible: true
     motifIndisponibilite: null
   valide: true
+- nom: Chanson LRCLIB avec un fichier de la bibliothèque refusée
+  schema: ResumeChanson
+  valeur:
+    chansonId: ch_azur_7
+    titre: Sous les étoiles
+    artiste: Les Lucioles
+    album: null
+    dureeMs: 180000
+    etatParoles: SYNCHRONISEES
+    origine: LRCLIB
+    bibliotheque:
+      fichier: /bibliotheque/chansons/les-lucioles-la-lanterne.mp3
+      tailleOctets: 2400000
+      licence: CC BY-SA 4.0
+      urlLicence: https://creativecommons.org/licenses/by-sa/4.0/deed.fr
+      urlSource: https://example.org/les-lucioles/la-lanterne
+  valide: false
+  correction:
+    chemin: [bibliotheque]
+    valeur: null
+- nom: Fichier de la bibliothèque hors de son dossier refusé
+  schema: ResumeChanson
+  valeur:
+    chansonId: 63726f75-7374-7962-516b-24e8a9d3705e
+    titre: La lanterne
+    artiste: Les Lucioles
+    album: null
+    dureeMs: 150000
+    etatParoles: SYNCHRONISEES
+    origine: BIBLIOTHEQUE
+    bibliotheque:
+      fichier: /bibliotheque/../chansons/les-lucioles-la-lanterne.mp3
+      tailleOctets: 2400000
+      licence: CC BY-SA 4.0
+      urlLicence: https://creativecommons.org/licenses/by-sa/4.0/deed.fr
+      urlSource: https://example.org/les-lucioles/la-lanterne
+  valide: false
+  correction:
+    chemin: [bibliotheque, fichier]
+    valeur: /bibliotheque/chansons/les-lucioles-la-lanterne.mp3
+- nom: Chanson de la bibliothèque sans entrée au catalogue acceptée
+  schema: ResumeChanson
+  valeur:
+    chansonId: 63726f75-7374-7962-516b-24e8a9d3705e
+    titre: La lanterne
+    artiste: Les Lucioles
+    album: null
+    dureeMs: 150000
+    etatParoles: SYNCHRONISEES
+    origine: BIBLIOTHEQUE
+    bibliotheque: null
+  valide: true
 - nom: Fiche vraie sans durée refusée
   schema: FicheChanson
   valeur:
@@ -5578,6 +5673,8 @@ cases:
       album: null
       dureeMs: 180000
       etatParoles: NON_SYNCHRONISEES
+      origine: LRCLIB
+      bibliotheque: null
     inscriptionPossible: true
     motifIndisponibilite: null
   valide: false

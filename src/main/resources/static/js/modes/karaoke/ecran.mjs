@@ -37,10 +37,13 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 	ui.principale.append(autreLecteur);
 	let cycle, requetes, ticketCourant, descriptionCourant, etiquetteCourant, blocAffiche, trame, versionParoles, lignes = [], indexAffiche;
 	let votesChronometres = false;
-	function actualiserDossier({ fichiers, sonDebloque } = audio.etat()) {
+	function actualiserDossier({ fichiers, dossier, sonDebloque } = audio.etat()) {
 		if (ui.synchronisee && fichiers !== designation.fichiers) {
 			designation.fichiers = fichiers;
-			cycle.choisirDossier(fichiers);
+			if (dossier === null && fichiers) {
+				cycle.reprendreDossier({ fichiers, dossier, sonDebloque, aEteLectrice: designation.aEteLectrice });
+				if (ui.bloc) cycle.surVue(ui.bloc);
+			} else cycle.choisirDossier(fichiers);
 		}
 		if (sonDebloque && !cycle.etat().sonDebloque) void cycle.debloquer({ attendreVue: () => !ui.synchronisee });
 	}
@@ -49,8 +52,13 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		const signal = requetes.signal;
 		cycle = creerCycleLecture({
 			lecteur, lecteurId,
-			envoyer: (methode, chemin, corps) => contexte.envoyer(methode, `${ui.racine()}${chemin}`, corps,
-				{ entetes: { 'Idempotency-Key': creerUuid() }, signal, annoncer: false }),
+			attendreDisparitionLecteur: audio.attendreDisparitionLecteur,
+			peutDesigner: () => ui.synchronisee,
+			envoyer(methode, chemin, corps) {
+				if (chemin === '/lecteur') audio.memoriserDesignation?.();
+				return contexte.envoyer(methode, `${ui.racine()}${chemin}`, corps,
+					{ entetes: { 'Idempotency-Key': creerUuid() }, signal, annoncer: false });
+			},
 			surEtat(etat) {
 				designation.aEteLectrice = etat.aEteLectrice;
 				autreLecteur.hidden = !etat.autreLecteur;
@@ -212,6 +220,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 			if (!sonDeManche) void contexte.signalerSonDeManche(false);
 		}
 		actualiserDossier();
+		cycle.actualiserRelais();
 		const enErreur = lecture?.etat === 'EN_ERREUR';
 		if (!actif) invitation.textContent = passages.length ? 'Prépare-toi.' : 'Choisis ta Chanson sur ta Manette.';
 		else if (enErreur) invitation.textContent = "La musique ne se lance pas. L'Animateur choisit la suite.";
@@ -222,6 +231,11 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		prochain.replaceChildren(...(prochain.hidden ? [] : [creerTicket(ui, passages[0])]));
 		minutes.hidden = !appel || enErreur;
 		paroles.hidden = !actif || appel || enErreur || !bloc.paroles;
+		// Crédit exigé par la licence d'une Chanson de la Bibliothèque de base, pendant tout son Passage : la coquille
+		// l'affiche dans le pied à la place de celui de la Musique d'attente (ADR 0011).
+		const libre = actif && !appel && actif.chanson.origine === 'BIBLIOTHEQUE' ? actif.chanson.bibliotheque : null;
+		contexte.crediterSonDeManche(libre ? { nature: 'Chanson', titre: actif.chanson.titre, artiste: actif.chanson.artiste,
+			licence: libre.licence } : null);
 		if (paroles.hidden) {
 			paroles.replaceChildren();
 			versionParoles = indexAffiche = undefined;
@@ -240,6 +254,7 @@ export function creerEcranKaraoke(zones, contexte, dependances) {
 		if (trame !== undefined) cancelAnimationFrame(trame);
 		retirerAudio();
 		detruireCycle();
+		contexte.crediterSonDeManche(null);
 		void contexte.signalerSonDeManche(false);
 	};
 	return { afficher: ui.afficher, demonter: ui.demonter };

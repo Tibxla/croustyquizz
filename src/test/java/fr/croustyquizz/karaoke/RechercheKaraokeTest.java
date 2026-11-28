@@ -56,6 +56,18 @@ class RechercheKaraokeTest {
                 .containsExactly(secondId, premierId);
     }
 
+    @Test
+    void placeLesChansonsDeLaBibliothequeEnTeteAvantLeRang() {
+        Chanson homonyme = chanson(2, "Crazy Glue", "Josh Woodward");
+        Chanson exacte = chanson(3, "Glue", "Autre");
+        Chanson libre = new Chanson(IdentifiantsChanson.encoderBibliotheque(1), 1, "Crazy Glue", "Josh Woodward",
+                null, 164_000L, EtatParoles.SYNCHRONISEES);
+        Chanson autreLibre = new Chanson(IdentifiantsChanson.encoderBibliotheque(2), 2, "Glue Factory", "Les Lucioles",
+                null, 120_000L, EtatParoles.SYNCHRONISEES);
+        assertThat(RechercheKaraoke.classer("glue", List.of(exacte, homonyme, autreLibre, libre)))
+                .containsExactly(libre, autreLibre, exacte, homonyme);
+    }
+
     private static Chanson chanson(long id, String titre, String artiste) {
         return new Chanson(IdentifiantsChanson.encoder(id), id, titre, artiste, null, null, EtatParoles.INCONNU);
     }

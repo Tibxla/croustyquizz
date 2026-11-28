@@ -26,8 +26,16 @@ export function formaterAttente(attente, personnel = false) {
 	return `Dans environ ${minutes} minute${minutes > 1 ? 's' : ''}`;
 }
 
+const libellesParoles = Object.freeze({ SYNCHRONISEES: 'Paroles synchronisées', NON_SYNCHRONISEES: 'Paroles non synchronisées',
+	ABSENTES: 'Sans paroles', SANS_VOIX: 'Version instrumentale', INCONNU: 'Paroles à vérifier' });
+export const libelleParoles = etat => libellesParoles[etat];
+
+// Seule une Chanson de la Bibliothèque de base a une musique connue du serveur (ADR 0011). Pour une Chanson de LRCLIB, il
+// ne sait pas si le dossier du Lieu en a le fichier : il n'en dit rien, plutôt que d'annoncer « Paroles seules » à tort.
+export const musiqueIncluse = chanson => chanson.origine === 'BIBLIOTHEQUE' && Boolean(chanson.bibliotheque);
+
 export const tableMotifsKaraoke = Object.freeze({
-	SANS_VOIX: 'Cette Chanson est sans voix.',
+	SANS_VOIX: 'C’est une version instrumentale : rien à chanter.',
 	PAROLES_NON_SYNCHRONISEES: 'Il faut des paroles synchronisées.',
 	DUREE_INCONNUE: 'La durée manque.',
 	ANIMATEUR: 'Consultation uniquement',

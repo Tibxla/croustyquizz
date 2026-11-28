@@ -4,3 +4,6 @@
 /.agents/skills/impeccable/scripts/impeccable text eol=lf
 # Copies de skills tiers (tools/mettre-a-jour-skills.sh) : hors statistiques de langages.
 /.agents/** linguist-vendored
+# Bibliothèque de base (ADR 0011) : sons en binaire, paroles synchronisées en LF.
+*.mp3 binary
+*.lrc text eol=lf

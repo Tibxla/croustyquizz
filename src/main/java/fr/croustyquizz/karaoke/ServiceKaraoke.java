@@ -18,7 +18,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private final PorteeDePassage portee;
     private final ParticipantsDePassage participants;
     private final PersistancePassageJpa passages;
-    private final SourceDeParoles source;
+    private final SourcesDeChansons chansons;
     private final ProprietesKaraoke proprietes;
     private final ProprietesSourceKaraoke proprietesSource;
     private final ChoixDeVersionParoles choixParoles;
@@ -26,12 +26,12 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
 
     public ServiceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance,
             SocleDeManche socle, PorteeDePassage portee, ParticipantsDePassage participants,
-            PersistancePassageJpa passages, SourceDeParoles source, ProprietesKaraoke proprietes,
+            PersistancePassageJpa passages, SourcesDeChansons chansons, ProprietesKaraoke proprietes,
             ProprietesSourceKaraoke proprietesSource, ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
         super(fabrique, persistance, socle);
         this.persistance = persistance;
         this.socle = socle; this.portee = portee; this.participants = participants; this.passages = passages;
-        this.source = source; this.proprietes = proprietes; this.proprietesSource = proprietesSource;
+        this.chansons = chansons; this.proprietes = proprietes; this.proprietesSource = proprietesSource;
         this.choixParoles = choixParoles; this.calages = calages;
     }
 
@@ -197,7 +197,12 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
 
     private ChoixDeVersionParoles.ResultatChoix choisirParoles(boolean vise, FichierAudioLocal fichier, ContenuKaraoke inscription) {
         if (fichier == null) { return new ChoixDeVersionParoles.ResultatChoix(inscription, OrigineParoles.INSCRIPTION); }
-        if (fichier.dureeMs() == null || !vise) {
+        if (!vise) { return new ChoixDeVersionParoles.ResultatChoix(inscription, OrigineParoles.REPLI_INSCRIPTION); }
+        // Le LRC du catalogue est calé sur son fichier : aucune version de LRCLIB ne s'en rapprocherait (ADR 0011).
+        if (OrigineChanson.de(inscription.chanson().chansonId()) == OrigineChanson.BIBLIOTHEQUE) {
+            return new ChoixDeVersionParoles.ResultatChoix(inscription, OrigineParoles.VERSION_ADAPTEE);
+        }
+        if (fichier.dureeMs() == null) {
             return new ChoixDeVersionParoles.ResultatChoix(inscription, OrigineParoles.REPLI_INSCRIPTION);
         }
         return choixParoles.choisir(inscription, fichier.dureeMs());
@@ -289,10 +294,11 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         String nettoyee;
         try { nettoyee = RechercheKaraoke.nettoyer(recherche, proprietesSource.longueurRechercheMax()); }
         catch (IllegalArgumentException erreur) { throw new Refuse(400, "REQUETE_INVALIDE", "La recherche est invalide.").exception(erreur); }
-        var chansons = appelerSource(() -> RechercheKaraoke.classer(nettoyee, source.rechercher(nettoyee)));
+        var trouvees = appelerSource(() -> RechercheKaraoke.classer(nettoyee, chansons.rechercher(nettoyee)));
         return lecture(soireeId, () -> {
             verifierLecture(acteur, soireeId, mancheId);
-            return new VuesKaraoke.ResultatsChansons(rechercheId, nettoyee, chansons.stream().map(VuesKaraoke.ResumeChanson::de).toList());
+            return new VuesKaraoke.ResultatsChansons(rechercheId, nettoyee, trouvees.stream()
+                    .map(chanson -> VuesKaraoke.ResumeChanson.de(chanson, chansons.catalogue())).toList());
         });
     }
     public VuesKaraoke.FicheChanson consulterChanson(Acteur acteur, UUID soireeId, UUID mancheId, String chansonId) {
@@ -315,7 +321,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
                 var instantane = (InstantaneKaraoke) instantane(soireeId, mancheId);
                 motif = DeroulementKaraoke.motifInscription(FileAttente.depuis(instantane.file()), acteur.identifiant(), chanson).orElse(null);
             }
-            return new VuesKaraoke.FicheChanson(VuesKaraoke.ResumeChanson.de(chanson), motif == null, motif);
+            return new VuesKaraoke.FicheChanson(VuesKaraoke.ResumeChanson.de(chanson, chansons.catalogue()), motif == null, motif);
         });
     }
 
@@ -357,7 +363,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         var classables = resultats.stream().filter(resultat -> contenus.containsKey(resultat.passageId())).toList();
         var pseudos = participants.pseudos(soireeId);
         return ClassementParVote.classer(classables).stream()
-                .map(ligne -> VuesKaraoke.lignePalmares(ligne, contenus.get(ligne.resultat().passageId()), pseudos))
+                .map(ligne -> VuesKaraoke.lignePalmares(ligne, contenus.get(ligne.resultat().passageId()), pseudos, chansons.catalogue()))
                 .toList();
     }
 
@@ -365,8 +371,7 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         return socle.verrous().executer(soireeId, () -> new TransactionTemplate(socle.transactions()).execute(s -> lire.get()));
     }
     private Optional<ContenuKaraoke> chargerContenu(String chansonId) {
-        var id = IdentifiantsChanson.decoder(chansonId);
-        return id.isEmpty() ? Optional.empty() : appelerSource(() -> source.charger(id.getAsLong()));
+        return appelerSource(() -> chansons.charger(chansonId));
     }
     private <T> T appelerSource(Supplier<T> appel) {
         try { return appel.get(); }

@@ -1,12 +1,21 @@
-export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {}, surMorceauxEpuises = () => {} }) {
-	let fichiers = [], index = 0, position = 0, autorisee = false, lecture;
+// `surMorceau` reçoit le morceau qui joue, puis null quand il se tait : l'Écran de salle en affiche le crédit.
+export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloque = () => {}, surMorceauEcarte = () => {},
+	surMorceau = () => {} }) {
+	let fichiers = [], index = 0, position = 0, autorisee = false, lecture, annonce = null;
 	const erreursDeLecture = new Set();
+
+	function annoncer(morceau) {
+		if (annonce === morceau) return;
+		annonce = morceau;
+		surMorceau(morceau);
+	}
 
 	function liberer() {
 		if (!lecture) return;
 		if (lecture.chargee) position = lecteur.position();
 		lecture = undefined;
 		lecteur.detruire();
+		annoncer(null);
 	}
 	function passerAuSuivant() {
 		if (!lecture) return;
@@ -33,8 +42,8 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 		fichiers.splice(index, 1);
 		if (index === fichiers.length) index = 0;
 		position = 0;
-		if (fichiers.length) void jouer();
-		else surMorceauxEpuises();
+		surMorceauEcarte(fichier, fichiers.length);
+		void jouer();
 	}
 
 	async function jouer() {
@@ -46,6 +55,7 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 			tentative.chargee = true;
 			if (position > 0) lecteur.positionner(position);
 			await lecteur.lire();
+			if (tentative === lecture) annoncer(fichiers[index]);
 		} catch (erreur) {
 			if (tentative !== lecture) return;
 			traiterErreur(erreur, !tentative.chargee);
@@ -60,9 +70,9 @@ export function creerMusiqueDAttente({ lecteur, hasard = Math.random, surSonBloq
 	const retirerErreur = lecteur.surErreur(erreur => { if (lecture) traiterErreur(erreur); });
 
 	return {
-		choisirFichiers(nouveauxFichiers) {
+		choisirFichiers(nouveauxFichiers, { conserverErreurs = false } = {}) {
 			liberer();
-			erreursDeLecture.clear();
+			if (!conserverErreurs) erreursDeLecture.clear();
 			fichiers = [...nouveauxFichiers];
 			for (let i = fichiers.length - 1; i > 0; i--) {
 				const j = Math.floor(hasard() * (i + 1));
