@@ -2,7 +2,7 @@ import { creerCoordinationSon } from './coordination-son.mjs';
 import { creerLecteurDePassage } from './lecteur-de-passage.mjs';
 import { creerMusiqueDAttente } from './musique-attente.mjs';
 import { CATALOGUE_VIDE, chargerBibliotheque, fusionnerMorceauxDAttente, morceauxDeLaBibliotheque, partiesDuCredit } from './bibliotheque.mjs';
-import { creerUuid } from './modes/karaoke/commun.mjs';
+import { creerUuid } from './uuid.mjs';
 import { estFichierAudio } from './modes/karaoke/fichiers.mjs';
 import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 
@@ -160,7 +160,7 @@ export function monterAudioSalle(zone, soireeId, { bibliotheque = chargerBibliot
 	});
 	function afficher({ fichiers, dossier, bibliotheque: libre, sonDebloque, morceauxDuLieu, morceauEnCours, creditDeManche }) {
 		const avaitFocus = document.activeElement === activer;
-		// « Activer le son » se propose dès l'ouverture : la bibliothèque n'attend que ce clic.
+		// « Activer le son » se propose dès l'ouverture, pour la Bibliothèque de base et le Blind test.
 		activer.hidden = sonDebloque;
 		alerte.hidden = sonDebloque || fichiers === null;
 		if (avaitFocus && activer.hidden) choisir.focus();

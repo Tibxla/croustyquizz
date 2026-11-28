@@ -1,6 +1,8 @@
 package fr.croustyquizz.karaoke;
 
 import static fr.croustyquizz.karaoke.ConfigurationTroisJoueurs.joueursDe;
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.*;
@@ -156,17 +158,17 @@ class ServiceKaraokeTest {
         var entrees = new java.util.concurrent.CountDownLatch(2);
         var sortir = new java.util.concurrent.CountDownLatch(1);
         doAnswer(a -> {
-            entrees.countDown(); attendre(sortir); return Optional.of(contenu(a.getArgument(0)));
+            entrees.countDown(); retenir(sortir); return Optional.of(contenu(a.getArgument(0)));
         }).when(banc.source).charger(anyLong());
         try (var fils = java.util.concurrent.Executors.newFixedThreadPool(2)) {
             try {
                 var premier = fils.submit(() -> inscrireResultat(manche, 1, UUID.randomUUID()));
                 var second = fils.submit(() -> inscrireResultat(manche, 2, UUID.randomUUID()));
-                assertThat(entrees.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                assertThat(entrees.await(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
                 // La source lente n'empêche pas un autre pilotage de prendre le verrou.
                 piloter(manche, InterventionDeManche.Action.METTRE_EN_PAUSE);
                 sortir.countDown();
-                var resultats = List.of(premier.get(3, java.util.concurrent.TimeUnit.SECONDS), second.get(3, java.util.concurrent.TimeUnit.SECONDS));
+                var resultats = List.of(premier.get(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS), second.get(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS));
                 assertThat(resultats.stream().filter(Accepte.class::isInstance)).hasSize(1);
                 assertThat(resultats.stream().filter(Refuse.class::isInstance).map(r -> ((Refuse) r).code())).containsExactly("LIMITE_ATTEINTE");
                 verify(banc.passages, times(1)).incrementerNumero(soiree, 1);
@@ -181,7 +183,7 @@ class ServiceKaraokeTest {
         var sortir = new CountDownLatch(1);
         doAnswer(appel -> {
             entrees.countDown();
-            attendre(sortir);
+            retenir(sortir);
             return Optional.of(contenu(appel.getArgument(0)));
         }).when(banc.source).charger(anyLong());
 
@@ -189,9 +191,9 @@ class ServiceKaraokeTest {
             try {
                 var premier = fils.submit(() -> inscrireResultat(manche, 1, UUID.randomUUID()));
                 var second = fils.submit(() -> inscrireResultat(manche, 2, UUID.randomUUID()));
-                assertThat(entrees.await(3, TimeUnit.SECONDS)).isTrue();
+                assertThat(entrees.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
                 sortir.countDown();
-                assertThat(List.of(premier.get(3, TimeUnit.SECONDS), second.get(3, TimeUnit.SECONDS)))
+                assertThat(List.of(premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS), second.get(PLAFOND_SECONDES, TimeUnit.SECONDS)))
                         .allSatisfy(recu -> assertThat(ReponsesDeCommande.statut(recu)).isEqualTo(201));
             } finally { sortir.countDown(); }
         }
@@ -228,13 +230,13 @@ class ServiceKaraokeTest {
     @Test void deuxPreparationsDeMemeCleNeConsommentQuUnNumeroEtUneAutreEmpreinteEstRefusee() throws Exception {
         UUID manche = demarrer(); UUID id = UUID.randomUUID();
         var entrees = new java.util.concurrent.CountDownLatch(2); var sortir = new java.util.concurrent.CountDownLatch(1);
-        doAnswer(a -> { entrees.countDown(); attendre(sortir); return Optional.of(contenu(a.getArgument(0))); }).when(banc.source).charger(anyLong());
+        doAnswer(a -> { entrees.countDown(); retenir(sortir); return Optional.of(contenu(a.getArgument(0))); }).when(banc.source).charger(anyLong());
         try (var fils = java.util.concurrent.Executors.newFixedThreadPool(2)) {
             try {
                 var premier = fils.submit(() -> inscrireResultat(manche, 1, id));
                 var second = fils.submit(() -> inscrireResultat(manche, 2, id));
-                assertThat(entrees.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue(); sortir.countDown();
-                var resultats = List.of(premier.get(3, java.util.concurrent.TimeUnit.SECONDS), second.get(3, java.util.concurrent.TimeUnit.SECONDS));
+                assertThat(entrees.await(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS)).isTrue(); sortir.countDown();
+                var resultats = List.of(premier.get(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS), second.get(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS));
                 assertThat(resultats.stream().filter(Accepte.class::isInstance)).hasSize(1);
                 assertThat(resultats.stream().filter(Refuse.class::isInstance).map(r -> ((Refuse) r).code())).containsExactly("ENVOI_REUTILISE");
                 verify(banc.passages, times(1)).incrementerNumero(soiree, 1);
@@ -282,14 +284,14 @@ class ServiceKaraokeTest {
     @Test void deuxPreparationsIdentiquesConcurrentesRejouentLeMeme201SansRepublier() throws Exception {
         UUID manche = demarrer(); UUID id = UUID.randomUUID();
         var entrees = new java.util.concurrent.CountDownLatch(2); var sortir = new java.util.concurrent.CountDownLatch(1);
-        doAnswer(a -> { entrees.countDown(); attendre(sortir); return Optional.of(contenu(1)); }).when(banc.source).charger(1);
+        doAnswer(a -> { entrees.countDown(); retenir(sortir); return Optional.of(contenu(1)); }).when(banc.source).charger(1);
         try (var fils = java.util.concurrent.Executors.newFixedThreadPool(2)) {
             try {
                 var premier = fils.submit(() -> inscrireResultat(manche, 1, id));
                 var second = fils.submit(() -> inscrireResultat(manche, 1, id));
-                assertThat(entrees.await(3, java.util.concurrent.TimeUnit.SECONDS)).isTrue(); sortir.countDown();
-                var initial = premier.get(3, java.util.concurrent.TimeUnit.SECONDS);
-                var repete = second.get(3, java.util.concurrent.TimeUnit.SECONDS);
+                assertThat(entrees.await(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS)).isTrue(); sortir.countDown();
+                var initial = premier.get(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS);
+                var repete = second.get(PLAFOND_SECONDES, java.util.concurrent.TimeUnit.SECONDS);
                 assertThat(ReponsesDeCommande.statut(initial)).isEqualTo(201);
                 assertThat(ReponsesDeCommande.statut(repete)).isEqualTo(201);
                 assertThat(banc.json.writeValueAsString(((Accepte) initial).accuse())).isEqualTo(banc.json.writeValueAsString(((Accepte) repete).accuse()));
@@ -348,16 +350,16 @@ class ServiceKaraokeTest {
         var libererSource = new CountDownLatch(1);
         when(banc.source.rechercher(anyString())).thenAnswer(a -> {
             sourceConsultee.countDown();
-            attendre(libererSource);
+            retenir(libererSource);
             return List.of(contenu(1).chanson());
         });
         try (var fils = Executors.newFixedThreadPool(2)) {
             try {
                 var declaration = fils.submit(() -> declarer(manche, appel, ecran, lecteur, 180_000L));
                 attendre(sourceConsultee);
-                assertThat(fils.submit(() -> confirmer(manche, appel)).get(2, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
+                assertThat(fils.submit(() -> confirmer(manche, appel)).get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
                 libererSource.countDown();
-                assertThat(declaration.get(2, TimeUnit.SECONDS)).isInstanceOfSatisfying(Refuse.class,
+                assertThat(declaration.get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isInstanceOfSatisfying(Refuse.class,
                         refus -> assertThat(refus.code()).isEqualTo("COMMANDE_PERIMEE"));
             } finally { libererSource.countDown(); }
         }
@@ -379,7 +381,7 @@ class ServiceKaraokeTest {
         doAnswer(invocation -> {
             Object instantane = invocation.callRealMethod();
             capture.countDown();
-            attendre(reprendre);
+            retenir(reprendre);
             return instantane;
         }).when(service).instantane(soiree, manche);
         clearInvocations(banc.source);
@@ -391,9 +393,9 @@ class ServiceKaraokeTest {
                 var designation = new CorpsKaraoke.DesignationLecteur(lecteur);
                 assertThat(fils.submit(() -> banc.service.designerLecteurChanson(manche,
                         envoi(ecran, UUID.randomUUID(), "PUT", "/lecteur", designation), designation))
-                        .get(2, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
+                        .get(PLAFOND_SECONDES, TimeUnit.SECONDS)).isInstanceOf(Accepte.class);
                 reprendre.countDown();
-                var resultat = declaration.get(2, TimeUnit.SECONDS);
+                var resultat = declaration.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
                 assertThat(resultat).isInstanceOf(Refuse.class);
                 refus = (Refuse) resultat;
             } finally { reprendre.countDown(); }
@@ -502,8 +504,8 @@ class ServiceKaraokeTest {
                 return banc.service.confirmerPresencePassage(manche, appel.passageId(), envoiConcurrent, seconde);
             });
             depart.countDown();
-            ResultatDeCommande resultatInitial = premier.get(5, TimeUnit.SECONDS);
-            ResultatDeCommande resultatConcurrent = second.get(5, TimeUnit.SECONDS);
+            ResultatDeCommande resultatInitial = premier.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
+            ResultatDeCommande resultatConcurrent = second.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
             assertThat(List.of(resultatInitial, resultatConcurrent))
                     .extracting(ReponsesDeCommande::statut).containsExactlyInAnyOrder(200, 409);
             assertThat(banc.json.writeValueAsString(ReponsesDeCommande.corps(banc.service.confirmerPresencePassage(
@@ -564,8 +566,8 @@ class ServiceKaraokeTest {
             var autreNote = fils.submit(() -> { attendre(attente); return voter(manche, passage, second,
                     new CorpsKaraoke.VotePassage(UUID.randomUUID(), 3L, 5L)); });
             attente.countDown();
-            assertThat(ReponsesDeCommande.statut(uneNote.get(5, TimeUnit.SECONDS))).isEqualTo(200);
-            assertThat(ReponsesDeCommande.statut(autreNote.get(5, TimeUnit.SECONDS))).isEqualTo(200);
+            assertThat(ReponsesDeCommande.statut(uneNote.get(PLAFOND_SECONDES, TimeUnit.SECONDS))).isEqualTo(200);
+            assertThat(ReponsesDeCommande.statut(autreNote.get(PLAFOND_SECONDES, TimeUnit.SECONDS))).isEqualTo(200);
         }
         assertThat(banc.diffuseur.envois()).hasSize(avant + 6);
         banc.registre.retirer(manche);
@@ -658,8 +660,12 @@ class ServiceKaraokeTest {
         return banc.service.inscrirePassage(manche, envoi(joueur, id, "POST", "/passages", corps), corps);
     }
     AccusePassage inscrire(UUID manche, long chanson) { return (AccusePassage) ((Accepte) inscrireResultat(manche, chanson, UUID.randomUUID())).accuse(); }
-    static void attendre(java.util.concurrent.CountDownLatch signal) {
-        try { assertThat(signal.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue(); }
+    /** L'observateur attend un signal qui doit venir. */
+    static void attendre(CountDownLatch signal) { attendre(signal, PLAFOND_SECONDES); }
+    /** Le fil reste retenu jusqu'au feu vert du test, que celui-ci donne toujours dans un {@code finally}. */
+    static void retenir(CountDownLatch signal) { attendre(signal, RETENUE_SECONDES); }
+    private static void attendre(CountDownLatch signal, long secondes) {
+        try { assertThat(signal.await(secondes, TimeUnit.SECONDS)).isTrue(); }
         catch (InterruptedException erreur) { Thread.currentThread().interrupt(); throw new IllegalStateException(erreur); }
     }
 

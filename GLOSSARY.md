@@ -130,6 +130,9 @@ _Éviter_ : beat, prod, piste
 Suite de mesures affichée pendant un Passage de Freestyle, qui place sur les temps des mots qui riment entre eux, montrés ou à trouver selon la difficulté choisie.
 _Éviter_ : pattern, partition
 
+**Famille de rimes** :
+Ensemble de mots qui se prononcent de la même façon à partir de leur dernière voyelle prononcée. Une Grille de rimes en AAAA garde la même Famille de rimes à chaque mesure.
+
 **Couplet** :
 Suite de mesures qu'un seul Interprète rappe avant de laisser la place au suivant, dans un Passage de Freestyle à plusieurs.
 _Éviter_ : tour, round, relais

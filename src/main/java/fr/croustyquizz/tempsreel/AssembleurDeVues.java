@@ -1,5 +1,6 @@
 package fr.croustyquizz.tempsreel;
 
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,15 +57,16 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 					? lireMusiqueDAttente.apply(soireeId) : null;
 			Map<ModeDeJeu, Function<Destination, Object>> projections = new EnumMap<>(ModeDeJeu.class);
 			Map<Destination, VueComposee> vues = new LinkedHashMap<>();
-			var parties = commun.fournir(soireeId, destinations);
+			var communes = commun.fournir(soireeId, destinations);
 			for (var destination : destinations) {
-				vues.put(destination, composer(soireeId, destination, type, parties.get(destination), projections, musique));
+				vues.put(destination, composer(soireeId, destination, type, communes.parties().get(destination),
+						projections, musique, communes.soireeTermineeLe()));
 			}
 			return vues;
 		});
 	}
 	private VueComposee composer(UUID soireeId, Destination destination, String type, Map<String, Object> partieCommune,
-			Map<ModeDeJeu, Function<Destination, Object>> projections, MusiqueDAttente musique) {
+			Map<ModeDeJeu, Function<Destination, Object>> projections, MusiqueDAttente musique, Instant soireeTermineeLe) {
 		Map<String, Object> vue = new LinkedHashMap<>(partieCommune);
 		if (destination.equals(Destination.SALLE) || destination.equals(Destination.CONSOLE)) {
 			vue.put("musiqueAttente", musique);
@@ -80,7 +82,7 @@ public final class AssembleurDeVues implements CaptureVueRepli {
 		}
 		// Détache aussi les structures imbriquées avant de quitter la transaction.
 		Map<String, Object> copie = json.convertValue(vue, new TypeReference<Map<String, Object>>() { });
-		return new VueComposee(type, copie);
+		return new VueComposee(type, copie, soireeTermineeLe);
 	}
 	private Function<Destination, Object> preparer(UUID soireeId, ModeDeJeu mode) {
 		var fournisseur = blocs.get(mode);
