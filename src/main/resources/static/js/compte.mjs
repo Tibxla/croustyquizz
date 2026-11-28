@@ -4,10 +4,8 @@ export const ROUTE_SESSION = '/api/animateurs/session';
 export const SOIREES_DU_LIEU = '/soirees.html';
 const PAGES_PROTEGEES = new Set([SOIREES_DU_LIEU, '/preparer-soiree.html', '/console.html']);
 
-export function adresseConnexion(retour, { compteCree = false } = {}) {
-	const parametres = new URLSearchParams({ retour });
-	if (compteCree) parametres.set('inscription', '1');
-	return `/connexion.html?${parametres}`;
+export function adresseConnexion(retour) {
+	return `/connexion.html?${new URLSearchParams({ retour })}`;
 }
 
 export function retourApresConnexion(recherche) {

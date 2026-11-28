@@ -73,16 +73,36 @@ test('le code d’accès n’apparaît que pour une Soirée qu’on peut encore 
 	]);
 });
 
-function creerPageSoirees() {
+function creerPageSoirees(recherche = '') {
 	const document = creerDocument();
+	document.location = new URL(`/soirees.html${recherche}`, 'https://croustyquizz.test');
+	document.defaultView = { history: { replaceState(_etat, _titre, adresse) { document.location = new URL(adresse); } } };
+	const accueil = document.createElement('p');
+	accueil.setAttribute('data-lieu-cree', '');
+	accueil.textContent = 'Ton Lieu est créé.';
+	accueil.hidden = true;
 	const statut = document.createElement('p');
 	statut.setAttribute('data-statut-soirees', '');
 	const zone = document.createElement('div');
 	zone.setAttribute('data-soirees', '');
 	zone.setAttribute('aria-busy', 'true');
-	document.body.append(statut, zone);
-	return { document, statut, zone };
+	document.body.append(accueil, statut, zone);
+	return { document, accueil, statut, zone };
 }
+
+test('souhaite la bienvenue après l’inscription, une seule fois', async t => {
+	t.mock.method(globalThis, 'fetch', async route => route === '/api/animateurs/session'
+		? Response.json({ id: 'animateur', nom: 'Camille', lieuId: 'lieu' }) : Response.json({ soirees: [] }));
+	const arrivee = creerPageSoirees('?inscription=1');
+	await monterSoireesDuLieu(arrivee.document);
+	assert.equal(arrivee.accueil.hidden, false);
+	assert.equal(arrivee.document.location.search, '');
+
+	const rechargement = creerPageSoirees(arrivee.document.location.search);
+	await monterSoireesDuLieu(rechargement.document);
+	assert.equal(rechargement.accueil.hidden, true);
+	assert.match(rechargement.zone.textContent, /Aucune Soirée pour ce Lieu/);
+});
 
 for (const [cas, reponse] of [
 	['une erreur du serveur', () => Response.json({ code: 'ERREUR_INATTENDUE' }, { status: 500 })],

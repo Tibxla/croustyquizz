@@ -91,6 +91,13 @@ export async function monterSoireesDuLieu(document) {
 
 async function chargerSoirees(document, zone) {
 	const statut = document.querySelector('[data-statut-soirees]');
+	const adresse = new URL(document.location.href);
+	const lieuCree = adresse.searchParams.get('inscription') === '1';
+	if (lieuCree) {
+		adresse.searchParams.delete('inscription');
+		const { history } = document.defaultView;
+		history.replaceState(history.state, '', adresse);
+	}
 	const session = await consulterSession();
 	if (session.statut === 401) return;
 	const menu = document.querySelector('[data-menu-compte]');
@@ -109,6 +116,7 @@ async function chargerSoirees(document, zone) {
 		return;
 	}
 	statut.hidden = true;
+	if (lieuCree) document.querySelector('[data-lieu-cree]').hidden = false;
 	afficherSoireesDuLieu(zone, liste.corps.soirees);
 }
 

@@ -63,9 +63,11 @@ class AnimateurControleur {
 	}
 
 	@PostMapping(INSCRIPTION)
-	ResponseEntity<ComptesAnimateur.CompteCree> inscrireAnimateur(@Valid @RequestBody SaisiesAnimateur.Inscription saisie) {
-		return ResponseEntity.created(URI.create(SESSION)).cacheControl(CacheControl.noStore())
-				.body(comptes.inscrire(saisie));
+	ResponseEntity<ComptesAnimateur.CompteCree> inscrireAnimateur(@Valid @RequestBody SaisiesAnimateur.Inscription saisie,
+			HttpServletRequest requete, HttpServletResponse reponse) {
+		var compte = comptes.inscrire(saisie);
+		ouvrirSession(compte.animateur(), requete, reponse);
+		return ResponseEntity.created(URI.create(SESSION)).cacheControl(CacheControl.noStore()).body(compte);
 	}
 
 	@PostMapping(INVITATIONS)

@@ -1,5 +1,5 @@
 import { appelerAvecCsrf, memoire } from './api.js';
-import { adresseConnexion, retourApresConnexion, ROUTE_SESSION } from './compte.mjs';
+import { adresseConnexion, retourApresConnexion, ROUTE_SESSION, SOIREES_DU_LIEU } from './compte.mjs';
 
 const messages = {
 	EMAIL_DEJA_UTILISE: { champ: 'email', texte: 'Cet e-mail est déjà utilisé. Tu peux te connecter.' },
@@ -60,11 +60,9 @@ function monterFormulaire(formulaire) {
 	const champs = [...formulaire.querySelectorAll('input[name]')];
 	const bouton = formulaire.querySelector('button[type="submit"]');
 	const erreur = formulaire.querySelector('[role="alert"]');
-	const confirmation = document.getElementById('compte-cree');
 	const lien = document.querySelector('[data-autre-page]');
 	const libelle = bouton.textContent;
 
-	if (confirmation && new URLSearchParams(location.search).get('inscription') === '1') confirmation.hidden = false;
 	lien.href = inscription ? adresseConnexion(retour) : `/inscription.html?${new URLSearchParams({ retour })}`;
 
 	for (const champ of champs) {
@@ -85,10 +83,10 @@ function monterFormulaire(formulaire) {
 			const resultat = await appelerAvecCsrf('POST', inscription ? '/api/animateurs' : ROUTE_SESSION, { corps });
 			const identite = inscription ? resultat.corps?.animateur : resultat.corps;
 			if (resultat.statut === (inscription ? 201 : 200) && identite?.id) {
-				if (!inscription && memoire.lire('croustyquizz.jeton')?.startsWith('demo:ANIMATEUR:')) {
+				if (memoire.lire('croustyquizz.jeton')?.startsWith('demo:ANIMATEUR:')) {
 					memoire.oublier('croustyquizz.jeton');
 				}
-				location.replace(inscription ? adresseConnexion(retour, { compteCree: true }) : retour);
+				location.replace(inscription ? `${SOIREES_DU_LIEU}?inscription=1` : retour);
 				return;
 			}
 			const refus = erreurDeCompte(resultat.code);
