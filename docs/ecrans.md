@@ -221,9 +221,13 @@ depuis une Manette, avec des notes différentes pour départager les rangs. Fair
    « et … autres », et les Passages « Aucun vote » sur la Console.
 6. Avec un lecteur d’écran sur la salle, vérifier que la liste annonce trois éléments, chacun lu
    une seule fois, puis la ligne « et N autres Passages ».
-7. **Noms longs.** Refaire l’étape 2 avec, sur les trois premiers Passages, un duo de pseudos
-   de 30 caractères, dont les Interprètes passent sur deux lignes. Vérifier à 1920 × 1080 puis à
-   1280 × 720 que le talon d’accès reste entier à l’écran.
+7. **Noms longs (#259).** Refaire l’étape 2 avec, sur les trois premiers Passages, un duo de
+   pseudos de 30 caractères, puis une deuxième fois avec un trio. Ouvrir une Manette de plus pour
+   un Joueur qui ne chante pas : les Interprètes ne votent pas pour leur propre Passage, et sans
+   ce votant les Passages resteraient sans rang, donc absents de la salle. Vérifier à 1920 × 1080 puis à
+   1280 × 720 que les Interprètes tiennent sur une ligne terminée par « … », que chaque ligne du
+   Palmarès garde la hauteur qu’elle a avec des noms courts, et que le talon d’accès reste entier
+   à l’écran. Avec un lecteur d’écran, vérifier que chaque ligne annonce les noms complets.
 
 ### Musique d'attente (#140)
 

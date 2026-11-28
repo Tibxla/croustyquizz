@@ -375,10 +375,15 @@
 }
 .salle--coquille .palmares .palmares__votes { text-align: right; }
 .salle--coquille .palmares .palmares__interpretes {
+  /* Une seule ligne, coupée par des points de suspension : un duo ou un trio de pseudos longs
+     ne fait plus grandir la ligne ni sortir le talon de l'écran (#259). Le nom complet reste
+     dans la phrase lue par les lecteurs d'écran. */
   grid-area: interpretes;
+  overflow: hidden;
   font-size: 2.15vw;
   font-weight: 700;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .salle--coquille .palmares .palmares__chanson {
   grid-area: chanson;
