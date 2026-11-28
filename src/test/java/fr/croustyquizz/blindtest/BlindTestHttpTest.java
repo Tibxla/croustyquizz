@@ -268,6 +268,20 @@ class BlindTestHttpTest {
 	}
 
 	@Test
+	void uneSourceSansAssezDeMorceauxRendUn422QuiDitQuoiCorrigerSansAjouterDeManche() throws Exception {
+		Soiree soiree = ouvrirSoiree("MANUEL");
+
+		JsonNode refus = verifier("ajouterManche", envoyer(HttpMethod.POST, soiree.route() + "/manches",
+				soiree.animateur(), Map.of("mode", "BLIND_TEST", "reglages", Map.of("source",
+						Map.of("type", "PLAYLIST", "idDeezer", 1_306_931_615L), "nombreMorceaux", 10)), null), 422);
+
+		assertThat(refus.path("code").asString()).isEqualTo("SOURCE_MUSICALE_INVALIDE");
+		assertThat(refus.path("detail").asString()).isEqualTo(
+				"Cette playlist n’a que 2 Morceaux jouables pour 10 demandés : demandes-en moins ou choisis une autre source.");
+		assertThat(capture(soiree, "console", soiree.animateur()).path("vue").path("programme")).isEmpty();
+	}
+
+	@Test
 	void unProgrammeFigeRefuseLAjoutAvantDeConsulterDeezer() throws Exception {
 		Soiree soiree = ouvrirSoiree("MANUEL");
 		rejoindre(soiree, "Léa");

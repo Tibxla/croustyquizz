@@ -77,6 +77,8 @@ public class ServiceBlindTest extends ServiceDeManche<ReglagesBlindTest, EtatBli
 		List<Morceau> selection;
 		try {
 			selection = tirage.tirer(valeurs);
+		} catch (SourceMusicaleInvalide erreur) {
+			throw new Refuse(422, "SOURCE_MUSICALE_INVALIDE", erreur.getMessage()).exception(erreur);
 		} catch (SourceMusicaleIndisponible erreur) {
 			throw new Refuse(503, "SOURCE_MUSICALE_INDISPONIBLE",
 					"Le catalogue musical ne répond pas. Réessaie dans un instant.").exception(erreur);

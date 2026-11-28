@@ -567,8 +567,10 @@ paths:
         en fin de programme et publie programme-modifie sur la Console. KARAOKE résout la limite initiale
         configurée si elle est absente. BLIND_TEST tire les Morceaux dans la playlist ou le genre Deezer, hors
         du verrou de la Soirée, parmi ceux qui ont un extrait ; la sélection reste privée et n’apparaît jamais
-        dans les réglages, publiés à toutes les destinations. Deezer indisponible ou source sans assez de
-        Morceaux jouables : 503 SOURCE_MUSICALE_INDISPONIBLE, rien n’est ajouté. Un mode ou des réglages hors
+        dans les réglages, publiés à toutes les destinations. Une source que Deezer ne connaît pas, ou qui n’a
+        pas assez de Morceaux jouables, donne 422 SOURCE_MUSICALE_INVALIDE, avec un detail qui dit quoi
+        corriger ; Deezer injoignable, en panne ou trop lent donne 503 SOURCE_MUSICALE_INDISPONIBLE. Dans les
+        deux cas, rien n’est ajouté. Un mode ou des réglages hors
         schéma donnent 400 REQUETE_INVALIDE. Aucun Idempotency-Key ajouté à cette route.'
       tags:
       - Soirée
@@ -3476,7 +3478,7 @@ components:
     Erreur503:
       description: 'SERVICE_INDISPONIBLE : base ou transaction indisponible. SOURCE_PAROLES_INDISPONIBLE :
         consultation externe en échec sur les routes Karaoké prévues. SOURCE_MUSICALE_INDISPONIBLE : Deezer
-        indisponible à la création d’une Manche de Blind test. Aucun reçu. Pour réessayer une mutation
+        injoignable, en panne ou trop lent à la création d’une Manche de Blind test. Aucun reçu. Pour réessayer une mutation
         qui utilise une clé d’idempotence, conserver la clé et le contenu.'
       headers:
         Cache-Control:

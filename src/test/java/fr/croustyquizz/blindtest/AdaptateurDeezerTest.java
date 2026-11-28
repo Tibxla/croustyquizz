@@ -177,6 +177,31 @@ class AdaptateurDeezerTest {
 		assertThatExceptionOfType(SourceMusicaleIndisponible.class).isThrownBy(() -> adaptateur().lienExtrait(42));
 	}
 
+	// --- Source que Deezer ne connaît pas : à corriger, pas à réessayer ---
+
+	@Test
+	void unePlaylistQueDeezerNeConnaitPasEstUneSourceInvalide() {
+		servir("playlist/0/tracks?index=0&limit=100", "erreur-aucune-donnee.json");
+
+		assertThatExceptionOfType(SourceMusicaleInvalide.class).isThrownBy(() -> adaptateur().morceauxDePlaylist(0))
+				.withMessage("Deezer ne connaît aucune playlist 0 : vérifie l’identifiant et le type (playlist ou genre).");
+	}
+
+	@Test
+	void unGenreQueDeezerNeConnaitPasEstUneSourceInvalide() {
+		servir("chart/999999/tracks?limit=100", "erreur-aucune-donnee.json");
+
+		assertThatExceptionOfType(SourceMusicaleInvalide.class).isThrownBy(() -> adaptateur().morceauxDuGenre(999_999))
+				.withMessage("Deezer ne connaît aucun genre 999999 : vérifie l’identifiant et le type (playlist ou genre).");
+	}
+
+	@Test
+	void unMorceauQueDeezerNeConnaitPlusNAPasDeLien() {
+		servir("track/42", "erreur-aucune-donnee.json");
+
+		assertThat(adaptateur().lienExtrait(42)).isEmpty();
+	}
+
 	// --- Pannes : toujours l'exception dédiée ---
 
 	@Test
