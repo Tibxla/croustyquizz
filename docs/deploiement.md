@@ -346,6 +346,35 @@ le signale sans échouer. Le service et la base sont créés au jalon `v0.1.0`, 
 reçoit sa première version. Ne jamais réinitialiser la base de production : la sauvegarder
 avant chaque livraison (Neon garde aussi un historique de restauration).
 
+### Campagnes SMS avec Twilio en recette (#33)
+
+Dans l’onglet **Environment** du service Render `croustyquizz-recette`, ajoute les variables suivantes
+pour la [recette Twilio](ecrans.md#recette-avec-twilio). Garde la production en mode simulé.
+
+| Variable Render | Valeur |
+|---|---|
+| `CROUSTYQUIZZ_CAMPAGNES_PRESTATAIRE` | `twilio` |
+| `TWILIO_ACCOUNT_SID` | SID du compte affiché dans la Console Twilio |
+| `TWILIO_AUTH_TOKEN` | Jeton d’authentification du compte Twilio |
+| `TWILIO_NUMERO_EXPEDITEUR` | Numéro d’essai SMS attribué par Twilio, au format international avec `+` |
+| `TWILIO_MODELE_ESSAI` | Facultatif. Par défaut, `sms_marketing_promotions`. |
+
+Enregistre les variables et redéploie la recette. Les trois valeurs Twilio requises alimentent
+`croustyquizz.campagnes.twilio.account-sid`, `croustyquizz.campagnes.twilio.auth-token` et
+`croustyquizz.campagnes.twilio.numero-expediteur`. Les envois restent simulés si une de ces
+valeurs est absente ou vide, ou si le prestataire n’est pas réglé sur `twilio`.
+
+Le réglage `TWILIO_MODELE_ESSAI` alimente `croustyquizz.campagnes.twilio.modele-essai`.
+Omettre la variable active le modèle par défaut. Une valeur explicitement vide active l’envoi
+du texte composé, prévu pour un éventuel compte payant. Les modèles d’essai sont
+`sms_2fa`, `sms_appointment_reminders`, `sms_order_confirmation`, `sms_delivery_updates`,
+`sms_customer_support`, `sms_marketing_promotions`, `sms_event_notifications`,
+`sms_account_alerts`, `sms_feedback_surveys` et `sms_internal_alerts`.
+[Modèles SMS de l’essai Twilio](https://www.twilio.com/docs/usage/trials/try-out-sms#send-an-sms).
+
+Après la démo, retire les variables Twilio et le réglage du prestataire de la recette, puis redéploie.
+L’[ADR 0013](adr/0013-prestataire-sms.md) détaille les limites du compte d’essai.
+
 ## Changer d'hébergeur
 
 Rien dans l'image ne dépend du serveur de Tibxla ni de Tailscale : `compose.prod.yaml`,
