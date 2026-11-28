@@ -9,6 +9,10 @@ function decrireReglages({ reglages }) {
 		const limite = reglages.limitePassagesEnAttente;
 		return `Jusqu’à ${limite} Passage${limite === 1 ? '' : 's'} en attente`;
 	}
+	if (reglages.nombreMorceaux !== undefined) {
+		const nombre = reglages.nombreMorceaux, { type, idDeezer } = reglages.source;
+		return `${nombre} Morceau${nombre === 1 ? '' : 'x'} · ${type === 'GENRE' ? 'genre' : 'playlist'} Deezer ${idDeezer}`;
+	}
 	return '';
 }
 
@@ -17,8 +21,14 @@ export function monterProgramme(panneau, contexte) {
 	const document = panneau.ownerDocument;
 	const element = nom => panneau.querySelector(`[data-${nom}]`);
 	const formulaire = element('ajout-manche');
-	const mode = element('mode-manche');
 	const communs = element('reglages-communs');
+	const champAvecErreur = nom => ({ champ: element(nom), erreur: element(`${nom}-erreur`) });
+	const choixMode = champAvecErreur('mode-manche');
+	const mode = choixMode.champ;
+	const nombre = champAvecErreur('nombre-etapes');
+	const temps = champAvecErreur('temps-par-etape');
+	const erreurAjout = element('ajout-manche-erreur');
+	const blindTest = element('reglages-blindtest');
 	const ajout = element('soumettre-manche');
 	const liste = element('programme');
 	const route = `/api/soirees/${contexte.soireeId}`;
@@ -35,15 +45,23 @@ export function monterProgramme(panneau, contexte) {
 		}
 	}
 
-	async function modifier(methode, chemin, corps) {
+	async function modifier(methode, chemin, corps, surRequeteInvalide) {
 		if (!peutEnvoyer()) return;
 		const annulation = new AbortController();
 		envoi = annulation;
 		actualiserCommandes();
 		try {
-			const { statut } = await contexte.envoyer(methode, route + chemin, corps, { signal: annulation.signal });
+			const { statut, corps: reponse } = await contexte.envoyer(methode, route + chemin, corps, {
+				signal: annulation.signal,
+				annoncer: ({ statut }) => statut !== 400 || !surRequeteInvalide || !modifiable,
+			});
+			if (annulation.signal.aborted) return;
+			if (statut === 400) {
+				if (modifiable) surRequeteInvalide?.(reponse);
+				return;
+			}
 			// Récupère l’état courant avant une autre édition, même si la Console a manqué l’événement.
-			if (!annulation.signal.aborted && statut !== 400) contexte.resynchroniser();
+			contexte.resynchroniser();
 		} catch {
 			if (!annulation.signal.aborted) contexte.resynchroniser();
 		} finally {
@@ -53,18 +71,72 @@ export function monterProgramme(panneau, contexte) {
 	}
 
 	function actualiserReglages() {
+		effacerErreurs();
 		communs.hidden = mode.value !== 'QUIZ';
 		communs.disabled = communs.hidden;
+		if (blindTest) {
+			blindTest.hidden = mode.value !== 'BLIND_TEST';
+			blindTest.disabled = blindTest.hidden;
+		}
+	}
+
+	/** Réglages du Blind test ; le Quiz est validé champ par champ, le Karaoké utilise la limite du serveur. */
+	function reglagesBlindTest() {
+		return {
+			source: { type: element('source-blindtest').value, idDeezer: Number(element('id-deezer').value) },
+			nombreMorceaux: Number(element('nombre-morceaux').value),
+		};
+	}
+
+	function effacerErreurs() {
+		for (const { champ, erreur } of [choixMode, nombre, temps]) {
+			erreur.hidden = true;
+			erreur.textContent = '';
+			champ.removeAttribute('aria-invalid');
+		}
+		erreurAjout.hidden = true;
+		erreurAjout.textContent = '';
+	}
+
+	function signalerChamp({ champ, erreur }, message) {
+		erreur.textContent = message;
+		erreur.hidden = false;
+		champ.setAttribute('aria-invalid', 'true');
+		champ.focus();
+	}
+
+	function lireEntier(saisie, consigne) {
+		const { champ } = saisie;
+		const valeur = Number(champ.value);
+		const min = Number(champ.getAttribute('min'));
+		const max = Number(champ.getAttribute('max'));
+		if (Number.isInteger(valeur) && valeur >= min && valeur <= max) return valeur;
+		signalerChamp(saisie, consigne(min, max));
+		// Rien ne part : le bandeau d'un envoi précédent ne doit pas rester à côté de cette erreur.
+		contexte.effacerAnnonce();
 	}
 
 	function ajouter(evenement) {
 		evenement.preventDefault();
-		// Les réglages propres au mode se complètent ici. Le Karaoké utilise la limite du serveur.
-		const reglages = mode.value === 'QUIZ' ? {
-			nombreEtapes: Number(element('nombre-etapes').value),
-			tempsParEtapeSecondes: Number(element('temps-par-etape').value),
-		} : {};
-		void modifier('POST', '/manches', { mode: mode.value, reglages });
+		if (!peutEnvoyer()) return;
+		effacerErreurs();
+		const modeDemande = mode.value;
+		let reglages = {};
+		if (modeDemande === 'QUIZ') {
+			const nombreEtapes = lireEntier(nombre, (min, max) => `Indique un nombre entier d’étapes entre ${min} et ${max}.`);
+			if (nombreEtapes === undefined) return;
+			const tempsParEtapeSecondes = lireEntier(temps, (min, max) => `Indique une durée entière entre ${min} et ${max} secondes.`);
+			if (tempsParEtapeSecondes === undefined) return;
+			reglages = { nombreEtapes, tempsParEtapeSecondes };
+		} else if (modeDemande === 'BLIND_TEST') {
+			reglages = reglagesBlindTest();
+		}
+		void modifier('POST', '/manches', { mode: modeDemande, reglages }, reponse => {
+			// Le Probleme ne désigne aucun champ : le refus s'affiche sous le formulaire, sans en marquer un,
+			// et s'annonce par son rôle alert. Le focus reste où l'Animateur l'a laissé.
+			erreurAjout.textContent = reponse?.detail || 'Vérifie le Mode de jeu et les réglages de la Manche.';
+			erreurAjout.hidden = false;
+		});
 	}
 
 	function ligne(manche, index, programme) {

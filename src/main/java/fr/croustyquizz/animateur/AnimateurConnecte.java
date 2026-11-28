@@ -1,6 +1,7 @@
 package fr.croustyquizz.animateur;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 /** Identité de session pour une opération qui ne désigne aucune Soirée. */
-public record AnimateurConnecte(UUID animateurId, UUID lieuId) { }
+public record AnimateurConnecte(UUID animateurId, UUID lieuId) implements Serializable { }

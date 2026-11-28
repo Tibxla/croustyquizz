@@ -64,14 +64,14 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 	@Override
 	@Transactional(readOnly = true)
 	public Map<String, Object> fournir(UUID soireeId, Destination destination) {
-		return fournir(soireeId, Set.of(destination)).get(destination);
+		return fournir(soireeId, Set.of(destination)).parties().get(destination);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public Map<Destination, Map<String, Object>> fournir(UUID soireeId, Set<Destination> destinations) {
+	public VuesCommunes fournir(UUID soireeId, Set<Destination> destinations) {
 		if (destinations.isEmpty()) {
-			return Map.of();
+			return new VuesCommunes(Map.of(), null);
 		}
 		Soiree soiree = depotDeSoirees.findById(soireeId).orElse(null);
 		if (soiree == null) {
@@ -97,7 +97,7 @@ class FournisseurCommunSoiree implements FournisseurPartieCommune {
 		for (Destination destination : destinations) {
 			parties.put(destination, completer(soireeId, destination, vue, programme, active != null, soiree.accepteLesArrivees()));
 		}
-		return parties;
+		return new VuesCommunes(parties, soiree.getTermineeLe());
 	}
 
 	private Map<String, Object> completer(UUID soireeId, Destination destination, Map<String, Object> commun,

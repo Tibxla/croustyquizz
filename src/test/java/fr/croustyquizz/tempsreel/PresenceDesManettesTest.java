@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -62,7 +63,8 @@ class PresenceDesManettesTest {
 	private final List<String> destinations = new ArrayList<>();
 	private final ExecutorSubscribableChannel canal = new ExecutorSubscribableChannel();
 	private final DiffuseurStomp diffuseur = new DiffuseurStomp(new SimpMessagingTemplate(canal),
-			Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), verrous, assembleur, assembleur::capturerSalle);
+			Clock.fixed(Instant.EPOCH, ZoneOffset.UTC), verrous, assembleur, new CaptureSalleFactice(),
+			Duration.ofHours(24));
 	private final PublicationDeVues vues = new PublicationDeVues(assembleur, commun, new PublicationApresCommit(),
 			diffuseur, evenement -> { });
 	private final PresenceDesManettes presence = new PresenceDesManettes(connexions, verrous, vues, soirees);

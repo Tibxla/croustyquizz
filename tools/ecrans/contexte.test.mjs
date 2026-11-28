@@ -97,3 +97,22 @@ test('le contexte expose l’heure serveur recalée sans figer sa valeur', () =>
 	maintenant = 2600;
 	assert.equal(contexte.maintenantServeur(), 2600);
 });
+
+test('effacerAnnonce retire le statut d’un envoi fini, jamais « Envoi en cours… » d’une commande en vol', async () => {
+	const etats = [], reponses = [];
+	const { contexte } = creerContexte({ envoyer: () => new Promise((resolve, reject) => reponses.push({ resolve, reject })),
+		surEnvoi: (...e) => etats.push(e) });
+	const refuse = contexte.envoyer('POST', '/a', {});
+	reponses[0].resolve({ statut: 409, corps: { detail: 'Refus' } }); await refuse;
+	contexte.effacerAnnonce();
+	assert.deepEqual(etats.at(-1), [null]);
+
+	const enVol = contexte.envoyer('POST', '/b', {});
+	const avant = etats.length;
+	contexte.effacerAnnonce();
+	assert.equal(etats.length, avant, 'l’envoi en vol reste annoncé');
+	reponses[1].resolve({ statut: 204, corps: null }); await enVol;
+	assert.equal(etats.at(-1)[0], 'accepte', 'sa réponse reste annoncée');
+	contexte.effacerAnnonce();
+	assert.deepEqual(etats.at(-1), [null]);
+});

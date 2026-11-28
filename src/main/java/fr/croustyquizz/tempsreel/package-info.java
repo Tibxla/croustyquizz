@@ -30,6 +30,10 @@
  * FournisseurCommunSoiree pour le champ connecte : la fermeture de la dernière connexion d'une
  * Manette, puis son retour, publient joueurs-modifies sous le verrou de la Soirée (#8).
  *
+ * <p>LimiteDeRequetes, filtre placé devant les contrôleurs, limite le Buzz, les Réponses et
+ * l'accès à une Soirée (#4) : 429 TROP_DE_REQUETES avec Retry-After, seuils dans
+ * ReglagesDesLimites ({@code croustyquizz.limites}).
+ *
  * <p>Propriétaire : Tibxla.
  */
 package fr.croustyquizz.tempsreel;

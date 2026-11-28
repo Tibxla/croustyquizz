@@ -1,5 +1,7 @@
 package fr.croustyquizz.karaoke;
 
+import static fr.croustyquizz.Attentes.PLAFOND_SECONDES;
+import static fr.croustyquizz.Attentes.RETENUE_SECONDES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -196,10 +198,11 @@ class AdaptateurLrclibTest {
                 echange.sendResponseHeaders(503, 0);
                 echange.getResponseBody().write('!');
                 echange.getResponseBody().flush();
-                attendre(liberer);
+                retenir(liberer);
             }
         });
         try {
+            // Les 3 s sont l'exigence du test, pas un plafond d'attente : elles restent fixes, sous la retenue du serveur.
             assertTimeoutPreemptively(Duration.ofSeconds(3), () ->
                     assertThatExceptionOfType(SourceParolesIndisponible.class).isThrownBy(() -> source.rechercher("titre"))
                             .withMessageContaining("503"));
@@ -235,7 +238,7 @@ class AdaptateurLrclibTest {
         });
         assertThatExceptionOfType(SourceParolesIndisponible.class)
                 .isThrownBy(() -> adaptateur(2000, 100).rechercher("titre")).withStackTraceContaining("taille");
-        assertThat(fluxCoupe.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(fluxCoupe.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
     }
 
     @ParameterizedTest
@@ -251,7 +254,7 @@ class AdaptateurLrclibTest {
                     echange.getResponseBody().write('[');
                     echange.getResponseBody().flush();
                 }
-                attendre(liberer);
+                retenir(liberer);
                 if (!enTetesEnvoyes) { echange.sendResponseHeaders(200, 0); }
                 byte[] bloc = new byte[32768];
                 for (int indice = 0; indice < 1024; indice++) {
@@ -263,6 +266,7 @@ class AdaptateurLrclibTest {
             }
         });
         try {
+            // Les 3 s sont l'exigence du test, pas un plafond d'attente : elles restent fixes, sous la retenue du serveur.
             assertTimeoutPreemptively(Duration.ofSeconds(3), () ->
                     assertThatExceptionOfType(SourceParolesIndisponible.class)
                             .isThrownBy(() -> adaptateur(250, 2097152).rechercher("titre"))
@@ -270,7 +274,7 @@ class AdaptateurLrclibTest {
         } finally {
             liberer.countDown();
         }
-        assertThat(fluxCoupe.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(fluxCoupe.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
     }
 
     @Test
@@ -283,7 +287,7 @@ class AdaptateurLrclibTest {
         tls.setExecutor(executant);
         tls.setHttpsConfigurator(new HttpsConfigurator(SSLContext.getDefault()) {
             @Override public void configure(HttpsParameters parametres) {
-                try { attendre(liberer); }
+                try { retenir(liberer); }
                 catch (IOException erreur) { throw new IllegalStateException(erreur); }
                 super.configure(parametres);
             }
@@ -294,6 +298,7 @@ class AdaptateurLrclibTest {
         try (HttpClient connexionBornee = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(250)).build()) {
             SourceDeParoles source = new AdaptateurLrclib(new ProprietesSourceKaraoke(https, "Agent", 1500, 1000, 120),
                     connexionBornee, json, horloge);
+            // Les 3 s sont l'exigence du test, pas un plafond d'attente : elles restent fixes, sous la retenue du serveur.
             assertTimeoutPreemptively(Duration.ofSeconds(3), () ->
                     assertThatExceptionOfType(SourceParolesIndisponible.class).isThrownBy(() -> source.rechercher("titre"))
                             .withStackTraceContaining(HttpConnectTimeoutException.class.getName()));
@@ -368,7 +373,7 @@ class AdaptateurLrclibTest {
             try (echange) {
                 appels.incrementAndGet();
                 requeteEntree.countDown();
-                attendre(libererReponse);
+                retenir(libererReponse);
                 echange.getResponseHeaders().set("Retry-After", "1");
                 echange.sendResponseHeaders(503, -1);
             }
@@ -378,14 +383,14 @@ class AdaptateurLrclibTest {
             var court = taches.submit(() -> assertThatExceptionOfType(SourceParolesIndisponible.class)
                     .isThrownBy(() -> source.charger(2)));
             try {
-                assertThat(requeteEntree.await(5, TimeUnit.SECONDS)).isTrue();
+                assertThat(requeteEntree.await(PLAFOND_SECONDES, TimeUnit.SECONDS)).isTrue();
                 statut = 429;
                 retryAfter = "10";
                 assertThatExceptionOfType(SourceParolesIndisponible.class).isThrownBy(() -> source.rechercher("titre"));
             } finally {
                 libererReponse.countDown();
             }
-            court.get(5, TimeUnit.SECONDS);
+            court.get(PLAFOND_SECONDES, TimeUnit.SECONDS);
         }
         statut = 200;
         horloge.avancer(Duration.ofSeconds(1));
@@ -396,9 +401,9 @@ class AdaptateurLrclibTest {
         assertThat(appels).hasValue(3);
     }
 
-    private static void attendre(CountDownLatch signal) throws IOException {
+    private static void retenir(CountDownLatch signal) throws IOException {
         try {
-            if (!signal.await(5, TimeUnit.SECONDS)) { throw new IOException("Signal de test non reçu"); }
+            if (!signal.await(RETENUE_SECONDES, TimeUnit.SECONDS)) { throw new IOException("Signal de test non reçu"); }
         } catch (InterruptedException erreur) {
             Thread.currentThread().interrupt();
             throw new IOException("Serveur de test interrompu", erreur);
