@@ -25,10 +25,50 @@ server:
   # Render et Tailscale Funnel terminent le HTTPS puis relaient en HTTP : Tomcat reprend le schéma
   # et l'hôte publics de X-Forwarded-Proto et X-Forwarded-Host, sans quoi le QR code de l'Écran de
   # salle mènerait à une adresse http://. Seuls les relais d'adresse interne (127.0.0.1, réseaux
-  # privés) sont crus ; en développement, sans relais, rien ne change.
+  # privés) sont crus ; en développement, sans relais, rien ne change. La limite de requêtes s'appuie
+  # aussi sur l'adresse du client que Tomcat en tire (X-Forwarded-For), jamais sur l'en-tête brut.
   forward-headers-strategy: native
+  servlet:
+    session:
+      tracking-modes: cookie
+      cookie:
+        http-only: true
+        same-site: lax
 
 croustyquizz:
+  tempsreel:
+    delai-eviction-vues: 24h
+  # Limite de requêtes (#4) : une rafale, puis un jeton regagné à chaque intervalle, par route et par clé.
+  # Justification de chaque seuil dans ReglagesDesLimites ; réglage dans docs/deploiement.md.
+  limites:
+    actif: true
+    # Par route : chacune a sa table. Environ 200 octets par clé : au pire, 9 routes × 20 000 clés font 40 Mo.
+    plafond-cles: 20000
+    # Par jeton. La Manette attend la réponse avant un nouveau Buzz : 5 par seconde reste hors de portée d'un doigt.
+    buzz:
+      rafale: 10
+      intervalle: 200ms
+    # Par jeton et par route (brouillon, Proposition, Vote, Réponse) ; le brouillon part au plus toutes les 500 ms.
+    reponses:
+      rafale: 20
+      intervalle: 100ms
+    # Par adresse IP, seuls les codes inconnus (404), comptés après la réponse : le bon code n'est jamais refusé ici.
+    codes-inconnus:
+      rafale: 20
+      intervalle: 3s
+    # Par adresse IP, toutes les arrivées : deux salles de 60 Joueurs derrière un même Wi-Fi. Borne aussi le
+    # rythme des essais de code d'un script : 20 par minute parmi 10^9 codes, une dizaine d'années pour en trouver un.
+    arrivees:
+      rafale: 120
+      intervalle: 3s
+    # Par adresse IP, toutes Soirées confondues : l'Animateur ouvre un ou deux Écrans de salle.
+    acces-ecran:
+      rafale: 10
+      intervalle: 6s
+    # Par clé d'Écran : l'Écran de salle ne charge le QR code qu'au changement de code.
+    qr-code:
+      rafale: 10
+      intervalle: 1s
   passage:
     limitePassagesEnAttente: 1
     delaiAppelSecondes: 30

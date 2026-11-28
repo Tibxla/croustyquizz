@@ -1,7 +1,7 @@
 import { creerCoordinationSon } from './coordination-son.mjs';
 import { creerLecteurDePassage } from './lecteur-de-passage.mjs';
 import { creerMusiqueDAttente } from './musique-attente.mjs';
-import { creerUuid } from './modes/karaoke/commun.mjs';
+import { creerUuid } from './uuid.mjs';
 import { estFichierAudio, fichiersDeMusiqueDAttente } from './modes/karaoke/fichiers.mjs';
 import { creerLecteurLocal } from './modes/karaoke/lecteur-local.mjs';
 
@@ -117,6 +117,8 @@ export function monterAudioSalle(zone, soireeId) {
 		const texte = morceauxDisponibles === false ? 'Aucun morceau lisible dans Attente' : compteur;
 		if (aide.textContent !== texte) aide.textContent = texte;
 	});
+	// Le Blind test joue sans dossier de musique : le geste qui active le son doit être proposé dès le chargement.
+	activer.hidden = audio.etat().sonDebloque;
 	zone.hidden = false;
 	return audio;
 }
