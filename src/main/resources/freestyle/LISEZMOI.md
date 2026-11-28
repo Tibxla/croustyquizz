@@ -13,6 +13,7 @@ Les fichiers TSV sont en UTF-8. Chaque ligne associe `mot`, `terminaison` et `fr
 
 - Le mot garde son orthographe française et ses accents.
 - La terminaison note les derniers sons prononcés en alphabet phonétique international simplifié, séparés par des espaces. Inscrire la dernière voyelle et tous les sons qui la suivent, ainsi que les sons qui la précèdent pour avoir au moins trois sons si le mot le permet. Un son nasal comme `ɔ̃` forme un seul élément. Le `e` final muet est omis.
+- Les sons, voyelles comprises, reprennent les choix de Lexique 3.83, convertis en alphabet phonétique international comme à la lecture de l'extrait (voir plus bas). Quand le mot figure dans `lexique383-extrait.tsv`, la terminaison reprend la fin de l'une de ses prononciations : `fêter` (`fete`) note `e t e`, pas `ɛ t e`, et `rigoler` (`Rigole`, où `R` donne `ʁ`) note `o l e`. `DictionnaireDeRimesFourniTest` le vérifie pour chaque mot présent dans l'extrait. Sinon, la terminaison s'aligne sur un mot de l'extrait qui a la même fin écrite : `talonner` note `o n e`, comme `donner` (`done`).
 - La fréquence de 1 à 100 est une appréciation de l'usage courant, estimée à la rédaction. Plus elle est élevée, plus le mot est courant.
 
 Chaque thème a deux Familles de rimes. Chacune fournit au moins 32 suggestions distinctes pour une Grille de rimes en AAAA, même après retrait du mot de départ.
