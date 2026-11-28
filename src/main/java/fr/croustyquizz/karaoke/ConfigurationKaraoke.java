@@ -29,4 +29,7 @@ public class ConfigurationKaraoke {
             ParticipantsDePassage participants, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource) {
         return new FournisseurDeBlocKaraoke(depot, service, participants, proprietes, proprietesSource);
     }
+    @Bean FournisseurPalmaresKaraoke fournisseurPalmaresKaraoke(DepotDeManches depot, ObjectProvider<ServiceKaraoke> service) {
+        return new FournisseurPalmaresKaraoke(depot, service);
+    }
 }

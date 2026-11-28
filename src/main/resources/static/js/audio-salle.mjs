@@ -18,6 +18,11 @@ export function creerAudioSalle({ lecteur, sonde, coordonner, lecteurId }) {
 		sonDebloque = false;
 		actualiserCandidature();
 		notifier();
+	}, surMorceauxEpuises() {
+		// Tous les morceaux d'Attente sont illisibles : comme un dossier sans Attente, jusqu'au prochain choix.
+		morceauxDisponibles = false;
+		actualiserCandidature();
+		notifier();
 	} });
 	function actualiserMusique() { musique.autoriserLecture(musiqueAutorisee && attenteAutorisee); }
 	const coordination = coordonner(autorisee => {
@@ -100,12 +105,14 @@ export function monterAudioSalle(zone) {
 		audio.choisirDossier(Array.from(choix.files));
 		choix.value = '';
 	});
-	audio.surChangement(({ fichiers, sonDebloque }) => {
+	audio.surChangement(({ fichiers, morceauxDisponibles, sonDebloque }) => {
 		const avaitFocus = document.activeElement === activer;
 		alerte.hidden = activer.hidden = sonDebloque;
 		if (avaitFocus && activer.hidden) choisir.focus();
 		const nombre = fichiers?.length;
-		aide.textContent = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
+		const compteur = nombre === undefined ? '' : `${nombre} fichier${nombre > 1 ? 's' : ''} audio`;
+		const texte = morceauxDisponibles === false ? 'Aucun morceau lisible dans Attente' : compteur;
+		if (aide.textContent !== texte) aide.textContent = texte;
 	});
 	// Le Blind test joue sans dossier de musique : le geste qui active le son doit être proposé dès le chargement.
 	activer.hidden = audio.etat().sonDebloque;
