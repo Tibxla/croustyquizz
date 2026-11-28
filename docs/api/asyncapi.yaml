@@ -40,7 +40,7 @@ channels:
       (BlocKaraokeSalle : courant, trois prochains Passages, nombre des autres, lecteur désigné, lecture
       et paroles du Passage démarré, votes), sans fichier local ni secret ; pause, reprise et fin de Manche par
       les causes existantes. Recherche, refus, rejeu, geste sans effet et rollback sans publication.
-      Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele et morceau-saute ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon publié.
+      Aucun événement par seconde. Blind test : morceau-en-preparation, morceau-ouvert, buzz-recu, proposition-jugee, morceau-revele, morceau-saute et verdict-renverse (arbitrage de l’Animateur, annoncé par blindtest.arbitrage) ; bloc blindtest (BlocBlindTestSalle : lien d’extrait signé et état de lecture), sans identifiant Deezer ni réponse avant la Révélation ; aucun brouillon ni texte de Proposition publié.
       Photos : photos-modifiees au changement d’affiche ; le bloc photos est nul sans affiche,
       sinon limité à l’UUID de la photo et à son échéance."
     parameters:

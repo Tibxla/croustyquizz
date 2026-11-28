@@ -1282,6 +1282,94 @@ paths:
           application/json:
             schema:
               $ref: ./schemas.yaml#/$defs/PropositionSaisie
+  /api/soirees/{soireeId}/manches/{mancheId}/morceaux/{etapeId}/arbitrage:
+    post:
+      operationId: arbitrerProposition
+      summary: Renverser le verdict d’un champ d’une Proposition de titre
+      description: 'Animateur du Lieu, en Pilotage Manuel (ADR 0009, point 15). Fixe le verdict JUSTE ou FAUX
+        d’un champ (TITRE, ARTISTE) d’une Proposition jugée sur le Morceau affiché, Révélation comprise, jusqu’à
+        PASSER_ETAPE ; la pause ne l’empêche pas. Accorder un champ : le Joueur gagne les points de la partie avec
+        son temps de Buzz d’origine, la partie est trouvée par lui, et il n’est plus bloqué si aucun de ses champs
+        ne reste faux ; si toutes les parties sont trouvées, la Révélation part aussitôt. Refuser un champ : points
+        retirés et Joueur bloqué ; avant la Révélation, la partie redevient demandée et le Morceau continue ; après,
+        la Révélation est maintenue. Puis verdict-renverse vers la salle, la Console et les Manettes, avec
+        blindtest.arbitrage, ou morceau-revele quand l’arbitrage termine le Morceau. Un champ qui a déjà ce verdict
+        est accepté sans changement ni événement (modifie false). Ordre des refus : Pilotage Automatique, 409
+        ETAT_INCOMPATIBLE (le verdict de la correction est définitif) ; Morceau qui n’est plus le Morceau affiché,
+        409 COMMANDE_PERIMEE ; Proposition inconnue sur ce Morceau, 404 RESSOURCE_INTROUVABLE ; champ non demandé,
+        champ vide à accorder, ou partie trouvée depuis par un autre Joueur, 409 ETAT_INCOMPATIBLE. Manche
+        terminée : 409 ETAT_INCOMPATIBLE ; pas encore commencée : 409 ETAPE_INACTIVE. Reçu et rejeu comme
+        piloterManche : même Idempotency-Key et même contenu, reçu initial ; autre contenu, 409 ENVOI_REUTILISE.
+        Autres refus : 400 REQUETE_INVALIDE, 401 AUTHENTIFICATION_REQUISE, 403 ACCES_REFUSE, 403 CSRF_INVALIDE,
+        503 SERVICE_INDISPONIBLE.'
+      tags:
+      - Blind test
+      security:
+      - sessionAnimateur: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: mancheId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: etapeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-TOKEN
+        in: header
+        required: true
+        description: Jeton obtenu par GET /api/csrf dans cette session ; renouveler après connexion/déconnexion.
+        schema:
+          type: string
+          minLength: 16
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID de l’envoi ; identité Animateur issue de la session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/ArbitrageSaisie
+      responses:
+        '200':
+          description: Reçu immuable. Ne remplace pas une vue plus récente.
+          headers:
+            Cache-Control:
+              description: Toujours no-store, notamment pour les secrets, vues et corrections.
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/AccuseArbitrage
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
+        '503':
+          $ref: '#/components/responses/Erreur503'
   /api/soirees/{soireeId}/buzz:
     post:
       operationId: envoyerBuzz
