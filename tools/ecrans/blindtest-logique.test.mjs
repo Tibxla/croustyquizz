@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aligner, creerEnvoiBrouillon, extraitJouable, extraitRestantMs, formaterSecondes, positionCibleMs,
-	tempsRestantMs, textePartieTrouvee, verdictPersonnel } from '../../src/main/resources/static/js/modes/blindtest/logique.mjs';
+	tempsRestantMs, textePartieTrouvee, verdictPersonnel, texteArbitrage, actionArbitrage, texteChampJuge }
+	from '../../src/main/resources/static/js/modes/blindtest/logique.mjs';
 import { creerLecteurExtrait, VERROU_EXTRAIT } from '../../src/main/resources/static/js/modes/blindtest/lecteur-extrait.mjs';
 import { terminerMicrotaches } from './karaoke-dom-factice.mjs';
 
@@ -329,4 +330,30 @@ test('rien ne joue tant que la coquille ne rend pas le son de Manche', async () 
 	await f.lecteur.suivre(bloc('EXTRAIT', enLecture(0)));
 	await terminerMicrotaches();
 	assert.equal(f.journal.includes('lire'), false);
+});
+
+test('arbitrage : annonce de la salle, verdict personnel et gestes proposés à l’Animateur', () => {
+	const accorde = { partie: 'ARTISTE', joueurId: 'lea', pseudo: 'Léa', verdict: 'JUSTE' };
+	const refuse = { partie: 'TITRE', joueurId: 'lea', pseudo: 'Léa', verdict: 'FAUX' };
+	assert.equal(texteArbitrage(null), '');
+	assert.equal(texteArbitrage(accorde), 'L’Animateur accorde l’artiste à Léa.');
+	assert.equal(texteArbitrage(refuse), 'L’Animateur refuse le titre de Léa.');
+
+	const artiste = { partie: 'ARTISTE', valeur: 'Beyoncé', joueurId: 'lea', pseudo: 'Léa', points: 30 };
+	assert.deepEqual(verdictPersonnel({ partiesTrouvees: [artiste], bloque: false, arbitrage: accorde }, 'lea'),
+		{ ton: 'accepte', texte: 'L’Animateur t’accorde l’artiste. Artiste trouvé, +30 points.' });
+	assert.deepEqual(verdictPersonnel({ partiesTrouvees: [], bloque: true, arbitrage: refuse }, 'lea'),
+		{ ton: 'refuse', texte: 'L’Animateur refuse ton titre. Proposition fausse : tu es bloqué sur ce Morceau.' });
+	assert.equal(verdictPersonnel({ partiesTrouvees: [], bloque: false, arbitrage: accorde }, 'sam'), null,
+		'Un arbitrage ne concerne que son Joueur.');
+
+	assert.deepEqual(actionArbitrage({ saisie: 'halo', verdict: 'JUSTE', arbitre: false }), { verdict: 'FAUX', libelle: 'Refuser' });
+	assert.deepEqual(actionArbitrage({ saisie: 'Beyonse', verdict: 'FAUX', arbitre: false }), { verdict: 'JUSTE', libelle: 'Accorder' });
+	assert.equal(actionArbitrage({ saisie: '  ', verdict: 'FAUX', arbitre: false }), null, 'Un champ vide ne s’accorde pas.');
+	assert.equal(actionArbitrage({ saisie: 'halo', verdict: 'NON_DEMANDE', arbitre: false }), null);
+
+	assert.equal(texteChampJuge('ARTISTE', { saisie: 'Beyonse', verdict: 'JUSTE', arbitre: true }),
+		'Artiste : « Beyonse », juste (arbitré)');
+	assert.equal(texteChampJuge('TITRE', { saisie: '', verdict: 'FAUX', arbitre: false }), 'Titre : vide, faux');
+	assert.equal(texteChampJuge('TITRE', { saisie: 'halo', verdict: 'NON_DEMANDE', arbitre: false }), 'Titre : déjà trouvé');
 });

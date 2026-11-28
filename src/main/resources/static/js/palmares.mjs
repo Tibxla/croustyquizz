@@ -29,3 +29,22 @@ export function creerLignePalmaresSalle(document, { numero, rang, titre, interpr
 	li.append(presentation, phrase);
 	return li;
 }
+
+// Sur la salle, plein écran sans défilement : les trois premiers Passages classés, puis le nombre des autres (#236).
+// La Console garde la liste complète.
+const LIGNES_DE_SALLE = 3;
+const texteAutresPassages = nombre => `et ${nombre} ${nombre > 1 ? 'autres Passages' : 'autre Passage'}`;
+
+export function resumerPalmaresDeSalle(palmares) {
+	const lignes = palmares.filter(ligne => ligne.rang !== null).slice(0, LIGNES_DE_SALLE);
+	const autres = palmares.length - lignes.length;
+	return { lignes, texteAutres: lignes.length > 0 && autres > 0 ? texteAutresPassages(autres) : '' };
+}
+
+export function afficherPalmaresDeSalle(document, { liste, suite, vide }, palmares) {
+	const { lignes, texteAutres } = resumerPalmaresDeSalle(palmares ?? []);
+	liste.replaceChildren(...lignes.map(ligne => creerLignePalmaresSalle(document, ligne)));
+	suite.textContent = texteAutres;
+	suite.hidden = texteAutres === '';
+	vide.hidden = palmares === null || lignes.length > 0;
+}

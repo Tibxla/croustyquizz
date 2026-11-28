@@ -635,6 +635,49 @@ class KaraokeTempsReelTest {
         return vues;
     }
 
+    @Test void laClotureDuDernierVotePublieUneSeuleFinSurChaqueDestination() throws Exception {
+        pilotage.choisir(soiree, true);
+        UUID manche = service.creer(soiree, Map.of());
+        service.demarrer(manche, new EnvoiDeCommande(animateur, "/demarrer", UUID.randomUUID(), Map.of()));
+        String racine = "/api/soirees/" + soiree + "/manches/" + manche;
+        var inscription = envoyer(HttpMethod.POST, racine + "/passages", joueur,
+                Map.of("envoiId", UUID.randomUUID(), "chansonId", IdentifiantsChanson.encoder(1)), null);
+        KaraokeHttpTest.verifier("inscrirePassage", inscription, 201);
+        String passage = json.readTree(inscription.getBody()).path("passageId").asString();
+        var etape = ((InstantaneKaraoke) service.instantane(soiree, manche)).cycle().etapeId();
+        KaraokeHttpTest.verifier("confirmerPresencePassage",
+                envoyer(HttpMethod.POST, racine + "/passages/" + passage + "/presence", joueur,
+                        Map.of("envoiId", UUID.randomUUID(), "etapeId", etape, "numeroModification", 1), null), 200);
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(180));
+
+        var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+        var salle = abonner(ecran, Canaux.salle(soiree), "salle");
+        var console = abonner(animateur, Canaux.console(soiree), "console");
+        var flux = new ArrayList<>(List.of(salle, console));
+        for (UUID id : ConfigurationTroisJoueurs.joueursDe(soiree)) {
+            flux.add(abonner(new Acteur(Acteur.Type.JOUEUR, id, soiree), Canaux.joueur(id), "manette"));
+        }
+        var revisions = new ArrayList<Long>();
+        for (var abonne : flux) {
+            var capture = capturer(abonne);
+            assertThat(capture.at("/vue/karaoke/votes/0/etat").asString()).isEqualTo("OUVERT");
+            revisions.add(capture.path("revision").asLong());
+        }
+        socle.registre().retirer(manche);
+        assertThat(service.instantane(soiree, manche)).isInstanceOf(InstantaneKaraoke.class);
+
+        ((HorlogeFactice) horloge).avancer(Duration.ofSeconds(30));
+
+        for (int i = 0; i < flux.size(); i++) {
+            var abonne = flux.get(i);
+            var vue = lireEvenement(abonne, "manche-terminee");
+            assertThat(vue.path("karaoke").isNull()).isTrue();
+            assertThat(capturer(abonne).path("revision").asLong()).isEqualTo(revisions.get(i) + 1);
+            assertThat(abonne.messages()).isEmpty();
+        }
+        assertThat(socle.depot().charger(manche).getEtat()).isEqualTo(EtatManche.TERMINEE);
+    }
+
     private JsonNode lireEvenement(Abonnement abonne, String cause) throws Exception {
         var evenement = abonne.messages().poll(PLAFOND_SECONDES, TimeUnit.SECONDS);
         assertThat(evenement).isNotNull();
