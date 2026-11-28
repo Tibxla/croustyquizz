@@ -135,6 +135,21 @@
 .menu__info { margin: 0; color: var(--texte-2); font-size: 0.9375rem; white-space: normal; }
 .menu__info:empty { display: none; }
 
+.console__alerte-son {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--espace-2) var(--espace-4);
+  border: 1px solid var(--fond-4);
+  border-radius: var(--rayon);
+  background: var(--fond-2);
+  color: var(--texte);
+}
+.console__alerte-son:empty {
+  position: absolute;
+  padding: 0;
+  border: 0;
+}
+
 /* Raison d'un lancement impossible : la prochaine chose à faire, en tête de colonne (#282). */
 .console__raison {
   padding: var(--espace-3) var(--espace-4);
@@ -172,6 +187,7 @@
   grid-template-columns: minmax(360px, 440px) 1fr;
   gap: var(--espace-6);
   padding: var(--espace-5);
+  align-content: start;
   align-items: start;
 }
 @media (max-width: 1200px) {

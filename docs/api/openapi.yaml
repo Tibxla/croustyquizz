@@ -1547,6 +1547,58 @@ paths:
           $ref: '#/components/responses/Erreur404'
         '503':
           $ref: '#/components/responses/Erreur503'
+  /api/soirees/{soireeId}/son-ecran:
+    put:
+      operationId: signalerSonEcran
+      summary: Signaler l’état du son de l’Écran de salle
+      description: >
+        Écran de salle de cette Soirée uniquement, même hors Manche.
+        Le signal du son est lié à l’abonnement STOMP de l’Écran authentifié au canal de salle.
+        L’Écran le signale dès sa synchronisation, puis si le navigateur active ou bloque le son.
+        À sa déconnexion, le serveur oublie son signal. Un changement d’état global publie son-ecran-modifie
+        sur la Console uniquement. Un signal identique réussit sans publication.
+        En dev et recette, une Soirée de démonstration est reconnue dès son UUID, même sans Manche.
+        Soirée inconnue ou hors portée : 404 RESSOURCE_INTROUVABLE.
+        Abonnement absent, inactif ou d’un autre acteur : 409 ABONNEMENT_INACTIF.
+      tags:
+      - Socle
+      security:
+      - cleEcran: []
+      parameters:
+      - name: soireeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./schemas.yaml#/$defs/SignalSonEcran
+      responses:
+        '200':
+          description: Signal sonore enregistré. La Vue synchronisée reste la référence pour l’affichage.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas.yaml#/$defs/SignalSonEcran
+        '400':
+          $ref: '#/components/responses/Erreur400'
+        '401':
+          $ref: '#/components/responses/Erreur401'
+        '403':
+          $ref: '#/components/responses/Erreur403'
+        '404':
+          $ref: '#/components/responses/Erreur404'
+        '409':
+          $ref: '#/components/responses/Erreur409'
   /api/soirees/{soireeId}/etat/manette:
     get:
       operationId: retrouverEtatManette

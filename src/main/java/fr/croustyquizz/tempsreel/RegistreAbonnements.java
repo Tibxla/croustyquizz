@@ -6,6 +6,7 @@ import java.util.UUID;
 import fr.croustyquizz.manche.Acteur;
 
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
@@ -78,11 +79,20 @@ public final class RegistreAbonnements implements ExecutorChannelInterceptor {
 
 	/** La barrière métier exige aussi le même Acteur que la connexion STOMP. */
 	public synchronized boolean estInstalle(UUID abonnementId, String destination, Acteur acteur) {
-		return estInstalle(abonnementId, destination) && connexions.entrySet().stream()
-				.anyMatch(c -> destination.equals(c.getValue().get(abonnementId)) && acteur.equals(acteurs.get(c.getKey())));
+		return connexionInstallee(abonnementId, destination, acteur) != null;
+	}
+
+	synchronized String connexionInstallee(UUID abonnementId, String destination, Acteur acteur) {
+		if (!estInstalle(abonnementId, destination)) {
+			return null;
+		}
+		return connexions.entrySet().stream()
+				.filter(c -> destination.equals(c.getValue().get(abonnementId)) && acteur.equals(acteurs.get(c.getKey())))
+				.map(Map.Entry::getKey).findFirst().orElse(null);
 	}
 
 	@EventListener
+	@Order(0)
 	public synchronized void deconnecter(SessionDisconnectEvent evenement) {
 		connexions.remove(evenement.getSessionId());
 		acteurs.remove(evenement.getSessionId());

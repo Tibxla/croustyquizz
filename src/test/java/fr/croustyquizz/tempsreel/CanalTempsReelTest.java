@@ -46,7 +46,9 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.JsonNode;
 
+import fr.croustyquizz.ContratApi;
 import fr.croustyquizz.TestcontainersConfiguration;
 import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.soiree.Format;
@@ -61,6 +63,7 @@ import fr.croustyquizz.soiree.ServiceSoiree;
 @TestInstance(Lifecycle.PER_CLASS)
 class CanalTempsReelTest {
 
+	private static final String CONTRAT = "docs/api/openapi.yaml";
 	private static final UUID SOIREE = UUID.randomUUID();
 	private static final UUID AUTRE_SOIREE = UUID.randomUUID();
 
@@ -242,6 +245,119 @@ class CanalTempsReelTest {
 		assertThat(salle).isEmpty();
 	}
 
+	@Test
+	void laConsoleSuitLeSonDesEcransConnectesEtLaManetteNeLeRecoitPas() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+		var joueur = new Acteur(Acteur.Type.JOUEUR, FournisseurCommunDemonstration.joueurId(soiree), soiree);
+		var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+		var console = abonner(connecter(animateur), Canaux.console(soiree));
+		var manette = abonner(connecter(joueur), Canaux.joueur(joueur.identifiant()));
+		var premier = connecter(ecran);
+		var second = connecter(ecran);
+		UUID premierAbonnement = UUID.randomUUID();
+		UUID secondAbonnement = UUID.randomUUID();
+		abonner(premier, Canaux.salle(soiree), premierAbonnement);
+		abonner(second, Canaux.salle(soiree), secondAbonnement);
+
+		signalerSon(ecran, premierAbonnement, false, 200);
+		verifierSonConsole(console, animateur, "COUPE", 1);
+		signalerSon(ecran, secondAbonnement, false, 200);
+		signalerSon(ecran, premierAbonnement, true, 200);
+		verifierSonConsole(console, animateur, "ACTIVE", 2);
+		premier.disconnect();
+		verifierSonConsole(console, animateur, "COUPE", 3);
+		signalerSon(ecran, premierAbonnement, true, 409);
+		second.disconnect();
+		verifierSonConsole(console, animateur, "ABSENT", 4);
+
+		var captureManette = capturerVue(joueur, "manette", "retrouverEtatManette");
+		assertThat(captureManette.path("revision").asLong()).isZero();
+		assertThat(captureManette.path("vue").has("sonEcran")).isFalse();
+		assertThat(manette.poll(200, TimeUnit.MILLISECONDS)).isNull();
+	}
+
+	@Test
+	void leSignalDuSonExigeUnAbonnementDeLEcranAuthentifie() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+		var autreEcran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+		var animateur = new Acteur(Acteur.Type.ANIMATEUR, UUID.randomUUID(), soiree);
+		UUID abonnement = UUID.randomUUID();
+		abonner(connecter(ecran), Canaux.salle(soiree), abonnement);
+		var signal = Map.of("abonnementId", abonnement, "sonActive", true);
+
+		assertThat(signalerSon(soiree, autreEcran, signal, 409).path("code").asString()).isEqualTo("ABONNEMENT_INACTIF");
+		assertThat(signalerSon(soiree, animateur, signal, 403).path("code").asString()).isEqualTo("ACCES_REFUSE");
+		assertThat(signalerSon(soiree, null, signal, 401).path("code").asString()).isEqualTo("AUTHENTIFICATION_REQUISE");
+		assertThat(signalerSon(UUID.randomUUID(), ecran, signal, 404).path("code").asString()).isEqualTo("RESSOURCE_INTROUVABLE");
+	}
+
+	@Test
+	void leSignalDuSonExigeExactementUnUuidDAbonnementEtUnBooleenJson() throws Exception {
+		UUID soiree = UUID.randomUUID();
+		var ecran = new Acteur(Acteur.Type.ECRAN, UUID.randomUUID(), soiree);
+		UUID abonnement = UUID.randomUUID();
+		abonner(connecter(ecran), Canaux.salle(soiree), abonnement);
+
+		for (var signal : List.of(
+				Map.of("sonActive", true),
+				Map.of("abonnementId", abonnement),
+				Map.of("abonnementId", abonnement, "sonActive", true, "morceauxDisponibles", true),
+				Map.of("abonnementId", abonnement, "sonActive", "true"),
+				Map.of("abonnementId", "1-2-3-4-5", "sonActive", true))) {
+			assertThat(signalerSon(soiree, ecran, signal, 400).path("code").asString()).isEqualTo("REQUETE_INVALIDE");
+		}
+	}
+
+	private void verifierSonConsole(BlockingQueue<Map<String, Object>> console, Acteur animateur,
+			String etat, int revision) throws Exception {
+		var message = console.poll(2, TimeUnit.SECONDS);
+		assertThat(message).isNotNull().containsEntry("type", "son-ecran-modifie").containsEntry("revision", revision);
+		assertThat(donnees(message)).containsEntry("sonEcran", etat);
+		var capture = capturerVue(animateur, "console", "retrouverEtatConsole");
+		assertThat(capture.path("revision").asInt()).isEqualTo(revision);
+		assertThat(capture.path("vue")).isEqualTo(json.valueToTree(donnees(message)));
+	}
+
+	private void signalerSon(Acteur acteur, UUID abonnement, boolean actif, int statut) throws Exception {
+		var signal = Map.of("abonnementId", abonnement, "sonActive", actif);
+		var reponse = signalerSon(acteur.soireeId(), acteur, signal, statut);
+		if (statut == 200) {
+			assertThat(reponse.path("sonActive").asBoolean()).isEqualTo(actif);
+			assertThat(reponse.path("abonnementId").asString()).isEqualTo(abonnement.toString());
+		} else if (statut == 409) {
+			assertThat(reponse.path("code").asString()).isEqualTo("ABONNEMENT_INACTIF");
+		}
+	}
+
+	private JsonNode signalerSon(UUID soireeId, Acteur acteur, Map<String, ?> signal, int statut) throws Exception {
+		var requete = requeteSoiree(soireeId, "/son-ecran").header("Content-Type", "application/json")
+				.PUT(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(signal)));
+		if (acteur != null) { requete.header("Authorization", "Bearer " + jeton(acteur)); }
+		return reponseConforme(requete.build(), "signalerSonEcran", statut);
+	}
+
+	private JsonNode capturerVue(Acteur acteur, String destination, String operation) throws Exception {
+		return reponseConforme(requeteDeVue(acteur, "/etat/" + destination).GET().build(), operation, 200);
+	}
+
+	private HttpRequest.Builder requeteDeVue(Acteur acteur, String suffixe) {
+		return requeteSoiree(acteur.soireeId(), suffixe).header("Authorization", "Bearer " + jeton(acteur));
+	}
+
+	private HttpRequest.Builder requeteSoiree(UUID soireeId, String suffixe) {
+		return HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/soirees/" + soireeId + suffixe))
+				.timeout(Duration.ofSeconds(5));
+	}
+
+	private JsonNode reponseConforme(HttpRequest requete, String operation, int statut) throws Exception {
+		var reponse = http.send(requete, HttpResponse.BodyHandlers.ofString());
+		assertThat(reponse.statusCode()).isEqualTo(statut);
+		ContratApi.verifier(CONTRAT, operation, statut, reponse.headers().firstValue("Content-Type").orElse(null), reponse.body());
+		return json.readTree(reponse.body());
+	}
+
 	private StandardWebSocketClient clientWebSocket() {
 		StandardWebSocketClient client = new StandardWebSocketClient(conteneur);
 		client.setTaskExecutor(executeur);
@@ -253,8 +369,11 @@ class CanalTempsReelTest {
 	}
 
 	private StompSession connecter(Acteur acteur) throws Exception {
-		String jeton = acteur == null ? null : "demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant();
-		return connecterAvecJeton(jeton);
+		return connecterAvecJeton(acteur == null ? null : jeton(acteur));
+	}
+
+	private static String jeton(Acteur acteur) {
+		return "demo:" + acteur.type() + ":" + acteur.soireeId() + ":" + acteur.identifiant();
 	}
 
 	private StompSession connecterAvecJeton(String jeton) throws Exception {

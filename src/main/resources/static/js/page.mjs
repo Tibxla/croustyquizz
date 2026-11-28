@@ -7,6 +7,7 @@ import { afficherClassementDeSalle, decrireBarre, decrireConnexion, decrirePalma
 import { monterMenu } from './menu.mjs';
 import { creerAnnonceBuzz, creerArrivees, estAccueil, placesArrivees } from './salle-accueil.mjs';
 import { monterAudioSalle } from './audio-salle.mjs';
+import { afficherAlerteSonEcran, monterSignalSonEcran } from './son-ecran.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterBuzz } from './buzz-manette.mjs';
@@ -164,6 +165,8 @@ async function demarrer() {
 	const musiqueConsole = boutonMusique
 		? monterMusiqueDAttenteConsole(boutonMusique, element('musique-attente-statut'), contexte) : null;
 	const musiqueSalle = audioSalle ? monterMusiqueDAttenteSalle(audioSalle, contexte) : null;
+	const signalSon = audioSalle ? monterSignalSonEcran(audioSalle, contexte) : null;
+	const alerteSon = element('alerte-son-ecran');
 	// Alias de recette explicite : le serveur continue à publier son vrai mode et son bloc.
 	const factice = jeton?.startsWith('demo:') && new URLSearchParams(location.search).get('factice') === '1';
 	const gestionnaire = creerGestionnaireDeMode({ ecran, zones, contexte,
@@ -197,11 +200,13 @@ async function demarrer() {
 			const modeAffiche = gestionnaire.afficher(vue, origine);
 			musiqueConsole?.afficher(vue);
 			musiqueSalle?.afficher(vue, modeAffiche);
+			if (alerteSon) afficherAlerteSonEcran(alerteSon, vue);
 			derniereVue = vue;
 			afficherScene(vue, origine);
 		},
-		surEtat(etat) {
+		surEtat(etat, abonnementId) {
 			changerEtat(etat);
+			signalSon?.synchroniser(abonnementId);
 			// Une pastille discrète tant que tout va bien ; un bandeau seulement en cas de coupure (#279).
 			const { texte: libelle, coupure } = decrireConnexion(etat);
 			etatConnexion.textContent = libelle;
@@ -214,6 +219,7 @@ async function demarrer() {
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
 		pilotage?.demonter(); menu?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter(); catalogueInstrumentales?.demonter();
+		signalSon?.demonter();
 		void audioSalle?.detruire();
 	});
 	addEventListener('pageshow', evenement => {

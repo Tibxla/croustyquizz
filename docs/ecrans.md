@@ -49,7 +49,7 @@ Tester Manette à 390 × 844, Console à 1440 × 900 et 1024 × 768, salle à 19
 4. **Écran de salle.** Soirée ouverte sans Manche : le titre, le talon au centre (« Scanne pour jouer », QR code, code, adresse) et les arrivées, qui se détachent quand un Joueur rejoint ; la colonne n'apparaît pas. Un Buzz hors Manche s'annonce en grand au centre pendant quatre secondes. Le panneau « Mise en route de l'Écran » reste au-dessus du pied jusqu'à « Activer le son », puis laisse une pastille (« Paroles seules », « Son activé · N morceaux »). En Manche, la scène commence par le mode, le titre de la Soirée passe dans le pied et le talon revient en bas de colonne.
 5. **Freestyle.** Le nom de l'Interprète ouvre la zone principale ; « À venir » dit « Personne n'est inscrit. » ; sur la Manette, la ligne « Couplet … » disparaît à la fin du Passage et les boutons de désignation, un par ligne, ne débordent pas avec un pseudo long.
 
-Reste hors de ce lot : prévenir la Console quand un Écran rechargé a perdu le son (#281, M12), qui demande un nouvel échange.
+Le signalement du son coupé après rechargement de l’Écran de salle est couvert par la recette #289 ci-dessous.
 
 Le contrat de module est documenté dans `AGENTS.md`, section « Coder un Mode de jeu ». `npm test --prefix tools/api` couvre contrats, synchronisation et logique des coquilles. `IdentiteDeTestParProfilTest` vérifie la route HTML en dev, recette, prod+recette, prod et sans profil de démonstration, sans Docker.
 
@@ -206,6 +206,15 @@ La Console coupe ou relance la Musique d’attente depuis le menu « Plus » de 
 2. Hors Manche, choisir un dossier avec des morceaux dans `Attente`. Vérifier leur lecture et l’état affiché dans la Console. Couper la musique, recharger l’Écran de salle et choisir de nouveau le dossier. Vérifier le silence, puis relancer depuis la Console.
 3. Couper de nouveau et redémarrer le serveur avec la même base. Après resynchronisation, vérifier que la Console propose toujours de relancer et que la salle reste silencieuse. Choisir un dossier sans morceaux dans `Attente` et vérifier le message dans la Console.
 4. Avec un dossier contenant des morceaux, vérifier que la relance pendant un Passage laisse la Chanson audible seule et que la Musique d’attente reprend à la clôture.
+
+### Son de l’Écran de salle sur la Console (#289)
+
+Dès sa synchronisation, l’Écran de salle signale si le navigateur a autorisé le son avec `PUT /api/soirees/{soireeId}/son-ecran`. Le signal porte l’identifiant de son abonnement. Tant qu’aucun Écran connecté n’a activé le son et qu’au moins un Écran a signalé son état, la Console affiche sous la barre « Le son de l’Écran est coupé : touche Activer le son sur la télé. » Les signaux sont oubliés à la déconnexion. Sans Écran, l’alerte disparaît.
+
+1. Ouvrir la Console et l’Écran de salle de la même Soirée, sans geste sur l’Écran. Vérifier l’alerte, y compris à 1 024 px.
+2. Sur l’Écran de salle, toucher « Activer le son ». Vérifier que l’alerte disparaît sans recharger la Console.
+3. Recharger l’Écran de salle. L’alerte revient. Fermer l’Écran et vérifier qu’elle disparaît.
+4. Avec deux Écrans de salle, activer le son sur un seul. L’alerte reste masquée tant que cet Écran est connecté. Fermer cet Écran et vérifier que l’alerte revient pour celui dont le son est coupé.
 
 ### Recharger l’Écran pendant l’appel (#144)
 

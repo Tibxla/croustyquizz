@@ -61,7 +61,9 @@ channels:
     description: "Animateur du Lieu uniquement. Messages serveur → écran exclusivement ; aucun SEND
       de commande métier. Une révision est propre à cette destination et à cette Soirée.
       musique-attente-modifiee transporte la vue complète après changement du réglage de l’Animateur
-      ou de la disponibilité signalée par l’Écran de salle, y compris hors Manche. Karaoké :
+      ou de la disponibilité signalée par l’Écran de salle, y compris hors Manche.
+      son-ecran-modifie transporte la vue complète lors d’un changement de sonEcran, après un signal
+      ou une déconnexion de l’Écran de salle. Cette cause et ce champ sont réservés à la Console. Karaoké :
       file-attente-modifiee après inscription, désinscription, réponse à une Invitation, retrait,
       placement ou priorité ;
       limite-passages-modifiee après changement utile de limite ; passage-appele, passage-demarre,
