@@ -345,6 +345,28 @@ class SoireeHttpTest {
 		verifierRefusAuConnect(jeton);
 	}
 
+	@Test
+	void unJoueurExcluRecoitUnMotifNeutreAuConnect() throws Exception {
+		String code = soireeOuverte().path("codeAcces").asString();
+		var reponse = envoyer(HttpMethod.POST, "/api/soirees/rejoindre", Map.of("codeAcces", code, "pseudo", "Léa"));
+		ContratApi.verifier(CONTRAT, "rejoindreSoiree", reponse);
+		assertThat(reponse.getStatusCode().value()).isEqualTo(201);
+		var arrivee = json.readTree(reponse.getBody());
+		UUID joueur = UUID.fromString(arrivee.at("/joueur/id").asString());
+		var connexion = StompHeaderAccessor.create(StompCommand.CONNECT);
+		connexion.setNativeHeader("Authorization", "Bearer " + arrivee.path("jetonReconnexion").asString());
+		assertThat(resolveur.resoudre(connexion).identifiant()).isEqualTo(joueur);
+
+		jdbc.update("update joueur set exclu = true where id = ?", joueur);
+
+		assertThatThrownBy(() -> resolveur.resoudre(connexion))
+				.isInstanceOfSatisfying(RefusDeCommande.class, refus -> {
+					assertThat(refus.refus().statutHttp()).isEqualTo(401);
+					assertThat(refus.refus().code()).isEqualTo("AUTHENTIFICATION_REQUISE");
+					assertThat(refus.refus().detail()).isEqualTo("Tu ne fais plus partie de cette Soirée.");
+				});
+	}
+
 	/** Le CONNECT STOMP passe par le même résolveur que HTTP ; son refus devient une trame ERROR. */
 	private void verifierRefusAuConnect(String jeton) {
 		var connexion = StompHeaderAccessor.create(StompCommand.CONNECT);

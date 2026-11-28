@@ -52,7 +52,7 @@ export function monterMusiqueDAttenteConsole(bouton, statut, contexte) {
 
 export function monterMusiqueDAttenteSalle(audio, contexte) {
 	const fin = new AbortController();
-	let synchronisee = false, affichage, dernierDossier, aSignaler, enCours = false;
+	let synchronisee = false, affichage, dernierDossier, dernierSignal, aSignaler, enCours = false;
 
 	function actualiserLecture() {
 		const courant = affichage;
@@ -74,7 +74,7 @@ export function monterMusiqueDAttenteSalle(audio, contexte) {
 			await contexte.envoyer('PUT', route(contexte.soireeId) + '/disponibilite', { morceauxDisponibles },
 				{ signal: fin.signal, annoncer: false });
 		} catch {
-			// Un prochain choix de dossier donnera lieu à un nouveau signal.
+			// Un signal perdu n'est pas renvoyé : le prochain changement du dossier ou de ses morceaux en donnera un nouveau.
 		} finally {
 			enCours = false;
 			void signaler();
@@ -82,9 +82,10 @@ export function monterMusiqueDAttenteSalle(audio, contexte) {
 	}
 
 	const retirerDossier = audio.surChangement(({ fichiers, morceauxDisponibles }) => {
-		if (fichiers === null || fichiers === dernierDossier) return;
+		// Le même dossier peut perdre ses morceaux quand la Musique d'attente les écarte comme illisibles.
+		if (fichiers === null || (fichiers === dernierDossier && morceauxDisponibles === dernierSignal)) return;
 		dernierDossier = fichiers;
-		aSignaler = morceauxDisponibles;
+		dernierSignal = aSignaler = morceauxDisponibles;
 		void signaler();
 	});
 	const seDesabonner = contexte.surEtatConnexion(etat => {

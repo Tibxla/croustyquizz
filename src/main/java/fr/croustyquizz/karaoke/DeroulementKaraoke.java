@@ -88,11 +88,13 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         this.lecteurDesigneId = persiste.lecteurDesigneId();
         this.etat = Objects.requireNonNull(etatManche);
         Horloge horloge = horlogeAvecEnchainement(contexte.horloge());
-        this.cycle = new CycleDePassage(file, horloge, delaiAppel, persiste.cycle(), this::surCloture);
+        this.cycle = new CycleDePassage(file, horloge, delaiAppel, persiste.cycle(), this::surCloture,
+                contexte.pilotageAutomatique());
         this.vote = new VoteDuPublic(file, horloge, dureeVote, persiste.voteDuPublic(),
                 cloture -> { derniereCauseMinuteur = "vote-clos"; });
         if (etatManche == EtatManche.EN_COURS) {
             cycle.reprogrammerFin();
+            cycle.reprogrammerEcheanceAppel();
             vote.reprogrammer(contexte.horloge().maintenant());
         }
     }
@@ -285,6 +287,9 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
         if (passage == null || !passage.interpretes().contains(action.joueurId())) { return introuvable(); }
         if (etat == EtatManche.EN_PAUSE) { return incompatible(); }
         if (!viseAppel(action.cible(), action.etapeId())) { return perimee(); }
+        if (contexte.pilotageAutomatique() && !action.recueLe().isBefore(cycle.etat().echeanceAppelLe())) {
+            return new Refuse(409, "HORS_DELAI", "Le temps pour confirmer est écoulé.");
+        }
         LecturePassage lecture = lectures.get(passage.id());
         LecturePassage demarree = lecture != null && lecture.etat() == EtatLecture.PREPAREE
                 ? lecture.passerA(EtatLecture.DEMARREE) : parolesDInscription(passage.id());
@@ -551,6 +556,7 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
             vote.ouvrir(cloture.passageId(), cloture.instant(), etat == EtatManche.EN_PAUSE);
         }
         if (TraceTerminale.FIN_PREVUE.equals(cloture.motif())) { derniereCauseMinuteur = "passage-termine"; }
+        if (TraceTerminale.ECHEANCE_APPEL.equals(cloture.motif())) { derniereCauseMinuteur = "passage-saute"; }
     }
 
     public String causeDernierMinuteur() { return derniereCauseMinuteur; }

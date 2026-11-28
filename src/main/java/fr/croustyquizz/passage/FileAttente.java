@@ -432,7 +432,9 @@ public final class FileAttente {
     public ResultatFile clorePassage(CiblePassage cible, EtatPassage etatTerminal, TraceTerminale trace) {
         Set<EtatPassage> departs = switch (etatTerminal) {
             case TERMINE -> Set.of(EtatPassage.EN_COURS);
-            case SAUTE, ANNULE -> Set.of(EtatPassage.APPELE, EtatPassage.EN_COURS);
+            case SAUTE -> trace != null && TraceTerminale.ECHEANCE_APPEL.equals(trace.motif())
+                    ? Set.of(EtatPassage.APPELE) : Set.of(EtatPassage.APPELE, EtatPassage.EN_COURS);
+            case ANNULE -> Set.of(EtatPassage.APPELE, EtatPassage.EN_COURS);
             default -> Set.of();
         };
         return transiter(cible, etatTerminal, trace, departs);
