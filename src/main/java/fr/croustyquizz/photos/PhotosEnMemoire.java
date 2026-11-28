@@ -87,6 +87,12 @@ public final class PhotosEnMemoire {
 		};
 	}
 
+	/** Photos en attente d'une Soirée, pour le pouvoir délégué PHOTOS ; lue sous le verrou de Soirée. */
+	List<FileDePhotos.PhotoEnAttente> enAttente(UUID soireeId) {
+		FileDePhotos file = trouver(soireeId);
+		return file == null ? List.of() : file.enAttente();
+	}
+
 	static Refuse photoIntrouvable() {
 		return new Refuse(404, "RESSOURCE_INTROUVABLE", "Photo introuvable.");
 	}

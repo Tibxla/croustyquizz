@@ -541,7 +541,10 @@ public final class DeroulementKaraoke implements DeroulementDeManche {
     @Override public ResultatDeCommande passerEtape(CommandePilotage commande) {
         Refuse refus = gardeCommune(); if (refus != null) { return refus; }
         if (cycle.courantActif() == null) { return inactive(); }
-        cycle.clore(EtatPassage.SAUTE, TraceTerminale.PASSE_PAR_ANIMATEUR, commande.acteur().identifiant(), commande.recueLe());
+        // Seul un Joueur délégué de la File d'attente atteint ce point sans être l'Animateur (#67).
+        String motif = commande.acteur().type() == Acteur.Type.JOUEUR
+                ? TraceTerminale.PASSE_PAR_DELEGUE : TraceTerminale.PASSE_PAR_ANIMATEUR;
+        cycle.clore(EtatPassage.SAUTE, motif, commande.acteur().identifiant(), commande.recueLe());
         return apres(new Accepte(commande.accuse(), ECRANS, "passage-saute"), commande.recueLe());
     }
 

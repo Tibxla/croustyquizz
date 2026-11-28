@@ -114,3 +114,28 @@
   30% { transform: translate(0, 2px) rotate(-0.4deg); }
   100% { transform: translate(-4px, 14px) rotate(-3deg); box-shadow: var(--ombre); }
 }
+
+/* Ta Délégation (#67) : les pouvoirs confiés par l'Animateur, au-dessus de la vue de jeu.
+   Un panneau comme ceux de la Console, en boutons ordinaires : le citron reste à l'action du jeu. */
+.delegation h2 { font-size: 1.375rem; }
+.delegation__corps,
+.delegation__bloc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espace-3);
+}
+.delegation__bloc + .delegation__bloc {
+  padding-top: var(--espace-4);
+  border-top: 3px dotted var(--fond-4);
+}
+.delegation__bloc h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+/* Deux classes : photos.css, chargée après, donne à .photos__ligne une colonne de vignette. Ici, le texte du Passage
+   prend toute la largeur et ses boutons passent dessous, au lieu de l'écraser sur un téléphone. */
+.delegation .delegation__passage {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--espace-2);
+}
+.delegation__passage strong { font-variant-numeric: tabular-nums; }

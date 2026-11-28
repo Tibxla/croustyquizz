@@ -60,7 +60,7 @@ class PhotosControleur {
 	@PostMapping("/{photoId}/moderation")
 	ResponseEntity<?> moderer(@PathVariable UUID soireeId, @PathVariable UUID photoId, @RequestHeader(CLE) UUID cle,
 			@RequestBody JsonNode commande, Acteur acteur, HttpServletRequest requete) {
-		AccesAuxVues.verifier(acteur, soireeId, Acteur.Type.ANIMATEUR);
+		AccesAuxVues.verifier(acteur, soireeId, null);
 		return ReponsesDeCommande.http(service.moderer(acteur, cle, photoId, decision(commande, "acceptee")),
 				requete.getRequestURI());
 	}

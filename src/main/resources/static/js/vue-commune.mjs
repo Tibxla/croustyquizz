@@ -1,6 +1,7 @@
 const modes = { QUIZ: 'Quiz', BLIND_TEST: 'Blind test', KARAOKE: 'Karaoké', FREESTYLE: 'Freestyle' };
 const etats = { PREPARATION: 'En préparation', OUVERTE: 'Ouverte', EN_COURS: 'En cours',
 	EN_PAUSE: 'En pause', TERMINEE: 'Terminée', EN_ATTENTE: 'En attente' };
+const pouvoirs = { FILE_ATTENTE: 'File d’attente', MUSIQUE_ATTENTE: 'Musique d’attente', PHOTOS: 'Photos' };
 const libellePoints = points => `${points} ${points === 1 ? 'point' : 'points'}`;
 const decrireLigne = ligne => `${ligne.rang}. ${ligne.nom} · ${libellePoints(ligne.points)}`;
 
@@ -50,6 +51,8 @@ export function decrireVue(vue) {
 		palmares,
 		buzz: vue.dernierBuzz ? `Dernier Buzz : ${vue.dernierBuzz.pseudo}` : 'Aucun Buzz reçu',
 		programme: (vue.programme ?? []).map(decrireManche),
+		// Lecture seule (#67) : l'écran qui attribue et retire une Délégation relève de la Console (animateur).
+		delegations: (vue.delegations ?? []).map(d => `${d.pseudo} · ${d.pouvoirs.map(p => pouvoirs[p] ?? p).join(', ')}`),
 		personnel: joueur ? [joueur.pseudo, decrireRangPersonnel(vue), vue.mancheActive && !vue.eligiblePourMancheActive ?
 			'Tu participeras à la prochaine Manche.' : '', vue.resultatPersonnel ?
 			`${vue.resultatPersonnel.pointsGagnes} points à la dernière correction` : ''].filter(Boolean).join(' · ') : '',

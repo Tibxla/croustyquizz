@@ -4,12 +4,16 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import fr.croustyquizz.manche.Destination;
+import fr.croustyquizz.manche.Acteur;
 import fr.croustyquizz.manche.EtatDeSoiree;
+import fr.croustyquizz.manche.Pouvoir;
+import fr.croustyquizz.manche.PouvoirsDelegues;
 import fr.croustyquizz.manche.Refuse;
 
 @Service
@@ -19,9 +23,12 @@ class ServiceMusiqueDAttente {
 	private final PublicationDeVues publication;
 	private final VerrousSoiree verrous;
 	private final TransactionTemplate transaction;
+	private final PouvoirsDelegues pouvoirs;
 
+	/** Sans contrôle des Délégations (contexte partiel), seul l'Animateur règle la Musique d'attente. */
 	ServiceMusiqueDAttente(DepotMusiqueDAttente depot, EtatDeSoiree etatDeSoiree, PublicationDeVues publication,
-			VerrousSoiree verrous, PlatformTransactionManager transactions) {
+			VerrousSoiree verrous, PlatformTransactionManager transactions, ObjectProvider<PouvoirsDelegues> pouvoirs) {
+		this.pouvoirs = pouvoirs.getIfAvailable(() -> PouvoirsDelegues.ANIMATEUR_SEUL);
 		this.depot = depot;
 		this.etatDeSoiree = etatDeSoiree;
 		this.publication = publication;
@@ -29,8 +36,13 @@ class ServiceMusiqueDAttente {
 		this.transaction = new TransactionTemplate(transactions);
 	}
 
-	void regler(UUID soireeId, MusiqueDAttente.Etat etat) {
-		modifier(soireeId, courant -> new MusiqueDAttente(etat, courant.morceauxDisponibles()));
+	/** Animateur ou Joueur délégué du pouvoir MUSIQUE_ATTENTE (#67), vérifié sous le verrou de la Soirée. */
+	void regler(Acteur acteur, UUID soireeId, MusiqueDAttente.Etat etat) {
+		verrous.executer(soireeId, () -> {
+			pouvoirs.autoriser(acteur, Pouvoir.MUSIQUE_ATTENTE);
+			modifier(soireeId, courant -> new MusiqueDAttente(etat, courant.morceauxDisponibles()));
+			return null;
+		});
 	}
 
 	void signaler(UUID soireeId, boolean morceauxDisponibles) {

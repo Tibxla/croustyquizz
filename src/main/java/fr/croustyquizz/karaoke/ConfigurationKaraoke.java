@@ -18,9 +18,12 @@ public class ConfigurationKaraoke {
     @Bean ServiceKaraoke serviceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance, SocleDeManche socle,
             PorteeDePassage portee, ParticipantsDePassage participants, PersistancePassageJpa passages,
             SourceDeParoles source, ProprietesKaraoke proprietes, ProprietesSourceKaraoke proprietesSource,
-            ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
+            ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages, PouvoirsDelegues pouvoirs) {
         return new ServiceKaraoke(fabrique, persistance, socle, portee, participants, passages, source, proprietes,
-                proprietesSource, choixParoles, calages);
+                proprietesSource, choixParoles, calages, pouvoirs);
+    }
+    @Bean FileAttenteDelegueeKaraoke fileAttenteDelegueeKaraoke(FournisseurDeBlocKaraoke bloc) {
+        return new FileAttenteDelegueeKaraoke(bloc);
     }
     @Bean ChoixDeVersionParoles choixDeVersionParoles(SourceDeParoles source, ProprietesSourceKaraoke proprietes) {
         return new ChoixDeVersionParoles(source, proprietes);

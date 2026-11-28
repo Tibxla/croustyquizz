@@ -787,6 +787,22 @@ class DeroulementKaraokeTest extends ContratDeroulementDeManche {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
+    void unPassageSauteParUnJoueurDelegueGardeSaTraceMemeEnFinAutomatique(boolean automatique) {
+        ouvrirPremierPassage(automatique);
+        confirmerCourant();
+        var delegue = new CommandePilotage(new Acteur(Acteur.Type.JOUEUR, INCONNU, SOIREE), UUID.randomUUID(),
+                horloge.maintenant());
+        var saut = accepter(deroulement.passerEtape(delegue), automatique ? "manche-terminee" : "passage-saute", true);
+        assertThat(saut.accuse()).isEqualTo(delegue.accuse());
+        assertThat(passage(PASSAGE).etat()).isEqualTo(EtatPassage.SAUTE);
+        assertThat(passage(PASSAGE).traceTerminale()).isEqualTo(
+                new TraceTerminale("PASSE_PAR_DELEGUE", INCONNU, delegue.recueLe()));
+        assertThat(deroulement.estTerminee()).isEqualTo(automatique);
+        assertThat(finsSignalees).isEqualTo(automatique ? 1 : 0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
     void laFinPrevueDuDernierPassageLaisseLeVoteSeCloreAvantUneFinAutomatique(boolean automatique) {
         ouvrirPremierPassage(automatique);
         var fabrique = new FabriqueKaraoke(Duration.ofSeconds(30));

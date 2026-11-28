@@ -14,6 +14,7 @@ Issues de référence : [#34](https://github.com/Tibxla/croustyquizz/issues/34),
 | [exemples/parcours-vote-karaoke.yaml](exemples/parcours-vote-karaoke.yaml) | Vote du public, pause, refus, rejeu et reconnexion de la Manette |
 | [exemples/parcours-pilotage-automatique.yaml](exemples/parcours-pilotage-automatique.yaml) | Capture, reconnexion, appel et saut d’un Passage en Pilotage Automatique |
 | [exemples/parcours-blindtest.yaml](exemples/parcours-blindtest.yaml) | Blind test : extrait, Buzz, brouillon et Proposition de titre, partie trouvée, blocage, Révélation, refus, confidentialité et reconnexion de la salle |
+| [exemples/parcours-delegation.yaml](exemples/parcours-delegation.yaml) | Délégation : attribution, commandes du Joueur délégué, commande périmée de l’Animateur, refus hors pouvoir, retrait et confidentialité |
 
 Les opérations HTTP sont identifiées par leur `operationId` : les exemples utilisent ces identifiants pour rester vérifiables lorsque les routes évoluent. OpenAPI 3.1 et AsyncAPI 3.1 sont retenus ; les schémas partagés sont compatibles avec JSON Schema 2020-12. Les références de schéma restent locales au dépôt.
 
@@ -479,6 +480,53 @@ démarre avant la fin des huit secondes, la photo retourne en tête de file
 et aura huit secondes consécutives au prochain créneau. Une Manche en pause
 occupe toujours la scène. Couper les envois laisse les deux files intactes.
 Un Écran de salle ne peut télécharger que le JPEG à l'affiche. Aucun Joueur
-n'a accès au téléchargement. Les octets ne figurent dans aucune vue.
+n'a accès au téléchargement, sauf un Joueur délégué avec le pouvoir `PHOTOS`
+(voir « Délégation »), pour juger la photo. Les octets ne figurent dans aucune vue.
 
 Voir [le parcours complet](exemples/parcours-photos.yaml).
+
+## Délégation (#67)
+
+Pendant une Soirée ouverte ou en cours, l’Animateur confie à un Joueur présent une Délégation : un ensemble
+de pouvoirs pris dans une liste fermée (`Pouvoir`). `attribuerDelegation` remplace cet ensemble,
+`retirerDelegation` l’efface. Il y a au plus une Délégation par Joueur et plusieurs Joueurs peuvent en avoir
+une. Elle ne crée aucun compte. Elle est conservée en base avec la Soirée et effacée à sa fin. Un Joueur
+exclu perd son jeton, donc sa Délégation. Les deux routes sont réglées par valeur, sans `Idempotency-Key` :
+un ensemble déjà en vigueur réussit sans publication. Seules les Soirées enregistrées acceptent une
+Délégation, car seul un vrai Joueur la reçoit.
+
+| Pouvoir | Opérations ouvertes au Joueur délégué |
+|---|---|
+| `FILE_ATTENTE` | `deplacerPassage`, `definirPrioritePassage`, `appelerPassage`, et `piloterManche` pour la seule action `PASSER_ETAPE` d’une Manche de Karaoké |
+| `MUSIQUE_ATTENTE` | `reglerMusiqueDAttente` |
+| `PHOTOS` | `modererPhoto`, et `consulterPhoto` pour voir la photo avant de la juger |
+
+Le Joueur délégué envoie les mêmes commandes que l’Animateur, sur les mêmes routes, avec son jeton de
+Joueur, sans `X-CSRF-TOKEN` puisqu’il n’a pas de session. Le serveur vérifie le pouvoir à chaque commande,
+sous le verrou de la Soirée qui sérialise aussi l’attribution et le retrait : un retrait vaut dès la commande
+suivante. Un pouvoir absent donne `403 ACCES_REFUSE`, avec un `detail` affichable et sans reçu : la même
+clé réussira si le pouvoir est rendu. Le retrait d’un Passage, la limite de la File d’attente, le calage, la
+reprise en paroles seules, la pause, la reprise et la commande `TERMINER` d’une Manche, le pilotage de la Soirée, le
+programme, les réglages des photos, l’Exclusion, l’Avertissement et l’invitation d’Animateurs restent à
+l’Animateur. En Pilotage Automatique, un saut délégué peut déclencher la fin de la Manche selon les
+conditions de File d’attente et de Vote du public décrites ci-dessus.
+
+Les deux pilotes agissent sur les mêmes cibles et les mêmes versions : une commande décidée sur une vue
+dépassée est refusée comme pour deux Animateurs, sans effet (`409 COMMANDE_PERIMEE`, ou `ETAPE_INACTIVE`
+pour un `etapeId` qui n’est plus courant). Le parcours d’exemple montre l’Animateur appeler un Passage
+qu’Alizé, déléguée, vient d’appeler puis de passer.
+
+La Manette d’un Joueur délégué porte `delegation` : ses pouvoirs, puis seulement les données qu’ils
+demandent. `fileAttente` (File d’attente complète, courant et son `etapeId`, droits `peutAppeler` et
+`peutPasser`) n’existe qu’avec `FILE_ATTENTE`, et vaut `null` hors Manche de Karaoké ; `photos` (photos en
+attente, sans JPEG) qu’avec `PHOTOS` ; `musiqueAttente` qu’avec `MUSIQUE_ATTENTE`. Aucune réponse de Quiz
+ou de Blind test, aucune clé d’Écran, aucun jeton, ni lecture, paroles ou fichier local. Les autres Manettes
+reçoivent `delegation: null` et rien d’autre. La Console reçoit `delegations`, la liste des Délégations en
+cours des Joueurs présents.
+
+L’attribution, la modification et le retrait publient `delegation-modifiee` sur la Console et la seule
+Manette concernée. Chaque publication vers la Console atteint aussi les Manettes déléguées, avec la même
+cause : leurs données restent à jour sans règle par pouvoir. Le délégué ne s’abonne jamais au canal de la
+Console.
+
+Voir [le parcours complet](exemples/parcours-delegation.yaml).

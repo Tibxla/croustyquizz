@@ -8,6 +8,7 @@ import { monterAudioSalle } from './audio-salle.mjs';
 import { monterMusiqueDAttenteConsole, monterMusiqueDAttenteSalle } from './pilotage-musique-attente.mjs';
 import { monterProgramme } from './programme-console.mjs';
 import { monterBuzz } from './buzz-manette.mjs';
+import { monterDelegation } from './delegation-manette.mjs';
 import { monterPilotage } from './pilotage-console.mjs';
 import { monterTalonSalle } from './talon-salle.mjs';
 import { memoire } from './api.js';
@@ -61,6 +62,8 @@ function afficherCommun(vue) {
 	afficherPalmares(ecran === 'ecran' ? decrirePalmaresDeSalle(vue) : description.palmares);
 	const classementVisible = ecran === 'ecran' && afficherClassementDeSalle(element('classement-salle'), vue);
 	texte('nombre-joueurs', `Joueurs (${vue.joueurs.length})`);
+	lister('delegations', description.delegations, 'Aucune Délégation en cours.');
+	texte('nombre-delegations', `Délégations (${description.delegations.length})`);
 	texte('attente', classementVisible ? '' : description.attente);
 	zoneErreur.hidden = true;
 }
@@ -125,6 +128,9 @@ async function demarrer() {
 	const photos = zonePhotos ? (await import(`./photos/${ecran}.mjs`))
 		.monter(zonePhotos, { ...contexte, chargerImage: transport.chargerImage }) : null;
 	const programme = ecran === 'console' ? monterProgramme(element('edition-programme'), contexte) : null;
+	const zoneDelegation = element('delegation');
+	const delegation = zoneDelegation ? monterDelegation(zoneDelegation, { ...contexte, chargerImage: transport.chargerImage },
+		{ refuge: element('titre') }) : null;
 	const boutonBuzz = element('buzzer');
 	const buzz = accesManette && boutonBuzz ? monterBuzz(boutonBuzz, contexte) : null;
 	const pilotage = ecran === 'console' ? monterPilotage(element('pilotage-soiree'), contexte) : null;
@@ -137,6 +143,7 @@ async function demarrer() {
 			void talon?.afficher(vue.soiree);
 			programme?.afficher(vue);
 			photos?.afficher(vue);
+			delegation?.afficher(vue);
 			buzz?.afficher(vue);
 			pilotage?.afficher(vue);
 			const modeAffiche = gestionnaire.afficher(vue, origine);
@@ -163,6 +170,7 @@ async function demarrer() {
 		if (evenement.persisted) { audioSalle?.suspendre(true); return; }
 		talon?.demonter();
 		suivi.arreter(); gestionnaire.demonter(); programme?.demonter(); buzz?.demonter(); photos?.demonter();
+		delegation?.demonter();
 		pilotage?.demonter();
 		musiqueConsole?.demonter(); musiqueSalle?.demonter();
 		void audioSalle?.detruire();

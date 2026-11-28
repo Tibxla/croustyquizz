@@ -23,12 +23,23 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     private final ProprietesSourceKaraoke proprietesSource;
     private final ChoixDeVersionParoles choixParoles;
     private final MemoireDeCalageJpa calages;
+    private final PouvoirsDelegues pouvoirs;
 
     public ServiceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance,
             SocleDeManche socle, PorteeDePassage portee, ParticipantsDePassage participants,
             PersistancePassageJpa passages, SourceDeParoles source, ProprietesKaraoke proprietes,
             ProprietesSourceKaraoke proprietesSource, ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages) {
+        this(fabrique, persistance, socle, portee, participants, passages, source, proprietes, proprietesSource,
+                choixParoles, calages, PouvoirsDelegues.ANIMATEUR_SEUL);
+    }
+
+    public ServiceKaraoke(FabriqueKaraoke fabrique, PersistanceKaraokeJpa persistance,
+            SocleDeManche socle, PorteeDePassage portee, ParticipantsDePassage participants,
+            PersistancePassageJpa passages, SourceDeParoles source, ProprietesKaraoke proprietes,
+            ProprietesSourceKaraoke proprietesSource, ChoixDeVersionParoles choixParoles, MemoireDeCalageJpa calages,
+            PouvoirsDelegues pouvoirs) {
         super(fabrique, persistance, socle);
+        this.pouvoirs = pouvoirs;
         this.persistance = persistance;
         this.socle = socle; this.portee = portee; this.participants = participants; this.passages = passages;
         this.source = source; this.proprietes = proprietes; this.proprietesSource = proprietesSource;
@@ -57,6 +68,10 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
         return super.demarrer(mancheId, envoi);
     }
     @Override public ResultatDeCommande piloter(UUID mancheId, EnvoiDeCommande envoi, InterventionDeManche intervention) {
+        // Passer le courant est le seul pilotage délégable (#67) ; pause, reprise et fin restent à l'Animateur.
+        if (intervention.action() == InterventionDeManche.Action.PASSER_ETAPE) {
+            return piloterFile(mancheId, envoi, () -> super.piloter(mancheId, envoi, intervention));
+        }
         verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
         return super.piloter(mancheId, envoi, intervention);
     }
@@ -118,15 +133,15 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
                 recueLe, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification())))));
     }
     public ResultatDeCommande deplacerPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.PlacementPassage corps) {
-        verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
-        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.commander(new DeplacerPassage(envoi.acteur(),
-                recueLe, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification()),
-                corps.tour(), corps.avant() == null ? null : corps.avant().cible()))));
+        return piloterFile(mancheId, envoi, () -> executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+                d.commander(new DeplacerPassage(envoi.acteur(), recueLe, envoi.envoiId(),
+                        new CiblePassage(passageId, corps.numeroModification()),
+                        corps.tour(), corps.avant() == null ? null : corps.avant().cible())))));
     }
     public ResultatDeCommande definirPrioritePassage(UUID mancheId, EnvoiDeCommande envoi, CorpsKaraoke.PrioritePassage corps) {
-        verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
-        return executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) -> d.commander(new DefinirPrioritePassage(envoi.acteur(),
-                recueLe, envoi.envoiId(), corps.passage().cible(), corps.prioritaire()))));
+        return piloterFile(mancheId, envoi, () -> executer(mancheId, envoi, () -> PreparationDeCommande.prete((d, recueLe) ->
+                d.commander(new DefinirPrioritePassage(envoi.acteur(), recueLe, envoi.envoiId(), corps.passage().cible(),
+                        corps.prioritaire())))));
     }
     public ResultatDeCommande reglerLimitePassages(UUID mancheId, EnvoiDeCommande envoi, CorpsKaraoke.LimitePassages corps) {
         verifierEntree(mancheId, envoi, Acteur.Type.ANIMATEUR);
@@ -135,8 +150,25 @@ public class ServiceKaraoke extends ServiceDeManche<ReglagesKaraoke, EtatKaraoke
     }
 
     public ResultatDeCommande appelerPassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi, CorpsKaraoke.AppelPassage corps) {
-        return commander(mancheId, envoi, Acteur.Type.ANIMATEUR, maintenant -> new AppelerPassage(envoi.acteur(),
-                maintenant, envoi.envoiId(), new CiblePassage(passageId, corps.numeroModification())));
+        return piloterFile(mancheId, envoi, () -> executer(mancheId, envoi, () -> PreparationDeCommande.prete(
+                (d, recueLe) -> d.commander(new AppelerPassage(envoi.acteur(), recueLe, envoi.envoiId(),
+                        new CiblePassage(passageId, corps.numeroModification()))))));
+    }
+
+    /**
+     * Commande du pouvoir FILE_ATTENTE (#67) : l'Animateur, ou un Joueur délégué. Le verrou de la Soirée est tenu
+     * du contrôle du pouvoir jusqu'à la publication, si bien qu'un retrait vaut dès la commande suivante ; ces
+     * commandes n'ont pas de préparation externe. Un refus d'accès n'est pas conservé comme reçu.
+     */
+    private ResultatDeCommande piloterFile(UUID mancheId, EnvoiDeCommande envoi, Supplier<ResultatDeCommande> commande) {
+        Acteur acteur = envoi.acteur();
+        UUID soireeId = acteur.soireeId();
+        AccesAuxVues.verifier(acteur, soireeId, null);
+        return socle.verrous().executer(soireeId, () -> {
+            pouvoirs.autoriser(acteur, Pouvoir.FILE_ATTENTE);
+            verifierAcces(acteur, soireeId, mancheId);
+            return commande.get();
+        });
     }
 
     public ResultatDeCommande confirmerPresencePassage(UUID mancheId, UUID passageId, EnvoiDeCommande envoi,

@@ -122,3 +122,13 @@ test('en fin de Soirée, le Podium final passe avant le Palmarès sur la salle, 
 	assert.deepEqual(decrireVue(avecPalmares).palmares.map(ligne => ligne.texte),
 		['1. n° 2 · Les quais · Lou · 5,0 sur 5 (1 vote)']);
 });
+
+test('la Console liste en lecture seule les Délégations en cours (#67)', () => {
+	const base = { soiree: { titre: 'S', etat: 'EN_COURS', format: 'SOLO', pilotage: 'MANUEL', codeAcces: 'DEMO01' },
+		modeEnCours: null, mancheActive: null, joueurs: [], classement: [], dernierBuzz: null };
+	assert.deepEqual(decrireVue(base).delegations, []);
+	assert.deepEqual(decrireVue({ ...base, delegations: [
+		{ joueurId: 'a', pseudo: 'Alizé', pouvoirs: ['FILE_ATTENTE', 'PHOTOS'] },
+		{ joueurId: 'b', pseudo: 'Basile', pouvoirs: ['MUSIQUE_ATTENTE'] },
+	] }).delegations, ['Alizé · File d’attente, Photos', 'Basile · Musique d’attente']);
+});
