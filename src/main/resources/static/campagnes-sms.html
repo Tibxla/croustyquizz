@@ -19,7 +19,7 @@
 		<div class="campagnes__entete">
 			<a class="compte__retour" href="/soirees.html"><span class="icone icone--retour" aria-hidden="true"></span>Soirées du Lieu</a>
 			<h1 id="titre-campagnes" tabindex="-1">Campagnes SMS</h1>
-			<p class="compte__intro">Les envois sont simulés.</p>
+			<p id="mode-envoi-campagnes" class="compte__intro" hidden></p>
 		</div>
 		<p id="statut-campagnes" class="envoi" role="status">Chargement des Campagnes…</p>
 		<div id="espace-campagnes" class="campagnes__contenu" hidden>
@@ -35,6 +35,10 @@
 							<textarea id="texte-campagne" rows="4" maxlength="918" required
 								aria-describedby="aide-sms compteur-campagne"></textarea>
 							<p id="compteur-campagne" class="campagnes__compteur">0 caractère · 0 segment</p>
+							<div id="conseil-encodage" class="campagnes__encodage" hidden>
+								<p>Certains caractères imposent l’Unicode et peuvent augmenter le nombre de segments.</p>
+								<button type="button" class="bouton" id="remplacer-caracteres" hidden>Remplacer les caractères spéciaux</button>
+							</div>
 							<p id="aide-sms" class="champ__aide">Six segments maximum. Le compteur inclut le lien STOP d’exemple.</p>
 						</div>
 						<div class="campagnes__actions">

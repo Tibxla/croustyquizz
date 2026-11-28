@@ -4,7 +4,7 @@ import { test } from 'node:test';
 
 import { retourApresConnexion } from '../../src/main/resources/static/js/compte.mjs';
 import {
-	compterSegments, decrireBrouillon, decrireEnvoi, libelleEtat,
+	compterSegments, decrireBrouillon, decrireEnvoi, libelleEtat, libelleModeEnvoi, remplacerCaracteresSpeciaux,
 } from '../../src/main/resources/static/js/campagnes-sms.mjs';
 
 test('le compteur applique les limites du GSM et de l’Unicode', () => {
@@ -16,9 +16,24 @@ test('le compteur applique les limites du GSM et de l’Unicode', () => {
 });
 
 test('le brouillon compte les caractères saisis et ajoute le lien d’exemple au compte des segments', () => {
-	assert.deepEqual(decrireBrouillon('  '), { caracteres: 2, segments: 0, valide: false });
-	assert.deepEqual(decrireBrouillon('a'.repeat(160)), { caracteres: 160, segments: 2, valide: true });
-	assert.deepEqual(decrireBrouillon('🎤'.repeat(201)), { caracteres: 201, segments: 7, valide: false });
+	assert.deepEqual(decrireBrouillon('  '), { caracteres: 2, segments: 0, valide: false, unicode: false });
+	assert.deepEqual(decrireBrouillon('a'.repeat(160)), { caracteres: 160, segments: 2, valide: true, unicode: false });
+	assert.deepEqual(decrireBrouillon('🎤'.repeat(201)), { caracteres: 201, segments: 7, valide: false, unicode: true });
+});
+
+test('une apostrophe typographique fait passer le brouillon de 98 caractères à trois segments avec le lien STOP', () => {
+	const texte = 'C’est jeudi !'.padEnd(98, 'a');
+	assert.deepEqual(decrireBrouillon(texte), { caracteres: 98, segments: 3, valide: true, unicode: true });
+	assert.deepEqual(decrireBrouillon(remplacerCaracteresSpeciaux(texte)),
+		{ caracteres: 98, segments: 1, valide: true, unicode: false });
+});
+
+test('le remplacement adapte la ponctuation et conserve les autres caractères', () => {
+	const texte = '«\u202fÉté…\u00a0» — “Quiz” – ç 🎤 €';
+	const remplace = remplacerCaracteresSpeciaux(texte);
+	assert.equal(remplace, '" Été... " - "Quiz" - ç 🎤 €');
+	assert.equal(decrireBrouillon(remplace).unicode, true);
+	assert.equal(decrireBrouillon("C'est jeudi ! {Quiz} à 5 €").unicode, false);
 });
 
 test('la confirmation reprend le nombre de destinataires, le coût et le créneau de Paris', () => {
@@ -37,6 +52,13 @@ test('la confirmation reprend le nombre de destinataires, le coût et le crénea
 test('chaque état de Campagne est lisible en français', () => {
 	assert.deepEqual(['PROGRAMMEE', 'EN_COURS', 'TERMINEE'].map(libelleEtat),
 		['Programmée', 'En cours', 'Terminée']);
+});
+
+test('le bandeau précise le contenu reçu en compte d’essai Twilio', () => {
+	assert.equal(libelleModeEnvoi('SIMULE'), 'Les envois sont simulés.');
+	assert.equal(libelleModeEnvoi('TWILIO'), 'Envoi réel par Twilio.');
+	assert.equal(libelleModeEnvoi('TWILIO_ESSAI'),
+		'Compte d\'essai Twilio : le SMS reçu est un message type de Twilio, pas ton texte, et seuls les numéros vérifiés le reçoivent.');
 });
 
 test('la page est accessible des Soirées du Lieu et après connexion', async () => {
